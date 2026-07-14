@@ -47,7 +47,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);f
 <div id="bootError"><strong style="color:#58f1e6">ATM Town could not start.</strong><div id="bootErrorText" style="margin-top:8px;line-height:1.4"></div></div>
 <canvas id="game"></canvas>
 <div id="multiplayerPanel"><div id="multiplayerCard"><h2>ATM Town Multiplayer</h2><p>Join a private team room. Supabase is prefilled for ATM Town. Enter your display name, keep the shared room name, and tap JOIN ROOM. Leave the fields alone unless you change projects.</p><input id="displayName" class="mpInput" placeholder="Display name" value=""><input id="roomName" class="mpInput" placeholder="Room name" value="atm-town-alpha"><input id="supabaseUrl" class="mpInput" placeholder="Supabase project URL" value="https://xnyjurertwohlqczaeux.supabase.co"><input id="supabaseKey" class="mpInput" placeholder="Supabase anon key" value="sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD"><button id="joinOnline" class="mpBtn">JOIN ROOM</button><button id="joinOffline" class="mpBtn secondary">PLAY OFFLINE</button></div></div>
-<div id="mapLabel">ATM TOWN</div><div id="onlineBadge">1 online</div><div id="chatLog"></div><div id="chatBar"><input id="chatInput" maxlength="120" placeholder="Nearby message..."><button id="chatSend">SEND</button></div>
+<div id="mapLabel">ATM TOWN</div><div id="buildVersion" style="display:none">v14</div><div id="onlineBadge">1 online</div><div id="chatLog"></div><div id="chatBar"><input id="chatInput" maxlength="120" placeholder="Nearby message..."><button id="chatSend">SEND</button></div>
 
 <div id="hud"><div class="chip">ATM TOWN <span>ALPHA</span></div><div class="chip">Coins: <span id="coins">0</span>/6</div></div>
 <div id="quest"><div class="title">MAIN QUEST</div><div class="line">Collect 6 Coins</div><div class="sub"><span id="progress">0</span> / 6</div></div>
@@ -120,16 +120,26 @@ for(const [tx,ty] of treeSpots) colliders.push({x:tx*tile+8,y:ty*tile+18,w:28,h:
 
 function rand2(x,y){ const s=Math.sin(x*127.1+y*311.7)*43758.5453123; return s-Math.floor(s); }
 function rectCollision(px,py,r,b){ return px+r>b.x && px-r<b.x+b.w && py+r>b.y && py-r<b.y+b.h; }
-function landAtPoint(px,py){
+const bridgeWalkRect={x:15.25,y:22.45,w:3.55,h:3.25};
+function pointInTileRect(px,py,r){
   const tx=px/tile, ty=py/tile;
-  return landRects.some(r=>tx>=r.x && tx<=r.x+r.w && ty>=r.y && ty<=r.y+r.h);
+  return tx>=r.x && tx<r.x+r.w && ty>=r.y && ty<r.y+r.h;
 }
-function landAtCircle(px,py,r){
-  const inset=Math.max(4,r-2);
-  const d=inset*0.72;
+function landAtPoint(px,py){
+  // The southern canal is water. Only the visible XRPL bridge is walkable there.
+  const tx=px/tile, ty=py/tile;
+  const inSouthCanal=tx>=11 && tx<18 && ty>=19;
+  if(inSouthCanal) return pointInTileRect(px,py,bridgeWalkRect);
+  return landRects.some(r=>pointInTileRect(px,py,r));
+}
+function landAtFootprint(px,py){
+  // Player coordinates are near the sprite center, but the visible feet sit lower.
+  // Use an asymmetric footprint so the character stops before the artwork overlaps water.
   const samples=[
-    [0,0],[inset,0],[-inset,0],[0,inset],[0,-inset],
-    [d,d],[-d,d],[d,-d],[-d,-d]
+    [-12,-8],[0,-10],[12,-8],
+    [-14,6],[0,8],[14,6],
+    [-13,18],[0,24],[13,18],
+    [-8,27],[8,27]
   ];
   return samples.every(([ox,oy])=>landAtPoint(px+ox,py+oy));
 }
@@ -140,7 +150,7 @@ function blocked(nx,ny){
     for(const t of hqTerminals){const b={x:t.x*tile-38,y:t.y*tile-24,w:76,h:72};if(rectCollision(nx,ny,player.r,b)) return true;}
     return false;
   }
-  if(!landAtCircle(nx,ny,player.r)) return true;
+  if(!landAtFootprint(nx,ny)) return true;
   for(const b of colliders) if(rectCollision(nx,ny,player.r,b)) return true;
   return false;
 }
