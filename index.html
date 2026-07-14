@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>ATM Town — Depth and Collision Fix</title>
+<title>ATM Town — Unified Depth and Road Alignment</title>
 <style>
 :root{--bg:#061018;--ink:#eafcff;--cyan:#58f1e6;--pink:#ff4fa3;--gold:#ffd166;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -89,12 +89,12 @@ for(const dir in SPRITES) for(const src of SPRITES[dir]){const img=new Image(); 
 const buildings=[
   {id:'welcome',x:2.0,y:1.8,w:6.0,h:3.0,name:'WELCOME TO ATM TOWN',text:'The entrance sign introduces the ATM Town cyber district.'},
   {id:'hq',x:15.4,y:2.6,w:9.2,h:7.0,name:'ATM HQ',text:'ATM HQ is the main hub of town with project dashboards, portals, and future quest systems.'},
-  {id:'market',x:4.0,y:9.5,w:5.2,h:3.8,name:'XP MARKET',text:'The XP Market is the town shop and utility market.'},
-  {id:'bank',x:3.2,y:18.9,w:5.0,h:4.0,name:'BANK',text:'The Bank can become a treasury and rewards center.'},
-  {id:'atm',x:10.3,y:18.2,w:2.8,h:2.8,name:'ATM KIOSK',text:'A compact utility kiosk for quick interactions.'},
-  {id:'gallery',x:27.0,y:8.6,w:4.0,h:4.0,name:'NFT GALLERY',text:'The NFT Gallery showcases collections, drops, and featured art.'},
-  {id:'shop',x:33.0,y:8.8,w:5.0,h:3.8,name:'MERCHANT SHOP',text:'A neon storefront for items, cosmetics, and utilities.'},
-  {id:'arena',x:29.0,y:18.6,w:6.0,h:4.0,name:'EVENT ARENA',text:'The Event Arena is the place for contests and live events.'},
+  {id:'market',x:4.0,y:8.2,w:5.2,h:3.8,name:'XP MARKET',text:'The XP Market is the town shop and utility market.'},
+  {id:'bank',x:3.2,y:20.2,w:5.0,h:4.0,name:'BANK',text:'The Bank can become a treasury and rewards center.'},
+  {id:'atm',x:10.3,y:21.4,w:2.8,h:2.8,name:'ATM KIOSK',text:'A compact utility kiosk for quick interactions.'},
+  {id:'gallery',x:27.0,y:8.0,w:4.0,h:4.0,name:'NFT GALLERY',text:'The NFT Gallery showcases collections, drops, and featured art.'},
+  {id:'shop',x:33.0,y:8.2,w:5.0,h:3.8,name:'MERCHANT SHOP',text:'A neon storefront for items, cosmetics, and utilities.'},
+  {id:'arena',x:29.0,y:20.2,w:6.0,h:4.0,name:'EVENT ARENA',text:'The Event Arena is the place for contests and live events.'},
   {id:'partner',x:35.2,y:2.8,w:4.2,h:3.0,name:'PARTNER PLAZA',text:'Partner Plaza features collaborations and portals.'},
   {id:'bridge',x:18.9,y:25.8,w:5.2,h:2.1,name:'XRPL BRIDGE',text:'The XRPL Bridge acts as the southern gateway into town.'},
   {id:'powered',x:36.2,y:16.6,w:4.0,h:3.0,name:'XRPL POWERED',text:'A district signboard for the XRPL identity.'}
@@ -114,7 +114,7 @@ const coinsArr=[{x:7.6,y:13.8},{x:16.6,y:11.5},{x:24.0,y:11.5},{x:29.0,y:20.0},{
 const landRects=[{x:1,y:1,w:40,h:19},{x:1,y:21,w:11,h:9},{x:24,y:22,w:17,h:8}];
 const pathRects=[
   {x:7.0,y:12.0,w:30.5,h:1.8},   // main east-west avenue
-  {x:19.2,y:8.0,w:1.6,h:18.8},   // grand boulevard from HQ to bridge
+  {x:19.2,y:9.6,w:1.6,h:17.2},   // grand boulevard from HQ to bridge
   {x:7.2,y:9.4,w:2.0,h:13.4},    // west connector
   {x:28.8,y:9.8,w:2.0,h:9.8},   // gallery/arena connector
   {x:34.8,y:5.0,w:2.0,h:15.2},  // shop/partner connector
@@ -124,31 +124,33 @@ const pathRects=[
   {x:35.8,y:5.0,w:1.4,h:7.0}     // partner fountain approach
 ];
 
+
 const colliders=[];
-function addBuildingColliders(){
+function rebuildColliders(){
+  colliders.length=0;
   for(const b of buildings){
     const x=b.x*tile,y=b.y*tile,w=b.w*tile,h=b.h*tile;
     if(b.id==='hq'){
-      colliders.push({x:x+8,y:y+12,w:w-16,h:h-96});
-      colliders.push({x:x+8,y:y+h-78,w:74,h:54});
-      colliders.push({x:x+w-82,y:y+h-78,w:74,h:54});
+      // Solid HQ body with a centered opening over the visible stairs and front door.
+      const opening=72;
+      const topHeight=h-80;
+      colliders.push({x:x+8,y:y+10,w:w-16,h:topHeight});
+      colliders.push({x:x+8,y:y+topHeight,w:(w-opening)/2-8,h:70});
+      colliders.push({x:x+(w+opening)/2,y:y+topHeight,w:(w-opening)/2-8,h:70});
       continue;
     }
-    if(b.id==='market'){ colliders.push({x:x+10,y:y+34,w:w-20,h:h-44}); continue; }
-    if(b.id==='bank'){ colliders.push({x:x+12,y:y+36,w:w-24,h:h-44}); continue; }
-    if(b.id==='atm'){ colliders.push({x:x+4,y:y+20,w:w-8,h:h-24}); continue; }
-    if(b.id==='gallery'){ colliders.push({x:x+10,y:y+34,w:w-20,h:h-40}); continue; }
-    if(b.id==='shop'){ colliders.push({x:x+10,y:y+34,w:w-20,h:h-38}); continue; }
-    if(b.id==='arena'){ colliders.push({x:x+10,y:y+36,w:w-20,h:h-42}); continue; }
-    if(b.id==='partner'){ colliders.push({x:x+14,y:y+40,w:w-28,h:h-44}); continue; }
-    if(b.id==='bridge'){ colliders.push({x:x+6,y:y+18,w:w-12,h:h-10}); continue; }
-    if(b.id==='powered' || b.id==='welcome') continue;
-    colliders.push({x:x+10,y:y+26,w:w-20,h:h-32});
+    if(b.id==='welcome' || b.id==='powered') continue;
+    if(b.id==='bridge'){
+      colliders.push({x:x+4,y:y+18,w:w-8,h:Math.max(12,h-18)});
+      continue;
+    }
+    // The whole lower footprint is solid. Players may pass behind the roof only when physically above it.
+    colliders.push({x:x+6,y:y+24,w:w-12,h:Math.max(18,h-24)});
   }
+  for(const h of houses) colliders.push({x:(h.x-0.62)*tile,y:(h.y-0.60)*tile,w:1.24*tile,h:1.40*tile});
+  for(const [tx,ty] of treeSpots) colliders.push({x:tx*tile+16,y:ty*tile+31,w:16,h:11});
 }
-addBuildingColliders();
-for(const h of houses) colliders.push({x:(h.x-0.6)*tile,y:(h.y-0.55)*tile,w:1.2*tile,h:1.35*tile});
-for(const [tx,ty] of treeSpots) colliders.push({x:tx*tile+15,y:ty*tile+30,w:18,h:12});
+rebuildColliders();
 
 function rand2(x,y){ const s=Math.sin(x*127.1+y*311.7)*43758.5453123; return s-Math.floor(s); }
 function rectCollision(px,py,r,b){ return px+r>b.x && px-r<b.x+b.w && py+r>b.y && py-r<b.y+b.h; }
@@ -265,209 +267,213 @@ function bush(x,y,s=1){
   g.fillStyle='#66c35a'; g.beginPath(); g.arc(x-5*s,y-4*s,4*s,0,Math.PI*2); g.arc(x+8*s,y-6*s,3*s,0,Math.PI*2); g.fill();
 }
 
-function treeBase(tx,ty,s=1){
-  const x=tx*tile+24,y=ty*tile+24;
-  g.fillStyle='rgba(0,0,0,.16)'; g.beginPath(); g.ellipse(x,y+18,12*s,5*s,0,0,Math.PI*2); g.fill();
-  g.fillStyle='#5a3d1c'; g.fillRect(x-4*s,y+8,8*s,18*s);
-}
-function drawTreeCanopy(target,tx,ty,s=1){
+
+function drawTreeEntity(target,tx,ty,s=1){
   const x=tx*tile+24,y=ty*tile+24;
   target.save();
+  target.fillStyle='rgba(0,0,0,.16)'; target.beginPath(); target.ellipse(x,y+18,12*s,5*s,0,0,Math.PI*2); target.fill();
+  target.fillStyle='#5a3d1c'; target.fillRect(x-4*s,y+8,8*s,18*s);
   target.fillStyle='#1f5e2f'; target.beginPath(); target.arc(x,y,18*s,0,Math.PI*2); target.fill();
   target.fillStyle='#2c8b43'; target.beginPath(); target.arc(x-9*s,y-8*s,12*s,0,Math.PI*2); target.arc(x+7*s,y-6*s,10*s,0,Math.PI*2); target.fill();
   target.fillStyle='#74e173'; target.beginPath(); target.arc(x-3*s,y-12*s,5*s,0,Math.PI*2); target.arc(x+7*s,y-10*s,4*s,0,Math.PI*2); target.fill();
   target.restore();
 }
+
 function lamp(tx,ty){ const x=tx*tile,y=ty*tile; g.fillStyle='rgba(255,218,109,.16)'; g.beginPath(); g.arc(x,y,24,0,Math.PI*2); g.fill(); g.fillStyle='#34404a'; g.fillRect(x-3,y-8,6,30); g.fillStyle='#f1d36d'; g.beginPath(); g.arc(x,y-12,6,0,Math.PI*2); g.fill(); }
 function bench(x,y,h=true){ x*=tile; y*=tile; g.fillStyle='#6a4720'; if(h){ g.fillRect(x-16,y-5,32,10); g.fillRect(x-12,y+5,4,8); g.fillRect(x+8,y+5,4,8); } else { g.fillRect(x-5,y-16,10,32); g.fillRect(x+5,y-12,8,4); g.fillRect(x+5,y+8,8,4); } }
 function flowerbed(f){ g.fillStyle='#705132'; g.fillRect(f.x*tile,f.y*tile,f.w*tile,f.h*tile); for(let i=0;i<10;i++){ g.fillStyle=i%2?f.c:'#ffffff'; g.beginPath(); g.arc(f.x*tile+8+i*(f.w*tile-16)/9,f.y*tile+f.h*tile/2+((i%3)-1)*2,3,0,Math.PI*2); g.fill(); g.fillStyle='#4e9d45'; g.fillRect(f.x*tile+8+i*(f.w*tile-16)/9,f.y*tile+f.h*tile/2+2,1.5,4); } }
 
 
-function drawBuilding(b){
+function drawBuilding(b,target=g){
+  const G=target;
   const x=b.x*tile,y=b.y*tile,w=b.w*tile,h=b.h*tile;
   const cx=x+w/2;
-  const shadow=(rx=w*0.42, ry=16, oy=8)=>{ g.fillStyle='rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(cx,y+h+oy,rx,ry,0,0,Math.PI*2); g.fill(); };
+  // Keep every building pixel above its logical baseline so structures meet roads cleanly.
+  G.save(); G.beginPath(); G.rect(x-24,y-48,w+48,h+48); G.clip();
+  const shadow=(rx=w*0.42, ry=16, oy=8)=>{ G.fillStyle='rgba(0,0,0,.22)'; G.beginPath(); G.ellipse(cx,y+h+oy,rx,ry,0,0,Math.PI*2); G.fill(); };
   const neonBox=(bx,by,bw,bh,accent,text1,text2='')=>{
-    g.shadowColor=accent; g.shadowBlur=12; g.fillStyle='#15212b'; g.fillRect(bx,by,bw,bh); g.shadowBlur=0;
-    g.strokeStyle=accent; g.lineWidth=3; g.strokeRect(bx,by,bw,bh);
-    g.fillStyle=accent; g.textAlign='center';
-    g.font='900 '+(text1.length>11?10:12)+'px monospace'; g.fillText(text1,bx+bw/2,by+15);
-    if(text2){ g.fillStyle='#eef7ff'; g.font='900 10px monospace'; g.fillText(text2,bx+bw/2,by+28); }
+    G.shadowColor=accent; G.shadowBlur=12; G.fillStyle='#15212b'; G.fillRect(bx,by,bw,bh); G.shadowBlur=0;
+    G.strokeStyle=accent; G.lineWidth=3; G.strokeRect(bx,by,bw,bh);
+    G.fillStyle=accent; G.textAlign='center';
+    G.font='900 '+(text1.length>11?10:12)+'px monospace'; G.fillText(text1,bx+bw/2,by+15);
+    if(text2){ G.fillStyle='#eef7ff'; G.font='900 10px monospace'; G.fillText(text2,bx+bw/2,by+28); }
   };
   const frontDoor=(dx,dy,dw=32,dh=32,accent='#58f1e6')=>{
-    g.fillStyle='#081219'; g.fillRect(dx-4,dy-4,dw+8,dh+4);
-    g.fillStyle=accent; g.fillRect(dx,dy,dw,dh);
-    g.fillStyle='rgba(255,255,255,.20)'; g.fillRect(dx+5,dy+5,dw-10,7);
-    g.fillStyle='rgba(255,255,255,.35)'; g.fillRect(dx+dw-9,dy+dh/2,3,3);
+    G.fillStyle='#081219'; G.fillRect(dx-4,dy-4,dw+8,dh+4);
+    G.fillStyle=accent; G.fillRect(dx,dy,dw,dh);
+    G.fillStyle='rgba(255,255,255,.20)'; G.fillRect(dx+5,dy+5,dw-10,7);
+    G.fillStyle='rgba(255,255,255,.35)'; G.fillRect(dx+dw-9,dy+dh/2,3,3);
   };
   const pillars=(count=2, top=y+22, bottom=y+h-40, color='#495763')=>{
     const gap=w/(count+1);
-    g.fillStyle=color;
+    G.fillStyle=color;
     for(let i=1;i<=count;i++){
-      const px=x+gap*i-6; g.fillRect(px,top,12,bottom-top);
-      g.fillStyle='rgba(255,255,255,.12)'; g.fillRect(px+2,top,2,bottom-top);
-      g.fillStyle=color;
+      const px=x+gap*i-6; G.fillRect(px,top,12,bottom-top);
+      G.fillStyle='rgba(255,255,255,.12)'; G.fillRect(px+2,top,2,bottom-top);
+      G.fillStyle=color;
     }
   };
   const windows=(cols,rows,wx,wy,ww,wh,stepX,stepY,c1='rgba(120,220,255,.18)',c2='rgba(255,255,255,.08)')=>{
     for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-      const px=wx+c*stepX, py=wy+r*stepY; g.fillStyle=c1; g.fillRect(px,py,ww,wh); g.fillStyle=c2; g.fillRect(px+1,py+1,ww-2,2);
+      const px=wx+c*stepX, py=wy+r*stepY; G.fillStyle=c1; G.fillRect(px,py,ww,wh); G.fillStyle=c2; G.fillRect(px+1,py+1,ww-2,2);
     }
   };
   const roofCap=(color='#303842', lip='#5b6875')=>{
-    g.fillStyle=color; g.fillRect(x-8,y-10,w+16,22); g.fillStyle=lip; g.fillRect(x-4,y-6,w+8,6);
+    G.fillStyle=color; G.fillRect(x-8,y-10,w+16,22); G.fillStyle=lip; G.fillRect(x-4,y-6,w+8,6);
   };
 
   if(b.id==='hq' && hqBuildingSprite.complete){
     shadow(w*0.46,20,8);
-    const drawX=x-10, drawY=y-18, drawW=w+20, drawH=h+42;
-    g.drawImage(hqBuildingSprite, drawX, drawY, drawW, drawH);
-    return;
+    const drawX=x-10, drawY=y-18, drawW=w+20, drawH=h+18;
+    G.drawImage(hqBuildingSprite, drawX, drawY, drawW, drawH);
+    G.restore(); return;
   }
 
   if(b.id==='welcome'){
     shadow(w*0.32,10,6);
-    g.fillStyle='#5d3d20'; g.fillRect(x+18,y+18,10,h+20); g.fillRect(x+w-28,y+18,10,h+20);
-    g.fillStyle='#7a542d'; g.fillRect(x+8,y+2,w-16,h+14);
-    g.fillStyle='#201913'; g.fillRect(x+16,y+10,w-32,h-2);
-    g.strokeStyle='#a37243'; g.lineWidth=3; g.strokeRect(x+10,y+4,w-20,h+10);
-    g.fillStyle='#58f166'; g.textAlign='center'; g.font='900 10px monospace'; g.fillText('WELCOME TO',cx,y+22);
-    g.font='900 18px monospace'; g.fillText('ATM TOWN',cx,y+42);
-    g.fillStyle='#dceeff'; g.font='900 9px monospace'; g.fillText('BUILT ON THE XRPL',cx,y+58);
-    return;
+    G.fillStyle='#5d3d20'; G.fillRect(x+18,y+18,10,h+20); G.fillRect(x+w-28,y+18,10,h+20);
+    G.fillStyle='#7a542d'; G.fillRect(x+8,y+2,w-16,h+14);
+    G.fillStyle='#201913'; G.fillRect(x+16,y+10,w-32,h-2);
+    G.strokeStyle='#a37243'; G.lineWidth=3; G.strokeRect(x+10,y+4,w-20,h+10);
+    G.fillStyle='#58f166'; G.textAlign='center'; G.font='900 10px monospace'; G.fillText('WELCOME TO',cx,y+22);
+    G.font='900 18px monospace'; G.fillText('ATM TOWN',cx,y+42);
+    G.fillStyle='#dceeff'; G.font='900 9px monospace'; G.fillText('BUILT ON THE XRPL',cx,y+58);
+    G.restore(); return;
   }
 
   if(b.id==='market'){
     shadow();
-    g.fillStyle='#5e3e23'; g.fillRect(x+10,y+14,w,h-6);
-    g.fillStyle='#7a5430'; g.fillRect(x,y+8,w,h-12);
+    G.fillStyle='#5e3e23'; G.fillRect(x+10,y+14,w,h-6);
+    G.fillStyle='#7a5430'; G.fillRect(x,y+8,w,h-12);
     roofCap('#144f8a','#3c7bcb');
-    g.fillStyle='#2c6fbc'; g.fillRect(x+10,y+32,w-20,18);
-    for(let i=0;i<5;i++){ g.fillStyle=i%2?'#ffffff':'#76b8ff'; g.fillRect(x+12+i*((w-24)/5),y+32,(w-24)/5,18); }
+    G.fillStyle='#2c6fbc'; G.fillRect(x+10,y+32,w-20,18);
+    for(let i=0;i<5;i++){ G.fillStyle=i%2?'#ffffff':'#76b8ff'; G.fillRect(x+12+i*((w-24)/5),y+32,(w-24)/5,18); }
     windows(2,2,x+18,y+58,18,14,32,20,'rgba(165,220,255,.32)');
     frontDoor(x+w/2-18,y+h-34,36,30,'#7fc8ff');
     neonBox(x+12,y+8,w-24,24,'#69b7ff','XP','MARKET');
-    return;
+    G.restore(); return;
   }
 
   if(b.id==='bank'){
     shadow(w*0.4,16,8);
-    g.fillStyle='#4f4338'; g.fillRect(x+10,y+16,w,h-2);
-    g.fillStyle='#6a5a49'; g.fillRect(x,y+8,w,h-10);
+    G.fillStyle='#4f4338'; G.fillRect(x+10,y+16,w,h-2);
+    G.fillStyle='#6a5a49'; G.fillRect(x,y+8,w,h-10);
     roofCap('#2f2d2d','#4d4949');
     pillars(3,y+36,y+h-30,'#8e7f6c');
-    g.fillStyle='#c9b79f'; g.fillRect(x+10,y+26,w-20,16);
+    G.fillStyle='#c9b79f'; G.fillRect(x+10,y+26,w-20,16);
     frontDoor(x+w/2-16,y+h-34,32,30,'#f4d67e');
-    g.fillStyle='#f2e3a9'; g.beginPath(); g.arc(x+w/2,y+h-56,10,0,Math.PI*2); g.fill();
-    g.fillStyle='#66510b'; g.font='900 10px monospace'; g.fillText('$',x+w/2,y+h-52);
+    G.fillStyle='#f2e3a9'; G.beginPath(); G.arc(x+w/2,y+h-56,10,0,Math.PI*2); G.fill();
+    G.fillStyle='#66510b'; G.font='900 10px monospace'; G.fillText('$',x+w/2,y+h-52);
     neonBox(x+10,y+8,w-20,24,'#ffd166','BANK');
-    return;
+    G.restore(); return;
   }
 
   if(b.id==='atm'){
     shadow(w*0.34,12,5);
-    g.fillStyle='#102118'; g.fillRect(x+8,y+12,w,h-2);
-    g.fillStyle='#1d3527'; g.fillRect(x,y+8,w,h-10);
+    G.fillStyle='#102118'; G.fillRect(x+8,y+12,w,h-2);
+    G.fillStyle='#1d3527'; G.fillRect(x,y+8,w,h-10);
     roofCap('#0c1711','#22432f');
-    g.fillStyle='#4bff67'; g.fillRect(x+8,y+22,8,h-44); g.fillRect(x+w-16,y+22,8,h-44);
+    G.fillStyle='#4bff67'; G.fillRect(x+8,y+22,8,h-44); G.fillRect(x+w-16,y+22,8,h-44);
     frontDoor(x+w/2-16,y+h-32,32,28,'#52ff7a');
-    g.fillStyle='#7dff9f'; g.fillRect(x+w/2-12,y+h-58,24,12); g.fillStyle='#0b1217'; g.fillRect(x+w/2-8,y+h-56,16,4);
+    G.fillStyle='#7dff9f'; G.fillRect(x+w/2-12,y+h-58,24,12); G.fillStyle='#0b1217'; G.fillRect(x+w/2-8,y+h-56,16,4);
     neonBox(x+6,y+8,w-12,22,'#4bff67','ATM KIOSK');
-    return;
+    G.restore(); return;
   }
 
   if(b.id==='gallery'){
     shadow();
-    g.fillStyle='#4f2660'; g.fillRect(x+10,y+16,w,h);
-    g.fillStyle='#6e3585'; g.fillRect(x,y+10,w,h-8);
+    G.fillStyle='#4f2660'; G.fillRect(x+10,y+16,w,h);
+    G.fillStyle='#6e3585'; G.fillRect(x,y+10,w,h-8);
     roofCap('#31183d','#69348a');
     neonBox(x+8,y+8,w-16,26,'#f16aff','NFT','GALLERY');
-    g.fillStyle='#140a1d'; g.fillRect(x+18,y+44,w-36,h-64);
-    g.shadowColor='#f16aff'; g.shadowBlur=18; g.strokeStyle='#f16aff'; g.lineWidth=3; g.strokeRect(x+18,y+44,w-36,h-64); g.shadowBlur=0;
-    g.fillStyle='#cb8cff'; g.beginPath(); g.moveTo(cx,y+54); g.lineTo(cx-12,y+74); g.lineTo(cx,y+94); g.lineTo(cx+12,y+74); g.closePath(); g.fill();
-    g.fillStyle='#8d55b2'; g.fillRect(x+w-14,y+34,10,h-46);
-    return;
+    G.fillStyle='#140a1d'; G.fillRect(x+18,y+44,w-36,h-64);
+    G.shadowColor='#f16aff'; G.shadowBlur=18; G.strokeStyle='#f16aff'; G.lineWidth=3; G.strokeRect(x+18,y+44,w-36,h-64); G.shadowBlur=0;
+    G.fillStyle='#cb8cff'; G.beginPath(); G.moveTo(cx,y+54); G.lineTo(cx-12,y+74); G.lineTo(cx,y+94); G.lineTo(cx+12,y+74); G.closePath(); G.fill();
+    G.fillStyle='#8d55b2'; G.fillRect(x+w-14,y+34,10,h-46);
+    G.restore(); return;
   }
 
   if(b.id==='shop'){
     shadow();
-    g.fillStyle='#6f4916'; g.fillRect(x+10,y+16,w,h-2);
-    g.fillStyle='#946422'; g.fillRect(x,y+10,w,h-10);
+    G.fillStyle='#6f4916'; G.fillRect(x+10,y+16,w,h-2);
+    G.fillStyle='#946422'; G.fillRect(x,y+10,w,h-10);
     roofCap('#6f4411','#a6792f');
     neonBox(x+10,y+8,w-20,24,'#ffcf54','MERCHANT','SHOP');
-    for(let i=0;i<6;i++){ g.fillStyle=i%2?'#f0bd3b':'#ffe18f'; g.fillRect(x+16+i*((w-32)/6),y+40,(w-32)/6,18); }
+    for(let i=0;i<6;i++){ G.fillStyle=i%2?'#f0bd3b':'#ffe18f'; G.fillRect(x+16+i*((w-32)/6),y+40,(w-32)/6,18); }
     windows(2,1,x+16,y+66,16,12,w-48,0,'rgba(255,240,180,.22)');
     frontDoor(x+w/2-14,y+h-30,28,26,'#f8d36d');
-    g.fillStyle='#cc9a3f'; g.fillRect(x+w-14,y+46,8,26);
-    return;
+    G.fillStyle='#cc9a3f'; G.fillRect(x+w-14,y+46,8,26);
+    G.restore(); return;
   }
 
   if(b.id==='arena'){
     shadow(w*0.45,18,8);
-    g.fillStyle='#4e235c'; g.fillRect(x+10,y+16,w,h);
-    g.fillStyle='#6a2e7d'; g.fillRect(x,y+10,w,h-8);
+    G.fillStyle='#4e235c'; G.fillRect(x+10,y+16,w,h);
+    G.fillStyle='#6a2e7d'; G.fillRect(x,y+10,w,h-8);
     roofCap('#35163f','#6d2d82');
     neonBox(x+16,y+10,w-32,28,'#d96bff','EVENT','ARENA');
-    g.fillStyle='#28132f'; g.fillRect(x+w/2-18,y+h-36,36,36);
-    g.fillStyle='#d96bff'; g.fillRect(x+14,y+40,12,h-42); g.fillRect(x+w-26,y+40,12,h-42);
-    g.fillStyle='#f0e6ff'; g.fillRect(x+w/2-14,y+h-28,28,18); g.strokeStyle='#d96bff'; g.lineWidth=3; g.strokeRect(x+w/2-14,y+h-28,28,18);
-    return;
+    G.fillStyle='#28132f'; G.fillRect(x+w/2-18,y+h-36,36,36);
+    G.fillStyle='#d96bff'; G.fillRect(x+14,y+40,12,h-42); G.fillRect(x+w-26,y+40,12,h-42);
+    G.fillStyle='#f0e6ff'; G.fillRect(x+w/2-14,y+h-28,28,18); G.strokeStyle='#d96bff'; G.lineWidth=3; G.strokeRect(x+w/2-14,y+h-28,28,18);
+    G.restore(); return;
   }
 
   if(b.id==='partner'){
     shadow(w*0.38,14,8);
-    g.fillStyle='#6e6458'; g.fillRect(x+8,y+14,w,h-4);
-    g.fillStyle='#8f8678'; g.fillRect(x,y+10,w,h-8);
+    G.fillStyle='#6e6458'; G.fillRect(x+8,y+14,w,h-4);
+    G.fillStyle='#8f8678'; G.fillRect(x,y+10,w,h-8);
     roofCap('#4b5565','#7b8595');
     neonBox(x+10,y+8,w-20,24,'#84cfff','PARTNER','PLAZA');
-    g.fillStyle='#c7c1b6'; g.fillRect(x+14,y+44,w-28,h-46);
-    g.fillStyle='#36a9ef'; g.beginPath(); g.arc(cx,y+h-18,14,0,Math.PI*2); g.fill(); g.strokeStyle='#9be7ff'; g.lineWidth=3; g.stroke();
-    g.fillStyle='#5e574d'; g.fillRect(x+20,y+42,10,h-36); g.fillRect(x+w-30,y+42,10,h-36);
-    return;
+    G.fillStyle='#c7c1b6'; G.fillRect(x+14,y+44,w-28,h-46);
+    G.fillStyle='#36a9ef'; G.beginPath(); G.arc(cx,y+h-18,14,0,Math.PI*2); G.fill(); G.strokeStyle='#9be7ff'; G.lineWidth=3; G.stroke();
+    G.fillStyle='#5e574d'; G.fillRect(x+20,y+42,10,h-36); G.fillRect(x+w-30,y+42,10,h-36);
+    G.restore(); return;
   }
 
   if(b.id==='bridge'){
     shadow(w*0.4,10,5);
-    g.fillStyle='#485767'; g.fillRect(x,y+18,w,h-4);
-    g.fillStyle='#31404f'; g.fillRect(x+12,y+24,w-24,h-10);
-    g.fillStyle='#697a8c'; g.fillRect(x+10,y+6,w-20,22);
-    g.strokeStyle='#6fb2ff'; g.lineWidth=3; g.strokeRect(x+14,y+10,w-28,14);
-    g.fillStyle='#cfe7ff'; g.font='900 12px monospace'; g.textAlign='center'; g.fillText('XRPL',cx,y+20); g.fillText('BRIDGE',cx,y+34);
-    g.fillStyle='#58f166'; g.fillRect(x+8,y+h-10,10,22); g.fillRect(x+w-18,y+h-10,10,22);
-    return;
+    G.fillStyle='#485767'; G.fillRect(x,y+18,w,h-4);
+    G.fillStyle='#31404f'; G.fillRect(x+12,y+24,w-24,h-10);
+    G.fillStyle='#697a8c'; G.fillRect(x+10,y+6,w-20,22);
+    G.strokeStyle='#6fb2ff'; G.lineWidth=3; G.strokeRect(x+14,y+10,w-28,14);
+    G.fillStyle='#cfe7ff'; G.font='900 12px monospace'; G.textAlign='center'; G.fillText('XRPL',cx,y+20); G.fillText('BRIDGE',cx,y+34);
+    G.fillStyle='#58f166'; G.fillRect(x+8,y+h-10,10,22); G.fillRect(x+w-18,y+h-10,10,22);
+    G.restore(); return;
   }
 
   if(b.id==='powered'){
     shadow(w*0.34,10,5);
-    g.fillStyle='#232f3b'; g.fillRect(x+16,y+18,w-10,h-8);
-    g.fillStyle='#394857'; g.fillRect(x,y+10,w,h-12);
-    g.fillStyle='#546679'; g.fillRect(x-4,y+6,w+8,8);
-    g.fillStyle='#3f4d59'; g.fillRect(x+22,y+h-6,10,22); g.fillRect(x+w-32,y+h-6,10,22);
+    G.fillStyle='#232f3b'; G.fillRect(x+16,y+18,w-10,h-8);
+    G.fillStyle='#394857'; G.fillRect(x,y+10,w,h-12);
+    G.fillStyle='#546679'; G.fillRect(x-4,y+6,w+8,8);
+    G.fillStyle='#3f4d59'; G.fillRect(x+22,y+h-6,10,22); G.fillRect(x+w-32,y+h-6,10,22);
     neonBox(x+10,y+18,w-20,h-28,'#78baff','XRPL','POWERED');
-    return;
+    G.restore(); return;
   }
 
   // generic fallback 3D building
   shadow();
-  g.fillStyle='#465462'; g.fillRect(x+10,y+16,w,h-2);
-  g.fillStyle='#60707f'; g.fillRect(x,y+10,w,h-8);
+  G.fillStyle='#465462'; G.fillRect(x+10,y+16,w,h-2);
+  G.fillStyle='#60707f'; G.fillRect(x,y+10,w,h-8);
   roofCap();
   windows(Math.max(2,Math.floor(w/42)),2,x+16,y+42,14,10,26,18);
   frontDoor(x+w/2-16,y+h-32,32,28,'#58f1e6');
   neonBox(x+12,y+8,w-24,24,'#58f1e6',b.name);
+  G.restore();
 }
-function drawHouse(h){
+function drawHouse(h,target=g){
+  const G=target;
   const x=h.x*tile,y=h.y*tile;
-  g.fillStyle='rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(x,y+26,28,10,0,0,Math.PI*2); g.fill();
-  g.fillStyle='#b89d73'; g.fillRect(x-26,y-6,52,42);
-  g.fillStyle='#d7c095'; g.fillRect(x-32,y-12,52,42);
-  g.fillStyle='#c6b08a'; g.fillRect(x+20,y-10,10,38);
-  g.fillStyle=h.roof; g.beginPath(); g.moveTo(x-36,y-12); g.lineTo(x-4,y-40); g.lineTo(x+24,y-12); g.closePath(); g.fill();
-  g.fillStyle='rgba(255,255,255,.12)'; g.fillRect(x-24,y-2,14,12); g.fillRect(x+2,y-2,14,12);
-  g.fillStyle='#dff3ff'; g.fillRect(x-23,y-1,12,10); g.fillRect(x+3,y-1,12,10);
-  g.fillStyle='#6a4720'; g.fillRect(x-4,y+8,12,28);
-  g.fillStyle='#ffffff'; g.fillRect(x-30,y+30,46,6);
-  g.fillStyle='#b5412b'; g.fillRect(x+24,y+18,7,13);
+  G.fillStyle='rgba(0,0,0,.18)'; G.beginPath(); G.ellipse(x,y+26,28,10,0,0,Math.PI*2); G.fill();
+  G.fillStyle='#b89d73'; G.fillRect(x-26,y-6,52,42);
+  G.fillStyle='#d7c095'; G.fillRect(x-32,y-12,52,42);
+  G.fillStyle='#c6b08a'; G.fillRect(x+20,y-10,10,38);
+  G.fillStyle=h.roof; G.beginPath(); G.moveTo(x-36,y-12); G.lineTo(x-4,y-40); G.lineTo(x+24,y-12); G.closePath(); G.fill();
+  G.fillStyle='rgba(255,255,255,.12)'; G.fillRect(x-24,y-2,14,12); G.fillRect(x+2,y-2,14,12);
+  G.fillStyle='#dff3ff'; G.fillRect(x-23,y-1,12,10); G.fillRect(x+3,y-1,12,10);
+  G.fillStyle='#6a4720'; G.fillRect(x-4,y+8,12,28);
+  G.fillStyle='#ffffff'; G.fillRect(x-30,y+30,46,6);
+  G.fillStyle='#b5412b'; G.fillRect(x+24,y+18,7,13);
 }
 function drawNPC(n){ const x=n.x*tile,y=n.y*tile; g.fillStyle='rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(x,y+12,10,5,0,0,Math.PI*2); g.fill(); g.fillStyle=n.c; g.fillRect(x-8,y-10,16,20); g.fillStyle='#f0c496'; g.fillRect(x-6,y-18,12,10); g.fillStyle='#222'; g.fillRect(x-2,y-15,2,2); g.fillRect(x+2,y-15,2,2); g.fillStyle='#111'; g.fillRect(x-8,y+10,6,10); g.fillRect(x+2,y+10,6,10); }
 
@@ -503,7 +509,6 @@ function renderBackground(){
 
   // props with more logical placement along roads and edges
   for(const [x,y] of bushSpots) bush(x*tile,y*tile,1);
-  for(const [x,y] of treeSpots) treeBase(x,y,1);
   for(const [x,y] of lamps) lamp(x,y);
   for(const b of benches) bench(b.x,b.y,b.h);
   for(const f of flowerbeds) flowerbed(f);
@@ -521,8 +526,6 @@ function renderBackground(){
   g.fillStyle='#5fa0dd'; g.fillRect(39.4*tile,27.2*tile,8,24);
   g.fillStyle='#8e6138'; g.fillRect(40.2*tile,28.5*tile,18,6); g.fillRect(39.7*tile,28.8*tile,18,6);
 
-  for(const b of buildings) drawBuilding(b);
-  for(const h of houses) drawHouse(h);
   // foreground shrubs near housing edge
   bush(25.2*tile,25.4*tile,1); bush(39.5*tile,25.4*tile,1);
 }
@@ -623,37 +626,25 @@ function drawStaticOccluder(sourceCanvas,x,y,w,h){
   ctx.drawImage(sourceCanvas,x,y,w,h,x,y,w,h);
 }
 
-function getBuildingOccluder(b){
-  const x=b.x*tile,y=b.y*tile,w=b.w*tile;
-  if(b.id==='hq') return {x:x-10,y:y-18,w:w+20,h:208,depth:(b.y+b.h)*tile-78};
-  if(b.id==='market') return {x:x-6,y:y-12,w:w+12,h:88,depth:(b.y+b.h)*tile-52};
-  if(b.id==='bank') return {x:x-8,y:y-12,w:w+16,h:92,depth:(b.y+b.h)*tile-50};
-  if(b.id==='atm') return {x:x-6,y:y-10,w:w+12,h:74,depth:(b.y+b.h)*tile-34};
-  if(b.id==='gallery') return {x:x-6,y:y-10,w:w+12,h:110,depth:(b.y+b.h)*tile-44};
-  if(b.id==='shop') return {x:x-8,y:y-10,w:w+16,h:100,depth:(b.y+b.h)*tile-44};
-  if(b.id==='arena') return {x:x-8,y:y-10,w:w+16,h:104,depth:(b.y+b.h)*tile-48};
-  if(b.id==='partner') return {x:x-8,y:y-10,w:w+16,h:96,depth:(b.y+b.h)*tile-42};
-  if(b.id==='bridge') return {x:x-2,y:y-4,w:w+4,h:54,depth:(b.y+b.h)*tile-14};
-  if(b.id==='powered') return {x:x-4,y:y-6,w:w+8,h:72,depth:(b.y+b.h)*tile-28};
-  if(b.id==='welcome') return {x:x-6,y:y-8,w:w+12,h:84,depth:(b.y+b.h)*tile-36};
-  return {x,y,w,h:Math.max(64,b.h*tile*0.55),depth:(b.y+b.h)*tile-42};
-}
-function drawBuildingOccluder(b){
-  const o=getBuildingOccluder(b);
-  ctx.drawImage(bg,o.x,o.y,o.w,o.h,o.x,o.y,o.w,o.h);
-}
+
+
 function getBuildingInteractPoint(b){
-  if(b.id==='hq') return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-0.55)*tile, radius:120};
+  if(b.id==='hq') return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-0.28)*tile, radius:105};
   return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-0.55)*tile, radius:165};
 }
+
 
 function drawDepthScene(t){
   updateRemoteInterpolation();
   const items=[];
   if(currentMap==='town'){
+    for(const b of buildings){
+      const baseline=(b.y+b.h)*tile;
+      items.push({depth:baseline,type:'building',b});
+    }
+    for(const h of houses) items.push({depth:h.y*tile+36,type:'house',h});
+    for(const [tx,ty] of treeSpots) items.push({depth:ty*tile+42,type:'tree',tx,ty});
     for(const n of npcs) items.push({depth:n.y*tile+18,type:'npc',n});
-    for(const b of buildings) items.push({depth:getBuildingOccluder(b).depth,type:'building',b});
-    for(const [tx,ty] of treeSpots) items.push({depth:ty*tile+28,type:'tree',tx,ty});
   }else{
     for(const terminal of hqTerminals){
       const x=terminal.x*tile-42,y=terminal.y*tile-36,w=84,h=90;
@@ -668,8 +659,9 @@ function drawDepthScene(t){
   items.sort((a,b)=>a.depth-b.depth);
   for(const item of items){
     if(item.type==='occluder') drawStaticOccluder(item.source,item.x,item.y,item.w,item.h);
-    else if(item.type==='building') drawBuildingOccluder(item.b);
-    else if(item.type==='tree') drawTreeCanopy(ctx,item.tx,item.ty,1);
+    else if(item.type==='building') drawBuilding(item.b,ctx);
+    else if(item.type==='house') drawHouse(item.h,ctx);
+    else if(item.type==='tree') drawTreeEntity(ctx,item.tx,item.ty,1);
     else if(item.type==='npc') drawNpcSprite(item.n);
     else if(item.type==='remote') drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0);
     else if(item.type==='local'){
@@ -679,6 +671,7 @@ function drawDepthScene(t){
   }
   drawChatBubbles();
 }
+
 function drawChatBubbles(){
   const now=Date.now();
   for(let i=chatBubbles.length-1;i>=0;i--){
