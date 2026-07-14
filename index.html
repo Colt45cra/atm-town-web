@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>ATM Town — Multiplayer HQ Interior</title>
+<title>ATM Town — Depth and Collision Fix</title>
 <style>
 :root{--bg:#061018;--ink:#eafcff;--cyan:#58f1e6;--pink:#ff4fa3;--gold:#ffd166;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -120,7 +120,19 @@ for(const [tx,ty] of treeSpots) colliders.push({x:tx*tile+8,y:ty*tile+18,w:28,h:
 
 function rand2(x,y){ const s=Math.sin(x*127.1+y*311.7)*43758.5453123; return s-Math.floor(s); }
 function rectCollision(px,py,r,b){ return px+r>b.x && px-r<b.x+b.w && py+r>b.y && py-r<b.y+b.h; }
-function landAt(px,py){ const tx=px/tile, ty=py/tile; return landRects.some(r=>tx>=r.x && tx<=r.x+r.w && ty>=r.y && ty<=r.y+r.h); }
+function landAtPoint(px,py){
+  const tx=px/tile, ty=py/tile;
+  return landRects.some(r=>tx>=r.x && tx<=r.x+r.w && ty>=r.y && ty<=r.y+r.h);
+}
+function landAtCircle(px,py,r){
+  const inset=Math.max(4,r-2);
+  const d=inset*0.72;
+  const samples=[
+    [0,0],[inset,0],[-inset,0],[0,inset],[0,-inset],
+    [d,d],[-d,d],[d,-d],[-d,-d]
+  ];
+  return samples.every(([ox,oy])=>landAtPoint(px+ox,py+oy));
+}
 function blocked(nx,ny){
   if(nx<player.r||ny<player.r||nx>world.w*tile-player.r||ny>world.h*tile-player.r) return true;
   if(currentMap==='hq'){
@@ -128,7 +140,7 @@ function blocked(nx,ny){
     for(const t of hqTerminals){const b={x:t.x*tile-38,y:t.y*tile-24,w:76,h:72};if(rectCollision(nx,ny,player.r,b)) return true;}
     return false;
   }
-  if(!landAt(nx,ny)) return true;
+  if(!landAtCircle(nx,ny,player.r)) return true;
   for(const b of colliders) if(rectCollision(nx,ny,player.r,b)) return true;
   return false;
 }
@@ -354,9 +366,96 @@ function sendChat(){
   const input=document.getElementById('chatInput');const message=input.value.trim();if(!message)return;input.value='';showBubble(playerId,playerName,message,player.x,player.y,currentMap);
   if(onlineMode&&realtimeChannel)realtimeChannel.send({type:'broadcast',event:'chat',payload:{id:playerId,name:playerName,message,x:player.x,y:player.y,map:currentMap}});
 }
-function drawRemotePlayers(){
-  const now=Date.now();for(const [id,p] of remotePlayers){if(now-p.lastSeen>12000){remotePlayers.delete(id);continue;}if(p.map!==currentMap)continue;p.drawX+=(p.x-p.drawX)*.22;p.drawY+=(p.y-p.drawY)*.22;const frames=spriteImgs[p.dir]||spriteImgs.down;const img=frames[p.frame]||frames[1]||frames[0];ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(p.drawX,p.drawY+16,16,7,0,0,Math.PI*2);ctx.fill();if(img){const sc=.24,dw=Math.round(img.width*sc),dh=Math.round(img.height*sc);ctx.globalAlpha=.92;ctx.drawImage(img,Math.round(p.drawX-dw/2),Math.round(p.drawY-dh/2-2),dw,dh);ctx.globalAlpha=1;}ctx.font='900 11px system-ui';ctx.textAlign='center';ctx.fillStyle='#061018';ctx.fillText(p.name,p.drawX+1,p.drawY-38+1);ctx.fillStyle='#eaffff';ctx.fillText(p.name,p.drawX,p.drawY-38);}
-  for(let i=chatBubbles.length-1;i>=0;i--){const b=chatBubbles[i];if(now>b.expires){chatBubbles.splice(i,1);continue;}if(b.map!==currentMap)continue;let bx=b.x,by=b.y;if(b.id!==playerId&&remotePlayers.has(b.id)){const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;}else if(b.id===playerId){bx=player.x;by=player.y;}if(Math.hypot(player.x-bx,player.y-by)>420&&b.id!==playerId)continue;const text=b.message.slice(0,45);ctx.font='700 11px system-ui';const w=Math.min(230,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,18,26,.92)';ctx.fillRect(bx-w/2,by-70,w,25);ctx.strokeStyle='#58f1e6';ctx.strokeRect(bx-w/2,by-70,w,25);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(text,bx,by-53);}
+function updateRemoteInterpolation(){
+  const now=Date.now();
+  for(const [id,p] of remotePlayers){
+    if(now-p.lastSeen>12000){remotePlayers.delete(id);continue;}
+    p.drawX+=(p.x-p.drawX)*.22;
+    p.drawY+=(p.y-p.drawY)*.22;
+  }
+}
+function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0){
+  const frames=spriteImgs[dir]||spriteImgs.down;
+  const img=frames[frame]||frames[1]||frames[0];
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  // compact contact shadow directly under the feet
+  ctx.fillStyle='rgba(3,10,14,.22)';
+  ctx.beginPath();ctx.ellipse(x,y+19,12,4,0,0,Math.PI*2);ctx.fill();
+  if(img){
+    const sc=.24,dw=Math.round(img.width*sc),dh=Math.round(img.height*sc);
+    ctx.drawImage(img,Math.round(x-dw/2),Math.round(y-dh/2-2-bob),dw,dh);
+  }
+  if(name){
+    ctx.font='900 11px system-ui';ctx.textAlign='center';
+    ctx.fillStyle='rgba(3,10,14,.9)';ctx.fillText(name,x+1,y-38+1);
+    ctx.fillStyle='#eaffff';ctx.fillText(name,x,y-38);
+  }
+  ctx.restore();
+}
+function drawNpcSprite(n){
+  const x=n.x*tile,y=n.y*tile;
+  ctx.fillStyle='rgba(3,10,14,.20)';ctx.beginPath();ctx.ellipse(x,y+13,8,3.5,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=n.c;ctx.fillRect(x-8,y-10,16,20);
+  ctx.fillStyle='#f0c496';ctx.fillRect(x-6,y-18,12,10);
+  ctx.fillStyle='#222';ctx.fillRect(x-2,y-15,2,2);ctx.fillRect(x+2,y-15,2,2);
+  ctx.fillStyle='#111';ctx.fillRect(x-8,y+10,6,10);ctx.fillRect(x+2,y+10,6,10);
+}
+function drawStaticOccluder(sourceCanvas,x,y,w,h){
+  ctx.drawImage(sourceCanvas,x,y,w,h,x,y,w,h);
+}
+function drawDepthScene(t){
+  updateRemoteInterpolation();
+  const items=[];
+  if(currentMap==='town'){
+    for(const n of npcs) items.push({depth:n.y*tile,type:'npc',n});
+    for(const b of buildings){
+      const x=b.x*tile,y=b.y*tile,w=b.w*tile,h=b.h*tile+8;
+      items.push({depth:(b.y+b.h)*tile,type:'occluder',source:bg,x,y,w,h});
+    }
+    for(const [tx,ty] of treeSpots){
+      const x=tx*tile+1,y=ty*tile-3,w=46,h=58;
+      items.push({depth:ty*tile+43,type:'occluder',source:bg,x,y,w,h});
+    }
+  }else{
+    for(const terminal of hqTerminals){
+      const x=terminal.x*tile-42,y=terminal.y*tile-36,w=84,h=90;
+      items.push({depth:terminal.y*tile+35,type:'occluder',source:hq,x,y,w,h});
+    }
+  }
+  for(const [id,p] of remotePlayers){
+    if(p.map!==currentMap)continue;
+    items.push({depth:p.drawY,type:'remote',p});
+  }
+  items.push({depth:player.y,type:'local'});
+  items.sort((a,b)=>a.depth-b.depth);
+  for(const item of items){
+    if(item.type==='occluder') drawStaticOccluder(item.source,item.x,item.y,item.w,item.h);
+    else if(item.type==='npc') drawNpcSprite(item.n);
+    else if(item.type==='remote') drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0);
+    else if(item.type==='local'){
+      const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0;
+      drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',1,bob);
+    }
+  }
+  drawChatBubbles();
+}
+function drawChatBubbles(){
+  const now=Date.now();
+  for(let i=chatBubbles.length-1;i>=0;i--){
+    const b=chatBubbles[i];
+    if(now>b.expires){chatBubbles.splice(i,1);continue;}
+    if(b.map!==currentMap)continue;
+    let bx=b.x,by=b.y;
+    if(b.id!==playerId&&remotePlayers.has(b.id)){const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;}
+    else if(b.id===playerId){bx=player.x;by=player.y;}
+    if(Math.hypot(player.x-bx,player.y-by)>420&&b.id!==playerId)continue;
+    const text=b.message.slice(0,45);ctx.font='700 11px system-ui';
+    const w=Math.min(230,ctx.measureText(text).width+18);
+    ctx.fillStyle='rgba(5,18,26,.92)';ctx.fillRect(bx-w/2,by-70,w,25);
+    ctx.strokeStyle='#58f1e6';ctx.strokeRect(bx-w/2,by-70,w,25);
+    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(text,bx,by-53);
+  }
 }
 const savedMp=JSON.parse(localStorage.getItem('atm_mp')||'{}');if(savedMp.playerName)document.getElementById('displayName').value=savedMp.playerName;if(savedMp.roomName)document.getElementById('roomName').value=savedMp.roomName;if(savedMp.url)document.getElementById('supabaseUrl').value=savedMp.url;if(savedMp.key)document.getElementById('supabaseKey').value=savedMp.key;
 document.getElementById('joinOnline').addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();document.getElementById('multiplayerPanel').style.display='none';});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
@@ -402,14 +501,16 @@ function update(dt){
   if(currentMap==='town') for(const c of coinsArr){ if(!c.taken && Math.hypot(player.x-c.x,player.y-c.y)<28){ c.taken=true; coins++; document.getElementById('coins').textContent=coins; document.getElementById('progress').textContent=coins; if(coins===6) showDialog('Quest Complete','You collected all 6 coins. This tiled cyberpunk district can be expanded next with interiors and quests.'); } }
   const targetX=player.x-W/(2*zoom), targetY=player.y-H/(2*zoom); cam.x+=(targetX-cam.x)*Math.min(1,dt*6); cam.y+=(targetY-cam.y)*Math.min(1,dt*6); cam.x=Math.max(0,Math.min(cam.x,world.w*tile-W/zoom)); cam.y=Math.max(0,Math.min(cam.y,world.h*tile-H/zoom)); document.getElementById('hint').style.opacity=nearestThing()?1:0; broadcastState();
 }
-function drawPlayer(){ const frames=spriteImgs[player.dir]; const img=frames[player.frame]||frames[1]||frames[0]; const x=player.x, y=player.y; const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0; ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x,y+16,16,7,0,0,Math.PI*2); ctx.fill(); if(img){ const scale=0.24; const dw=Math.round(img.width*scale), dh=Math.round(img.height*scale); ctx.drawImage(img, Math.round(x-dw/2), Math.round(y-dh/2-2-bob), dw, dh); } }
-function drawNPCs(){ for(const n of npcs){ const x=n.x*tile,y=n.y*tile; ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(x,y+12,10,5,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle=n.c; ctx.fillRect(x-8,y-10,16,20); ctx.fillStyle='#f0c496'; ctx.fillRect(x-6,y-18,12,10); ctx.fillStyle='#222'; ctx.fillRect(x-2,y-15,2,2); ctx.fillRect(x+2,y-15,2,2); ctx.fillStyle='#111'; ctx.fillRect(x-8,y+10,6,10); ctx.fillRect(x+2,y+10,6,10); } }
 function drawCoins(t){ for(const c of coinsArr){ if(c.taken) continue; const bob=Math.sin(t*0.004+c.phase)*4,x=c.x,y=c.y+bob; ctx.fillStyle='rgba(255,209,102,.22)'; ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#8a5a00'; ctx.font='900 12px system-ui'; ctx.textAlign='center'; ctx.fillText('$',x,y+4); } }
 function drawMini(){ mctx.clearRect(0,0,220,148); if(currentMap==='hq'){mctx.fillStyle='#20172f';mctx.fillRect(0,0,220,148);mctx.fillStyle='#a52e81';mctx.fillRect(96,10,28,128);mctx.fillStyle='#76518e';mctx.fillRect(26,63,168,22);mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(player.x*(220/(world.w*tile)),player.y*(148/(world.h*tile)),4,0,Math.PI*2);mctx.fill();return;} const sx=220/(world.w*tile), sy=148/(world.h*tile); mctx.fillStyle='#1266a6'; mctx.fillRect(0,0,220,148); for(const r of landRects){ mctx.fillStyle='#77ba4d'; mctx.fillRect(r.x*tile*sx,r.y*tile*sy,r.w*tile*sx,r.h*tile*sy); } for(const p of pathRects){ mctx.fillStyle='#ac9f8d'; mctx.fillRect(p.x*tile*sx,p.y*tile*sy,p.w*tile*sx,p.h*tile*sy); } for(const b of buildings){ mctx.fillStyle='#2b3d4e'; mctx.fillRect(b.x*tile*sx,b.y*tile*sy,b.w*tile*sx,b.h*tile*sy); } mctx.fillStyle='#fff'; mctx.beginPath(); mctx.arc(player.x*sx,player.y*sy,4,0,Math.PI*2); mctx.fill(); }
 function loop(t){
-  const dt=Math.min((t-last)/1000,.033);last=t;update(dt);ctx.clearRect(0,0,W,H);ctx.save();ctx.scale(zoom,zoom);ctx.translate(-cam.x,-cam.y);
+  const dt=Math.min((t-last)/1000,.033);last=t;update(dt);
+  ctx.clearRect(0,0,W,H);
+  ctx.save();ctx.scale(zoom,zoom);ctx.translate(-cam.x,-cam.y);
   ctx.drawImage(currentMap==='hq'?hq:bg,0,0);
-  if(currentMap==='town'){drawNPCs();drawCoins(t);}drawRemotePlayers();drawPlayer();ctx.restore();drawMini();requestAnimationFrame(loop);
+  if(currentMap==='town')drawCoins(t);
+  drawDepthScene(t);
+  ctx.restore();drawMini();requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 </script>
