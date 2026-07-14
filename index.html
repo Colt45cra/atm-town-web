@@ -114,19 +114,41 @@ const coinsArr=[{x:7.6,y:13.8},{x:16.6,y:11.5},{x:24.0,y:11.5},{x:29.0,y:20.0},{
 const landRects=[{x:1,y:1,w:40,h:19},{x:1,y:21,w:11,h:9},{x:24,y:22,w:17,h:8}];
 const pathRects=[
   {x:7.0,y:12.0,w:30.5,h:1.8},   // main east-west avenue
-  {x:19.5,y:8.0,w:1.9,h:18.8},   // grand boulevard from HQ to bridge
-  {x:7.6,y:9.6,w:1.6,h:13.0},    // west connector
-  {x:29.0,y:10.0,w:1.6,h:9.2},   // gallery/arena connector
-  {x:35.0,y:10.2,w:1.6,h:10.0},  // shop/partner connector
+  {x:19.2,y:8.0,w:1.6,h:18.8},   // grand boulevard from HQ to bridge
+  {x:7.2,y:9.4,w:2.0,h:13.4},    // west connector
+  {x:28.8,y:9.8,w:2.0,h:9.8},   // gallery/arena connector
+  {x:34.8,y:5.0,w:2.0,h:15.2},  // shop/partner connector
   {x:25.8,y:25.0,w:13.2,h:1.4},  // housing lane
   {x:3.0,y:24.2,w:6.0,h:1.4},    // docks lane
   {x:19.0,y:25.8,w:5.0,h:1.4},   // bridge deck
   {x:35.8,y:5.0,w:1.4,h:7.0}     // partner fountain approach
 ];
+
 const colliders=[];
-for(const b of buildings) colliders.push({x:b.x*tile,y:b.y*tile,w:b.w*tile,h:b.h*tile});
-for(const h of houses) colliders.push({x:(h.x-0.6)*tile,y:(h.y-1.0)*tile,w:1.2*tile,h:1.8*tile});
-for(const [tx,ty] of treeSpots) colliders.push({x:tx*tile+8,y:ty*tile+18,w:28,h:20});
+function addBuildingColliders(){
+  for(const b of buildings){
+    const x=b.x*tile,y=b.y*tile,w=b.w*tile,h=b.h*tile;
+    if(b.id==='hq'){
+      colliders.push({x:x+8,y:y+12,w:w-16,h:h-96});
+      colliders.push({x:x+8,y:y+h-78,w:74,h:54});
+      colliders.push({x:x+w-82,y:y+h-78,w:74,h:54});
+      continue;
+    }
+    if(b.id==='market'){ colliders.push({x:x+10,y:y+34,w:w-20,h:h-44}); continue; }
+    if(b.id==='bank'){ colliders.push({x:x+12,y:y+36,w:w-24,h:h-44}); continue; }
+    if(b.id==='atm'){ colliders.push({x:x+4,y:y+20,w:w-8,h:h-24}); continue; }
+    if(b.id==='gallery'){ colliders.push({x:x+10,y:y+34,w:w-20,h:h-40}); continue; }
+    if(b.id==='shop'){ colliders.push({x:x+10,y:y+34,w:w-20,h:h-38}); continue; }
+    if(b.id==='arena'){ colliders.push({x:x+10,y:y+36,w:w-20,h:h-42}); continue; }
+    if(b.id==='partner'){ colliders.push({x:x+14,y:y+40,w:w-28,h:h-44}); continue; }
+    if(b.id==='bridge'){ colliders.push({x:x+6,y:y+18,w:w-12,h:h-10}); continue; }
+    if(b.id==='powered' || b.id==='welcome') continue;
+    colliders.push({x:x+10,y:y+26,w:w-20,h:h-32});
+  }
+}
+addBuildingColliders();
+for(const h of houses) colliders.push({x:(h.x-0.6)*tile,y:(h.y-0.55)*tile,w:1.2*tile,h:1.35*tile});
+for(const [tx,ty] of treeSpots) colliders.push({x:tx*tile+15,y:ty*tile+30,w:18,h:12});
 
 function rand2(x,y){ const s=Math.sin(x*127.1+y*311.7)*43758.5453123; return s-Math.floor(s); }
 function rectCollision(px,py,r,b){ return px+r>b.x && px-r<b.x+b.w && py+r>b.y && py-r<b.y+b.h; }
@@ -242,13 +264,19 @@ function bush(x,y,s=1){
   g.fillStyle='#2e6d33'; g.beginPath(); g.arc(x-8*s,y,9*s,0,Math.PI*2); g.arc(x+1*s,y-4*s,11*s,0,Math.PI*2); g.arc(x+11*s,y+1*s,8*s,0,Math.PI*2); g.fill();
   g.fillStyle='#66c35a'; g.beginPath(); g.arc(x-5*s,y-4*s,4*s,0,Math.PI*2); g.arc(x+8*s,y-6*s,3*s,0,Math.PI*2); g.fill();
 }
-function tree(tx,ty,s=1){
+
+function treeBase(tx,ty,s=1){
   const x=tx*tile+24,y=ty*tile+24;
-  g.fillStyle='rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(x,y+17,18*s,8*s,0,0,Math.PI*2); g.fill();
-  g.fillStyle='#5a3d1c'; g.fillRect(x-4*s,y+7,8*s,20*s);
-  g.fillStyle='#1f5e2f'; g.beginPath(); g.arc(x,y,18*s,0,Math.PI*2); g.fill();
-  g.fillStyle='#2c8b43'; g.beginPath(); g.arc(x-9*s,y-8*s,12*s,0,Math.PI*2); g.arc(x+7*s,y-6*s,10*s,0,Math.PI*2); g.fill();
-  g.fillStyle='#74e173'; g.beginPath(); g.arc(x-3*s,y-12*s,5*s,0,Math.PI*2); g.arc(x+7*s,y-10*s,4*s,0,Math.PI*2); g.fill();
+  g.fillStyle='rgba(0,0,0,.16)'; g.beginPath(); g.ellipse(x,y+18,12*s,5*s,0,0,Math.PI*2); g.fill();
+  g.fillStyle='#5a3d1c'; g.fillRect(x-4*s,y+8,8*s,18*s);
+}
+function drawTreeCanopy(target,tx,ty,s=1){
+  const x=tx*tile+24,y=ty*tile+24;
+  target.save();
+  target.fillStyle='#1f5e2f'; target.beginPath(); target.arc(x,y,18*s,0,Math.PI*2); target.fill();
+  target.fillStyle='#2c8b43'; target.beginPath(); target.arc(x-9*s,y-8*s,12*s,0,Math.PI*2); target.arc(x+7*s,y-6*s,10*s,0,Math.PI*2); target.fill();
+  target.fillStyle='#74e173'; target.beginPath(); target.arc(x-3*s,y-12*s,5*s,0,Math.PI*2); target.arc(x+7*s,y-10*s,4*s,0,Math.PI*2); target.fill();
+  target.restore();
 }
 function lamp(tx,ty){ const x=tx*tile,y=ty*tile; g.fillStyle='rgba(255,218,109,.16)'; g.beginPath(); g.arc(x,y,24,0,Math.PI*2); g.fill(); g.fillStyle='#34404a'; g.fillRect(x-3,y-8,6,30); g.fillStyle='#f1d36d'; g.beginPath(); g.arc(x,y-12,6,0,Math.PI*2); g.fill(); }
 function bench(x,y,h=true){ x*=tile; y*=tile; g.fillStyle='#6a4720'; if(h){ g.fillRect(x-16,y-5,32,10); g.fillRect(x-12,y+5,4,8); g.fillRect(x+8,y+5,4,8); } else { g.fillRect(x-5,y-16,10,32); g.fillRect(x+5,y-12,8,4); g.fillRect(x+5,y+8,8,4); } }
@@ -475,7 +503,7 @@ function renderBackground(){
 
   // props with more logical placement along roads and edges
   for(const [x,y] of bushSpots) bush(x*tile,y*tile,1);
-  for(const [x,y] of treeSpots) tree(x,y,1);
+  for(const [x,y] of treeSpots) treeBase(x,y,1);
   for(const [x,y] of lamps) lamp(x,y);
   for(const b of benches) bench(b.x,b.y,b.h);
   for(const f of flowerbeds) flowerbed(f);
@@ -571,7 +599,7 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0){
   ctx.globalAlpha=alpha;
   // compact contact shadow directly under the feet
   ctx.fillStyle='rgba(3,10,14,.22)';
-  ctx.beginPath();ctx.ellipse(x,y+19,12,4,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(x,y+20,10,3,0,0,Math.PI*2);ctx.fill();
   if(img){
     const sc=.24,dw=Math.round(img.width*sc),dh=Math.round(img.height*sc);
     ctx.drawImage(img,Math.round(x-dw/2),Math.round(y-dh/2-2-bob),dw,dh);
@@ -594,19 +622,38 @@ function drawNpcSprite(n){
 function drawStaticOccluder(sourceCanvas,x,y,w,h){
   ctx.drawImage(sourceCanvas,x,y,w,h,x,y,w,h);
 }
+
+function getBuildingOccluder(b){
+  const x=b.x*tile,y=b.y*tile,w=b.w*tile;
+  if(b.id==='hq') return {x:x-10,y:y-18,w:w+20,h:208,depth:(b.y+b.h)*tile-78};
+  if(b.id==='market') return {x:x-6,y:y-12,w:w+12,h:88,depth:(b.y+b.h)*tile-52};
+  if(b.id==='bank') return {x:x-8,y:y-12,w:w+16,h:92,depth:(b.y+b.h)*tile-50};
+  if(b.id==='atm') return {x:x-6,y:y-10,w:w+12,h:74,depth:(b.y+b.h)*tile-34};
+  if(b.id==='gallery') return {x:x-6,y:y-10,w:w+12,h:110,depth:(b.y+b.h)*tile-44};
+  if(b.id==='shop') return {x:x-8,y:y-10,w:w+16,h:100,depth:(b.y+b.h)*tile-44};
+  if(b.id==='arena') return {x:x-8,y:y-10,w:w+16,h:104,depth:(b.y+b.h)*tile-48};
+  if(b.id==='partner') return {x:x-8,y:y-10,w:w+16,h:96,depth:(b.y+b.h)*tile-42};
+  if(b.id==='bridge') return {x:x-2,y:y-4,w:w+4,h:54,depth:(b.y+b.h)*tile-14};
+  if(b.id==='powered') return {x:x-4,y:y-6,w:w+8,h:72,depth:(b.y+b.h)*tile-28};
+  if(b.id==='welcome') return {x:x-6,y:y-8,w:w+12,h:84,depth:(b.y+b.h)*tile-36};
+  return {x,y,w,h:Math.max(64,b.h*tile*0.55),depth:(b.y+b.h)*tile-42};
+}
+function drawBuildingOccluder(b){
+  const o=getBuildingOccluder(b);
+  ctx.drawImage(bg,o.x,o.y,o.w,o.h,o.x,o.y,o.w,o.h);
+}
+function getBuildingInteractPoint(b){
+  if(b.id==='hq') return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-0.55)*tile, radius:120};
+  return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-0.55)*tile, radius:165};
+}
+
 function drawDepthScene(t){
   updateRemoteInterpolation();
   const items=[];
   if(currentMap==='town'){
-    for(const n of npcs) items.push({depth:n.y*tile,type:'npc',n});
-    for(const b of buildings){
-      const x=b.x*tile,y=b.y*tile,w=b.w*tile,h=b.h*tile+8;
-      items.push({depth:(b.y+b.h)*tile,type:'occluder',source:bg,x,y,w,h});
-    }
-    for(const [tx,ty] of treeSpots){
-      const x=tx*tile+1,y=ty*tile-3,w=46,h=58;
-      items.push({depth:ty*tile+43,type:'occluder',source:bg,x,y,w,h});
-    }
+    for(const n of npcs) items.push({depth:n.y*tile+18,type:'npc',n});
+    for(const b of buildings) items.push({depth:getBuildingOccluder(b).depth,type:'building',b});
+    for(const [tx,ty] of treeSpots) items.push({depth:ty*tile+28,type:'tree',tx,ty});
   }else{
     for(const terminal of hqTerminals){
       const x=terminal.x*tile-42,y=terminal.y*tile-36,w=84,h=90;
@@ -615,12 +662,14 @@ function drawDepthScene(t){
   }
   for(const [id,p] of remotePlayers){
     if(p.map!==currentMap)continue;
-    items.push({depth:p.drawY,type:'remote',p});
+    items.push({depth:p.drawY+20,type:'remote',p});
   }
-  items.push({depth:player.y,type:'local'});
+  items.push({depth:player.y+20,type:'local'});
   items.sort((a,b)=>a.depth-b.depth);
   for(const item of items){
     if(item.type==='occluder') drawStaticOccluder(item.source,item.x,item.y,item.w,item.h);
+    else if(item.type==='building') drawBuildingOccluder(item.b);
+    else if(item.type==='tree') drawTreeCanopy(ctx,item.tx,item.ty,1);
     else if(item.type==='npc') drawNpcSprite(item.n);
     else if(item.type==='remote') drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0);
     else if(item.type==='local'){
@@ -655,17 +704,25 @@ let joy={x:0,y:0,active:false,id:null}; const stick=document.getElementById('sti
 function setJoy(cx,cy){ const r=stick.getBoundingClientRect(), sx=r.left+r.width/2, sy=r.top+r.height/2; let dx=cx-sx, dy=cy-sy, mag=Math.hypot(dx,dy), max=29; if(mag>max){ dx=dx/mag*max; dy=dy/mag*max; } joy.x=dx/max; joy.y=dy/max; knob.style.transform=`translate(${dx}px,${dy}px)`; }
 stick.addEventListener('pointerdown',e=>{ joy.active=true; joy.id=e.pointerId; stick.setPointerCapture(e.pointerId); setJoy(e.clientX,e.clientY); }); stick.addEventListener('pointermove',e=>{ if(joy.active&&e.pointerId===joy.id) setJoy(e.clientX,e.clientY); }); function endJoy(){ joy.active=false; joy.x=joy.y=0; knob.style.transform='translate(0,0)'; } stick.addEventListener('pointerup',endJoy); stick.addEventListener('pointercancel',endJoy);
 
+
 function nearestThing(){
-  let best=null,dist=99999;
+  let best=null,dist=99999,bestRadius=175;
   if(currentMap==='hq'){
-    for(const t of hqTerminals){const d=Math.hypot(player.x-t.x*tile,player.y-t.y*tile);if(d<dist){dist=d;best=t;}}
+    for(const t of hqTerminals){const d=Math.hypot(player.x-t.x*tile,player.y-t.y*tile);if(d<dist){dist=d;best=t;bestRadius=115;}}
     const exit={x:17*tile,y:26*tile,name:'EXIT TO TOWN',text:'Return to ATM Town.'};
-    const ed=Math.hypot(player.x-exit.x,player.y-exit.y);if(ed<dist){dist=ed;best=exit;}
-    return dist<115?best:null;
+    const ed=Math.hypot(player.x-exit.x,player.y-exit.y);if(ed<dist){dist=ed;best=exit;bestRadius=115;}
+    return dist<bestRadius?best:null;
   }
-  for(const b of buildings){const cx=(b.x+b.w/2)*tile,cy=(b.y+b.h/2)*tile;const d=Math.hypot(player.x-cx,player.y-cy);if(d<dist){dist=d;best=b;}}
-  for(const s of signs){const cx=s.x*tile,cy=s.y*tile;const d=Math.hypot(player.x-cx,player.y-cy);if(d<dist){dist=d;best={name:s.t,text:'A district sign marking part of ATM Town.'};}}
-  return dist<175?best:null;
+  for(const b of buildings){
+    const p=getBuildingInteractPoint(b);
+    const d=Math.hypot(player.x-p.x,player.y-p.y);
+    if(d<dist){dist=d;best=b;bestRadius=p.radius||175;}
+  }
+  for(const s of signs){
+    const cx=s.x*tile,cy=s.y*tile;const d=Math.hypot(player.x-cx,player.y-cy);
+    if(d<dist){dist=d;best={name:s.t,text:'A district sign marking part of ATM Town.'};bestRadius=145;}
+  }
+  return dist<bestRadius?best:null;
 }
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map){
