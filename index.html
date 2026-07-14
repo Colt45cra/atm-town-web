@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>ATM Town — Tiled Cyberpunk District</title>
+<title>ATM Town — Multiplayer HQ Interior</title>
 <style>
 :root{--bg:#061018;--ink:#eafcff;--cyan:#58f1e6;--pink:#ff4fa3;--gold:#ffd166;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -46,16 +46,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);f
 <body>
 <div id="bootError"><strong style="color:#58f1e6">ATM Town could not start.</strong><div id="bootErrorText" style="margin-top:8px;line-height:1.4"></div></div>
 <canvas id="game"></canvas>
-<div id="multiplayerPanel"><div id="multiplayerCard"><h2>ATM Town Multiplayer</h2><p>Choose a display name and join the shared ATM Town team room.</p><input id="displayName" class="mpInput" placeholder="Display name" value="Colton"><input id="roomName" class="mpInput" placeholder="Room name" value="atm-town-alpha"><input id="supabaseUrl" type="hidden" value="https://xnyjurertwohlqczaeux.supabase.co"><input id="supabaseKey" type="hidden" value="sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD"><button id="joinOnline" class="mpBtn">JOIN MULTIPLAYER</button><button id="joinOffline" class="mpBtn secondary">PLAY OFFLINE</button></div></div>
+<div id="multiplayerPanel"><div id="multiplayerCard"><h2>ATM Town Multiplayer</h2><p>Join a private team room. Supabase is prefilled for ATM Town. Enter your display name, keep the shared room name, and tap JOIN ROOM. Leave the fields alone unless you change projects.</p><input id="displayName" class="mpInput" placeholder="Display name" value=""><input id="roomName" class="mpInput" placeholder="Room name" value="atm-town-alpha"><input id="supabaseUrl" class="mpInput" placeholder="Supabase project URL" value="https://xnyjurertwohlqczaeux.supabase.co"><input id="supabaseKey" class="mpInput" placeholder="Supabase anon key" value="sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD"><button id="joinOnline" class="mpBtn">JOIN ROOM</button><button id="joinOffline" class="mpBtn secondary">PLAY OFFLINE</button></div></div>
 <div id="mapLabel">ATM TOWN</div><div id="onlineBadge">1 online</div><div id="chatLog"></div><div id="chatBar"><input id="chatInput" maxlength="120" placeholder="Nearby message..."><button id="chatSend">SEND</button></div>
 
 <div id="hud"><div class="chip">ATM TOWN <span>ALPHA</span></div><div class="chip">Coins: <span id="coins">0</span>/6</div></div>
 <div id="quest"><div class="title">MAIN QUEST</div><div class="line">Collect 6 Coins</div><div class="sub"><span id="progress">0</span> / 6</div></div>
 <div id="mini"><canvas id="miniCanvas" width="220" height="148"></canvas></div>
-<div id="hint">Tap ACTION to interact</div>
+<div id="hint">Tap ACTION near the ATM HQ door or a terminal</div>
 <div id="dialog"><b id="dialogTitle"></b><p id="dialogText"></p><button id="closeDialog">CONTINUE</button></div>
 <div id="controls"><div id="stick"><div id="knob"></div></div><button id="action">ACTION</button></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 window.addEventListener('error', function(event){
   const panel = document.getElementById('bootError');
@@ -343,7 +343,7 @@ async function connectMultiplayer(){
   realtimeChannel.on('broadcast',{event:'player_state'},({payload})=>{if(payload.id===playerId)return;const old=remotePlayers.get(payload.id)||{};remotePlayers.set(payload.id,{...old,...payload,lastSeen:Date.now(),drawX:old.drawX??payload.x,drawY:old.drawY??payload.y});});
   realtimeChannel.on('broadcast',{event:'chat'},({payload})=>{if(payload.id!==playerId)showBubble(payload.id,payload.name,payload.message,payload.x,payload.y,payload.map);});
   realtimeChannel.on('broadcast',{event:'leave'},({payload})=>remotePlayers.delete(payload.id));
-  await realtimeChannel.subscribe(async status=>{const badge=document.getElementById('onlineBadge');if(status==='SUBSCRIBED'){onlineMode=true;if(badge)badge.textContent='Connected';await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,online_at:new Date().toISOString()});broadcastState(true);}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){if(badge)badge.textContent='Connection failed';}});
+  await realtimeChannel.subscribe(async status=>{if(status==='SUBSCRIBED'){onlineMode=true;await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,online_at:new Date().toISOString()});broadcastState(true);}});
   document.getElementById('multiplayerPanel').style.display='none';
 }
 function broadcastState(force=false){
@@ -359,7 +359,7 @@ function drawRemotePlayers(){
   for(let i=chatBubbles.length-1;i>=0;i--){const b=chatBubbles[i];if(now>b.expires){chatBubbles.splice(i,1);continue;}if(b.map!==currentMap)continue;let bx=b.x,by=b.y;if(b.id!==playerId&&remotePlayers.has(b.id)){const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;}else if(b.id===playerId){bx=player.x;by=player.y;}if(Math.hypot(player.x-bx,player.y-by)>420&&b.id!==playerId)continue;const text=b.message.slice(0,45);ctx.font='700 11px system-ui';const w=Math.min(230,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,18,26,.92)';ctx.fillRect(bx-w/2,by-70,w,25);ctx.strokeStyle='#58f1e6';ctx.strokeRect(bx-w/2,by-70,w,25);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(text,bx,by-53);}
 }
 const savedMp=JSON.parse(localStorage.getItem('atm_mp')||'{}');if(savedMp.playerName)document.getElementById('displayName').value=savedMp.playerName;if(savedMp.roomName)document.getElementById('roomName').value=savedMp.roomName;if(savedMp.url)document.getElementById('supabaseUrl').value=savedMp.url;if(savedMp.key)document.getElementById('supabaseKey').value=savedMp.key;
-document.getElementById('joinOnline').addEventListener('click',connectMultiplayer);document.getElementById('joinOnline').addEventListener('touchend',e=>{e.preventDefault();connectMultiplayer();});document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();document.getElementById('multiplayerPanel').style.display='none';});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
+document.getElementById('joinOnline').addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();document.getElementById('multiplayerPanel').style.display='none';});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
 
 const keys={}; addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true); addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 let joy={x:0,y:0,active:false,id:null}; const stick=document.getElementById('stick'), knob=document.getElementById('knob');
