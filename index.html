@@ -103,11 +103,12 @@ const houses=[
   {x:27.0,y:26.2,roof:'#3d8bff'},{x:29.8,y:26.2,roof:'#f58c31'},{x:32.6,y:26.2,roof:'#3cae57'},{x:35.4,y:26.2,roof:'#9749ee'},{x:38.2,y:26.2,roof:'#48b1dd'}
 ];
 const signs=[{x:4.4,y:24.0,t:'THE DOCKS'},{x:31.8,y:23.1,t:'PLAYER HOUSING'},{x:39.0,y:29.0,t:'RELAX BEACH'}];
+const fences=[{x1:24.4,y1:24.2,x2:39.4,y2:24.2},{x1:1.8,y1:24.3,x2:9.8,y2:24.3}];
 const benches=[{x:16.8,y:15.0,h:true},{x:23.7,y:15.0,h:true},{x:17.0,y:18.2,h:true},{x:23.5,y:18.2,h:true},{x:31.0,y:24.6,h:true},{x:36.1,y:24.6,h:true}];
-const flowerbeds=[{x:16.0,y:9.5,w:2.3,h:0.7,c:'#ff78c3'},{x:21.5,y:9.5,w:2.3,h:0.7,c:'#8bff94'},{x:28.0,y:26.6,w:1.4,h:0.5,c:'#ffd166'},{x:33.3,y:26.6,w:1.4,h:0.5,c:'#ff78c3'},{x:38.0,y:26.6,w:1.4,h:0.5,c:'#7bf0ff'}];
-const lamps=[[15,9],[18,9],[22,9],[25,9],[8,12],[12,12],[28,12],[32,12],[36,12],[15,14],[26,14],[13,18],[27,18],[36,19],[5,22],[10,22],[20,22],[25,22],[30,22],[35,22],[39,24],[39,28],[25,27],[30,27],[35,27]];
+const flowerbeds=[{x:28.0,y:26.6,w:1.4,h:0.5,c:'#ffd166'},{x:33.3,y:26.6,w:1.4,h:0.5,c:'#ff78c3'},{x:38.0,y:26.6,w:1.4,h:0.5,c:'#7bf0ff'}];
+const lamps=[[8,12],[12,12],[28,12],[32,12],[36,12],[15,14],[26,14],[13,18],[27,18],[36,19],[5,22],[10,22],[20,22],[25,22],[30,22],[35,22],[39,24],[39,28],[25,27],[30,27],[35,27]];
 const dockCrates=[[4.4,25.2],[5.1,25.7],[5.8,25.1],[5.3,24.6]];
-const bushSpots=[[15.5,10.0],[21.8,10.0],[10.7,18.0],[13.1,18.0],[27.0,26.0],[39.1,27.2],[4.0,13.3],[36.7,16.4],[38.2,23.8],[31.4,7.2]];
+const bushSpots=[[10.7,18.0],[13.1,18.0],[27.0,26.0],[39.1,27.2],[4.0,13.3],[36.7,16.4],[38.2,23.8],[31.4,7.2],[25.2,25.4],[39.5,25.4]];
 const treeSpots=[[2,4],[4,4],[6,4],[8,4],[10,4],[28,4],[30,4],[32,4],[34,4],[40,4],[3,8],[2,10],[3,14],[5,15],[39,8],[40,10],[39,14],[40,16],[29,14],[33,14],[37,14],[2,23],[3,26],[8,27],[12,24],[26,23],[28,23],[34,23],[40,23],[40,26],[24,28],[22,24],[15,22]];
 const npcs=[{x:6.5,y:13.2,c:'#2f4d91'},{x:8.9,y:13.2,c:'#3f2a14'},{x:29.2,y:12.6,c:'#8e45cc'},{x:35.5,y:12.5,c:'#a66c28'},{x:32.0,y:21.9,c:'#7f2dde'},{x:5.5,y:22.3,c:'#5b4127'},{x:27.2,y:27.4,c:'#24526f'},{x:38.0,y:28.1,c:'#a04488'},{x:39.2,y:4.6,c:'#2f4d91'}];
 const coinsArr=[{x:7.6,y:13.8},{x:16.6,y:11.5},{x:24.0,y:11.5},{x:29.0,y:20.0},{x:7.0,y:23.2},{x:36.4,y:27.3}].map((p,i)=>({x:p.x*tile,y:p.y*tile,taken:false,phase:i}));
@@ -131,12 +132,15 @@ function rebuildColliders(){
   for(const b of buildings){
     const x=b.x*tile,y=b.y*tile,w=b.w*tile,h=b.h*tile;
     if(b.id==='hq'){
-      // Solid HQ body with a centered opening over the visible stairs and front door.
-      const opening=72;
-      const topHeight=h-80;
-      colliders.push({x:x+8,y:y+10,w:w-16,h:topHeight});
-      colliders.push({x:x+8,y:y+topHeight,w:(w-opening)/2-8,h:70});
-      colliders.push({x:x+(w+opening)/2,y:y+topHeight,w:(w-opening)/2-8,h:70});
+      // Keep the central stair corridor open while the side fronts remain physically solid.
+      const artLeft=x-10, artRight=x+w+10;
+      const corridor=104;
+      const corridorLeft=x+w/2-corridor/2;
+      const corridorRight=x+w/2+corridor/2;
+      const lowerTop=y+h-112;
+      colliders.push({x:artLeft+6,y:y+8,w:(artRight-artLeft)-12,h:Math.max(24,lowerTop-y-8)});
+      colliders.push({x:artLeft+6,y:lowerTop,w:corridorLeft-(artLeft+6),h:108});
+      colliders.push({x:corridorRight,y:lowerTop,w:(artRight-6)-corridorRight,h:108});
       continue;
     }
     if(b.id==='welcome' || b.id==='powered') continue;
@@ -144,11 +148,24 @@ function rebuildColliders(){
       colliders.push({x:x+4,y:y+18,w:w-8,h:Math.max(12,h-18)});
       continue;
     }
-    // The whole lower footprint is solid. Players may pass behind the roof only when physically above it.
     colliders.push({x:x+6,y:y+24,w:w-12,h:Math.max(18,h-24)});
   }
   for(const h of houses) colliders.push({x:(h.x-0.62)*tile,y:(h.y-0.60)*tile,w:1.24*tile,h:1.40*tile});
   for(const [tx,ty] of treeSpots) colliders.push({x:tx*tile+16,y:ty*tile+31,w:16,h:11});
+  for(const [x,y] of bushSpots) colliders.push({x:x*tile-13,y:y*tile-2,w:26,h:14});
+  for(const [x,y] of lamps) colliders.push({x:x*tile-5,y:y*tile+5,w:10,h:18});
+  for(const b of benches){
+    const x=b.x*tile,y=b.y*tile;
+    colliders.push(b.h?{x:x-18,y:y-7,w:36,h:18}:{x:x-7,y:y-18,w:18,h:36});
+  }
+  for(const f of flowerbeds) colliders.push({x:f.x*tile,y:f.y*tile,w:f.w*tile,h:f.h*tile});
+  for(const [x,y] of dockCrates) colliders.push({x:x*tile,y:y*tile,w:16,h:16});
+  for(const s of signs) colliders.push({x:s.x*tile-72,y:s.y*tile-17,w:144,h:34});
+  for(const f of fences){
+    const x=Math.min(f.x1,f.x2)*tile,y=Math.min(f.y1,f.y2)*tile;
+    const w=Math.max(6,Math.abs(f.x2-f.x1)*tile),h=Math.max(6,Math.abs(f.y2-f.y1)*tile);
+    colliders.push({x,y,w,h});
+  }
 }
 rebuildColliders();
 
@@ -257,17 +274,18 @@ function drawPathRect(p){
   }
   g.strokeStyle='#857a6d'; g.lineWidth=2; g.strokeRect(x,y,w,h);
 }
-function sign(x,y,text,w=150){
-  g.fillStyle='#6a4420'; g.fillRect(x-w/2,y-18,w,36); g.strokeStyle='#3f2b13'; g.lineWidth=5; g.strokeRect(x-w/2,y-18,w,36);
-  g.fillStyle='#f7e7bf'; g.font='900 12px monospace'; g.textAlign='center'; g.fillText(text,x,y+5);
+function sign(x,y,text,w=150,target=g){
+  const G=target;
+  G.fillStyle='rgba(0,0,0,.18)'; G.fillRect(x-w/2+6,y-12,w,32);
+  G.fillStyle='#6a4420'; G.fillRect(x-w/2,y-18,w,36); G.strokeStyle='#3f2b13'; G.lineWidth=5; G.strokeRect(x-w/2,y-18,w,36);
+  G.fillStyle='#f7e7bf'; G.font='900 12px monospace'; G.textAlign='center'; G.fillText(text,x,y+5);
 }
-function bush(x,y,s=1){
-  g.fillStyle='rgba(0,0,0,.16)'; g.beginPath(); g.ellipse(x,y+7*s,16*s,6*s,0,0,Math.PI*2); g.fill();
-  g.fillStyle='#2e6d33'; g.beginPath(); g.arc(x-8*s,y,9*s,0,Math.PI*2); g.arc(x+1*s,y-4*s,11*s,0,Math.PI*2); g.arc(x+11*s,y+1*s,8*s,0,Math.PI*2); g.fill();
-  g.fillStyle='#66c35a'; g.beginPath(); g.arc(x-5*s,y-4*s,4*s,0,Math.PI*2); g.arc(x+8*s,y-6*s,3*s,0,Math.PI*2); g.fill();
+function bush(x,y,s=1,target=g){
+  const G=target;
+  G.fillStyle='rgba(0,0,0,.16)'; G.beginPath(); G.ellipse(x,y+7*s,16*s,6*s,0,0,Math.PI*2); G.fill();
+  G.fillStyle='#2e6d33'; G.beginPath(); G.arc(x-8*s,y,9*s,0,Math.PI*2); G.arc(x+1*s,y-4*s,11*s,0,Math.PI*2); G.arc(x+11*s,y+1*s,8*s,0,Math.PI*2); G.fill();
+  G.fillStyle='#66c35a'; G.beginPath(); G.arc(x-5*s,y-4*s,4*s,0,Math.PI*2); G.arc(x+8*s,y-6*s,3*s,0,Math.PI*2); G.fill();
 }
-
-
 function drawTreeEntity(target,tx,ty,s=1){
   const x=tx*tile+24,y=ty*tile+24;
   target.save();
@@ -278,11 +296,43 @@ function drawTreeEntity(target,tx,ty,s=1){
   target.fillStyle='#74e173'; target.beginPath(); target.arc(x-3*s,y-12*s,5*s,0,Math.PI*2); target.arc(x+7*s,y-10*s,4*s,0,Math.PI*2); target.fill();
   target.restore();
 }
-
-function lamp(tx,ty){ const x=tx*tile,y=ty*tile; g.fillStyle='rgba(255,218,109,.16)'; g.beginPath(); g.arc(x,y,24,0,Math.PI*2); g.fill(); g.fillStyle='#34404a'; g.fillRect(x-3,y-8,6,30); g.fillStyle='#f1d36d'; g.beginPath(); g.arc(x,y-12,6,0,Math.PI*2); g.fill(); }
-function bench(x,y,h=true){ x*=tile; y*=tile; g.fillStyle='#6a4720'; if(h){ g.fillRect(x-16,y-5,32,10); g.fillRect(x-12,y+5,4,8); g.fillRect(x+8,y+5,4,8); } else { g.fillRect(x-5,y-16,10,32); g.fillRect(x+5,y-12,8,4); g.fillRect(x+5,y+8,8,4); } }
-function flowerbed(f){ g.fillStyle='#705132'; g.fillRect(f.x*tile,f.y*tile,f.w*tile,f.h*tile); for(let i=0;i<10;i++){ g.fillStyle=i%2?f.c:'#ffffff'; g.beginPath(); g.arc(f.x*tile+8+i*(f.w*tile-16)/9,f.y*tile+f.h*tile/2+((i%3)-1)*2,3,0,Math.PI*2); g.fill(); g.fillStyle='#4e9d45'; g.fillRect(f.x*tile+8+i*(f.w*tile-16)/9,f.y*tile+f.h*tile/2+2,1.5,4); } }
-
+function lamp(tx,ty,target=g){
+  const G=target,x=tx*tile,y=ty*tile;
+  G.fillStyle='rgba(255,218,109,.16)'; G.beginPath(); G.arc(x,y-6,24,0,Math.PI*2); G.fill();
+  G.fillStyle='rgba(0,0,0,.15)'; G.beginPath(); G.ellipse(x,y+23,7,3,0,0,Math.PI*2); G.fill();
+  G.fillStyle='#34404a'; G.fillRect(x-3,y-8,6,30); G.fillStyle='#f1d36d'; G.beginPath(); G.arc(x,y-12,6,0,Math.PI*2); G.fill();
+}
+function bench(x,y,h=true,target=g){
+  const G=target; x*=tile; y*=tile;
+  G.fillStyle='rgba(0,0,0,.14)'; G.fillRect(x-14,y+7,28,5);
+  G.fillStyle='#6a4720';
+  if(h){ G.fillRect(x-16,y-5,32,10); G.fillRect(x-12,y+5,4,8); G.fillRect(x+8,y+5,4,8); }
+  else { G.fillRect(x-5,y-16,10,32); G.fillRect(x+5,y-12,8,4); G.fillRect(x+5,y+8,8,4); }
+}
+function flowerbed(f,target=g){
+  const G=target;
+  G.fillStyle='rgba(0,0,0,.14)'; G.fillRect(f.x*tile+4,f.y*tile+4,f.w*tile,f.h*tile);
+  G.fillStyle='#705132'; G.fillRect(f.x*tile,f.y*tile,f.w*tile,f.h*tile);
+  for(let i=0;i<10;i++){
+    G.fillStyle=i%2?f.c:'#ffffff'; G.beginPath(); G.arc(f.x*tile+8+i*(f.w*tile-16)/9,f.y*tile+f.h*tile/2+((i%3)-1)*2,3,0,Math.PI*2); G.fill();
+    G.fillStyle='#4e9d45'; G.fillRect(f.x*tile+8+i*(f.w*tile-16)/9,f.y*tile+f.h*tile/2+2,1.5,4);
+  }
+}
+function drawCrate(c,target=g){
+  const G=target,x=c[0]*tile,y=c[1]*tile;
+  G.fillStyle='rgba(0,0,0,.15)'; G.fillRect(x+3,y+3,16,16);
+  G.fillStyle='#976a31'; G.fillRect(x,y,16,16); G.strokeStyle='#65461b'; G.lineWidth=2; G.strokeRect(x,y,16,16);
+  G.beginPath(); G.moveTo(x+2,y+2); G.lineTo(x+14,y+14); G.moveTo(x+14,y+2); G.lineTo(x+2,y+14); G.stroke();
+}
+function drawFence(f,target=g){
+  const G=target,x1=f.x1*tile,y1=f.y1*tile,x2=f.x2*tile,y2=f.y2*tile;
+  G.strokeStyle='#7b5b35'; G.lineWidth=4; G.beginPath(); G.moveTo(x1,y1+5); G.lineTo(x2,y2+5); G.stroke();
+  const len=Math.hypot(x2-x1,y2-y1),steps=Math.max(1,Math.floor(len/22));
+  for(let i=0;i<=steps;i++){
+    const t=i/steps,x=x1+(x2-x1)*t,y=y1+(y2-y1)*t;
+    G.beginPath(); G.moveTo(x,y); G.lineTo(x,y+14); G.stroke();
+  }
+}
 
 function drawBuilding(b,target=g){
   const G=target;
@@ -500,20 +550,7 @@ function renderBackground(){
   g.fillStyle='#38a9ef'; g.beginPath(); g.arc(37.3*tile,6.6*tile,26,0,Math.PI*2); g.fill();
   g.strokeStyle='#8ce5ff'; g.lineWidth=3; g.beginPath(); g.arc(37.3*tile,6.6*tile,26,0,Math.PI*2); g.stroke();
 
-  // fences / promenades
-  g.strokeStyle='#7b5b35'; g.lineWidth=4;
-  g.beginPath(); g.moveTo(24.4*tile,24.2*tile+5); g.lineTo(39.4*tile,24.2*tile+5); g.stroke();
-  for(let i=0;i<=15.0*tile;i+=22){ g.beginPath(); g.moveTo(24.4*tile+i,24.2*tile); g.lineTo(24.4*tile+i,24.2*tile+14); g.stroke(); }
-  g.beginPath(); g.moveTo(1.8*tile,24.3*tile+5); g.lineTo(9.8*tile,24.3*tile+5); g.stroke();
-  for(let i=0;i<=8.0*tile;i+=22){ g.beginPath(); g.moveTo(1.8*tile+i,24.3*tile); g.lineTo(1.8*tile+i,24.3*tile+14); g.stroke(); }
-
-  // props with more logical placement along roads and edges
-  for(const [x,y] of bushSpots) bush(x*tile,y*tile,1);
-  for(const [x,y] of lamps) lamp(x,y);
-  for(const b of benches) bench(b.x,b.y,b.h);
-  for(const f of flowerbeds) flowerbed(f);
-  for(const [x,y] of dockCrates){ g.fillStyle='#976a31'; g.fillRect(x*tile,y*tile,16,16); g.strokeStyle='#65461b'; g.lineWidth=2; g.strokeRect(x*tile,y*tile,16,16); }
-  for(const s of signs) sign(s.x*tile,s.y*tile,s.t);
+  // Decorative props are rendered as separate depth-sorted entities.
 
   // docks
   g.fillStyle='#7b5430'; g.fillRect(1.8*tile,24.6*tile,6.4*tile,3.8*tile);
@@ -526,8 +563,6 @@ function renderBackground(){
   g.fillStyle='#5fa0dd'; g.fillRect(39.4*tile,27.2*tile,8,24);
   g.fillStyle='#8e6138'; g.fillRect(40.2*tile,28.5*tile,18,6); g.fillRect(39.7*tile,28.8*tile,18,6);
 
-  // foreground shrubs near housing edge
-  bush(25.2*tile,25.4*tile,1); bush(39.5*tile,25.4*tile,1);
 }
 renderBackground();
 
@@ -629,21 +664,30 @@ function drawStaticOccluder(sourceCanvas,x,y,w,h){
 
 
 function getBuildingInteractPoint(b){
-  if(b.id==='hq') return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-0.28)*tile, radius:105};
+  if(b.id==='hq') return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-1.55)*tile, radius:72};
   return {x:(b.x+b.w/2)*tile, y:(b.y+b.h-0.55)*tile, radius:165};
 }
 
 
+function getBuildingDepth(b){
+  // Sort HQ at its door threshold, so the player appears on top of the stairs while approaching.
+  if(b.id==='hq') return (b.y+b.h-1.72)*tile;
+  return (b.y+b.h)*tile;
+}
 function drawDepthScene(t){
   updateRemoteInterpolation();
   const items=[];
   if(currentMap==='town'){
-    for(const b of buildings){
-      const baseline=(b.y+b.h)*tile;
-      items.push({depth:baseline,type:'building',b});
-    }
+    for(const b of buildings) items.push({depth:getBuildingDepth(b),type:'building',b});
     for(const h of houses) items.push({depth:h.y*tile+36,type:'house',h});
     for(const [tx,ty] of treeSpots) items.push({depth:ty*tile+42,type:'tree',tx,ty});
+    for(const [x,y] of bushSpots) items.push({depth:y*tile+10,type:'bush',x,y});
+    for(const [x,y] of lamps) items.push({depth:y*tile+23,type:'lamp',x,y});
+    for(const b of benches) items.push({depth:b.y*tile+14,type:'bench',b});
+    for(const f of flowerbeds) items.push({depth:(f.y+f.h)*tile,type:'flowerbed',f});
+    for(const c of dockCrates) items.push({depth:c[1]*tile+17,type:'crate',c});
+    for(const s of signs) items.push({depth:s.y*tile+19,type:'sign',s});
+    for(const f of fences) items.push({depth:Math.max(f.y1,f.y2)*tile+15,type:'fence',f});
     for(const n of npcs) items.push({depth:n.y*tile+18,type:'npc',n});
   }else{
     for(const terminal of hqTerminals){
@@ -662,6 +706,13 @@ function drawDepthScene(t){
     else if(item.type==='building') drawBuilding(item.b,ctx);
     else if(item.type==='house') drawHouse(item.h,ctx);
     else if(item.type==='tree') drawTreeEntity(ctx,item.tx,item.ty,1);
+    else if(item.type==='bush') bush(item.x*tile,item.y*tile,1,ctx);
+    else if(item.type==='lamp') lamp(item.x,item.y,ctx);
+    else if(item.type==='bench') bench(item.b.x,item.b.y,item.b.h,ctx);
+    else if(item.type==='flowerbed') flowerbed(item.f,ctx);
+    else if(item.type==='crate') drawCrate(item.c,ctx);
+    else if(item.type==='sign') sign(item.s.x*tile,item.s.y*tile,item.s.t,150,ctx);
+    else if(item.type==='fence') drawFence(item.f,ctx);
     else if(item.type==='npc') drawNpcSprite(item.n);
     else if(item.type==='remote') drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0);
     else if(item.type==='local'){
