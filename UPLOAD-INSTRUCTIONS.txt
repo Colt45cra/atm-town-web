@@ -1,0 +1,9 @@
+ATM TOWN V100 — GITHUB UPLOAD BUILD
+
+1. Extract this ZIP.
+2. In your GitHub repository, choose Add file > Upload files.
+3. Select index.html AND every PNG file from this folder.
+4. Commit directly to main.
+
+Important: Do not upload the ZIP itself as the website. GitHub needs the extracted files.
+All files belong in the repository root beside index.html.
