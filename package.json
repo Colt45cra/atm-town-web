@@ -1,0 +1,8 @@
+{
+  "name": "atm-town-web",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "livekit-server-sdk": "^2.17.0"
+  }
+}
