@@ -1,0 +1,461 @@
+[
+  {
+    "src": "buildings_04_00.png",
+    "x": 2036,
+    "y": 56,
+    "w": 878,
+    "h": 378,
+    "depth": 433,
+    "category": "buildings"
+  },
+  {
+    "src": "buildings_05_00.png",
+    "x": 319,
+    "y": 0,
+    "w": 508,
+    "h": 494,
+    "depth": 493,
+    "category": "buildings"
+  },
+  {
+    "src": "assets_08_00.png",
+    "x": 829,
+    "y": 473,
+    "w": 120,
+    "h": 138,
+    "depth": 610,
+    "category": "assets"
+  },
+  {
+    "src": "buildings_02_00.png",
+    "x": 1202,
+    "y": 132,
+    "w": 719,
+    "h": 505,
+    "depth": 636,
+    "category": "buildings"
+  },
+  {
+    "src": "assets_03_01.png",
+    "x": 508,
+    "y": 724,
+    "w": 32,
+    "h": 30,
+    "depth": 753,
+    "category": "assets"
+  },
+  {
+    "src": "assets_03_00.png",
+    "x": 151,
+    "y": 724,
+    "w": 257,
+    "h": 88,
+    "depth": 811,
+    "category": "assets"
+  },
+  {
+    "src": "assets_03_03.png",
+    "x": 2716,
+    "y": 727,
+    "w": 263,
+    "h": 87,
+    "depth": 813,
+    "category": "assets"
+  },
+  {
+    "src": "assets_03_02.png",
+    "x": 1963,
+    "y": 726,
+    "w": 652,
+    "h": 198,
+    "depth": 923,
+    "category": "assets"
+  },
+  {
+    "src": "assets_04_00.png",
+    "x": 1671,
+    "y": 795,
+    "w": 299,
+    "h": 133,
+    "depth": 927,
+    "category": "assets"
+  },
+  {
+    "src": "assets_03_05.png",
+    "x": 1633,
+    "y": 899,
+    "w": 47,
+    "h": 29,
+    "depth": 927,
+    "category": "assets"
+  },
+  {
+    "src": "assets_03_04.png",
+    "x": 592,
+    "y": 789,
+    "w": 901,
+    "h": 142,
+    "depth": 930,
+    "category": "assets"
+  },
+  {
+    "src": "buildings_06_00.png",
+    "x": 267,
+    "y": 702,
+    "w": 545,
+    "h": 554,
+    "depth": 1255,
+    "category": "buildings"
+  },
+  {
+    "src": "assets_00_01.png",
+    "x": 1678,
+    "y": 1021,
+    "w": 317,
+    "h": 244,
+    "depth": 1264,
+    "category": "assets"
+  },
+  {
+    "src": "assets_00_03.png",
+    "x": 1409,
+    "y": 1255,
+    "w": 18,
+    "h": 27,
+    "depth": 1281,
+    "category": "assets"
+  },
+  {
+    "src": "assets_00_02.png",
+    "x": 1915,
+    "y": 1254,
+    "w": 17,
+    "h": 29,
+    "depth": 1282,
+    "category": "assets"
+  },
+  {
+    "src": "assets_00_00.png",
+    "x": 1158,
+    "y": 1021,
+    "w": 330,
+    "h": 267,
+    "depth": 1287,
+    "category": "assets"
+  },
+  {
+    "src": "assets_00_04.png",
+    "x": 1739,
+    "y": 1259,
+    "w": 15,
+    "h": 29,
+    "depth": 1287,
+    "category": "assets"
+  },
+  {
+    "src": "assets_17_00.png",
+    "x": 1576,
+    "y": 1128,
+    "w": 136,
+    "h": 216,
+    "depth": 1343,
+    "category": "assets"
+  },
+  {
+    "src": "assets_18_00.png",
+    "x": 284,
+    "y": 1297,
+    "w": 124,
+    "h": 66,
+    "depth": 1362,
+    "category": "assets"
+  },
+  {
+    "src": "assets_13_00.png",
+    "x": 88,
+    "y": 1445,
+    "w": 137,
+    "h": 219,
+    "depth": 1663,
+    "category": "assets"
+  },
+  {
+    "src": "assets_06_00.png",
+    "x": 1693,
+    "y": 1467,
+    "w": 135,
+    "h": 222,
+    "depth": 1688,
+    "category": "assets"
+  },
+  {
+    "src": "buildings_03_00.png",
+    "x": 436,
+    "y": 1335,
+    "w": 1010,
+    "h": 363,
+    "depth": 1697,
+    "category": "buildings"
+  },
+  {
+    "src": "buildings_09_00.png",
+    "x": 328,
+    "y": 1454,
+    "w": 111,
+    "h": 310,
+    "depth": 1763,
+    "category": "buildings"
+  },
+  {
+    "src": "assets_07_00.png",
+    "x": 1148,
+    "y": 1739,
+    "w": 118,
+    "h": 142,
+    "depth": 1880,
+    "category": "assets"
+  },
+  {
+    "src": "assets_11_00.png",
+    "x": 1425,
+    "y": 1670,
+    "w": 137,
+    "h": 221,
+    "depth": 1890,
+    "category": "assets"
+  },
+  {
+    "src": "buildings_00_00.png",
+    "x": 2111,
+    "y": 1109,
+    "w": 524,
+    "h": 1080,
+    "depth": 2188,
+    "category": "buildings"
+  },
+  {
+    "src": "assets_22_00.png",
+    "x": 1313,
+    "y": 2398,
+    "w": 124,
+    "h": 67,
+    "depth": 2464,
+    "category": "assets"
+  },
+  {
+    "src": "assets_19_00.png",
+    "x": 1656,
+    "y": 2398,
+    "w": 124,
+    "h": 68,
+    "depth": 2465,
+    "category": "assets"
+  },
+  {
+    "src": "assets_21_00.png",
+    "x": 1656,
+    "y": 2398,
+    "w": 124,
+    "h": 68,
+    "depth": 2465,
+    "category": "assets"
+  },
+  {
+    "src": "buildings_01_00.png",
+    "x": 189,
+    "y": 1921,
+    "w": 701,
+    "h": 731,
+    "depth": 2651,
+    "category": "buildings"
+  },
+  {
+    "src": "assets_16_00.png",
+    "x": 2842,
+    "y": 2604,
+    "w": 136,
+    "h": 216,
+    "depth": 2819,
+    "category": "assets"
+  },
+  {
+    "src": "assets_14_00.png",
+    "x": 69,
+    "y": 2618,
+    "w": 136,
+    "h": 219,
+    "depth": 2836,
+    "category": "assets"
+  },
+  {
+    "src": "buildings_07_00.png",
+    "x": 2059,
+    "y": 2717,
+    "w": 608,
+    "h": 346,
+    "depth": 3062,
+    "category": "buildings"
+  },
+  {
+    "src": "buildings_08_00.png",
+    "x": 232,
+    "y": 2893,
+    "w": 576,
+    "h": 311,
+    "depth": 3203,
+    "category": "buildings"
+  },
+  {
+    "src": "assets_10_00.png",
+    "x": 1893,
+    "y": 3209,
+    "w": 411,
+    "h": 48,
+    "depth": 3256,
+    "category": "assets"
+  },
+  {
+    "src": "assets_10_01.png",
+    "x": 2422,
+    "y": 3212,
+    "w": 59,
+    "h": 45,
+    "depth": 3256,
+    "category": "assets"
+  },
+  {
+    "src": "assets_10_02.png",
+    "x": 2608,
+    "y": 3216,
+    "w": 225,
+    "h": 41,
+    "depth": 3256,
+    "category": "assets"
+  },
+  {
+    "src": "assets_20_00.png",
+    "x": 139,
+    "y": 3106,
+    "w": 45,
+    "h": 154,
+    "depth": 3259,
+    "category": "assets"
+  },
+  {
+    "src": "assets_09_00.png",
+    "x": 1761,
+    "y": 3128,
+    "w": 118,
+    "h": 137,
+    "depth": 3264,
+    "category": "assets"
+  },
+  {
+    "src": "assets_21_01.png",
+    "x": 2476,
+    "y": 3217,
+    "w": 124,
+    "h": 67,
+    "depth": 3283,
+    "category": "assets"
+  },
+  {
+    "src": "assets_19_01.png",
+    "x": 2476,
+    "y": 3218,
+    "w": 124,
+    "h": 66,
+    "depth": 3283,
+    "category": "assets"
+  },
+  {
+    "src": "assets_15_00.png",
+    "x": 894,
+    "y": 3106,
+    "w": 46,
+    "h": 191,
+    "depth": 3296,
+    "category": "assets"
+  },
+  {
+    "src": "assets_05_00.png",
+    "x": 1477,
+    "y": 3161,
+    "w": 154,
+    "h": 196,
+    "depth": 3356,
+    "category": "assets"
+  },
+  {
+    "src": "assets_02_00.png",
+    "x": 2781,
+    "y": 3304,
+    "w": 219,
+    "h": 154,
+    "depth": 3457,
+    "category": "assets"
+  },
+  {
+    "src": "assets_02_01.png",
+    "x": 105,
+    "y": 3321,
+    "w": 366,
+    "h": 147,
+    "depth": 3467,
+    "category": "assets"
+  },
+  {
+    "src": "assets_12_00.png",
+    "x": 1338,
+    "y": 3271,
+    "w": 125,
+    "h": 225,
+    "depth": 3495,
+    "category": "assets"
+  },
+  {
+    "src": "assets_02_02.png",
+    "x": 606,
+    "y": 3382,
+    "w": 525,
+    "h": 184,
+    "depth": 3565,
+    "category": "assets"
+  },
+  {
+    "src": "assets_02_03.png",
+    "x": 1958,
+    "y": 3433,
+    "w": 701,
+    "h": 143,
+    "depth": 3575,
+    "category": "assets"
+  },
+  {
+    "src": "assets_01_00.png",
+    "x": 1597,
+    "y": 3740,
+    "w": 297,
+    "h": 199,
+    "depth": 3938,
+    "category": "assets"
+  },
+  {
+    "src": "assets_01_01.png",
+    "x": 1631,
+    "y": 3945,
+    "w": 228,
+    "h": 158,
+    "depth": 4102,
+    "category": "assets"
+  },
+  {
+    "src": "assets_01_02.png",
+    "x": 1682,
+    "y": 4119,
+    "w": 153,
+    "h": 118,
+    "depth": 4236,
+    "category": "assets"
+  }
+]
