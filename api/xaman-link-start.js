@@ -1,6 +1,42 @@
-import { randomUUID } from 'node:crypto';
-import { XummSdk } from 'xumm-sdk';
-import { setCors, requireUser, sendError } from './_auth.js';
+import { setCors, requireUser } from './_auth.js';
+
+const XAMAN_API_BASE = 'https://xumm.app/api/v1/platform';
+
+function cleanCredential(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .trim();
+}
+
+async function readJson(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+}
+
+function xamanError(payload, fallback) {
+  const code = payload?.error?.code ?? payload?.code ?? null;
+  const reference = payload?.error?.reference ?? payload?.reference ?? null;
+  const details = [
+    code ? `code ${code}` : null,
+    reference ? `reference ${reference}` : null
+  ].filter(Boolean).join(', ');
+
+  const message = details
+    ? `${fallback} (${details}).`
+    : fallback;
+
+  return Object.assign(new Error(message), {
+    status: 502,
+    xamanCode: code,
+    xamanReference: reference
+  });
+}
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
@@ -27,38 +63,66 @@ export default async function handler(req, res) {
       });
     }
 
-    const apiKey = process.env.XAMAN_API_KEY;
-    const apiSecret = process.env.XAMAN_API_SECRET;
+    const apiKey = cleanCredential(process.env.XAMAN_API_KEY);
+    const apiSecret = cleanCredential(process.env.XAMAN_API_SECRET);
 
     if (!apiKey || !apiSecret) {
-      throw new Error('Xaman server environment variables are missing.');
+      return res.status(500).json({
+        error: 'Xaman server environment variables are missing.'
+      });
     }
 
-    const xumm = new XummSdk(apiKey, apiSecret);
+    const headers = {
+      'X-API-Key': apiKey,
+      'X-API-Secret': apiSecret,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
 
-    // Xaman custom identifiers must be unique. The previous implementation
-    // reused the same identifier for every attempt by the same user, which
-    // caused later wallet-link attempts to be rejected by Xaman.
-    const identifier = `atm-${user.id.slice(0, 8)}-${randomUUID()}`;
+    // Verify that the key/secret pair belongs to an active Xaman app before
+    // creating the sign request. This produces a useful error when Vercel has
+    // a wrong, disabled, quoted, or mismatched credential pair.
+    const pingResponse = await fetch(`${XAMAN_API_BASE}/ping`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store'
+    });
+    const ping = await readJson(pingResponse);
 
-    const created = await xumm.payload.create(
-      {
+    if (!pingResponse.ok) {
+      throw xamanError(
+        ping,
+        'Xaman rejected the ATM Town API credentials. Check that the API key and secret in Vercel are from the same Xaman application'
+      );
+    }
+
+    if (Number(ping?.application?.disabled) === 1) {
+      throw Object.assign(
+        new Error('The Xaman application connected to ATM Town is disabled in the Xaman Developer Console.'),
+        { status: 502 }
+      );
+    }
+
+    // Use the smallest officially documented wallet-identification request.
+    // No custom identifier, instruction, return URL, or optional fields are
+    // included, eliminating optional payload validation as a failure source.
+    const payloadResponse = await fetch(`${XAMAN_API_BASE}/payload`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
         txjson: {
           TransactionType: 'SignIn'
-        },
-        options: {
-          expire: 5
-        },
-        custom_meta: {
-          identifier,
-          instruction: 'Verify this XRPL wallet for your ATM Town account.'
         }
-      },
-      true
-    );
+      }),
+      cache: 'no-store'
+    });
+    const created = await readJson(payloadResponse);
 
-    if (!created?.uuid || !created?.next?.always) {
-      throw new Error('Xaman did not create a wallet verification request.');
+    if (!payloadResponse.ok || !created?.uuid || !created?.next?.always) {
+      throw xamanError(
+        created,
+        'Xaman rejected the minimal SignIn request. The Xaman Developer Console entry for this reference will identify the application-level cause'
+      );
     }
 
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
@@ -78,9 +142,15 @@ export default async function handler(req, res) {
       payload_uuid: created.uuid,
       deeplink: created.next.always,
       qr_png: created.refs?.qr_png || null,
-      expires_at: expiresAt
+      expires_at: expiresAt,
+      xaman_app: ping?.application?.name || null
     });
   } catch (error) {
-    sendError(res, error);
+    console.error('ATM Town Xaman link start failed:', error);
+    return res.status(error?.status || 500).json({
+      error: error?.message || 'Could not start Xaman wallet linking.',
+      xaman_code: error?.xamanCode || null,
+      xaman_reference: error?.xamanReference || null
+    });
   }
 }
