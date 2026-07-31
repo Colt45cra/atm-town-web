@@ -17,14 +17,19 @@ Run this checklist after every version before replacing the production build.
 - Collision prevents walking through blocked areas.
 - Stairs remain walkable and aligned.
 - Coins spawn, collect, and update the quest counter.
-- Town interaction points still show the correct prompts.
+- Blue entry regions open the correct building.
+- Red vending regions open the power-up vending panel.
+- Yellow miscellaneous regions show the correct location dialog.
 
 ## Interiors
 
-- ATM HQ entry/exit, collision, depth, interactions, and voice table work.
+- ATM HQ entry/exit, collision, and depth work.
+- HQ purple display, cyan ATM, yellow terminals, and green voice areas trigger correctly.
 - NFT Gallery entry/exit, collision, and depth work.
 - Arcade entry/exit, collision, and depth work.
-- Community Lounge entry/exit, collision, depth, authored interactions, and voice areas work.
+- Community Lounge entry/exit, collision, and depth work.
+- Lounge purple display, yellow arcade cabinet/games/jukebox regions, and green voice areas trigger correctly.
+- Lounge vending opens the vending panel rather than only showing a dialog.
 
 ## Player and controls
 
@@ -43,11 +48,9 @@ Run this checklist after every version before replacing the production build.
 - Remote interpolation is smooth.
 - Chat sends and displays.
 - Emotes and map synchronization remain intact.
-- Voice joins, mutes, leaves, and respects proximity.
+- Voice joins, mutes, leaves, and respects the authored green proximity areas.
 
 ## Automated checks
-
-Run:
 
 ```bash
 npm run validate

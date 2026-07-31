@@ -1,5 +1,35 @@
 # ATM Town Changelog
 
+## v159 — Shared Interaction Foundation
+
+### Interaction architecture
+
+- Added `js/interactions.js` as the shared interaction-mask module.
+- Centralized the standard interaction colors:
+  - Blue: entry/exit
+  - Red: vending
+  - Yellow: miscellaneous
+  - Purple: HTML display
+  - Cyan: ATM terminal
+  - Green: voice chat
+- Standardized the Lounge mask so games and the jukebox use the shared yellow miscellaneous color instead of map-only colors.
+- Added one cached mask reader, color classifier, nearby-pixel search, zone geometry helper set, and prompt generator.
+
+### Map migrations
+
+- Town now loads `ATM TOWN INTERACTION MAP(1).png` at runtime and uses it for entry, vending, and miscellaneous interaction detection.
+- ATM HQ now loads `Hq interaction zones(1).png` at runtime and uses it for HTML, ATM, miscellaneous, and green voice-chat areas.
+- Community Lounge now uses the same shared reader instead of maintaining a duplicate classifier and pixel-search implementation.
+- Cleaned `lounge-interaction.png` to four exact colors: black, purple, yellow, and green.
+- Legacy coordinate checks remain only as temporary loading fallbacks when an authored mask is not ready.
+- Vending interactions now dispatch through the same action behavior from any map.
+
+### Validation
+
+- Added the shared module and Town/HQ interaction masks to required-file validation.
+- Added checks for script order, all three shared mask readers, and removal of the Lounge's duplicate mask implementation.
+- Kept exact-color interaction masks as PNG files.
+
 ## v158 — Project Cleanup Foundation
 
 ### Structure

@@ -9,15 +9,18 @@ const requiredFiles = [
   'index.html',
   'js/config.js',
   'js/maps.js',
+  'js/interactions.js',
   'js/bootstrap.js',
   'town.webp',
   'town-night.webp',
   'town-blocked.png',
   'town-stairs.png',
   'town-lighting.webp',
+  'ATM TOWN INTERACTION MAP(1).png',
   'hq.webp',
   'hq-blocked.png',
   'hq-depth.png',
+  'Hq interaction zones(1).png',
   'gallery.webp',
   'gallery-blocked.png',
   'gallery-depth.png',
@@ -36,7 +39,7 @@ for (const file of requiredFiles) {
 }
 
 const html = await readFile(path.join(root, 'index.html'), 'utf8');
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/bootstrap.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/bootstrap.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -45,8 +48,25 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-for (const marker of ['ATM Town v158 — Project Cleanup Foundation', 'ATM TOWN · v158']) {
-  if (!html.includes(marker)) errors.push(`Missing v158 marker: ${marker}`);
+for (const marker of ['ATM Town v159 — Shared Interaction Foundation', 'ATM TOWN · v159']) {
+  if (!html.includes(marker)) errors.push(`Missing v159 marker: ${marker}`);
+}
+
+for (const runtimeMarker of [
+  'townInteractionReader=ATM_INTERACTIONS.createMaskReader',
+  'hqInteractionReader=ATM_INTERACTIONS.createMaskReader',
+  'loungeInteractionReader=ATM_INTERACTIONS.createMaskReader',
+  "if(t&&t.type==='vending'){openVending();return;}"
+]) {
+  if (!html.includes(runtimeMarker)) errors.push(`Missing shared interaction runtime marker: ${runtimeMarker}`);
+}
+
+for (const legacyMarker of [
+  'function classifyLoungeInteractionColor',
+  'const loungeInteractionMask=',
+  'function rebuildLoungeInteractionMask'
+]) {
+  if (html.includes(legacyMarker)) errors.push(`Legacy duplicate interaction logic remains: ${legacyMarker}`);
 }
 
 const tempDirectory = await mkdtemp(path.join(os.tmpdir(), 'atm-town-validate-'));
@@ -61,6 +81,7 @@ try {
   const syntaxTargets = [
     path.join(root, 'js', 'config.js'),
     path.join(root, 'js', 'maps.js'),
+    path.join(root, 'js', 'interactions.js'),
     path.join(root, 'js', 'bootstrap.js'),
     inlinePath
   ];
@@ -79,5 +100,5 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('ATM Town v158 build validation passed.');
-console.log(`Checked ${requiredFiles.length} required runtime files, module order, version markers, and JavaScript syntax.`);
+console.log('ATM Town v159 build validation passed.');
+console.log(`Checked ${requiredFiles.length} required runtime files, shared interaction module order, version markers, migration markers, and JavaScript syntax.`);

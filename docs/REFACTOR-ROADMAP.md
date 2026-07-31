@@ -1,22 +1,23 @@
 # ATM Town Incremental Refactor Roadmap
 
-## v158 — Project Cleanup Foundation
+## v158 — Project Cleanup Foundation — Complete
 
-- Add `js/`, `docs/`, `scripts/`, and asset migration staging.
-- Extract build configuration, map metadata, map helpers, safe storage, and Supabase library bootstrap.
-- Add repeatable build validation and asset auditing.
-- Preserve all gameplay and root asset URLs.
+- Added `js/`, `docs/`, `scripts/`, and asset migration staging.
+- Extracted build configuration, map metadata, map helpers, safe storage, and Supabase library bootstrap.
+- Added repeatable build validation and asset auditing.
 
-## v159 — Shared Interaction Foundation
+## v159 — Shared Interaction Foundation — Complete
 
-- Extract interaction color definitions and shared pixel-color classification.
-- Create a common interaction result shape.
-- Keep existing map-specific actions while routing detection through shared helpers.
+- Extracted interaction color definitions and shared pixel-color classification.
+- Added a common cached mask reader and interaction result helpers.
+- Migrated Town, ATM HQ, and Community Lounge detection to the shared system.
+- Preserved map-specific actions and temporary load-time fallbacks.
 
 ## v160 — Map Registry Integration
 
-- Move remaining map labels, spawn settings, zoom settings, return points, and mask metadata into the registry.
-- Remove duplicated map-selection condition chains where behavior is identical.
+- Move remaining map zoom settings, return behavior, and mask/runtime metadata into the registry.
+- Replace duplicated map-selection condition chains where behavior is identical.
+- Define a clear enter/exit interface that minigames can reuse.
 
 ## v161 — Asset Path Migration: Interiors
 

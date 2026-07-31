@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v158: first low-risk extraction from the legacy monolithic index.html.
+ * v159: shared interaction-mask foundation for Town, HQ, and Community Lounge.
  * Keep this file data-only. Runtime behavior belongs in the appropriate module.
  */
 (function initializeATMTownConfig(global) {
@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 158,
-    version: 'v158',
-    name: 'Project Cleanup Foundation',
-    title: 'ATM Town v158 — Project Cleanup Foundation'
+    number: 159,
+    version: 'v159',
+    name: 'Shared Interaction Foundation',
+    title: 'ATM Town v159 — Shared Interaction Foundation'
   });
 
   const MAPS = Object.freeze({
