@@ -14,6 +14,7 @@ ATM Town is an HTML5 Canvas browser game with a large legacy runtime in `index.h
 2. `js/maps.js`
    - Validated map lookup helpers
    - Asset, world size, pixel size, spawn, and label accessors
+   - Runtime entry zoom/direction, entrance lookup, exit targets, and Town return rules
 3. `js/interactions.js`
    - Standard color-to-interaction contract
    - Cached authored-mask reader
@@ -48,7 +49,7 @@ Cyan    ATM terminal
 Green   voice chat
 ```
 
-Town, ATM HQ, and Community Lounge use this shared reader. Gallery and Arcade currently use doorway exit fallbacks because they do not yet have authored interaction masks.
+Town, ATM HQ, and Community Lounge use this shared reader. Gallery and Arcade currently use registry-based doorway exit fallbacks because they do not yet have authored interaction masks.
 
 The interaction module detects a type. Map-specific metadata still supplies the location name, description, destination, or feature action. This separation prevents duplicated color-reading code while preserving current gameplay.
 
@@ -72,6 +73,10 @@ The interaction module detects a type. Map-specific metadata still supplies the 
 
 Only one dependency group should be extracted per version. The game must remain deployable after every extraction. No system is removed merely because it appears unused; usage must be verified first.
 
+## Map runtime contract
+
+Each registered map now defines its entry spawn, entry direction, entry zoom, Town entrance ID, exit target, and Town return rule. The inline engine asks `ATMMaps.runtime()` for these settings rather than maintaining parallel constants and condition chains. Town keeps a user-saved zoom; interior maps use authored defaults.
+
 ## Next recommended extraction
 
-v160 should consolidate map runtime settings and repeated map-selection chains through the registry before assets are physically moved.
+v161 should move one interior map's runtime assets into `assets/maps/<map>/` by changing registry paths only.

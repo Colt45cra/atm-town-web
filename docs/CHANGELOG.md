@@ -1,5 +1,29 @@
 # ATM Town Changelog
 
+## v160 — Map Runtime Registry
+
+### Map runtime architecture
+
+- Moved interior entry zoom, spawn direction, entrance IDs, exit targets, and Town return rules into `js/config.js`.
+- Added registry helpers for runtime settings, interior detection, entrance lookup, exit targets, and Town return points.
+- Replaced repeated map-selection chains for camera bounds and map dimensions with `ATMMaps.pixelSize()`.
+- Replaced four hardcoded Town-building entry branches with one registry lookup.
+- Replaced repeated interior exit coordinates with one shared exit helper based on each map's registered spawn.
+
+### Requested entry zooms
+
+- NFT Art Gallery enters at 60%.
+- ATM Token Arcade enters at 60%.
+- ATM HQ enters at 60%.
+- Community Lounge enters at 70%.
+- Town continues to restore the player's saved Town zoom.
+
+### Compatibility
+
+- Preserved all existing spawn coordinates, map labels, collision/depth systems, multiplayer map IDs, and return locations.
+- Preserved the Arcade's special Town return Y position of 700 through registry metadata.
+- Kept Gallery and Arcade doorway exit fallbacks until authored interaction masks are added.
+
 ## v159 — Shared Interaction Foundation
 
 ### Interaction architecture

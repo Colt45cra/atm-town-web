@@ -1,0 +1,26 @@
+ATM Town v160 — Map Runtime Registry
+
+CHANGED RUNTIME FILES
+- index.html
+- js/config.js
+- js/maps.js
+
+REQUESTED ENTRY ZOOMS
+- NFT Art Gallery: 60%
+- ATM Token Arcade: 60%
+- ATM HQ: 60%
+- Community Lounge: 70%
+- Town: preserves the player's saved zoom
+
+ORGANIZATIONAL CHANGES
+- Map entry zoom, spawn direction, entrance ID, exit target, and Town return behavior now live in the shared registry.
+- One registry lookup now routes Town building entrances.
+- One shared helper now creates interior exit interactions.
+- Camera and movement bounds now use registered pixel dimensions instead of repeated map-selection chains.
+- Arcade's existing special return position is preserved in registry metadata.
+
+UPLOAD
+Upload every file from the v160 Changed Files package while preserving folders. This is not an index-only update.
+
+VALIDATION
+Run npm run validate after extraction. Then test every interior's entry zoom, entry/exit, collision, depth, and Town return point after Vercel deploys.

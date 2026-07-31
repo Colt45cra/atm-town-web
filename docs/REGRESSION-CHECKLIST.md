@@ -23,11 +23,11 @@ Run this checklist after every version before replacing the production build.
 
 ## Interiors
 
-- ATM HQ entry/exit, collision, and depth work.
+- ATM HQ enters at 60% zoom; entry/exit, collision, and depth work.
 - HQ purple display, cyan ATM, yellow terminals, and green voice areas trigger correctly.
-- NFT Gallery entry/exit, collision, and depth work.
-- Arcade entry/exit, collision, and depth work.
-- Community Lounge entry/exit, collision, and depth work.
+- NFT Gallery enters at 60% zoom; entry/exit, collision, and depth work.
+- Arcade enters at 60% zoom; entry/exit, collision, and depth work.
+- Community Lounge enters at 70% zoom; entry/exit, collision, and depth work.
 - Lounge purple display, yellow arcade cabinet/games/jukebox regions, and green voice areas trigger correctly.
 - Lounge vending opens the vending panel rather than only showing a dialog.
 

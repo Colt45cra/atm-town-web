@@ -4,9 +4,9 @@ ATM Town is a lightweight browser-based multiplayer social game built with HTML5
 
 ## Current version
 
-**v159 — Shared Interaction Foundation**
+**v160 — Map Runtime Registry**
 
-This version continues the incremental move away from a monolithic `index.html` without rewriting the game. Town, ATM HQ, and the Community Lounge now read authored interaction-mask colors through one shared module.
+This version moves map entry zoom, spawn direction, entrance IDs, exit targets, Town return rules, labels, and pixel dimensions behind the shared map registry without rewriting gameplay.
 
 ## Project structure
 
@@ -14,7 +14,7 @@ This version continues the incremental move away from a monolithic `index.html` 
 index.html              Existing game runtime and UI
 api/                    Vercel serverless endpoints
 js/config.js            Build and map configuration
-js/maps.js              Map registry helpers
+js/maps.js              Map registry and reusable enter/exit/runtime helpers
 js/interactions.js      Shared interaction colors, mask readers, hints, and zone helpers
 js/bootstrap.js         Startup, storage, and Supabase loader helpers
 scripts/                Repeatable validation and asset-audit tools
@@ -41,6 +41,6 @@ npm run audit:assets
 
 ## Deployment
 
-The repository is Vercel-ready. Commit the complete v159 structure, including the new `js/interactions.js` file. Replacing only `index.html` will prevent the game from starting.
+The repository is Vercel-ready. Commit the complete v160 changed-file structure, including `index.html`, `js/config.js`, and `js/maps.js`. Replacing only `index.html` will leave the registry out of sync.
 
 See `docs/REGRESSION-CHECKLIST.md` before replacing production.

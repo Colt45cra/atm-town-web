@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v159: shared interaction-mask foundation for Town, HQ, and Community Lounge.
+ * v160: map entry, exit, zoom, spawn, and runtime settings live in one registry.
  * Keep this file data-only. Runtime behavior belongs in the appropriate module.
  */
 (function initializeATMTownConfig(global) {
@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 159,
-    version: 'v159',
-    name: 'Shared Interaction Foundation',
-    title: 'ATM Town v159 — Shared Interaction Foundation'
+    number: 160,
+    version: 'v160',
+    name: 'Map Runtime Registry',
+    title: 'ATM Town v160 — Map Runtime Registry'
   });
 
   const MAPS = Object.freeze({
@@ -21,6 +21,12 @@
       label: 'ATM TOWN',
       world: Object.freeze({ w: 65, h: 90 }),
       entrySpawn: Object.freeze({ x: 1560, y: 3850 }),
+      entryDirection: 'up',
+      entryZoom: null,
+      interior: false,
+      entranceId: null,
+      exitTarget: null,
+      townReturn: null,
       assets: Object.freeze({
         visual: 'town.webp',
         nightVisual: 'town-night.webp',
@@ -35,6 +41,12 @@
       label: 'ATM HQ',
       world: Object.freeze({ w: 32, h: 32 }),
       entrySpawn: Object.freeze({ x: (32 * TILE_SIZE) / 2, y: (32 * TILE_SIZE) - 32 }),
+      entryDirection: 'up',
+      entryZoom: 0.60,
+      interior: true,
+      entranceId: 'hq',
+      exitTarget: 'town',
+      townReturn: Object.freeze({ mode: 'doorOffset', x: 0, y: 165 }),
       assets: Object.freeze({
         visual: 'hq.webp',
         collision: 'hq-blocked.png',
@@ -47,6 +59,12 @@
       label: 'NFT ART GALLERY',
       world: Object.freeze({ w: 33, h: 11 }),
       entrySpawn: Object.freeze({ x: (33 * TILE_SIZE) / 2, y: 454 }),
+      entryDirection: 'up',
+      entryZoom: 0.60,
+      interior: true,
+      entranceId: 'nftmega',
+      exitTarget: 'town',
+      townReturn: Object.freeze({ mode: 'doorOffset', x: 0, y: 165 }),
       assets: Object.freeze({
         visual: 'gallery.webp',
         collision: 'gallery-blocked.png',
@@ -59,6 +77,12 @@
       world: Object.freeze({ w: 1254 / TILE_SIZE, h: 1254 / TILE_SIZE }),
       pixelSize: Object.freeze({ w: 1254, h: 1254 }),
       entrySpawn: Object.freeze({ x: 627, y: 1165 }),
+      entryDirection: 'up',
+      entryZoom: 0.60,
+      interior: true,
+      entranceId: 'arcade',
+      exitTarget: 'town',
+      townReturn: Object.freeze({ mode: 'fixedY', y: 700 }),
       assets: Object.freeze({
         visual: 'arcade.webp',
         collision: 'arcade-blocked.png',
@@ -71,6 +95,12 @@
       world: Object.freeze({ w: 1254 / TILE_SIZE, h: 1254 / TILE_SIZE }),
       pixelSize: Object.freeze({ w: 1254, h: 1254 }),
       entrySpawn: Object.freeze({ x: 627, y: 1140 }),
+      entryDirection: 'up',
+      entryZoom: 0.70,
+      interior: true,
+      entranceId: 'gameLounge',
+      exitTarget: 'town',
+      townReturn: Object.freeze({ mode: 'doorOffset', x: 0, y: 165 }),
       assets: Object.freeze({
         visual: 'lounge.png',
         collision: 'lounge-blocked.png',

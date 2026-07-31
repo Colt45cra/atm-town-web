@@ -13,11 +13,11 @@
 - Migrated Town, ATM HQ, and Community Lounge detection to the shared system.
 - Preserved map-specific actions and temporary load-time fallbacks.
 
-## v160 — Map Registry Integration
+## v160 — Map Runtime Registry — Complete
 
-- Move remaining map zoom settings, return behavior, and mask/runtime metadata into the registry.
-- Replace duplicated map-selection condition chains where behavior is identical.
-- Define a clear enter/exit interface that minigames can reuse.
+- Moved map zoom settings, entry direction, entrance IDs, exit targets, and return behavior into the registry.
+- Replaced duplicated map-selection condition chains for entry dispatch and camera/world sizing.
+- Added a reusable runtime and enter/exit interface that future minigames can use.
 
 ## v161 — Asset Path Migration: Interiors
 
