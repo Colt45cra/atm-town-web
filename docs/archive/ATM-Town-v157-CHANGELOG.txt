@@ -1,0 +1,25 @@
+ATM Town v157 — Town Night Depth Rendering Fix
+
+Fixed
+- Restored depth-sorted foreground rendering on the main Town map during nighttime.
+- Characters and remote players now correctly pass behind buildings, trees, signs, lamps, and other authored foreground objects at night.
+- Daytime depth sorting remains unchanged.
+
+Root cause
+- The night foreground loader requested .webp files, but the repository contains the authored night foreground pieces as transparent .png files.
+- The night lookup map was keyed by the night filename while the renderer searched with the daytime filename, so no matching night foreground object could be found.
+- At full night, daytime foreground pieces faded to zero before a valid night foreground piece was available, making every building render beneath the player.
+
+Engine safeguards
+- Night foreground pieces are now keyed to their matching daytime source while retaining the same authored x, y, size, and depth values.
+- The daytime foreground piece remains fully visible until its night counterpart has finished loading. This prevents temporary depth failures on slower connections.
+- Day and night foreground pieces crossfade at the same depth position.
+
+Version
+- Updated the page title and in-game map version label from v156 to v157.
+
+Validation
+- Inline JavaScript passed Node syntax validation.
+- Verified all 51 daytime foreground definitions have matching night PNG assets.
+- Verified all 102 day/night foreground files open successfully, retain alpha-capable formats, and match their authored dimensions.
+- Local browser execution was blocked by the environment's page-navigation policy, so a final deployed visual check is still recommended.
