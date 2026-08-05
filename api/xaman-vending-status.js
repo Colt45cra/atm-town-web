@@ -1,11 +1,21 @@
 import { setCors, requireUser, sendError } from './_auth.js';
 
-const XRPL_RPC_URL = String(process.env.XRPL_RPC_URL || 'https://s1.ripple.com:51234/').trim();
 const ATM_CURRENCY = 'ATM';
 const ATM_ISSUER = 'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ';
 const ATM_DESTINATION = 'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB';
 const POWER_SECONDS_PER_CAN = 30;
-const TF_PARTIAL_PAYMENT = 0x00020000;
+const LEGACY_DELIVERY_CUTOFF = Date.parse('2026-08-06T00:00:00.000Z');
+const LEGACY_RECOVERY_MARKER = 'v214-legacy-credit-acknowledged';
+const RIPPLE_EPOCH_OFFSET_SECONDS = 946684800;
+
+function rpcEndpoints() {
+  return [...new Set([
+    String(process.env.XRPL_RPC_URL || '').trim(),
+    'https://xrplcluster.com/',
+    'https://s1.ripple.com:51234/',
+    'https://s2.ripple.com:51234/'
+  ].filter(Boolean))];
+}
 
 async function readJson(response) {
   const text = await response.text();
@@ -13,122 +23,203 @@ async function readJson(response) {
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-function exactNumber(value, expected) {
-  const text = String(value ?? '').trim();
-  if (!/^-?\d+(?:\.\d+)?$/.test(text)) return false;
-  return Number(text) === Number(expected);
+function normalizeCurrency(value) {
+  const input = String(value || '').toUpperCase();
+  if (/^[A-F0-9]{40}$/.test(input)) {
+    try {
+      const decoded = Buffer.from(input, 'hex').toString('ascii').replace(/\0+$/g, '');
+      return decoded || input;
+    } catch { return input; }
+  }
+  return input;
+}
+
+function normalizeDecimal(value) {
+  const input = String(value ?? '').trim();
+  if (!/^-?\d+(?:\.\d+)?$/.test(input)) return null;
+  const negative = input.startsWith('-');
+  const unsigned = negative ? input.slice(1) : input;
+  let [whole, fraction = ''] = unsigned.split('.');
+  whole = whole.replace(/^0+(?=\d)/, '') || '0';
+  fraction = fraction.replace(/0+$/, '');
+  const normalized = fraction ? `${whole}.${fraction}` : whole;
+  return negative && normalized !== '0' ? `-${normalized}` : normalized;
 }
 
 function exactAtmAmount(amount, expected) {
   return !!amount && typeof amount === 'object' &&
-    String(amount.currency || '') === ATM_CURRENCY &&
+    normalizeCurrency(amount.currency) === ATM_CURRENCY &&
     String(amount.issuer || '') === ATM_ISSUER &&
-    exactNumber(amount.value, expected);
+    normalizeDecimal(amount.value) === normalizeDecimal(expected);
 }
 
 function transactionParts(entry) {
   const tx = entry?.tx_json || entry?.tx || entry?.transaction || {};
   const meta = entry?.meta || entry?.metaData || entry?.metadata || {};
-  const hash = String(
-    entry?.hash || tx?.hash || tx?.Hash || entry?.tx_hash || ''
-  ).toUpperCase();
-  return { tx, meta, hash, validated: entry?.validated !== false };
+  const hash = String(entry?.hash || tx?.hash || tx?.Hash || entry?.tx_hash || '').toUpperCase();
+  const closeTime = Number.isFinite(Date.parse(entry?.close_time_iso || ''))
+    ? Date.parse(entry.close_time_iso)
+    : Number.isFinite(Number(tx?.date))
+      ? (Number(tx.date) + RIPPLE_EPOCH_OFFSET_SECONDS) * 1000
+      : 0;
+  return { tx, meta, hash, closeTime, validated: entry?.validated !== false };
+}
+
+async function requestAccountTx(endpoint, marker = null) {
+  const params = {
+    account: ATM_DESTINATION,
+    ledger_index_min: -1,
+    ledger_index_max: -1,
+    binary: false,
+    forward: false,
+    limit: 200
+  };
+  if (marker) params.marker = marker;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 'atm-town-vending-status',
+      method: 'account_tx',
+      params: [params],
+      api_version: 2
+    })
+  });
+  const payload = await readJson(response);
+  if (!response.ok) throw new Error(`XRPL account transaction lookup failed (${response.status}).`);
+  const result = payload?.result || {};
+  if (result.status === 'error' || result.error) {
+    throw new Error(result.error_message || result.error || 'XRPL account transaction lookup failed.');
+  }
+  return result;
 }
 
 async function fetchRecentDestinationTransactions() {
-  const response = await fetch(XRPL_RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    cache: 'no-store',
-    body: JSON.stringify({
-      method: 'account_tx',
-      params: [{
-        account: ATM_DESTINATION,
-        ledger_index_min: -1,
-        ledger_index_max: -1,
-        binary: false,
-        forward: false,
-        limit: 200
-      }]
-    })
-  });
-
-  const payload = await readJson(response);
-  if (!response.ok) {
-    throw Object.assign(new Error(`XRPL account transaction lookup failed (${response.status}).`), { status: 502 });
+  let lastError = null;
+  for (const endpoint of rpcEndpoints()) {
+    try {
+      const entries = [];
+      let marker = null;
+      for (let page = 0; page < 3; page += 1) {
+        const result = await requestAccountTx(endpoint, marker);
+        if (Array.isArray(result.transactions)) entries.push(...result.transactions);
+        marker = result.marker || null;
+        if (!marker || entries.length >= 500) break;
+      }
+      return entries;
+    } catch (error) {
+      lastError = error;
+      console.warn(`XRPL endpoint failed (${endpoint}):`, error?.message || error);
+    }
   }
+  throw Object.assign(lastError || new Error('All XRPL transaction lookup servers failed.'), { status: 502 });
+}
 
-  const result = payload?.result || {};
-  if (result.status === 'error' || result.error) {
-    throw Object.assign(
-      new Error(result.error_message || result.error || 'XRPL account transaction lookup failed.'),
-      { status: 502 }
-    );
-  }
+function paymentCandidate(entry, request) {
+  const { tx, meta, hash, closeTime, validated } = transactionParts(entry);
+  if (!validated || !tx || typeof tx !== 'object') return null;
+  if (String(tx.TransactionType || '') !== 'Payment') return null;
+  if (String(tx.Account || '') !== String(request.expected_wallet || '')) return null;
+  if (String(tx.Destination || '') !== ATM_DESTINATION) return null;
+  if (String(meta.TransactionResult || entry?.engine_result || '') !== 'tesSUCCESS') return null;
+  if (!/^[A-F0-9]{64}$/.test(hash)) return null;
 
-  return Array.isArray(result.transactions) ? result.transactions : [];
+  const deliveredAmount = meta.delivered_amount ?? meta.DeliveredAmount ?? null;
+  if (!exactAtmAmount(deliveredAmount, request.total_amount)) return null;
+
+  const createdAt = Date.parse(request.created_at || '') || 0;
+  const expiresAt = Date.parse(request.expires_at || '') || (createdAt + 30 * 60 * 1000);
+  if (closeTime && (closeTime < createdAt - 2 * 60 * 1000 || closeTime > expiresAt + 30 * 60 * 1000)) return null;
+
+  const invoice = String(tx.InvoiceID || tx.invoice_id || '').toUpperCase();
+  const expectedInvoice = String(request.invoice_id || '').toUpperCase();
+  return {
+    hash,
+    closeTime,
+    invoiceMatches: !!invoice && invoice === expectedInvoice,
+    invoicePresent: !!invoice,
+    ledgerIndex: entry?.ledger_index || tx?.ledger_index || null,
+    payerWallet: String(tx.Account || '')
+  };
 }
 
 function findMatchingPayment(entries, request) {
-  const expectedTotal = Number(request.total_amount);
-  const expectedInvoice = String(request.invoice_id || '').toUpperCase();
+  const candidates = entries.map(entry => paymentCandidate(entry, request)).filter(Boolean);
+  const strict = candidates.find(candidate => candidate.invoiceMatches);
+  if (strict) return { ...strict, matchType: 'invoice' };
 
-  for (const entry of entries) {
-    const { tx, meta, hash, validated } = transactionParts(entry);
-    if (!validated || !tx || typeof tx !== 'object') continue;
-    if (String(tx.TransactionType || '') !== 'Payment') continue;
-    if (String(tx.InvoiceID || '').toUpperCase() !== expectedInvoice) continue;
-    if (String(tx.Account || '') !== String(request.expected_wallet || '')) continue;
-    if (String(tx.Destination || '') !== ATM_DESTINATION) continue;
-
-    const resultCode = String(meta.TransactionResult || entry?.engine_result || '');
-    if (resultCode !== 'tesSUCCESS') continue;
-
-    const requestedAmount = tx.Amount || tx.DeliverMax;
-    const deliveredAmount = meta.delivered_amount || meta.DeliveredAmount || null;
-    const flags = Number(tx.Flags || 0);
-
-    const requestedCorrect = exactAtmAmount(requestedAmount, expectedTotal);
-    const deliveredCorrect = deliveredAmount
-      ? exactAtmAmount(deliveredAmount, expectedTotal)
-      : requestedCorrect && (flags & TF_PARTIAL_PAYMENT) === 0;
-
-    if (!requestedCorrect || !deliveredCorrect) continue;
-    if (!/^[A-F0-9]{64}$/.test(hash)) continue;
-
-    return {
-      hash,
-      ledgerIndex: entry?.ledger_index || tx?.ledger_index || null,
-      payerWallet: String(tx.Account || '')
-    };
-  }
-
-  return null;
+  // Xaman payment-request links can pathfind and transaction serializers may omit
+  // the optional InvoiceID. The fallback remains constrained to the verified payer,
+  // receiver, exact delivered ATM amount, successful result, and checkout time window.
+  const createdAt = Date.parse(request.created_at || '') || 0;
+  const fallback = candidates
+    .filter(candidate => !candidate.invoicePresent)
+    .sort((a, b) => Math.abs((a.closeTime || createdAt) - createdAt) - Math.abs((b.closeTime || createdAt) - createdAt))[0];
+  return fallback ? { ...fallback, matchType: 'wallet-amount-time' } : null;
 }
 
-async function deliverGrant(admin, request) {
-  if (request.delivered_at) return 0;
-  const now = new Date().toISOString();
-  const { data, error } = await admin
+function grantResponse(request, extra = {}) {
+  const legacyRecovery = !!request.delivered_at &&
+    Date.parse(request.delivered_at) < LEGACY_DELIVERY_CUTOFF &&
+    String(request.failure_reason || '') !== LEGACY_RECOVERY_MARKER;
+  const canGrant = !request.delivered_at || legacyRecovery;
+  return {
+    status: 'paid',
+    quantity: request.quantity,
+    total: request.total_amount,
+    currency: request.currency,
+    tx_hash: request.tx_hash,
+    ledger_index: request.ledger_index,
+    grant_seconds: canGrant ? Number(request.quantity) * POWER_SECONDS_PER_CAN : 0,
+    requires_acknowledgement: canGrant,
+    legacy_recovery: legacyRecovery,
+    ...extra
+  };
+}
+
+async function acknowledgeGrant(admin, userId, lookupId) {
+  const { data: request, error } = await admin
     .from('vending_payment_requests')
-    .update({ delivered_at: now })
-    .eq('id', request.id)
-    .is('delivered_at', null)
-    .select('id')
-    .maybeSingle();
-  if (error) throw error;
-  return data ? Number(request.quantity) * POWER_SECONDS_PER_CAN : 0;
+    .select('*')
+    .eq('payload_uuid', lookupId)
+    .eq('user_id', userId)
+    .single();
+  if (error || !request) return { status: 404, body: { error: 'Magnet Can payment request not found.' } };
+  if (request.status !== 'paid') return { status: 409, body: { error: 'The payment is not confirmed yet.' } };
+
+  const legacyRecovery = !!request.delivered_at &&
+    Date.parse(request.delivered_at) < LEGACY_DELIVERY_CUTOFF &&
+    String(request.failure_reason || '') !== LEGACY_RECOVERY_MARKER;
+  const update = legacyRecovery
+    ? { failure_reason: LEGACY_RECOVERY_MARKER, delivered_at: new Date().toISOString() }
+    : { delivered_at: new Date().toISOString() };
+  const { error: updateError } = await admin
+    .from('vending_payment_requests')
+    .update(update)
+    .eq('id', request.id);
+  if (updateError) throw updateError;
+  return { status: 200, body: { acknowledged: true, payload_uuid: lookupId } };
 }
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
-    return res.status(405).json({ error: 'GET required.' });
+  if (!['GET', 'POST'].includes(req.method)) {
+    res.setHeader('Allow', 'GET, POST');
+    return res.status(405).json({ error: 'GET or POST required.' });
   }
 
   try {
     const { admin, user } = await requireUser(req);
+
+    if (req.method === 'POST') {
+      const lookupId = String(req.body?.payload_uuid || '');
+      if (!/^[0-9a-f-]{36}$/i.test(lookupId)) return res.status(400).json({ error: 'A valid payment request ID is required.' });
+      const result = await acknowledgeGrant(admin, user.id, lookupId);
+      return res.status(result.status).json(result.body);
+    }
+
     const lookupId = String(req.query?.payload_uuid || '');
     if (!/^[0-9a-f-]{36}$/i.test(lookupId)) {
       return res.status(400).json({ error: 'A valid payment request ID is required.' });
@@ -144,18 +235,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Magnet Can payment request not found.' });
     }
 
-    if (request.status === 'paid') {
-      const grantSeconds = await deliverGrant(admin, request);
-      return res.status(200).json({
-        status: 'paid',
-        quantity: request.quantity,
-        total: request.total_amount,
-        currency: request.currency,
-        tx_hash: request.tx_hash,
-        grant_seconds: grantSeconds
-      });
-    }
-
+    if (request.status === 'paid') return res.status(200).json(grantResponse(request));
     if (request.status === 'failed' || request.status === 'rejected') {
       return res.status(200).json({ status: request.status, error: request.failure_reason || null });
     }
@@ -184,9 +264,7 @@ export default async function handler(req, res) {
       .eq('tx_hash', payment.hash)
       .neq('id', request.id)
       .maybeSingle();
-    if (reused) {
-      return res.status(200).json({ status: 'failed', error: 'That transaction has already been used.' });
-    }
+    if (reused) return res.status(200).json({ status: 'failed', error: 'That transaction has already been used.' });
 
     const now = new Date().toISOString();
     const { data: paidRow, error: paidError } = await admin
@@ -205,16 +283,7 @@ export default async function handler(req, res) {
       .single();
     if (paidError) throw paidError;
 
-    const grantSeconds = await deliverGrant(admin, paidRow);
-    return res.status(200).json({
-      status: 'paid',
-      quantity: paidRow.quantity,
-      total: paidRow.total_amount,
-      currency: paidRow.currency,
-      tx_hash: payment.hash,
-      ledger_index: payment.ledgerIndex,
-      grant_seconds: grantSeconds
-    });
+    return res.status(200).json(grantResponse(paidRow, { match_type: payment.matchType }));
   } catch (error) {
     console.error('ATM Town Magnet payment status failed:', error);
     sendError(res, error);
