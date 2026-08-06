@@ -103,7 +103,8 @@ export default async function handler(req, res) {
       .digest('hex')
       .toUpperCase();
     const total = quantity * UNIT_PRICE;
-    const expiresAt = new Date(Date.now() + PAYMENT_WINDOW_MINUTES * 60 * 1000).toISOString();
+    const createdAt = new Date().toISOString();
+    const expiresAt = new Date(Date.parse(createdAt) + PAYMENT_WINDOW_MINUTES * 60 * 1000).toISOString();
     const deeplink = buildXamanPaymentLink({ total, invoiceId });
 
     // payload_uuid remains the public lookup key expected by the existing game UI.
@@ -122,6 +123,7 @@ export default async function handler(req, res) {
       expected_wallet: payerWallet,
       invoice_id: invoiceId,
       status: 'pending',
+      created_at: createdAt,
       expires_at: expiresAt
     });
     if (insertError) throw insertError;
@@ -136,6 +138,7 @@ export default async function handler(req, res) {
       unit_price: UNIT_PRICE,
       total,
       currency: ATM_CURRENCY,
+      created_at: createdAt,
       expires_at: expiresAt,
       payment_method: 'xaman-direct-request'
     });

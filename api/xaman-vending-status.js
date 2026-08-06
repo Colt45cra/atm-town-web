@@ -4,12 +4,20 @@ const ATM_CURRENCY = 'ATM';
 const ATM_ISSUER = 'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ';
 const ATM_DESTINATION = 'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB';
 const POWER_SECONDS_PER_CAN = 30;
-const LEGACY_DELIVERY_CUTOFF = Date.parse('2026-08-06T00:00:00.000Z');
-const LEGACY_RECOVERY_MARKER = 'v214-legacy-credit-acknowledged';
+// v215 could acknowledge a paid row before the browser actually applied the reward.
+// Limit that one-time repair to exact locally retained purchase IDs created before v216.
+const LEGACY_DELIVERY_CUTOFF = Date.parse('2026-08-06T20:00:00.000Z');
+const LEGACY_RECOVERY_MARKER = 'v216-pre-ack-credit-recovered';
+const LEGACY_RECOVERY_MARKERS = new Set([
+  'v214-legacy-credit-acknowledged',
+  LEGACY_RECOVERY_MARKER
+]);
 const RIPPLE_EPOCH_OFFSET_SECONDS = 946684800;
 const TF_PARTIAL_PAYMENT = 0x00020000;
 const STRICT_INVOICE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-const FALLBACK_WINDOW_MS = 3 * 60 * 60 * 1000;
+const FALLBACK_WINDOW_MS = 90 * 60 * 1000;
+const LEDGER_FRESHNESS_GRACE_MS = 5 * 60 * 1000;
+const AMOUNT_ROUNDING_TOLERANCE = 1e-9;
 
 function rpcEndpoints() {
   return [...new Set([
@@ -49,11 +57,18 @@ function normalizeDecimal(value) {
   return negative && normalized !== '0' ? `-${normalized}` : normalized;
 }
 
-function exactAtmAmount(amount, expected) {
-  return !!amount && typeof amount === 'object' &&
-    normalizeCurrency(amount.currency) === ATM_CURRENCY &&
-    String(amount.issuer || '') === ATM_ISSUER &&
-    normalizeDecimal(amount.value) === normalizeDecimal(expected);
+function atmAmountMatch(amount, expected) {
+  if (!amount || typeof amount !== 'object') return null;
+  if (normalizeCurrency(amount.currency) !== ATM_CURRENCY) return null;
+  if (String(amount.issuer || '') !== ATM_ISSUER) return null;
+  const actualText = normalizeDecimal(amount.value);
+  const expectedText = normalizeDecimal(expected);
+  if (actualText === null || expectedText === null) return null;
+  if (actualText === expectedText) return 'exact';
+  const actual = Number(actualText);
+  const target = Number(expectedText);
+  if (!Number.isFinite(actual) || !Number.isFinite(target)) return null;
+  return Math.abs(actual - target) <= AMOUNT_ROUNDING_TOLERANCE ? 'rounded' : null;
 }
 
 function transactionParts(entry) {
@@ -85,7 +100,7 @@ async function requestAccountTx(endpoint, marker = null) {
     cache: 'no-store',
     body: JSON.stringify({
       jsonrpc: '2.0',
-      id: 'atm-town-vending-status-v215',
+      id: 'atm-town-vending-status-v216',
       method: 'account_tx',
       params: [params]
     })
@@ -99,24 +114,45 @@ async function requestAccountTx(endpoint, marker = null) {
   return result;
 }
 
-async function fetchRecentDestinationTransactions() {
+async function fetchRecentDestinationTransactions(sinceMs = 0) {
   let lastError = null;
+  let successfulEndpoint = false;
+  const collected = new Map();
+
   for (const endpoint of rpcEndpoints()) {
     try {
-      const entries = [];
+      const endpointEntries = [];
       let marker = null;
       for (let page = 0; page < 5; page += 1) {
         const result = await requestAccountTx(endpoint, marker);
-        if (Array.isArray(result.transactions)) entries.push(...result.transactions);
+        if (Array.isArray(result.transactions)) endpointEntries.push(...result.transactions);
         marker = result.marker || null;
-        if (!marker || entries.length >= 800) break;
+        if (!marker || endpointEntries.length >= 800) break;
       }
-      return entries;
+      successfulEndpoint = true;
+      for (const entry of endpointEntries) {
+        const { hash } = transactionParts(entry);
+        const key = hash || JSON.stringify(entry);
+        if (!collected.has(key)) collected.set(key, entry);
+      }
+
+      const newestCloseTime = endpointEntries.reduce((latest, entry) => {
+        const { closeTime } = transactionParts(entry);
+        return Math.max(latest, closeTime || 0);
+      }, 0);
+      // Do not trust an empty or obviously stale first server; continue to the
+      // next public XRPL endpoint before declaring a still-pending payment.
+      if (endpointEntries.length && (!sinceMs || newestCloseTime >= sinceMs - LEDGER_FRESHNESS_GRACE_MS)) {
+        return [...collected.values()];
+      }
     } catch (error) {
       lastError = error;
       console.warn(`XRPL endpoint failed (${endpoint}):`, error?.message || error);
     }
   }
+
+  if (collected.size) return [...collected.values()];
+  if (successfulEndpoint) return [];
   throw Object.assign(lastError || new Error('All XRPL transaction lookup servers failed.'), { status: 502 });
 }
 
@@ -138,9 +174,11 @@ function paymentCandidate(entry, request) {
   if (!/^[A-F0-9]{64}$/.test(hash)) return null;
 
   const deliveredAmount = actualDeliveredAmount(tx, meta);
-  if (!exactAtmAmount(deliveredAmount, request.total_amount)) return null;
+  const amountMatch = atmAmountMatch(deliveredAmount, request.total_amount);
+  if (!amountMatch) return null;
 
   const createdAt = Date.parse(request.created_at || '') || 0;
+  const expiresAt = Date.parse(request.expires_at || '') || 0;
   const invoice = String(tx.InvoiceID || tx.invoice_id || '').toUpperCase();
   const expectedInvoice = String(request.invoice_id || '').toUpperCase();
   const invoiceMatches = !!invoice && !!expectedInvoice && invoice === expectedInvoice;
@@ -149,7 +187,8 @@ function paymentCandidate(entry, request) {
 
   if (closeTime && createdAt) {
     const earliest = createdAt - 5 * 60 * 1000;
-    const latest = createdAt + (invoiceMatches ? STRICT_INVOICE_WINDOW_MS : FALLBACK_WINDOW_MS);
+    const fallbackLatest = Math.max(createdAt + FALLBACK_WINDOW_MS, expiresAt ? expiresAt + 30 * 60 * 1000 : 0);
+    const latest = invoiceMatches ? createdAt + STRICT_INVOICE_WINDOW_MS : fallbackLatest;
     if (closeTime < earliest || closeTime > latest) return null;
   }
 
@@ -159,27 +198,44 @@ function paymentCandidate(entry, request) {
     invoiceMatches,
     invoicePresent: !!invoice,
     payerMatches,
+    amountMatch,
     ledgerIndex: entry?.ledger_index || tx?.ledger_index || tx?.inLedger || null,
     payerWallet
   };
 }
 
 function findMatchingPayment(entries, request) {
-  const candidates = entries.map(entry => paymentCandidate(entry, request)).filter(Boolean);
-  const strict = candidates.find(candidate => candidate.invoiceMatches);
-  if (strict) return { ...strict, matchType: strict.payerMatches ? 'invoice-wallet' : 'invoice' };
-
   const createdAt = Date.parse(request.created_at || '') || 0;
-  const fallback = candidates
-    .filter(candidate => candidate.payerMatches && !candidate.invoicePresent)
+  const candidates = entries.map(entry => paymentCandidate(entry, request)).filter(Boolean);
+  const strict = candidates
+    .filter(candidate => candidate.invoiceMatches)
     .sort((a, b) => Math.abs((a.closeTime || createdAt) - createdAt) - Math.abs((b.closeTime || createdAt) - createdAt))[0];
-  return fallback ? { ...fallback, matchType: 'wallet-amount-time' } : null;
+  if (strict) {
+    const rounded = strict.amountMatch === 'rounded' ? '-rounded' : '';
+    return { ...strict, matchType: `${strict.payerMatches ? 'invoice-wallet' : 'invoice'}${rounded}` };
+  }
+
+  // Xaman direct request links may omit or replace InvoiceID. The linked payer,
+  // exact destination/asset/amount, validated success, and tight time window are
+  // still enough to identify the payment safely. Reuse protection remains server-side.
+  const fallback = candidates
+    .filter(candidate => candidate.payerMatches)
+    .sort((a, b) => Math.abs((a.closeTime || createdAt) - createdAt) - Math.abs((b.closeTime || createdAt) - createdAt))[0];
+  if (!fallback) return null;
+  const invoiceSuffix = fallback.invoicePresent ? '-invoice-mismatch' : '';
+  const roundedSuffix = fallback.amountMatch === 'rounded' ? '-rounded' : '';
+  return { ...fallback, matchType: `wallet-amount-time${invoiceSuffix}${roundedSuffix}` };
 }
 
-function grantResponse(request, extra = {}) {
-  const legacyRecovery = !!request.delivered_at &&
-    Date.parse(request.delivered_at) < LEGACY_DELIVERY_CUTOFF &&
-    String(request.failure_reason || '') !== LEGACY_RECOVERY_MARKER;
+function legacyRecoveryEligible(request) {
+  const deliveredAt = Date.parse(request?.delivered_at || '');
+  if (!Number.isFinite(deliveredAt) || deliveredAt >= LEGACY_DELIVERY_CUTOFF) return false;
+  return !LEGACY_RECOVERY_MARKERS.has(String(request?.failure_reason || ''));
+}
+
+function grantResponse(request, options = {}) {
+  const { allowLegacyRecovery = false, ...extra } = options;
+  const legacyRecovery = allowLegacyRecovery && legacyRecoveryEligible(request);
   const canGrant = !request.delivered_at || legacyRecovery;
   return {
     status: 'paid',
@@ -192,6 +248,7 @@ function grantResponse(request, extra = {}) {
     grant_seconds: canGrant ? Number(request.quantity) * POWER_SECONDS_PER_CAN : 0,
     requires_acknowledgement: canGrant,
     legacy_recovery: legacyRecovery,
+    already_delivered: !!request.delivered_at && !legacyRecovery,
     ...extra
   };
 }
@@ -206,10 +263,7 @@ async function acknowledgeGrant(admin, userId, lookupId) {
   if (error || !request) return { status: 404, body: { error: 'Magnet Can payment request not found.' } };
   if (request.status !== 'paid') return { status: 409, body: { error: 'The payment is not confirmed yet.' } };
 
-  const legacyRecovery = !!request.delivered_at &&
-    Date.parse(request.delivered_at) < LEGACY_DELIVERY_CUTOFF &&
-    String(request.failure_reason || '') !== LEGACY_RECOVERY_MARKER;
-  const update = legacyRecovery
+  const update = legacyRecoveryEligible(request)
     ? { failure_reason: LEGACY_RECOVERY_MARKER, delivered_at: new Date().toISOString() }
     : { delivered_at: new Date().toISOString() };
   const { error: updateError } = await admin
@@ -239,6 +293,7 @@ async function markPaid(admin, request, payment) {
       ledger_index: payment.ledgerIndex,
       paid_at: now,
       completed_at: now,
+      delivered_at: null,
       failure_reason: null
     })
     .eq('id', request.id)
@@ -253,17 +308,24 @@ async function recoverLatest(admin, userId) {
     .from('vending_payment_requests')
     .select('*')
     .eq('user_id', userId)
+    .eq('product', 'magnet')
     .order('created_at', { ascending: false })
-    .limit(20);
+    .limit(100);
   if (error) throw error;
   const rows = Array.isArray(requests) ? requests : [];
 
-  const alreadyPaid = rows.find(row => row.status === 'paid' && (!row.delivered_at || (Date.parse(row.delivered_at) < LEGACY_DELIVERY_CUTOFF && String(row.failure_reason || '') !== LEGACY_RECOVERY_MARKER)));
+  // Generic recovery only returns rewards that were never acknowledged. The
+  // v215 repair path is intentionally restricted to an exact local purchase ID.
+  const alreadyPaid = rows.find(row => row.status === 'paid' && !row.delivered_at);
   if (alreadyPaid) return grantResponse(alreadyPaid, { recovery: true });
 
   const pending = rows.filter(row => ['pending', 'opened', 'expired'].includes(row.status));
   if (!pending.length) return { status: 'none' };
-  const entries = await fetchRecentDestinationTransactions();
+  const oldestCreatedAt = pending.reduce((oldest, row) => {
+    const createdAt = Date.parse(row.created_at || '') || 0;
+    return createdAt && (!oldest || createdAt < oldest) ? createdAt : oldest;
+  }, 0);
+  const entries = await fetchRecentDestinationTransactions(oldestCreatedAt);
   for (const request of pending) {
     const payment = findMatchingPayment(entries, request);
     if (!payment) continue;
@@ -310,16 +372,20 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Magnet Can payment request not found.' });
     }
 
-    if (request.status === 'paid') return res.status(200).json(grantResponse(request));
+    const allowLegacyRecovery = String(req.query?.recover_legacy || '') === '1';
+    if (request.status === 'paid') {
+      return res.status(200).json(grantResponse(request, { allowLegacyRecovery }));
+    }
     if (request.status === 'failed' || request.status === 'rejected') {
       return res.status(200).json({ status: request.status, error: request.failure_reason || null });
     }
 
-    const entries = await fetchRecentDestinationTransactions();
+    const createdAt = Date.parse(request.created_at || '') || 0;
+    const entries = await fetchRecentDestinationTransactions(createdAt);
     const payment = findMatchingPayment(entries, request);
 
     if (!payment) {
-      const ageMs = Date.now() - (Date.parse(request.created_at || '') || Date.now());
+      const ageMs = Date.now() - (createdAt || Date.now());
       return res.status(200).json({
         status: 'pending',
         phase: 'waiting-for-ledger-payment',
