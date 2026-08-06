@@ -11,12 +11,10 @@ import {
 } from './_xaman-vending.js';
 
 const XRPL_RPC_URL = String(process.env.XRPL_RPC_URL || 'https://s1.ripple.com:51234/').trim();
-const ATM_TOWN_PUBLIC_URL = String(process.env.ATM_TOWN_PUBLIC_URL || 'https://atm-town-web.vercel.app').trim().replace(/\/+$/, '');
 const UNIT_PRICE = 100;
 const MAX_QUANTITY = 99;
 const PAYMENT_WINDOW_MINUTES = 30;
 const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
-const RETURN_TAB_ID = /^[a-zA-Z0-9_-]{8,80}$/;
 
 async function verifyDestinationTrustline() {
   const response = await fetch(XRPL_RPC_URL, {
@@ -59,9 +57,7 @@ async function verifyDestinationTrustline() {
   }
 }
 
-async function createXamanPayload({ purchaseId, invoiceId, quantity, total, returnTabId }) {
-  const tabQuery = returnTabId ? `&tab=${encodeURIComponent(returnTabId)}` : '';
-  const returnUrl = `${ATM_TOWN_PUBLIC_URL}/?xaman_payment_return=1&payload={id}&purchase=${encodeURIComponent(purchaseId)}&txid={txid}${tabQuery}`;
+async function createXamanPayload({ purchaseId, invoiceId, quantity, total }) {
   const response = await fetch(`${XAMAN_API_BASE}/payload`, {
     method: 'POST',
     headers: xamanHeaders(),
@@ -80,11 +76,7 @@ async function createXamanPayload({ purchaseId, invoiceId, quantity, total, retu
       options: {
         submit: true,
         expire: PAYMENT_WINDOW_MINUTES,
-        force_network: 'MAINNET',
-        return_url: {
-          app: returnUrl,
-          web: returnUrl
-        }
+        force_network: 'MAINNET'
       },
       custom_meta: {
         identifier: purchaseId,
@@ -121,8 +113,6 @@ export default async function handler(req, res) {
   try {
     const { admin, user } = await requireUser(req);
     const quantity = Number(req.body?.quantity);
-    const requestedTabId = String(req.body?.tab_id || '');
-    const returnTabId = RETURN_TAB_ID.test(requestedTabId) ? requestedTabId : '';
 
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
       return res.status(400).json({ error: `Choose between 1 and ${MAX_QUANTITY} Magnet Cans.` });
@@ -150,7 +140,7 @@ export default async function handler(req, res) {
     const total = quantity * UNIT_PRICE;
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.parse(createdAt) + PAYMENT_WINDOW_MINUTES * 60 * 1000).toISOString();
-    const xamanPayload = await createXamanPayload({ purchaseId, invoiceId, quantity, total, returnTabId });
+    const xamanPayload = await createXamanPayload({ purchaseId, invoiceId, quantity, total });
 
     const { error: insertError } = await admin.from('vending_payment_requests').insert({
       id: purchaseId,
@@ -186,8 +176,7 @@ export default async function handler(req, res) {
       currency: ATM_CURRENCY,
       created_at: createdAt,
       expires_at: expiresAt,
-      payment_method: 'xaman-payload-webhook',
-      return_tab_id: returnTabId || null
+      payment_method: 'xaman-payload-webhook'
     });
   } catch (error) {
     console.error('ATM Town Magnet payment start failed:', error);
