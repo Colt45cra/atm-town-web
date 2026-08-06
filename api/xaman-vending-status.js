@@ -1,4 +1,5 @@
 import { setCors, requireUser, sendError } from './_auth.js';
+import { resolveXamanVendingPayment } from './_xaman-vending.js';
 
 const ATM_CURRENCY = 'ATM';
 const ATM_ISSUER = 'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ';
@@ -100,7 +101,7 @@ async function requestAccountTx(endpoint, marker = null) {
     cache: 'no-store',
     body: JSON.stringify({
       jsonrpc: '2.0',
-      id: 'atm-town-vending-status-v216',
+      id: 'atm-town-vending-status-v217',
       method: 'account_tx',
       params: [params]
     })
@@ -378,6 +379,31 @@ export default async function handler(req, res) {
     }
     if (request.status === 'failed' || request.status === 'rejected') {
       return res.status(200).json({ status: request.status, error: request.failure_reason || null });
+    }
+
+    // v217 real Xaman payloads resolve through the Xaman payload result and one
+    // exact XRPL transaction hash. A 404 means this is a legacy v216 direct-link
+    // purchase, so the existing destination-wallet scanner remains available.
+    let xamanResolution = null;
+    try {
+      xamanResolution = await resolveXamanVendingPayment(admin, request);
+    } catch (error) {
+      console.warn('Xaman payload status unavailable; using XRPL recovery fallback:', error?.message || error);
+    }
+    if (xamanResolution?.kind === 'paid') {
+      return res.status(200).json(grantResponse(xamanResolution.request, {
+        match_type: xamanResolution.matchType || 'xaman-payload-tx-hash'
+      }));
+    }
+    if (['failed', 'rejected', 'expired'].includes(xamanResolution?.kind)) {
+      const resolvedRequest = xamanResolution.request || request;
+      return res.status(200).json({
+        status: xamanResolution.kind,
+        error: resolvedRequest.failure_reason || xamanResolution.error || null
+      });
+    }
+    if (xamanResolution?.kind === 'pending') {
+      return res.status(200).json({ status: 'pending', phase: xamanResolution.phase || 'waiting' });
     }
 
     const createdAt = Date.parse(request.created_at || '') || 0;

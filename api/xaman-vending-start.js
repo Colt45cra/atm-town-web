@@ -1,25 +1,26 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { setCors, requireUser, sendError } from './_auth.js';
+import {
+  XAMAN_API_BASE,
+  ATM_CURRENCY,
+  ATM_ISSUER,
+  ATM_DESTINATION,
+  readJson,
+  xamanHeaders,
+  xamanError
+} from './_xaman-vending.js';
 
 const XRPL_RPC_URL = String(process.env.XRPL_RPC_URL || 'https://s1.ripple.com:51234/').trim();
-const ATM_CURRENCY = 'ATM';
-const ATM_ISSUER = 'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ';
-const ATM_DESTINATION = 'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB';
+const ATM_TOWN_PUBLIC_URL = String(process.env.ATM_TOWN_PUBLIC_URL || 'https://atm-town-web.vercel.app').trim().replace(/\/+$/, '');
 const UNIT_PRICE = 100;
 const MAX_QUANTITY = 99;
 const PAYMENT_WINDOW_MINUTES = 30;
 const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 
-async function readJson(response) {
-  const text = await response.text();
-  if (!text) return {};
-  try { return JSON.parse(text); } catch { return { raw: text }; }
-}
-
 async function verifyDestinationTrustline() {
   const response = await fetch(XRPL_RPC_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     cache: 'no-store',
     body: JSON.stringify({
       method: 'account_lines',
@@ -57,15 +58,55 @@ async function verifyDestinationTrustline() {
   }
 }
 
-function buildXamanPaymentLink({ total, invoiceId }) {
-  const params = new URLSearchParams({
-    amount: String(total),
-    network: 'XRPL',
-    issuer: ATM_ISSUER,
-    currency: ATM_CURRENCY,
-    invoiceid: invoiceId
+async function createXamanPayload({ purchaseId, invoiceId, quantity, total }) {
+  const returnUrl = `${ATM_TOWN_PUBLIC_URL}/?xaman_payment_return=1&payload={id}&purchase=${encodeURIComponent(purchaseId)}&txid={txid}`;
+  const response = await fetch(`${XAMAN_API_BASE}/payload`, {
+    method: 'POST',
+    headers: xamanHeaders(),
+    cache: 'no-store',
+    body: JSON.stringify({
+      txjson: {
+        TransactionType: 'Payment',
+        Destination: ATM_DESTINATION,
+        Amount: {
+          currency: ATM_CURRENCY,
+          issuer: ATM_ISSUER,
+          value: String(total)
+        },
+        InvoiceID: invoiceId
+      },
+      options: {
+        submit: true,
+        expire: PAYMENT_WINDOW_MINUTES,
+        force_network: 'MAINNET',
+        return_url: {
+          app: returnUrl,
+          web: returnUrl
+        }
+      },
+      custom_meta: {
+        identifier: purchaseId,
+        instruction: `Pay ${total} ATM for ${quantity} Magnet Can${quantity === 1 ? '' : 's'} in ATM Town.`
+      }
+    })
   });
-  return `https://xaman.app/detect/request:${ATM_DESTINATION}?${params.toString()}`;
+  const created = await readJson(response);
+  if (!response.ok || !created?.uuid || !created?.next?.always) {
+    throw xamanError(created, 'Xaman rejected the Magnet Can payment request');
+  }
+  return created;
+}
+
+async function cancelXamanPayload(payloadUuid) {
+  try {
+    await fetch(`${XAMAN_API_BASE}/payload/${encodeURIComponent(payloadUuid)}`, {
+      method: 'DELETE',
+      headers: xamanHeaders(),
+      cache: 'no-store'
+    });
+  } catch (error) {
+    console.warn('Could not cancel orphaned Xaman vending payload:', error?.message || error);
+  }
 }
 
 export default async function handler(req, res) {
@@ -105,14 +146,12 @@ export default async function handler(req, res) {
     const total = quantity * UNIT_PRICE;
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.parse(createdAt) + PAYMENT_WINDOW_MINUTES * 60 * 1000).toISOString();
-    const deeplink = buildXamanPaymentLink({ total, invoiceId });
+    const xamanPayload = await createXamanPayload({ purchaseId, invoiceId, quantity, total });
 
-    // payload_uuid remains the public lookup key expected by the existing game UI.
-    // For direct Xaman request links it is our own unique purchase UUID.
     const { error: insertError } = await admin.from('vending_payment_requests').insert({
       id: purchaseId,
       user_id: user.id,
-      payload_uuid: purchaseId,
+      payload_uuid: xamanPayload.uuid,
       product: 'magnet',
       quantity,
       unit_price: UNIT_PRICE,
@@ -126,21 +165,24 @@ export default async function handler(req, res) {
       created_at: createdAt,
       expires_at: expiresAt
     });
-    if (insertError) throw insertError;
+    if (insertError) {
+      await cancelXamanPayload(xamanPayload.uuid);
+      throw insertError;
+    }
 
     return res.status(201).json({
       purchase_id: purchaseId,
-      payload_uuid: purchaseId,
-      deeplink,
-      qr_png: null,
-      websocket_status: null,
+      payload_uuid: xamanPayload.uuid,
+      deeplink: xamanPayload.next.always,
+      qr_png: xamanPayload.refs?.qr_png || null,
+      websocket_status: xamanPayload.refs?.websocket_status || null,
       quantity,
       unit_price: UNIT_PRICE,
       total,
       currency: ATM_CURRENCY,
       created_at: createdAt,
       expires_at: expiresAt,
-      payment_method: 'xaman-direct-request'
+      payment_method: 'xaman-payload-webhook'
     });
   } catch (error) {
     console.error('ATM Town Magnet payment start failed:', error);
