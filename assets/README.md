@@ -1,23 +1,37 @@
-# Asset Migration Staging
+# ATM Town Runtime Assets
 
-ATM Town currently leaves live runtime assets in the repository root so existing URLs remain backward compatible.
-
-The map registry in `js/config.js` allows assets to be moved safely in later versions into folders such as:
+ATM Town v228 uses a structured, cache-friendly asset layout.
 
 ```text
 assets/
+  audio/
+  characters/
+    playable/
+    body/
+    chest/
+    face/
+    gloves/
+    head/
+    back/
+    backpack/
+    shoes/
+    thumbnails/
+    legacy/
+    equipment/
+  environment/
+  items/
   maps/
     town/
     hq/
     gallery/
     arcade/
     lounge/
-  characters/
   ui/
-  audio/
-  effects/
 ```
 
-Assets will be moved map-by-map. Each move must update registry paths, validate every path, and be visually tested before the next group is migrated.
+## Format rule
 
-Collision, depth, stair, blocked, and interaction masks remain PNG files because exact pixel values drive gameplay systems. Normal transparent artwork can be reviewed for WebP conversion using `npm run audit:assets`.
+- Runtime visual artwork uses WebP when WebP is smaller and safe. Character/sprite conversions are lossless WebP.
+- Collision, interaction, stair, depth and other pixel/color-sensitive masks remain PNG.
+- Do not convert a gameplay mask to lossy WebP.
+- New PNG artwork should be reviewed and converted to WebP before being committed when appropriate.

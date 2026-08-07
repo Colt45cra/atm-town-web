@@ -1,0 +1,2116 @@
+{
+  "conversions": [
+    {
+      "from": "assets/characters/thumbnails/character-atm-preview.png",
+      "to": "assets/characters/thumbnails/character-atm-preview.webp",
+      "before": 18927,
+      "after": 15612,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/down-0.png",
+      "to": "assets/characters/legacy/classic/down-0.webp",
+      "before": 63860,
+      "after": 49906,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/down-1.png",
+      "to": "assets/characters/legacy/classic/down-1.webp",
+      "before": 63398,
+      "after": 50128,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/down-2.png",
+      "to": "assets/characters/legacy/classic/down-2.webp",
+      "before": 63331,
+      "after": 49660,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/left-0.png",
+      "to": "assets/characters/legacy/classic/left-0.webp",
+      "before": 54902,
+      "after": 42006,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/left-1.png",
+      "to": "assets/characters/legacy/classic/left-1.webp",
+      "before": 52143,
+      "after": 40254,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/left-2.png",
+      "to": "assets/characters/legacy/classic/left-2.webp",
+      "before": 54718,
+      "after": 41812,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/up-0.png",
+      "to": "assets/characters/legacy/classic/up-0.webp",
+      "before": 59454,
+      "after": 46140,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/up-1.png",
+      "to": "assets/characters/legacy/classic/up-1.webp",
+      "before": 60830,
+      "after": 47498,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/up-2.png",
+      "to": "assets/characters/legacy/classic/up-2.webp",
+      "before": 59875,
+      "after": 46514,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/right-0.png",
+      "to": "assets/characters/legacy/classic/right-0.webp",
+      "before": 54473,
+      "after": 42010,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/right-1.png",
+      "to": "assets/characters/legacy/classic/right-1.webp",
+      "before": 51022,
+      "after": 39142,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/legacy/classic/right-2.png",
+      "to": "assets/characters/legacy/classic/right-2.webp",
+      "before": 54195,
+      "after": 42278,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/playable/legacy/cyber-purple.png",
+      "to": "assets/characters/playable/legacy/cyber-purple.webp",
+      "before": 555907,
+      "after": 410896,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/playable/legacy/retro-sunset.png",
+      "to": "assets/characters/playable/legacy/retro-sunset.webp",
+      "before": 564184,
+      "after": 404582,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/playable/legacy/dead-ninja.png",
+      "to": "assets/characters/playable/legacy/dead-ninja.webp",
+      "before": 465223,
+      "after": 318676,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/items/coins/coin-01.png",
+      "to": "assets/items/coins/coin-01.webp",
+      "before": 40259,
+      "after": 27822,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/items/coins/coin-02.png",
+      "to": "assets/items/coins/coin-02.webp",
+      "before": 35666,
+      "after": 27462,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/items/coins/coin-03.png",
+      "to": "assets/items/coins/coin-03.webp",
+      "before": 38540,
+      "after": 28218,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/items/coins/coin-04.png",
+      "to": "assets/items/coins/coin-04.webp",
+      "before": 41283,
+      "after": 28098,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/items/coins/coin-05.png",
+      "to": "assets/items/coins/coin-05.webp",
+      "before": 35180,
+      "after": 26170,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/environment/pavement-texture.png",
+      "to": "assets/environment/pavement-texture.webp",
+      "before": 113706,
+      "after": 69682,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/maps/town/runtime/hq-building.png",
+      "to": "assets/maps/town/runtime/hq-building.webp",
+      "before": 650094,
+      "after": 480388,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/environment/grass/grass-01.png",
+      "to": "assets/environment/grass/grass-01.webp",
+      "before": 53255,
+      "after": 35746,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/environment/grass/grass-03.png",
+      "to": "assets/environment/grass/grass-03.webp",
+      "before": 66710,
+      "after": 45468,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/environment/grass/grass-04.png",
+      "to": "assets/environment/grass/grass-04.webp",
+      "before": 62208,
+      "after": 42130,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "lounge.png",
+      "to": "assets/maps/lounge/visual.webp",
+      "before": 3079534,
+      "after": 2758012,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_05_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_05_00.webp",
+      "before": 440531,
+      "after": 346352,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_07_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_07_00.webp",
+      "before": 401983,
+      "after": 306100,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_06_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_06_00.webp",
+      "before": 559441,
+      "after": 448010,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_02_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_02_00.webp",
+      "before": 563986,
+      "after": 431062,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_03_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_03_00.webp",
+      "before": 612636,
+      "after": 465956,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_08_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_08_00.webp",
+      "before": 333975,
+      "after": 265142,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_01_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_01_00.webp",
+      "before": 911663,
+      "after": 692012,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_04_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_04_00.webp",
+      "before": 682786,
+      "after": 545106,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_09_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_09_00.webp",
+      "before": 62821,
+      "after": 49748,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "buildings_00_00.png",
+      "to": "assets/maps/town/foreground/day/buildings_00_00.webp",
+      "before": 1032779,
+      "after": 797460,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_12_00.png",
+      "to": "assets/maps/town/foreground/day/assets_12_00.webp",
+      "before": 58194,
+      "after": 44596,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_18_00.png",
+      "to": "assets/maps/town/foreground/day/assets_18_00.webp",
+      "before": 15812,
+      "after": 13236,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_02_00.png",
+      "to": "assets/maps/town/foreground/day/assets_02_00.webp",
+      "before": 58744,
+      "after": 42824,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_06_00.png",
+      "to": "assets/maps/town/foreground/day/assets_06_00.webp",
+      "before": 63088,
+      "after": 58478,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_00_04.png",
+      "to": "assets/maps/town/foreground/day/assets_00_04.webp",
+      "before": 1306,
+      "after": 1174,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_14_00.png",
+      "to": "assets/maps/town/foreground/day/assets_14_00.webp",
+      "before": 59675,
+      "after": 42468,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_10_02.png",
+      "to": "assets/maps/town/foreground/day/assets_10_02.webp",
+      "before": 18715,
+      "after": 13802,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_01_01.png",
+      "to": "assets/maps/town/foreground/day/assets_01_01.webp",
+      "before": 63555,
+      "after": 47432,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_19_01.png",
+      "to": "assets/maps/town/foreground/day/assets_19_01.webp",
+      "before": 17303,
+      "after": 13914,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_22_00.png",
+      "to": "assets/maps/town/foreground/day/assets_22_00.webp",
+      "before": 15146,
+      "after": 12592,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_09_00.png",
+      "to": "assets/maps/town/foreground/day/assets_09_00.webp",
+      "before": 36163,
+      "after": 35456,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_03_02.png",
+      "to": "assets/maps/town/foreground/day/assets_03_02.webp",
+      "before": 229450,
+      "after": 173508,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_03_05.png",
+      "to": "assets/maps/town/foreground/day/assets_03_05.webp",
+      "before": 3463,
+      "after": 2704,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_03_04.png",
+      "to": "assets/maps/town/foreground/day/assets_03_04.webp",
+      "before": 235662,
+      "after": 174976,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_16_00.png",
+      "to": "assets/maps/town/foreground/day/assets_16_00.webp",
+      "before": 56839,
+      "after": 41152,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_19_00.png",
+      "to": "assets/maps/town/foreground/day/assets_19_00.webp",
+      "before": 15332,
+      "after": 12876,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_01_00.png",
+      "to": "assets/maps/town/foreground/day/assets_01_00.webp",
+      "before": 103900,
+      "after": 78216,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_00_03.png",
+      "to": "assets/maps/town/foreground/day/assets_00_03.webp",
+      "before": 1321,
+      "after": 1194,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_05_00.png",
+      "to": "assets/maps/town/foreground/day/assets_05_00.webp",
+      "before": 64647,
+      "after": 52170,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_10_01.png",
+      "to": "assets/maps/town/foreground/day/assets_10_01.webp",
+      "before": 5849,
+      "after": 4478,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_03_01.png",
+      "to": "assets/maps/town/foreground/day/assets_03_01.webp",
+      "before": 2424,
+      "after": 2018,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_00_01.png",
+      "to": "assets/maps/town/foreground/day/assets_00_01.webp",
+      "before": 176160,
+      "after": 141140,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_02_03.png",
+      "to": "assets/maps/town/foreground/day/assets_02_03.webp",
+      "before": 165559,
+      "after": 130190,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_20_00.png",
+      "to": "assets/maps/town/foreground/day/assets_20_00.webp",
+      "before": 14966,
+      "after": 12090,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_13_00.png",
+      "to": "assets/maps/town/foreground/day/assets_13_00.webp",
+      "before": 58381,
+      "after": 41936,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_08_00.png",
+      "to": "assets/maps/town/foreground/day/assets_08_00.webp",
+      "before": 36159,
+      "after": 29100,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_03_03.png",
+      "to": "assets/maps/town/foreground/day/assets_03_03.webp",
+      "before": 37691,
+      "after": 25108,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_04_00.png",
+      "to": "assets/maps/town/foreground/day/assets_04_00.webp",
+      "before": 67439,
+      "after": 53312,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_15_00.png",
+      "to": "assets/maps/town/foreground/day/assets_15_00.webp",
+      "before": 17691,
+      "after": 14820,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_02_01.png",
+      "to": "assets/maps/town/foreground/day/assets_02_01.webp",
+      "before": 121611,
+      "after": 93372,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_02_02.png",
+      "to": "assets/maps/town/foreground/day/assets_02_02.webp",
+      "before": 179135,
+      "after": 142374,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_21_01.png",
+      "to": "assets/maps/town/foreground/day/assets_21_01.webp",
+      "before": 17530,
+      "after": 14150,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_21_00.png",
+      "to": "assets/maps/town/foreground/day/assets_21_00.webp",
+      "before": 15332,
+      "after": 12876,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_17_00.png",
+      "to": "assets/maps/town/foreground/day/assets_17_00.webp",
+      "before": 58023,
+      "after": 43822,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_11_00.png",
+      "to": "assets/maps/town/foreground/day/assets_11_00.webp",
+      "before": 57407,
+      "after": 42912,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_00_02.png",
+      "to": "assets/maps/town/foreground/day/assets_00_02.webp",
+      "before": 1376,
+      "after": 1236,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_01_02.png",
+      "to": "assets/maps/town/foreground/day/assets_01_02.webp",
+      "before": 34953,
+      "after": 27022,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_03_00.png",
+      "to": "assets/maps/town/foreground/day/assets_03_00.webp",
+      "before": 39352,
+      "after": 26956,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_00_00.png",
+      "to": "assets/maps/town/foreground/day/assets_00_00.webp",
+      "before": 200604,
+      "after": 164680,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets_10_00.png",
+      "to": "assets/maps/town/foreground/day/assets_10_00.webp",
+      "before": 41222,
+      "after": 30012,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_07_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_07_00.webp",
+      "before": 414661,
+      "after": 309974,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_03_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_03_00.webp",
+      "before": 655984,
+      "after": 492778,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_01_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_01_00.webp",
+      "before": 932145,
+      "after": 697072,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_09_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_09_00.webp",
+      "before": 63317,
+      "after": 47438,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_06_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_06_00.webp",
+      "before": 578102,
+      "after": 440158,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_00_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_00_00.webp",
+      "before": 982491,
+      "after": 732680,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_02_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_02_00.webp",
+      "before": 571504,
+      "after": 424010,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_05_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_05_00.webp",
+      "before": 486507,
+      "after": 368394,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_04_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_04_00.webp",
+      "before": 634839,
+      "after": 484506,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_buildings_08_00.png",
+      "to": "assets/maps/town/foreground/night/buildings_08_00.webp",
+      "before": 335816,
+      "after": 253148,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_18_00.png",
+      "to": "assets/maps/town/foreground/night/assets_18_00.webp",
+      "before": 16737,
+      "after": 12756,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_02_00.png",
+      "to": "assets/maps/town/foreground/night/assets_02_00.webp",
+      "before": 58510,
+      "after": 42764,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_05_00.png",
+      "to": "assets/maps/town/foreground/night/assets_05_00.webp",
+      "before": 75132,
+      "after": 58002,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_08_00.png",
+      "to": "assets/maps/town/foreground/night/assets_08_00.webp",
+      "before": 38275,
+      "after": 30292,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_20_00.png",
+      "to": "assets/maps/town/foreground/night/assets_20_00.webp",
+      "before": 15242,
+      "after": 11484,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_06_00.png",
+      "to": "assets/maps/town/foreground/night/assets_06_00.webp",
+      "before": 69859,
+      "after": 54224,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_03_03.png",
+      "to": "assets/maps/town/foreground/night/assets_03_03.webp",
+      "before": 37833,
+      "after": 26014,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_21_00.png",
+      "to": "assets/maps/town/foreground/night/assets_21_00.webp",
+      "before": 16431,
+      "after": 12800,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_01_02.png",
+      "to": "assets/maps/town/foreground/night/assets_01_02.webp",
+      "before": 30103,
+      "after": 22708,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_10_02.png",
+      "to": "assets/maps/town/foreground/night/assets_10_02.webp",
+      "before": 17411,
+      "after": 12670,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_14_00.png",
+      "to": "assets/maps/town/foreground/night/assets_14_00.webp",
+      "before": 58782,
+      "after": 42540,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_02_02.png",
+      "to": "assets/maps/town/foreground/night/assets_02_02.webp",
+      "before": 156779,
+      "after": 118438,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_01_00.png",
+      "to": "assets/maps/town/foreground/night/assets_01_00.webp",
+      "before": 95372,
+      "after": 70914,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_13_00.png",
+      "to": "assets/maps/town/foreground/night/assets_13_00.webp",
+      "before": 54516,
+      "after": 40174,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_09_00.png",
+      "to": "assets/maps/town/foreground/night/assets_09_00.webp",
+      "before": 41959,
+      "after": 33226,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_15_00.png",
+      "to": "assets/maps/town/foreground/night/assets_15_00.webp",
+      "before": 19243,
+      "after": 14680,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_12_00.png",
+      "to": "assets/maps/town/foreground/night/assets_12_00.webp",
+      "before": 54605,
+      "after": 40124,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_16_00.png",
+      "to": "assets/maps/town/foreground/night/assets_16_00.webp",
+      "before": 55034,
+      "after": 41454,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_10_00.png",
+      "to": "assets/maps/town/foreground/night/assets_10_00.webp",
+      "before": 39156,
+      "after": 28766,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_02_01.png",
+      "to": "assets/maps/town/foreground/night/assets_02_01.webp",
+      "before": 109722,
+      "after": 81236,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_03_04.png",
+      "to": "assets/maps/town/foreground/night/assets_03_04.webp",
+      "before": 220101,
+      "after": 158130,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_04_00.png",
+      "to": "assets/maps/town/foreground/night/assets_04_00.webp",
+      "before": 68960,
+      "after": 55046,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_21_01.png",
+      "to": "assets/maps/town/foreground/night/assets_21_01.webp",
+      "before": 16731,
+      "after": 12498,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_03_05.png",
+      "to": "assets/maps/town/foreground/night/assets_03_05.webp",
+      "before": 3764,
+      "after": 2456,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_00_01.png",
+      "to": "assets/maps/town/foreground/night/assets_00_01.webp",
+      "before": 164851,
+      "after": 128518,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_00_04.png",
+      "to": "assets/maps/town/foreground/night/assets_00_04.webp",
+      "before": 1672,
+      "after": 1092,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_02_03.png",
+      "to": "assets/maps/town/foreground/night/assets_02_03.webp",
+      "before": 154959,
+      "after": 117480,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_03_00.png",
+      "to": "assets/maps/town/foreground/night/assets_03_00.webp",
+      "before": 38621,
+      "after": 27146,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_10_01.png",
+      "to": "assets/maps/town/foreground/night/assets_10_01.webp",
+      "before": 5925,
+      "after": 4288,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_03_01.png",
+      "to": "assets/maps/town/foreground/night/assets_03_01.webp",
+      "before": 2949,
+      "after": 2000,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_22_00.png",
+      "to": "assets/maps/town/foreground/night/assets_22_00.webp",
+      "before": 16347,
+      "after": 12812,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_11_00.png",
+      "to": "assets/maps/town/foreground/night/assets_11_00.webp",
+      "before": 52911,
+      "after": 38492,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_00_02.png",
+      "to": "assets/maps/town/foreground/night/assets_00_02.webp",
+      "before": 1699,
+      "after": 1162,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_19_00.png",
+      "to": "assets/maps/town/foreground/night/assets_19_00.webp",
+      "before": 16431,
+      "after": 12800,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_17_00.png",
+      "to": "assets/maps/town/foreground/night/assets_17_00.webp",
+      "before": 52114,
+      "after": 38516,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_03_02.png",
+      "to": "assets/maps/town/foreground/night/assets_03_02.webp",
+      "before": 221880,
+      "after": 160378,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_01_01.png",
+      "to": "assets/maps/town/foreground/night/assets_01_01.webp",
+      "before": 53788,
+      "after": 40420,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_19_01.png",
+      "to": "assets/maps/town/foreground/night/assets_19_01.webp",
+      "before": 16490,
+      "after": 12304,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_00_00.png",
+      "to": "assets/maps/town/foreground/night/assets_00_00.webp",
+      "before": 189220,
+      "after": 144818,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "night_assets_00_03.png",
+      "to": "assets/maps/town/foreground/night/assets_00_03.webp",
+      "before": 1699,
+      "after": 1110,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "classic-green-expanded.png",
+      "to": "assets/characters/playable/atm.webp",
+      "before": 684842,
+      "after": 543916,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "victoria-v1.png",
+      "to": "assets/characters/playable/victoria.webp",
+      "before": 820504,
+      "after": 664688,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "jetpack-overlay-expanded.png",
+      "to": "assets/characters/equipment/jetpack.webp",
+      "before": 109426,
+      "after": 88110,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/gold.png",
+      "to": "assets/characters/chest/gold.webp",
+      "before": 573653,
+      "after": 424188,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/yellow.png",
+      "to": "assets/characters/chest/yellow.webp",
+      "before": 565420,
+      "after": 412938,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/blue.png",
+      "to": "assets/characters/chest/blue.webp",
+      "before": 566079,
+      "after": 416324,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/red.png",
+      "to": "assets/characters/chest/red.webp",
+      "before": 563768,
+      "after": 412980,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/pastel-blue.png",
+      "to": "assets/characters/chest/pastel-blue.webp",
+      "before": 82892,
+      "after": 48944,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/og.png",
+      "to": "assets/characters/chest/og.webp",
+      "before": 571425,
+      "after": 417204,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/pastel-red.png",
+      "to": "assets/characters/chest/pastel-red.webp",
+      "before": 565788,
+      "after": 413438,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/baby-blue.png",
+      "to": "assets/characters/chest/baby-blue.webp",
+      "before": 568069,
+      "after": 416902,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/chest/green.png",
+      "to": "assets/characters/chest/green.webp",
+      "before": 574483,
+      "after": 424588,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/orange-green-mohawk.png",
+      "to": "assets/characters/head/orange-green-mohawk.webp",
+      "before": 159431,
+      "after": 143736,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/banana-headphones.png",
+      "to": "assets/characters/head/banana-headphones.webp",
+      "before": 125716,
+      "after": 77150,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/baby-blue-headphones.png",
+      "to": "assets/characters/head/baby-blue-headphones.webp",
+      "before": 125825,
+      "after": 79046,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/buuvva-headphones.png",
+      "to": "assets/characters/head/buuvva-headphones.webp",
+      "before": 133016,
+      "after": 106954,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/red-headphones.png",
+      "to": "assets/characters/head/red-headphones.webp",
+      "before": 126497,
+      "after": 72772,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/blue-mohawk.png",
+      "to": "assets/characters/head/blue-mohawk.webp",
+      "before": 163134,
+      "after": 159046,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/bullish-black.png",
+      "to": "assets/characters/head/bullish-black.webp",
+      "before": 86374,
+      "after": 59010,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/green-headphones.png",
+      "to": "assets/characters/head/green-headphones.webp",
+      "before": 122847,
+      "after": 75302,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/paper-hat.png",
+      "to": "assets/characters/head/paper-hat.webp",
+      "before": 119116,
+      "after": 85934,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/head/pink-mohawk.png",
+      "to": "assets/characters/head/pink-mohawk.webp",
+      "before": 163271,
+      "after": 148054,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/blue-yellow.png",
+      "to": "assets/characters/backpack/blue-yellow.webp",
+      "before": 626676,
+      "after": 478794,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/gold-purple.png",
+      "to": "assets/characters/backpack/gold-purple.webp",
+      "before": 617482,
+      "after": 489434,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/teal.png",
+      "to": "assets/characters/backpack/teal.webp",
+      "before": 659294,
+      "after": 515032,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/blue-green.png",
+      "to": "assets/characters/backpack/blue-green.webp",
+      "before": 656397,
+      "after": 511984,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/bright-orange.png",
+      "to": "assets/characters/backpack/bright-orange.webp",
+      "before": 572474,
+      "after": 457428,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/rucksack.png",
+      "to": "assets/characters/backpack/rucksack.webp",
+      "before": 420234,
+      "after": 264786,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/pink-teal.png",
+      "to": "assets/characters/backpack/pink-teal.webp",
+      "before": 565226,
+      "after": 453470,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/yellow-pink.png",
+      "to": "assets/characters/backpack/yellow-pink.webp",
+      "before": 560749,
+      "after": 448716,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/backpack/green.png",
+      "to": "assets/characters/backpack/green.webp",
+      "before": 658542,
+      "after": 521708,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/shoes/gold.png",
+      "to": "assets/characters/shoes/gold.webp",
+      "before": 360758,
+      "after": 216522,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/shoes/red.png",
+      "to": "assets/characters/shoes/red.webp",
+      "before": 364901,
+      "after": 217656,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/shoes/tan.png",
+      "to": "assets/characters/shoes/tan.webp",
+      "before": 542276,
+      "after": 394378,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/shoes/baby-blue.png",
+      "to": "assets/characters/shoes/baby-blue.webp",
+      "before": 373028,
+      "after": 220644,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/shoes/green.png",
+      "to": "assets/characters/shoes/green.webp",
+      "before": 358931,
+      "after": 215874,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/back-green-katana.png",
+      "to": "assets/characters/thumbnails/back-green-katana.webp",
+      "before": 28834,
+      "after": 23502,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-green.png",
+      "to": "assets/characters/thumbnails/backpack-green.webp",
+      "before": 25046,
+      "after": 17946,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/character-fuzzy.png",
+      "to": "assets/characters/thumbnails/character-fuzzy.webp",
+      "before": 52765,
+      "after": 32044,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-pink-mohawk.png",
+      "to": "assets/characters/thumbnails/head-pink-mohawk.webp",
+      "before": 27219,
+      "after": 20226,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-pastel-red.png",
+      "to": "assets/characters/thumbnails/chest-pastel-red.webp",
+      "before": 14914,
+      "after": 9338,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-baby-blue.png",
+      "to": "assets/characters/thumbnails/gloves-baby-blue.webp",
+      "before": 5616,
+      "after": 3172,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-boxing-gloves.png",
+      "to": "assets/characters/thumbnails/gloves-boxing-gloves.webp",
+      "before": 12718,
+      "after": 10162,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-red.png",
+      "to": "assets/characters/thumbnails/chest-red.webp",
+      "before": 14454,
+      "after": 9522,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/character-atm.png",
+      "to": "assets/characters/thumbnails/character-atm.webp",
+      "before": 62857,
+      "after": 48746,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-cyber-blue.png",
+      "to": "assets/characters/thumbnails/body-cyber-blue.webp",
+      "before": 39968,
+      "after": 28246,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/shoes-gold.png",
+      "to": "assets/characters/thumbnails/shoes-gold.webp",
+      "before": 4935,
+      "after": 2430,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/face-black-dead-face.png",
+      "to": "assets/characters/thumbnails/face-black-dead-face.webp",
+      "before": 3964,
+      "after": 1452,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-red-headphones.png",
+      "to": "assets/characters/thumbnails/head-red-headphones.webp",
+      "before": 17026,
+      "after": 12408,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-green.png",
+      "to": "assets/characters/thumbnails/chest-green.webp",
+      "before": 16940,
+      "after": 12066,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/face-squint-face-black.png",
+      "to": "assets/characters/thumbnails/face-squint-face-black.webp",
+      "before": 2799,
+      "after": 934,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-blue.png",
+      "to": "assets/characters/thumbnails/chest-blue.webp",
+      "before": 14903,
+      "after": 10186,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/face-squint-face-white.png",
+      "to": "assets/characters/thumbnails/face-squint-face-white.webp",
+      "before": 2788,
+      "after": 926,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/character-miracle.png",
+      "to": "assets/characters/thumbnails/character-miracle.webp",
+      "before": 130289,
+      "after": 95036,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/back-yellow-katana.png",
+      "to": "assets/characters/thumbnails/back-yellow-katana.webp",
+      "before": 29570,
+      "after": 22076,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-gold.png",
+      "to": "assets/characters/thumbnails/chest-gold.webp",
+      "before": 16812,
+      "after": 11888,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-rucksack.png",
+      "to": "assets/characters/thumbnails/backpack-rucksack.webp",
+      "before": 19507,
+      "after": 11588,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-cyber-purple.png",
+      "to": "assets/characters/thumbnails/body-cyber-purple.webp",
+      "before": 39559,
+      "after": 28166,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/face-og.png",
+      "to": "assets/characters/thumbnails/face-og.webp",
+      "before": 15500,
+      "after": 10228,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/face-white-dead-face.png",
+      "to": "assets/characters/thumbnails/face-white-dead-face.webp",
+      "before": 3954,
+      "after": 1458,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-red.png",
+      "to": "assets/characters/thumbnails/body-red.webp",
+      "before": 39947,
+      "after": 28202,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-blue-yellow.png",
+      "to": "assets/characters/thumbnails/backpack-blue-yellow.webp",
+      "before": 25532,
+      "after": 17824,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-purple.png",
+      "to": "assets/characters/thumbnails/gloves-purple.webp",
+      "before": 5952,
+      "after": 3864,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-green.png",
+      "to": "assets/characters/thumbnails/gloves-green.webp",
+      "before": 5759,
+      "after": 3510,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-orange.png",
+      "to": "assets/characters/thumbnails/gloves-orange.webp",
+      "before": 5519,
+      "after": 3078,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-pink-teal.png",
+      "to": "assets/characters/thumbnails/backpack-pink-teal.webp",
+      "before": 22464,
+      "after": 16754,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/back-white-katana.png",
+      "to": "assets/characters/thumbnails/back-white-katana.webp",
+      "before": 27171,
+      "after": 10542,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-baby-blue-headphones.png",
+      "to": "assets/characters/thumbnails/head-baby-blue-headphones.webp",
+      "before": 17225,
+      "after": 13112,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-teal.png",
+      "to": "assets/characters/thumbnails/backpack-teal.webp",
+      "before": 25426,
+      "after": 17966,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-paper-hat.png",
+      "to": "assets/characters/thumbnails/head-paper-hat.webp",
+      "before": 9439,
+      "after": 6254,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/face-gold.png",
+      "to": "assets/characters/thumbnails/face-gold.webp",
+      "before": 14423,
+      "after": 10444,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-green.png",
+      "to": "assets/characters/thumbnails/body-green.webp",
+      "before": 39951,
+      "after": 27562,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/shoes-baby-blue.png",
+      "to": "assets/characters/thumbnails/shoes-baby-blue.webp",
+      "before": 5226,
+      "after": 2658,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-og.png",
+      "to": "assets/characters/thumbnails/chest-og.webp",
+      "before": 12441,
+      "after": 8032,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-gold-purple.png",
+      "to": "assets/characters/thumbnails/backpack-gold-purple.webp",
+      "before": 24710,
+      "after": 17780,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-bright-orange.png",
+      "to": "assets/characters/thumbnails/backpack-bright-orange.webp",
+      "before": 22421,
+      "after": 16910,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-pastel-blue.png",
+      "to": "assets/characters/thumbnails/chest-pastel-blue.webp",
+      "before": 14946,
+      "after": 9520,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-blue-green.png",
+      "to": "assets/characters/thumbnails/backpack-blue-green.webp",
+      "before": 25262,
+      "after": 17862,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/shoes-red.png",
+      "to": "assets/characters/thumbnails/shoes-red.webp",
+      "before": 5023,
+      "after": 2466,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/shoes-green.png",
+      "to": "assets/characters/thumbnails/shoes-green.webp",
+      "before": 4866,
+      "after": 2322,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-orange-green-mohawk.png",
+      "to": "assets/characters/thumbnails/head-orange-green-mohawk.webp",
+      "before": 25889,
+      "after": 21482,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/character-luci.png",
+      "to": "assets/characters/thumbnails/character-luci.webp",
+      "before": 70590,
+      "after": 48692,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-blue.png",
+      "to": "assets/characters/thumbnails/gloves-blue.webp",
+      "before": 5449,
+      "after": 3352,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-astronaut.png",
+      "to": "assets/characters/thumbnails/body-astronaut.webp",
+      "before": 43599,
+      "after": 26308,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/shoes-tan.png",
+      "to": "assets/characters/thumbnails/shoes-tan.webp",
+      "before": 5869,
+      "after": 3034,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/backpack-yellow-pink.png",
+      "to": "assets/characters/thumbnails/backpack-yellow-pink.webp",
+      "before": 22097,
+      "after": 16636,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-bullish-black.png",
+      "to": "assets/characters/thumbnails/head-bullish-black.webp",
+      "before": 15399,
+      "after": 9832,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-tan.png",
+      "to": "assets/characters/thumbnails/gloves-tan.webp",
+      "before": 4950,
+      "after": 2196,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/gloves-yellow.png",
+      "to": "assets/characters/thumbnails/gloves-yellow.webp",
+      "before": 5523,
+      "after": 3088,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-cyber-pink.png",
+      "to": "assets/characters/thumbnails/body-cyber-pink.webp",
+      "before": 39668,
+      "after": 27520,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-gold.png",
+      "to": "assets/characters/thumbnails/body-gold.webp",
+      "before": 53473,
+      "after": 35476,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-baby-blue.png",
+      "to": "assets/characters/thumbnails/chest-baby-blue.webp",
+      "before": 15236,
+      "after": 10322,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-banana-headphones.png",
+      "to": "assets/characters/thumbnails/head-banana-headphones.webp",
+      "before": 17271,
+      "after": 12924,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-green-headphones.png",
+      "to": "assets/characters/thumbnails/head-green-headphones.webp",
+      "before": 16473,
+      "after": 12548,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/chest-yellow.png",
+      "to": "assets/characters/thumbnails/chest-yellow.webp",
+      "before": 14895,
+      "after": 9844,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-buuvva-headphones.png",
+      "to": "assets/characters/thumbnails/head-buuvva-headphones.webp",
+      "before": 20544,
+      "after": 14986,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/character-triskeleton.png",
+      "to": "assets/characters/thumbnails/character-triskeleton.webp",
+      "before": 68264,
+      "after": 56578,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/head-blue-mohawk.png",
+      "to": "assets/characters/thumbnails/head-blue-mohawk.webp",
+      "before": 27119,
+      "after": 23022,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-black.png",
+      "to": "assets/characters/thumbnails/body-black.webp",
+      "before": 21922,
+      "after": 10508,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-navy-blue.png",
+      "to": "assets/characters/thumbnails/body-navy-blue.webp",
+      "before": 36161,
+      "after": 25328,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/thumbnails/body-cyber-orange.png",
+      "to": "assets/characters/thumbnails/body-cyber-orange.webp",
+      "before": 38670,
+      "after": 28376,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/yellow.png",
+      "to": "assets/characters/gloves/yellow.webp",
+      "before": 389191,
+      "after": 237300,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/blue.png",
+      "to": "assets/characters/gloves/blue.webp",
+      "before": 381984,
+      "after": 261082,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/orange.png",
+      "to": "assets/characters/gloves/orange.webp",
+      "before": 409835,
+      "after": 277466,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/purple.png",
+      "to": "assets/characters/gloves/purple.webp",
+      "before": 539170,
+      "after": 399154,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/boxing-gloves.png",
+      "to": "assets/characters/gloves/boxing-gloves.webp",
+      "before": 87158,
+      "after": 64050,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/tan.png",
+      "to": "assets/characters/gloves/tan.webp",
+      "before": 298832,
+      "after": 134478,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/baby-blue.png",
+      "to": "assets/characters/gloves/baby-blue.webp",
+      "before": 420962,
+      "after": 229766,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/gloves/green.png",
+      "to": "assets/characters/gloves/green.webp",
+      "before": 537728,
+      "after": 400060,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/black.png",
+      "to": "assets/characters/body/black.webp",
+      "before": 182333,
+      "after": 104628,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/cyber-blue.png",
+      "to": "assets/characters/body/cyber-blue.webp",
+      "before": 448056,
+      "after": 325662,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/gold.png",
+      "to": "assets/characters/body/gold.webp",
+      "before": 605502,
+      "after": 429222,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/cyber-pink.png",
+      "to": "assets/characters/body/cyber-pink.webp",
+      "before": 443460,
+      "after": 318680,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/red.png",
+      "to": "assets/characters/body/red.webp",
+      "before": 454445,
+      "after": 334226,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/navy-blue.png",
+      "to": "assets/characters/body/navy-blue.webp",
+      "before": 397998,
+      "after": 281722,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/astronaut.png",
+      "to": "assets/characters/body/astronaut.webp",
+      "before": 463625,
+      "after": 309284,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/cyber-orange.png",
+      "to": "assets/characters/body/cyber-orange.webp",
+      "before": 431240,
+      "after": 324824,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/cyber-purple.png",
+      "to": "assets/characters/body/cyber-purple.webp",
+      "before": 440093,
+      "after": 330556,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/body/green.png",
+      "to": "assets/characters/body/green.webp",
+      "before": 452544,
+      "after": 325148,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/playable/triskeleton.png",
+      "to": "assets/characters/playable/triskeleton.webp",
+      "before": 888620,
+      "after": 775730,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/playable/miracle.png",
+      "to": "assets/characters/playable/miracle.webp",
+      "before": 1348698,
+      "after": 1030394,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/playable/fuzzy.png",
+      "to": "assets/characters/playable/fuzzy.webp",
+      "before": 569130,
+      "after": 383280,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/playable/luci.png",
+      "to": "assets/characters/playable/luci.webp",
+      "before": 787524,
+      "after": 556658,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/face/gold.png",
+      "to": "assets/characters/face/gold.webp",
+      "before": 49539,
+      "after": 32594,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/face/white-dead-face.png",
+      "to": "assets/characters/face/white-dead-face.webp",
+      "before": 23724,
+      "after": 7326,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/face/squint-face-black.png",
+      "to": "assets/characters/face/squint-face-black.webp",
+      "before": 20725,
+      "after": 6282,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/face/black-dead-face.png",
+      "to": "assets/characters/face/black-dead-face.webp",
+      "before": 23618,
+      "after": 7324,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/face/og.png",
+      "to": "assets/characters/face/og.webp",
+      "before": 593957,
+      "after": 434884,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/face/squint-face-white.png",
+      "to": "assets/characters/face/squint-face-white.webp",
+      "before": 20846,
+      "after": 5988,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/back/green-katana.png",
+      "to": "assets/characters/back/green-katana.webp",
+      "before": 97394,
+      "after": 91386,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/back/yellow-katana.png",
+      "to": "assets/characters/back/yellow-katana.webp",
+      "before": 99960,
+      "after": 85878,
+      "kind": "lossless-webp"
+    },
+    {
+      "from": "assets/characters/back/white-katana.png",
+      "to": "assets/characters/back/white-katana.webp",
+      "before": 83927,
+      "after": 29910,
+      "kind": "lossless-webp"
+    }
+  ],
+  "removed": [
+    {
+      "path": "main-map.png",
+      "bytes": 21264148
+    },
+    {
+      "path": "blocked-mask.png",
+      "bytes": 280127
+    },
+    {
+      "path": "stairs-mask.png",
+      "bytes": 53319
+    },
+    {
+      "path": "illuminate.png",
+      "bytes": 479587
+    },
+    {
+      "path": "assets/jetpack-overlay.png",
+      "bytes": 310475
+    },
+    {
+      "path": "jetpack-boost.wav",
+      "bytes": 176444
+    }
+  ],
+  "path_map": {
+    "town.webp": "assets/maps/town/visual.webp",
+    "town-night.webp": "assets/maps/town/night.webp",
+    "town-lighting.webp": "assets/maps/town/lighting.webp",
+    "town-blocked.png": "assets/maps/town/masks/collision.png",
+    "town-stairs.png": "assets/maps/town/masks/stairs.png",
+    "ATM TOWN INTERACTION MAP(1).png": "assets/maps/town/masks/interaction.png",
+    "hq.webp": "assets/maps/hq/visual.webp",
+    "hq-blocked.png": "assets/maps/hq/masks/collision.png",
+    "hq-depth.png": "assets/maps/hq/masks/depth.png",
+    "Hq interaction zones(1).png": "assets/maps/hq/masks/interaction.png",
+    "gallery.webp": "assets/maps/gallery/visual.webp",
+    "gallery-blocked.png": "assets/maps/gallery/masks/collision.png",
+    "gallery-depth.png": "assets/maps/gallery/masks/depth.png",
+    "arcade.webp": "assets/maps/arcade/visual.webp",
+    "arcade-blocked.png": "assets/maps/arcade/masks/collision.png",
+    "arcade-depth.png": "assets/maps/arcade/masks/depth.png",
+    "arcade-interaction.png": "assets/maps/arcade/masks/interaction.png",
+    "lounge-blocked.png": "assets/maps/lounge/masks/collision.png",
+    "lounge-depth.png": "assets/maps/lounge/masks/depth.png",
+    "lounge-interaction.png": "assets/maps/lounge/masks/interaction.png",
+    "town-night-depth-manifest.json": "assets/maps/town/night-depth-manifest.json",
+    "lounge.png": "assets/maps/lounge/visual.webp",
+    "buildings_05_00.png": "assets/maps/town/foreground/day/buildings_05_00.webp",
+    "buildings_07_00.png": "assets/maps/town/foreground/day/buildings_07_00.webp",
+    "buildings_06_00.png": "assets/maps/town/foreground/day/buildings_06_00.webp",
+    "buildings_02_00.png": "assets/maps/town/foreground/day/buildings_02_00.webp",
+    "buildings_03_00.png": "assets/maps/town/foreground/day/buildings_03_00.webp",
+    "buildings_08_00.png": "assets/maps/town/foreground/day/buildings_08_00.webp",
+    "buildings_01_00.png": "assets/maps/town/foreground/day/buildings_01_00.webp",
+    "buildings_04_00.png": "assets/maps/town/foreground/day/buildings_04_00.webp",
+    "buildings_09_00.png": "assets/maps/town/foreground/day/buildings_09_00.webp",
+    "buildings_00_00.png": "assets/maps/town/foreground/day/buildings_00_00.webp",
+    "assets_12_00.png": "assets/maps/town/foreground/day/assets_12_00.webp",
+    "assets_18_00.png": "assets/maps/town/foreground/day/assets_18_00.webp",
+    "assets_02_00.png": "assets/maps/town/foreground/day/assets_02_00.webp",
+    "assets_06_00.png": "assets/maps/town/foreground/day/assets_06_00.webp",
+    "assets_00_04.png": "assets/maps/town/foreground/day/assets_00_04.webp",
+    "assets_14_00.png": "assets/maps/town/foreground/day/assets_14_00.webp",
+    "assets_10_02.png": "assets/maps/town/foreground/day/assets_10_02.webp",
+    "assets_01_01.png": "assets/maps/town/foreground/day/assets_01_01.webp",
+    "assets_19_01.png": "assets/maps/town/foreground/day/assets_19_01.webp",
+    "assets_22_00.png": "assets/maps/town/foreground/day/assets_22_00.webp",
+    "assets_09_00.png": "assets/maps/town/foreground/day/assets_09_00.webp",
+    "assets_03_02.png": "assets/maps/town/foreground/day/assets_03_02.webp",
+    "assets_03_05.png": "assets/maps/town/foreground/day/assets_03_05.webp",
+    "assets_03_04.png": "assets/maps/town/foreground/day/assets_03_04.webp",
+    "assets_16_00.png": "assets/maps/town/foreground/day/assets_16_00.webp",
+    "assets_19_00.png": "assets/maps/town/foreground/day/assets_19_00.webp",
+    "assets_01_00.png": "assets/maps/town/foreground/day/assets_01_00.webp",
+    "assets_00_03.png": "assets/maps/town/foreground/day/assets_00_03.webp",
+    "assets_05_00.png": "assets/maps/town/foreground/day/assets_05_00.webp",
+    "assets_07_00.png": "assets/maps/town/foreground/day/assets_07_00.png",
+    "assets_10_01.png": "assets/maps/town/foreground/day/assets_10_01.webp",
+    "assets_03_01.png": "assets/maps/town/foreground/day/assets_03_01.webp",
+    "assets_00_01.png": "assets/maps/town/foreground/day/assets_00_01.webp",
+    "assets_02_03.png": "assets/maps/town/foreground/day/assets_02_03.webp",
+    "assets_20_00.png": "assets/maps/town/foreground/day/assets_20_00.webp",
+    "assets_13_00.png": "assets/maps/town/foreground/day/assets_13_00.webp",
+    "assets_08_00.png": "assets/maps/town/foreground/day/assets_08_00.webp",
+    "assets_03_03.png": "assets/maps/town/foreground/day/assets_03_03.webp",
+    "assets_04_00.png": "assets/maps/town/foreground/day/assets_04_00.webp",
+    "assets_15_00.png": "assets/maps/town/foreground/day/assets_15_00.webp",
+    "assets_02_01.png": "assets/maps/town/foreground/day/assets_02_01.webp",
+    "assets_02_02.png": "assets/maps/town/foreground/day/assets_02_02.webp",
+    "assets_21_01.png": "assets/maps/town/foreground/day/assets_21_01.webp",
+    "assets_21_00.png": "assets/maps/town/foreground/day/assets_21_00.webp",
+    "assets_17_00.png": "assets/maps/town/foreground/day/assets_17_00.webp",
+    "assets_11_00.png": "assets/maps/town/foreground/day/assets_11_00.webp",
+    "assets_00_02.png": "assets/maps/town/foreground/day/assets_00_02.webp",
+    "assets_01_02.png": "assets/maps/town/foreground/day/assets_01_02.webp",
+    "assets_03_00.png": "assets/maps/town/foreground/day/assets_03_00.webp",
+    "assets_00_00.png": "assets/maps/town/foreground/day/assets_00_00.webp",
+    "assets_10_00.png": "assets/maps/town/foreground/day/assets_10_00.webp",
+    "night_buildings_07_00.png": "assets/maps/town/foreground/night/buildings_07_00.webp",
+    "night_buildings_03_00.png": "assets/maps/town/foreground/night/buildings_03_00.webp",
+    "night_buildings_01_00.png": "assets/maps/town/foreground/night/buildings_01_00.webp",
+    "night_buildings_09_00.png": "assets/maps/town/foreground/night/buildings_09_00.webp",
+    "night_buildings_06_00.png": "assets/maps/town/foreground/night/buildings_06_00.webp",
+    "night_buildings_00_00.png": "assets/maps/town/foreground/night/buildings_00_00.webp",
+    "night_buildings_02_00.png": "assets/maps/town/foreground/night/buildings_02_00.webp",
+    "night_buildings_05_00.png": "assets/maps/town/foreground/night/buildings_05_00.webp",
+    "night_buildings_04_00.png": "assets/maps/town/foreground/night/buildings_04_00.webp",
+    "night_buildings_08_00.png": "assets/maps/town/foreground/night/buildings_08_00.webp",
+    "night_assets_18_00.png": "assets/maps/town/foreground/night/assets_18_00.webp",
+    "night_assets_02_00.png": "assets/maps/town/foreground/night/assets_02_00.webp",
+    "night_assets_05_00.png": "assets/maps/town/foreground/night/assets_05_00.webp",
+    "night_assets_08_00.png": "assets/maps/town/foreground/night/assets_08_00.webp",
+    "night_assets_20_00.png": "assets/maps/town/foreground/night/assets_20_00.webp",
+    "night_assets_06_00.png": "assets/maps/town/foreground/night/assets_06_00.webp",
+    "night_assets_03_03.png": "assets/maps/town/foreground/night/assets_03_03.webp",
+    "night_assets_21_00.png": "assets/maps/town/foreground/night/assets_21_00.webp",
+    "night_assets_01_02.png": "assets/maps/town/foreground/night/assets_01_02.webp",
+    "night_assets_10_02.png": "assets/maps/town/foreground/night/assets_10_02.webp",
+    "night_assets_14_00.png": "assets/maps/town/foreground/night/assets_14_00.webp",
+    "night_assets_02_02.png": "assets/maps/town/foreground/night/assets_02_02.webp",
+    "night_assets_01_00.png": "assets/maps/town/foreground/night/assets_01_00.webp",
+    "night_assets_13_00.png": "assets/maps/town/foreground/night/assets_13_00.webp",
+    "night_assets_09_00.png": "assets/maps/town/foreground/night/assets_09_00.webp",
+    "night_assets_15_00.png": "assets/maps/town/foreground/night/assets_15_00.webp",
+    "night_assets_12_00.png": "assets/maps/town/foreground/night/assets_12_00.webp",
+    "night_assets_16_00.png": "assets/maps/town/foreground/night/assets_16_00.webp",
+    "night_assets_10_00.png": "assets/maps/town/foreground/night/assets_10_00.webp",
+    "night_assets_02_01.png": "assets/maps/town/foreground/night/assets_02_01.webp",
+    "night_assets_03_04.png": "assets/maps/town/foreground/night/assets_03_04.webp",
+    "night_assets_04_00.png": "assets/maps/town/foreground/night/assets_04_00.webp",
+    "night_assets_21_01.png": "assets/maps/town/foreground/night/assets_21_01.webp",
+    "night_assets_03_05.png": "assets/maps/town/foreground/night/assets_03_05.webp",
+    "night_assets_07_00.png": "assets/maps/town/foreground/night/assets_07_00.webp",
+    "night_assets_00_01.png": "assets/maps/town/foreground/night/assets_00_01.webp",
+    "night_assets_00_04.png": "assets/maps/town/foreground/night/assets_00_04.webp",
+    "night_assets_02_03.png": "assets/maps/town/foreground/night/assets_02_03.webp",
+    "night_assets_03_00.png": "assets/maps/town/foreground/night/assets_03_00.webp",
+    "night_assets_10_01.png": "assets/maps/town/foreground/night/assets_10_01.webp",
+    "night_assets_03_01.png": "assets/maps/town/foreground/night/assets_03_01.webp",
+    "night_assets_22_00.png": "assets/maps/town/foreground/night/assets_22_00.webp",
+    "night_assets_11_00.png": "assets/maps/town/foreground/night/assets_11_00.webp",
+    "night_assets_00_02.png": "assets/maps/town/foreground/night/assets_00_02.webp",
+    "night_assets_19_00.png": "assets/maps/town/foreground/night/assets_19_00.webp",
+    "night_assets_17_00.png": "assets/maps/town/foreground/night/assets_17_00.webp",
+    "night_assets_03_02.png": "assets/maps/town/foreground/night/assets_03_02.webp",
+    "night_assets_01_01.png": "assets/maps/town/foreground/night/assets_01_01.webp",
+    "night_assets_19_01.png": "assets/maps/town/foreground/night/assets_19_01.webp",
+    "night_assets_00_00.png": "assets/maps/town/foreground/night/assets_00_00.webp",
+    "night_assets_00_03.png": "assets/maps/town/foreground/night/assets_00_03.webp",
+    "classic-green-expanded.png": "assets/characters/playable/atm.webp",
+    "victoria-v1.png": "assets/characters/playable/victoria.webp",
+    "jetpack-overlay-expanded.png": "assets/characters/equipment/jetpack.webp",
+    "assets/characters/chest/gold.png": "assets/characters/chest/gold.webp",
+    "assets/characters/chest/yellow.png": "assets/characters/chest/yellow.webp",
+    "assets/characters/chest/blue.png": "assets/characters/chest/blue.webp",
+    "assets/characters/chest/red.png": "assets/characters/chest/red.webp",
+    "assets/characters/chest/pastel-blue.png": "assets/characters/chest/pastel-blue.webp",
+    "assets/characters/chest/og.png": "assets/characters/chest/og.webp",
+    "assets/characters/chest/pastel-red.png": "assets/characters/chest/pastel-red.webp",
+    "assets/characters/chest/baby-blue.png": "assets/characters/chest/baby-blue.webp",
+    "assets/characters/chest/green.png": "assets/characters/chest/green.webp",
+    "assets/characters/head/orange-green-mohawk.png": "assets/characters/head/orange-green-mohawk.webp",
+    "assets/characters/head/banana-headphones.png": "assets/characters/head/banana-headphones.webp",
+    "assets/characters/head/baby-blue-headphones.png": "assets/characters/head/baby-blue-headphones.webp",
+    "assets/characters/head/buuvva-headphones.png": "assets/characters/head/buuvva-headphones.webp",
+    "assets/characters/head/red-headphones.png": "assets/characters/head/red-headphones.webp",
+    "assets/characters/head/blue-mohawk.png": "assets/characters/head/blue-mohawk.webp",
+    "assets/characters/head/bullish-black.png": "assets/characters/head/bullish-black.webp",
+    "assets/characters/head/green-headphones.png": "assets/characters/head/green-headphones.webp",
+    "assets/characters/head/paper-hat.png": "assets/characters/head/paper-hat.webp",
+    "assets/characters/head/pink-mohawk.png": "assets/characters/head/pink-mohawk.webp",
+    "assets/characters/backpack/blue-yellow.png": "assets/characters/backpack/blue-yellow.webp",
+    "assets/characters/backpack/gold-purple.png": "assets/characters/backpack/gold-purple.webp",
+    "assets/characters/backpack/teal.png": "assets/characters/backpack/teal.webp",
+    "assets/characters/backpack/blue-green.png": "assets/characters/backpack/blue-green.webp",
+    "assets/characters/backpack/bright-orange.png": "assets/characters/backpack/bright-orange.webp",
+    "assets/characters/backpack/rucksack.png": "assets/characters/backpack/rucksack.webp",
+    "assets/characters/backpack/pink-teal.png": "assets/characters/backpack/pink-teal.webp",
+    "assets/characters/backpack/yellow-pink.png": "assets/characters/backpack/yellow-pink.webp",
+    "assets/characters/backpack/green.png": "assets/characters/backpack/green.webp",
+    "assets/characters/shoes/gold.png": "assets/characters/shoes/gold.webp",
+    "assets/characters/shoes/red.png": "assets/characters/shoes/red.webp",
+    "assets/characters/shoes/tan.png": "assets/characters/shoes/tan.webp",
+    "assets/characters/shoes/baby-blue.png": "assets/characters/shoes/baby-blue.webp",
+    "assets/characters/shoes/green.png": "assets/characters/shoes/green.webp",
+    "assets/characters/thumbnails/back-green-katana.png": "assets/characters/thumbnails/back-green-katana.webp",
+    "assets/characters/thumbnails/backpack-green.png": "assets/characters/thumbnails/backpack-green.webp",
+    "assets/characters/thumbnails/character-fuzzy.png": "assets/characters/thumbnails/character-fuzzy.webp",
+    "assets/characters/thumbnails/head-pink-mohawk.png": "assets/characters/thumbnails/head-pink-mohawk.webp",
+    "assets/characters/thumbnails/chest-pastel-red.png": "assets/characters/thumbnails/chest-pastel-red.webp",
+    "assets/characters/thumbnails/gloves-baby-blue.png": "assets/characters/thumbnails/gloves-baby-blue.webp",
+    "assets/characters/thumbnails/gloves-boxing-gloves.png": "assets/characters/thumbnails/gloves-boxing-gloves.webp",
+    "assets/characters/thumbnails/chest-red.png": "assets/characters/thumbnails/chest-red.webp",
+    "assets/characters/thumbnails/character-atm.png": "assets/characters/thumbnails/character-atm.webp",
+    "assets/characters/thumbnails/body-cyber-blue.png": "assets/characters/thumbnails/body-cyber-blue.webp",
+    "assets/characters/thumbnails/shoes-gold.png": "assets/characters/thumbnails/shoes-gold.webp",
+    "assets/characters/thumbnails/face-black-dead-face.png": "assets/characters/thumbnails/face-black-dead-face.webp",
+    "assets/characters/thumbnails/head-red-headphones.png": "assets/characters/thumbnails/head-red-headphones.webp",
+    "assets/characters/thumbnails/chest-green.png": "assets/characters/thumbnails/chest-green.webp",
+    "assets/characters/thumbnails/face-squint-face-black.png": "assets/characters/thumbnails/face-squint-face-black.webp",
+    "assets/characters/thumbnails/chest-blue.png": "assets/characters/thumbnails/chest-blue.webp",
+    "assets/characters/thumbnails/face-squint-face-white.png": "assets/characters/thumbnails/face-squint-face-white.webp",
+    "assets/characters/thumbnails/character-miracle.png": "assets/characters/thumbnails/character-miracle.webp",
+    "assets/characters/thumbnails/back-yellow-katana.png": "assets/characters/thumbnails/back-yellow-katana.webp",
+    "assets/characters/thumbnails/chest-gold.png": "assets/characters/thumbnails/chest-gold.webp",
+    "assets/characters/thumbnails/backpack-rucksack.png": "assets/characters/thumbnails/backpack-rucksack.webp",
+    "assets/characters/thumbnails/body-cyber-purple.png": "assets/characters/thumbnails/body-cyber-purple.webp",
+    "assets/characters/thumbnails/face-og.png": "assets/characters/thumbnails/face-og.webp",
+    "assets/characters/thumbnails/face-white-dead-face.png": "assets/characters/thumbnails/face-white-dead-face.webp",
+    "assets/characters/thumbnails/body-red.png": "assets/characters/thumbnails/body-red.webp",
+    "assets/characters/thumbnails/backpack-blue-yellow.png": "assets/characters/thumbnails/backpack-blue-yellow.webp",
+    "assets/characters/thumbnails/gloves-purple.png": "assets/characters/thumbnails/gloves-purple.webp",
+    "assets/characters/thumbnails/gloves-green.png": "assets/characters/thumbnails/gloves-green.webp",
+    "assets/characters/thumbnails/gloves-orange.png": "assets/characters/thumbnails/gloves-orange.webp",
+    "assets/characters/thumbnails/backpack-pink-teal.png": "assets/characters/thumbnails/backpack-pink-teal.webp",
+    "assets/characters/thumbnails/back-white-katana.png": "assets/characters/thumbnails/back-white-katana.webp",
+    "assets/characters/thumbnails/head-baby-blue-headphones.png": "assets/characters/thumbnails/head-baby-blue-headphones.webp",
+    "assets/characters/thumbnails/backpack-teal.png": "assets/characters/thumbnails/backpack-teal.webp",
+    "assets/characters/thumbnails/head-paper-hat.png": "assets/characters/thumbnails/head-paper-hat.webp",
+    "assets/characters/thumbnails/face-gold.png": "assets/characters/thumbnails/face-gold.webp",
+    "assets/characters/thumbnails/body-green.png": "assets/characters/thumbnails/body-green.webp",
+    "assets/characters/thumbnails/shoes-baby-blue.png": "assets/characters/thumbnails/shoes-baby-blue.webp",
+    "assets/characters/thumbnails/chest-og.png": "assets/characters/thumbnails/chest-og.webp",
+    "assets/characters/thumbnails/backpack-gold-purple.png": "assets/characters/thumbnails/backpack-gold-purple.webp",
+    "assets/characters/thumbnails/backpack-bright-orange.png": "assets/characters/thumbnails/backpack-bright-orange.webp",
+    "assets/characters/thumbnails/chest-pastel-blue.png": "assets/characters/thumbnails/chest-pastel-blue.webp",
+    "assets/characters/thumbnails/backpack-blue-green.png": "assets/characters/thumbnails/backpack-blue-green.webp",
+    "assets/characters/thumbnails/shoes-red.png": "assets/characters/thumbnails/shoes-red.webp",
+    "assets/characters/thumbnails/shoes-green.png": "assets/characters/thumbnails/shoes-green.webp",
+    "assets/characters/thumbnails/head-orange-green-mohawk.png": "assets/characters/thumbnails/head-orange-green-mohawk.webp",
+    "assets/characters/thumbnails/character-luci.png": "assets/characters/thumbnails/character-luci.webp",
+    "assets/characters/thumbnails/gloves-blue.png": "assets/characters/thumbnails/gloves-blue.webp",
+    "assets/characters/thumbnails/body-astronaut.png": "assets/characters/thumbnails/body-astronaut.webp",
+    "assets/characters/thumbnails/shoes-tan.png": "assets/characters/thumbnails/shoes-tan.webp",
+    "assets/characters/thumbnails/backpack-yellow-pink.png": "assets/characters/thumbnails/backpack-yellow-pink.webp",
+    "assets/characters/thumbnails/head-bullish-black.png": "assets/characters/thumbnails/head-bullish-black.webp",
+    "assets/characters/thumbnails/gloves-tan.png": "assets/characters/thumbnails/gloves-tan.webp",
+    "assets/characters/thumbnails/gloves-yellow.png": "assets/characters/thumbnails/gloves-yellow.webp",
+    "assets/characters/thumbnails/body-cyber-pink.png": "assets/characters/thumbnails/body-cyber-pink.webp",
+    "assets/characters/thumbnails/body-gold.png": "assets/characters/thumbnails/body-gold.webp",
+    "assets/characters/thumbnails/chest-baby-blue.png": "assets/characters/thumbnails/chest-baby-blue.webp",
+    "assets/characters/thumbnails/head-banana-headphones.png": "assets/characters/thumbnails/head-banana-headphones.webp",
+    "assets/characters/thumbnails/head-green-headphones.png": "assets/characters/thumbnails/head-green-headphones.webp",
+    "assets/characters/thumbnails/chest-yellow.png": "assets/characters/thumbnails/chest-yellow.webp",
+    "assets/characters/thumbnails/head-buuvva-headphones.png": "assets/characters/thumbnails/head-buuvva-headphones.webp",
+    "assets/characters/thumbnails/character-triskeleton.png": "assets/characters/thumbnails/character-triskeleton.webp",
+    "assets/characters/thumbnails/head-blue-mohawk.png": "assets/characters/thumbnails/head-blue-mohawk.webp",
+    "assets/characters/thumbnails/body-black.png": "assets/characters/thumbnails/body-black.webp",
+    "assets/characters/thumbnails/body-navy-blue.png": "assets/characters/thumbnails/body-navy-blue.webp",
+    "assets/characters/thumbnails/body-cyber-orange.png": "assets/characters/thumbnails/body-cyber-orange.webp",
+    "assets/characters/gloves/yellow.png": "assets/characters/gloves/yellow.webp",
+    "assets/characters/gloves/blue.png": "assets/characters/gloves/blue.webp",
+    "assets/characters/gloves/orange.png": "assets/characters/gloves/orange.webp",
+    "assets/characters/gloves/purple.png": "assets/characters/gloves/purple.webp",
+    "assets/characters/gloves/boxing-gloves.png": "assets/characters/gloves/boxing-gloves.webp",
+    "assets/characters/gloves/tan.png": "assets/characters/gloves/tan.webp",
+    "assets/characters/gloves/baby-blue.png": "assets/characters/gloves/baby-blue.webp",
+    "assets/characters/gloves/green.png": "assets/characters/gloves/green.webp",
+    "assets/characters/body/black.png": "assets/characters/body/black.webp",
+    "assets/characters/body/cyber-blue.png": "assets/characters/body/cyber-blue.webp",
+    "assets/characters/body/gold.png": "assets/characters/body/gold.webp",
+    "assets/characters/body/cyber-pink.png": "assets/characters/body/cyber-pink.webp",
+    "assets/characters/body/red.png": "assets/characters/body/red.webp",
+    "assets/characters/body/navy-blue.png": "assets/characters/body/navy-blue.webp",
+    "assets/characters/body/astronaut.png": "assets/characters/body/astronaut.webp",
+    "assets/characters/body/cyber-orange.png": "assets/characters/body/cyber-orange.webp",
+    "assets/characters/body/cyber-purple.png": "assets/characters/body/cyber-purple.webp",
+    "assets/characters/body/green.png": "assets/characters/body/green.webp",
+    "assets/characters/playable/triskeleton.png": "assets/characters/playable/triskeleton.webp",
+    "assets/characters/playable/miracle.png": "assets/characters/playable/miracle.webp",
+    "assets/characters/playable/fuzzy.png": "assets/characters/playable/fuzzy.webp",
+    "assets/characters/playable/luci.png": "assets/characters/playable/luci.webp",
+    "assets/characters/face/gold.png": "assets/characters/face/gold.webp",
+    "assets/characters/face/white-dead-face.png": "assets/characters/face/white-dead-face.webp",
+    "assets/characters/face/squint-face-black.png": "assets/characters/face/squint-face-black.webp",
+    "assets/characters/face/black-dead-face.png": "assets/characters/face/black-dead-face.webp",
+    "assets/characters/face/og.png": "assets/characters/face/og.webp",
+    "assets/characters/face/squint-face-white.png": "assets/characters/face/squint-face-white.webp",
+    "assets/characters/back/green-katana.png": "assets/characters/back/green-katana.webp",
+    "assets/characters/back/yellow-katana.png": "assets/characters/back/yellow-katana.webp",
+    "assets/characters/back/white-katana.png": "assets/characters/back/white-katana.webp",
+    "jetpack-boost-v133.wav": "assets/audio/jetpack-boost.wav",
+    "quest-drift.mp3": "assets/audio/quest-drift.mp3"
+  },
+  "embedded_count": 39,
+  "embedded_unique_count": 36,
+  "active_conversion_count": 259,
+  "baseline_bytes": 95359236,
+  "optimized_bytes": 55294182,
+  "total_reduction_bytes": 40065054,
+  "total_reduction_percent": 42.01,
+  "protected_mask_count": 14,
+  "notes": [
+    "Gameplay-data masks were moved but remain byte-identical PNG files.",
+    "Four malformed legacy inline-derived PNG visuals are preserved byte-for-byte until clean source art is supplied.",
+    "The assets_07_00 day/night foreground pair remains PNG because the daytime lossless WebP was larger."
+  ]
+}

@@ -1,36 +1,38 @@
 # ATM Town
 
-ATM Town is a lightweight browser-based multiplayer social game built with HTML5 Canvas, JavaScript, Supabase Realtime, LiveKit voice, and XRPL/Xaman account features.
+ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/JavaScript, Supabase Realtime, LiveKit voice, and XRPL/Xaman account/payment features.
 
 ## Current version
 
-**v160 — Map Runtime Registry**
+**v228 — Asset Architecture Optimization**
 
-This version moves map entry zoom, spawn direction, entrance IDs, exit targets, Town return rules, labels, and pixel dimensions behind the shared map registry without rewriting gameplay.
+This build preserves the v227 gameplay baseline while reorganizing runtime assets for faster downloads, browser caching, cleaner GitHub maintenance, and future large-world/chunk streaming.
 
 ## Project structure
 
 ```text
-index.html              Existing game runtime and UI
+index.html              Main game runtime and UI
 api/                    Vercel serverless endpoints
-js/config.js            Build and map configuration
-js/maps.js              Map registry and reusable enter/exit/runtime helpers
-js/interactions.js      Shared interaction colors, mask readers, hints, and zone helpers
-js/bootstrap.js         Startup, storage, and Supabase loader helpers
-scripts/                Repeatable validation and asset-audit tools
-docs/                   Architecture, roadmap, changelog, and test checklist
-assets/README.md         Safe staged asset-migration policy
+js/                     Shared config, maps, interactions, startup helpers
+assets/
+  maps/                  Map visuals, foregrounds and PNG gameplay masks
+  characters/            Playable characters, equipment and thumbnails
+  ui/                    Landing/UI artwork extracted from the HTML
+  audio/                 Music and sound effects
+  items/                 Coin/item artwork
+  environment/           Reusable environmental artwork
+scripts/                 Validation and asset-audit tools
+docs/                    Architecture, asset policy, changelog and testing docs
 ```
 
-Live map and gameplay assets remain at the repository root for backward compatibility. They will be moved incrementally through the map registry.
+## Asset format policy
 
-## Local development
+- Visual PNG artwork is converted to WebP when WebP is smaller and safe.
+- Sprite/character artwork uses lossless WebP to preserve crisp pixels and alpha.
+- Collision, interaction, stairs, depth and similar gameplay-data masks remain PNG.
+- New runtime artwork should not be added loose to repository root.
 
-Serve the repository through a local web server rather than opening `index.html` directly, because browser security rules can differ for local files.
-
-```bash
-npx serve .
-```
+See `docs/ASSET-POLICY.md`.
 
 ## Validation
 
@@ -41,6 +43,4 @@ npm run audit:assets
 
 ## Deployment
 
-The repository is Vercel-ready. Commit the complete v160 changed-file structure, including `index.html`, `js/config.js`, and `js/maps.js`. Replacing only `index.html` will leave the registry out of sync.
-
-See `docs/REGRESSION-CHECKLIST.md` before replacing production.
+Upload the **contents** of the v228 folder to the repository root, preserving all folders and paths. Do not flatten the `/assets`, `/api`, `/js`, `/docs`, or `/scripts` directories.

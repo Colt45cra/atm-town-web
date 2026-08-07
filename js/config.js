@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v160: map entry, exit, zoom, spawn, and runtime settings live in one registry.
+ * v228: map entry, exit, zoom, spawn, runtime settings, and structured asset paths live in one registry.
  * Keep this file data-only. Runtime behavior belongs in the appropriate module.
  */
 (function initializeATMTownConfig(global) {
@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 160,
-    version: 'v160',
-    name: 'Map Runtime Registry',
-    title: 'ATM Town v160 — Map Runtime Registry'
+    number: 228,
+    version: 'v228',
+    name: 'Asset Architecture Optimization',
+    title: 'ATM Town v228 — Asset Architecture Optimization'
   });
 
   const MAPS = Object.freeze({
@@ -28,12 +28,12 @@
       exitTarget: null,
       townReturn: null,
       assets: Object.freeze({
-        visual: 'town.webp',
-        nightVisual: 'town-night.webp',
-        collision: 'town-blocked.png',
-        stairs: 'town-stairs.png',
-        lighting: 'town-lighting.webp',
-        interaction: 'ATM TOWN INTERACTION MAP(1).png'
+        visual: 'assets/maps/town/visual.webp',
+        nightVisual: 'assets/maps/town/night.webp',
+        collision: 'assets/maps/town/masks/collision.png',
+        stairs: 'assets/maps/town/masks/stairs.png',
+        lighting: 'assets/maps/town/lighting.webp',
+        interaction: 'assets/maps/town/masks/interaction.png'
       })
     }),
     hq: Object.freeze({
@@ -48,10 +48,10 @@
       exitTarget: 'town',
       townReturn: Object.freeze({ mode: 'doorOffset', x: 0, y: 165 }),
       assets: Object.freeze({
-        visual: 'hq.webp',
-        collision: 'hq-blocked.png',
-        depth: 'hq-depth.png',
-        interaction: 'Hq interaction zones(1).png'
+        visual: 'assets/maps/hq/visual.webp',
+        collision: 'assets/maps/hq/masks/collision.png',
+        depth: 'assets/maps/hq/masks/depth.png',
+        interaction: 'assets/maps/hq/masks/interaction.png'
       })
     }),
     gallery: Object.freeze({
@@ -66,9 +66,9 @@
       exitTarget: 'town',
       townReturn: Object.freeze({ mode: 'doorOffset', x: 0, y: 165 }),
       assets: Object.freeze({
-        visual: 'gallery.webp',
-        collision: 'gallery-blocked.png',
-        depth: 'gallery-depth.png'
+        visual: 'assets/maps/gallery/visual.webp',
+        collision: 'assets/maps/gallery/masks/collision.png',
+        depth: 'assets/maps/gallery/masks/depth.png'
       })
     }),
     arcade: Object.freeze({
@@ -84,9 +84,10 @@
       exitTarget: 'town',
       townReturn: Object.freeze({ mode: 'fixedY', y: 700 }),
       assets: Object.freeze({
-        visual: 'arcade.webp',
-        collision: 'arcade-blocked.png',
-        depth: 'arcade-depth.png'
+        visual: 'assets/maps/arcade/visual.webp',
+        collision: 'assets/maps/arcade/masks/collision.png',
+        depth: 'assets/maps/arcade/masks/depth.png',
+        interaction: 'assets/maps/arcade/masks/interaction.png'
       })
     }),
     lounge: Object.freeze({
@@ -102,10 +103,10 @@
       exitTarget: 'town',
       townReturn: Object.freeze({ mode: 'doorOffset', x: 0, y: 165 }),
       assets: Object.freeze({
-        visual: 'lounge.png',
-        collision: 'lounge-blocked.png',
-        depth: 'lounge-depth.png',
-        interaction: 'lounge-interaction.png'
+        visual: 'assets/maps/lounge/visual.webp',
+        collision: 'assets/maps/lounge/masks/collision.png',
+        depth: 'assets/maps/lounge/masks/depth.png',
+        interaction: 'assets/maps/lounge/masks/interaction.png'
       })
     })
   });

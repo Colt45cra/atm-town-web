@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile, access } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile, access, readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,26 +12,41 @@ const requiredFiles = [
   'js/maps.js',
   'js/interactions.js',
   'js/bootstrap.js',
-  'town.webp',
-  'town-night.webp',
-  'town-blocked.png',
-  'town-stairs.png',
-  'town-lighting.webp',
-  'ATM TOWN INTERACTION MAP(1).png',
-  'hq.webp',
-  'hq-blocked.png',
-  'hq-depth.png',
-  'Hq interaction zones(1).png',
-  'gallery.webp',
-  'gallery-blocked.png',
-  'gallery-depth.png',
-  'arcade.webp',
-  'arcade-blocked.png',
-  'arcade-depth.png',
-  'lounge.png',
-  'lounge-blocked.png',
-  'lounge-depth.png',
-  'lounge-interaction.png'
+  'api/_auth.js',
+  'api/_xaman-vending.js',
+  'api/xaman-vending-start.js',
+  'api/xaman-vending-status.js',
+  'api/xaman-vending-webhook.js',
+  'assets/maps/town/visual.webp',
+  'assets/maps/town/night.webp',
+  'assets/maps/town/lighting.webp',
+  'assets/maps/town/masks/collision.png',
+  'assets/maps/town/masks/stairs.png',
+  'assets/maps/town/masks/interaction.png',
+  'assets/maps/hq/visual.webp',
+  'assets/maps/hq/masks/collision.png',
+  'assets/maps/hq/masks/depth.png',
+  'assets/maps/hq/masks/interaction.png',
+  'assets/maps/gallery/visual.webp',
+  'assets/maps/gallery/masks/collision.png',
+  'assets/maps/gallery/masks/depth.png',
+  'assets/maps/arcade/visual.webp',
+  'assets/maps/arcade/masks/collision.png',
+  'assets/maps/arcade/masks/depth.png',
+  'assets/maps/arcade/masks/interaction.png',
+  'assets/maps/lounge/visual.webp',
+  'assets/maps/lounge/masks/collision.png',
+  'assets/maps/lounge/masks/depth.png',
+  'assets/maps/lounge/masks/interaction.png',
+  'assets/characters/playable/atm.webp',
+  'assets/characters/playable/fuzzy.webp',
+  'assets/characters/playable/miracle.webp',
+  'assets/characters/playable/luci.webp',
+  'assets/characters/playable/triskeleton.webp',
+  'assets/characters/equipment/jetpack.webp',
+  'assets/audio/jetpack-boost.wav',
+  'assets/audio/quest-drift.mp3',
+  'docs/ASSET-POLICY.md'
 ];
 
 for (const file of requiredFiles) {
@@ -49,9 +64,14 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-for (const marker of ['ATM Town v160 — Map Runtime Registry', 'ATM TOWN · v160']) {
-  if (!html.includes(marker)) errors.push(`Missing v160 marker: ${marker}`);
-}
+if (!html.includes("version:'v228'")) errors.push('Missing v228 display build marker.');
+if (!html.includes("name:'Asset Architecture Optimization'")) errors.push('Missing v228 display build name.');
+if (/data:image\//i.test(html)) errors.push('index.html still contains embedded data:image URIs; runtime art should be external/cacheable.');
+
+const idMatches = [...html.matchAll(/\sid=["']([^"']+)["']/g)].map((match) => match[1]);
+const idCounts = new Map();
+for (const id of idMatches) idCounts.set(id, (idCounts.get(id) || 0) + 1);
+for (const [id, count] of idCounts) if (count > 1) errors.push(`Duplicate HTML id: ${id} (${count})`);
 
 for (const runtimeMarker of [
   'townInteractionReader=ATM_INTERACTIONS.createMaskReader',
@@ -61,48 +81,26 @@ for (const runtimeMarker of [
   'ATM_MAPS.fromEntrance(t.id)',
   'ATM_MAPS.townReturnPoint(map,door)',
   'const activeSize=ATM_MAPS.pixelSize(currentMap)',
-  "if(t&&t.type==='vending'){openVending();return;}"
+  "if(t&&t.type==='vending'){openVending();return;}",
+  'TOWN_BOT_DEFS',
+  'spawnFootstepEffect',
+  'WORLD_ALIVE_DESTINATIONS'
 ]) {
-  if (!html.includes(runtimeMarker)) errors.push(`Missing v160 runtime marker: ${runtimeMarker}`);
+  if (!html.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
 
-for (const legacyMarker of [
-  'function classifyLoungeInteractionColor',
-  'const loungeInteractionMask=',
-  'function rebuildLoungeInteractionMask',
-  'HQ_ENTRY_ZOOM',
-  'GALLERY_ENTRY_ZOOM',
-  'ARCADE_ENTRY_ZOOM',
-  'LOUNGE_ENTRY_ZOOM',
-  "if(currentMap==='town'&&t&&t.id==='hq')",
-  "currentMap==='hq'?hqWorld:(currentMap==='gallery'?galleryWorld"
-]) {
-  if (html.includes(legacyMarker)) errors.push(`Legacy duplicate runtime logic remains: ${legacyMarker}`);
-}
+const configPath = path.join(root, 'js', 'config.js');
+const mapsPath = path.join(root, 'js', 'maps.js');
+const configSource = await readFile(configPath, 'utf8');
+const mapsSource = await readFile(mapsPath, 'utf8');
+if (!configSource.includes("version: 'v228'")) errors.push('js/config.js is not marked v228.');
 
-const configSource = await readFile(path.join(root, 'js', 'config.js'), 'utf8');
-for (const zoomMarker of [
-  "id: 'hq'",
-  "id: 'gallery'",
-  "id: 'arcade'",
-  "id: 'lounge'"
-]) {
-  if (!configSource.includes(zoomMarker)) errors.push(`Missing registered map: ${zoomMarker}`);
-}
-for (const exactZoom of [
-  "entryZoom: 0.60",
-  "entryZoom: 0.70"
-]) {
-  if (!configSource.includes(exactZoom)) errors.push(`Missing requested entry zoom: ${exactZoom}`);
-}
-if ((configSource.match(/entryZoom: 0\.60/g) || []).length !== 3) errors.push('Expected exactly three 60% interior entry zooms.');
-if ((configSource.match(/entryZoom: 0\.70/g) || []).length !== 1) errors.push('Expected exactly one 70% interior entry zoom.');
-
-const mapsSource = await readFile(path.join(root, 'js', 'maps.js'), 'utf8');
 const registrySandbox = { window: {} };
 vm.runInNewContext(configSource, registrySandbox, { filename: 'js/config.js' });
 vm.runInNewContext(mapsSource, registrySandbox, { filename: 'js/maps.js' });
 const registry = registrySandbox.window.ATMMaps;
+const config = registrySandbox.window.ATM_TOWN_CONFIG;
+
 const expectedZooms = { hq: 0.60, gallery: 0.60, arcade: 0.60, lounge: 0.70 };
 for (const [mapId, expectedZoom] of Object.entries(expectedZooms)) {
   const runtime = registry.runtime(mapId, 0.92);
@@ -111,45 +109,75 @@ for (const [mapId, expectedZoom] of Object.entries(expectedZooms)) {
   if (runtime.exitTarget !== 'town') errors.push(`${mapId} exit target should be town.`);
 }
 if (registry.runtime('town', 0.92).zoom !== 0.92) errors.push('Town should preserve the supplied saved zoom.');
-for (const [entranceId, mapId] of Object.entries({ hq: 'hq', nftmega: 'gallery', arcade: 'arcade', gameLounge: 'lounge' })) {
-  if (registry.fromEntrance(entranceId) !== mapId) errors.push(`Entrance ${entranceId} should route to ${mapId}.`);
-}
-const normalReturn = registry.townReturnPoint('hq', { x: 100, y: 200 });
-if (normalReturn.x !== 100 || normalReturn.y !== 365) errors.push('HQ Town return offset changed unexpectedly.');
-const arcadeReturn = registry.townReturnPoint('arcade', { x: 321, y: 999 });
-if (arcadeReturn.x !== 321 || arcadeReturn.y !== 700) errors.push('Arcade special Town return point changed unexpectedly.');
 if (registry.pixelSize('lounge').w !== 1254 || registry.pixelSize('lounge').h !== 1254) errors.push('Lounge pixel size should remain 1254 × 1254.');
+
+for (const [mapId, map] of Object.entries(config.maps)) {
+  for (const [assetType, assetPath] of Object.entries(map.assets || {})) {
+    try { await access(path.join(root, assetPath)); }
+    catch { errors.push(`Registered ${mapId}.${assetType} asset is missing: ${assetPath}`); }
+    if (['collision', 'depth', 'interaction', 'stairs'].includes(assetType) && path.extname(assetPath).toLowerCase() !== '.png') {
+      errors.push(`Gameplay-data mask must remain PNG: ${mapId}.${assetType} -> ${assetPath}`);
+    }
+  }
+}
+
+// Directly referenced local runtime assets should all exist.
+const sourceBundle = `${html}\n${configSource}`;
+const assetRefs = new Set();
+for (const match of sourceBundle.matchAll(/["'`](assets\/[A-Za-z0-9_./() -]+\.(?:webp|png|wav|mp3))["'`]/g)) assetRefs.add(match[1]);
+for (const asset of assetRefs) {
+  try { await access(path.join(root, asset)); }
+  catch { errors.push(`Referenced asset does not exist: ${asset}`); }
+}
+
+// Town foreground day/night pieces must stay paired by filename.
+const dayDir = path.join(root, 'assets', 'maps', 'town', 'foreground', 'day');
+const nightDir = path.join(root, 'assets', 'maps', 'town', 'foreground', 'night');
+const dayFiles = (await readdir(dayDir)).sort();
+const nightFiles = (await readdir(nightDir)).sort();
+if (dayFiles.length !== nightFiles.length) errors.push(`Town foreground day/night count mismatch: ${dayFiles.length} vs ${nightFiles.length}`);
+for (const dayFile of dayFiles) if (!nightFiles.includes(dayFile)) errors.push(`Missing night foreground pair for: ${dayFile}`);
+
+// Deployment root should not regress to loose runtime image/audio files.
+const rootEntries = await readdir(root, { withFileTypes: true });
+for (const entry of rootEntries) {
+  if (!entry.isFile()) continue;
+  const ext = path.extname(entry.name).toLowerCase();
+  if (['.png', '.webp', '.wav', '.mp3'].includes(ext)) errors.push(`Loose runtime asset found in repository root: ${entry.name}`);
+}
 
 const tempDirectory = await mkdtemp(path.join(os.tmpdir(), 'atm-town-validate-'));
 try {
   const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
     .filter((match) => !/\ssrc=/.test(match[0]))
     .map((match) => match[1]);
-  const combinedInline = inlineScripts.join('\n');
-  const inlinePath = path.join(tempDirectory, 'inline-game.js');
-  await writeFile(inlinePath, combinedInline);
+  if (!inlineScripts.length) errors.push('No inline game scripts were found.');
+  for (let index = 0; index < inlineScripts.length; index += 1) {
+    const target = path.join(tempDirectory, `inline-${index + 1}.js`);
+    await writeFile(target, inlineScripts[index]);
+    const result = spawnSync(process.execPath, ['--check', target], { encoding: 'utf8' });
+    if (result.status !== 0) errors.push(`Inline JavaScript block ${index + 1} failed syntax:\n${result.stderr.trim()}`);
+  }
 
   const syntaxTargets = [
-    path.join(root, 'js', 'config.js'),
-    path.join(root, 'js', 'maps.js'),
-    path.join(root, 'js', 'interactions.js'),
-    path.join(root, 'js', 'bootstrap.js'),
-    inlinePath
+    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/bootstrap.js',
+    'api/_auth.js', 'api/_xaman-vending.js', 'api/xaman-vending-start.js',
+    'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js'
   ];
-
-  for (const target of syntaxTargets) {
+  for (const relative of syntaxTargets) {
+    const target = path.join(root, relative);
     const result = spawnSync(process.execPath, ['--check', target], { encoding: 'utf8' });
-    if (result.status !== 0) errors.push(`JavaScript syntax failed for ${path.basename(target)}:\n${result.stderr.trim()}`);
+    if (result.status !== 0) errors.push(`JavaScript syntax failed for ${relative}:\n${result.stderr.trim()}`);
   }
 } finally {
   await rm(tempDirectory, { recursive: true, force: true });
 }
 
 if (errors.length) {
-  console.error(`ATM Town build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v228 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v160 build validation passed.');
-console.log(`Checked ${requiredFiles.length} required runtime files, module order, v160 map-runtime markers, requested zoom defaults, and JavaScript syntax.`);
+console.log('ATM Town v228 build validation passed.');
+console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);

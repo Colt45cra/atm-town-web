@@ -1,9 +1,19 @@
-ATM TOWN V100 — GITHUB UPLOAD BUILD
+ATM TOWN v228 — OPTIMIZED GITHUB BUILD
 
-1. Extract this ZIP.
-2. In your GitHub repository, choose Add file > Upload files.
-3. Select index.html AND every PNG file from this folder.
-4. Commit directly to main.
+This is a full repository-layout update, not an index-only update.
 
-Important: Do not upload the ZIP itself as the website. GitHub needs the extracted files.
-All files belong in the repository root beside index.html.
+1. Extract the ZIP.
+2. Open the extracted ATM-Town-v228-optimized-full folder.
+3. Upload/replace its CONTENTS in the root of your GitHub ATM Town repository.
+4. Preserve the folder structure exactly:
+   /api
+   /assets
+   /docs
+   /js
+   /scripts
+5. Root runtime artwork from older builds is no longer needed after v228 because its paths moved under /assets.
+6. Commit the v228 structure together so index.html and asset paths cannot get out of sync.
+
+IMPORTANT FORMAT RULE GOING FORWARD:
+- Visual artwork: WebP when appropriate.
+- Collision/interaction/stair/depth/pixel-data masks: PNG.

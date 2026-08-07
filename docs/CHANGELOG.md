@@ -41,10 +41,10 @@
 
 ### Map migrations
 
-- Town now loads `ATM TOWN INTERACTION MAP(1).png` at runtime and uses it for entry, vending, and miscellaneous interaction detection.
-- ATM HQ now loads `Hq interaction zones(1).png` at runtime and uses it for HTML, ATM, miscellaneous, and green voice-chat areas.
+- Town now loads `assets/maps/town/masks/interaction.png` at runtime and uses it for entry, vending, and miscellaneous interaction detection.
+- ATM HQ now loads `assets/maps/hq/masks/interaction.png` at runtime and uses it for HTML, ATM, miscellaneous, and green voice-chat areas.
 - Community Lounge now uses the same shared reader instead of maintaining a duplicate classifier and pixel-search implementation.
-- Cleaned `lounge-interaction.png` to four exact colors: black, purple, yellow, and green.
+- Cleaned `assets/maps/lounge/masks/interaction.png` to four exact colors: black, purple, yellow, and green.
 - Legacy coordinate checks remain only as temporary loading fallbacks when an authored mask is not ready.
 - Vending interactions now dispatch through the same action behavior from any map.
 
@@ -85,4 +85,4 @@
 
 ## v156 — Community Lounge Interaction Mask
 
-- Connected `lounge-interaction.png` to the Community Lounge interaction system.
+- Connected `assets/maps/lounge/masks/interaction.png` to the Community Lounge interaction system.

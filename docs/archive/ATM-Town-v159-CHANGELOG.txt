@@ -5,8 +5,8 @@ This is not an index-only release. Upload all changed files with their folder pa
 
 Runtime changes
 - Added js/interactions.js.
-- Town now reads ATM TOWN INTERACTION MAP(1).png through the shared mask reader.
-- ATM HQ now reads Hq interaction zones(1).png through the shared mask reader.
+- Town now reads assets/maps/town/masks/interaction.png through the shared mask reader.
+- ATM HQ now reads assets/maps/hq/masks/interaction.png through the shared mask reader.
 - Community Lounge now uses the same shared mask reader instead of duplicate color-classification code.
 - Standardized the Lounge interaction mask to the supported shared colors only.
 - Vending interactions now open the vending panel from any map.
@@ -32,7 +32,7 @@ Validation completed
 - Shared interaction unit smoke test passed.
 - Required runtime file and module-order checks passed.
 - Town, HQ, and Lounge interaction-mask dimensions were verified.
-- lounge-interaction.png contains only supported exact mask colors.
+- assets/maps/lounge/masks/interaction.png contains only supported exact mask colors.
 - ZIP integrity and extracted-build validation were completed.
 
 Manual deployment test recommended
