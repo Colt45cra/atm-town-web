@@ -1243,7 +1243,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:'v228',name:'Asset Architecture Optimization'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v229',name:ATM_CONFIG?.build?.name||'Safe Spawn Validation'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -1812,6 +1812,7 @@ function rebuildSingleCollisionMask(){
   obstacleMask.data=blocked;
   obstacleMask.ready=true;
   resetTownBots();
+  ensureTownPlayerWalkable('collision-mask-ready');
 }
 function rebuildAuthoredStairMask(){
   const w=Math.max(1,Math.floor(world.w*stairMask.scale));
@@ -4053,6 +4054,29 @@ function findNearestTownWalkablePoint(x,y,maxRadius=220,step=18){
   }
   return base;
 }
+function ensureTownPlayerWalkable(reason='runtime'){
+  if(currentMap!=='town'||!obstacleMask.ready||!Number.isFinite(player.x)||!Number.isFinite(player.y))return false;
+  if(!obstacleAtFootprint(player.x,player.y))return false;
+  const originalX=player.x,originalY=player.y;
+  let safe=findNearestTownWalkablePoint(originalX,originalY,720,16);
+  if(obstacleAtFootprint(safe.x,safe.y))safe=findNearestTownWalkablePoint(TOWN_INITIAL_SPAWN.x,TOWN_INITIAL_SPAWN.y,960,16);
+  if(obstacleAtFootprint(safe.x,safe.y)){
+    console.warn('ATM Town could not find a safe walkable spawn point.',{reason,x:originalX,y:originalY});
+    return false;
+  }
+  player.x=safe.x;
+  player.y=safe.y;
+  jetpackState.lastSafeX=safe.x;
+  jetpackState.lastSafeY=safe.y;
+  const viewW=W/zoom,viewH=H/zoom;
+  const mapW=world.w*tile,mapH=world.h*tile;
+  cam.x=mapW<=viewW?(mapW-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,mapW-viewW));
+  cam.y=mapH<=viewH?(mapH-viewH)/2:Math.max(0,Math.min(player.y-viewH/2,mapH-viewH));
+  console.info('ATM Town moved player to nearest safe walkable point.',{reason,from:{x:originalX,y:originalY},to:{x:safe.x,y:safe.y}});
+  try{saveAccountLocation();}catch(_error){}
+  return true;
+}
+
 function townBotPauseDuration(bot,nextIndex=bot.targetIndex){
   return bot.pauseBase+(((bot.seed||1)+nextIndex)%3)*0.35;
 }
@@ -5271,6 +5295,7 @@ function switchMap(map,sourceBuilding=null){
     player.y=destination.spawn.y;
     player.dir=destination.direction;
   }
+  if(map==='town'&&obstacleMask.ready)ensureTownPlayerWalkable('map-entry');
   const activeW=destination.pixelSize.w,activeH=destination.pixelSize.h;
   const viewW=W/zoom,viewH=H/zoom;
   cam.x=activeW<=viewW?(activeW-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,activeW-viewW));
@@ -5294,6 +5319,7 @@ function restoreAccountLocation(){
   if(!saved||!allowedMaps.has(saved.map)||!Number.isFinite(saved.x)||!Number.isFinite(saved.y))return false;
   const destination=ATM_MAPS.runtime(saved.map,townZoom),pad=24;
   currentMap=saved.map;zoom=destination.zoom;player.x=Math.max(pad,Math.min(destination.pixelSize.w-pad,saved.x));player.y=Math.max(pad,Math.min(destination.pixelSize.h-pad,saved.y));player.dir=['up','down','left','right'].includes(saved.dir)?saved.dir:destination.direction;
+  if(currentMap==='town'&&obstacleMask.ready)ensureTownPlayerWalkable('saved-location-restore');
   const mapLabel=document.getElementById('mapLabel');if(mapLabel)mapLabel.textContent=destination.label+' · '+ATM_DISPLAY_BUILD.version;
   const viewW=W/zoom,viewH=H/zoom;cam.x=destination.pixelSize.w<=viewW?(destination.pixelSize.w-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,destination.pixelSize.w-viewW));cam.y=destination.pixelSize.h<=viewH?(destination.pixelSize.h-viewH)/2:Math.max(0,Math.min(player.y-viewH/2,destination.pixelSize.h-viewH));
   broadcastState(true);return true;
