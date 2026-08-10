@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 231,
-    version: 'v231',
-    name: 'XRPL NFT Collection',
-    title: 'ATM Town v231 — XRPL NFT Collection'
+    number: 2311,
+    version: 'v231.1',
+    name: 'XRPL NFT Metadata Compatibility',
+    title: 'ATM Town v231.1 — XRPL NFT Metadata Compatibility'
   });
 
   const MAPS = Object.freeze({

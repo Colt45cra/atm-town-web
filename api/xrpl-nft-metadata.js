@@ -6,6 +6,12 @@ const MAX_URI_HEX_LENGTH = 512; // XRPL NFToken URI max is 256 bytes.
 const MAX_METADATA_BYTES = 1_500_000;
 const MAX_DATA_IMAGE_LENGTH = 600_000;
 const CACHE_TTL_MS = 30 * 60 * 1000;
+const FAILURE_CACHE_TTL_MS = 60 * 1000;
+const IPFS_GATEWAYS = Object.freeze([
+  'https://ipfs.io/ipfs/',
+  'https://dweb.link/ipfs/',
+  'https://gateway.pinata.cloud/ipfs/'
+]);
 const metadataCache = globalThis.__atmNftMetadataCache || new Map();
 globalThis.__atmNftMetadataCache = metadataCache;
 
@@ -16,24 +22,48 @@ function decodeHexUri(value) {
   catch { return ''; }
 }
 
-function normalizeContentUri(value, baseUrl = '') {
+function uniqueStrings(values) {
+  return [...new Set((Array.isArray(values) ? values : [values]).map((value) => String(value || '').trim()).filter(Boolean))];
+}
+
+function ipfsPathFromValue(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
-  if (/^ipfs:\/\//i.test(raw)) {
-    const path = raw.replace(/^ipfs:\/\/(?:ipfs\/)?/i, '').replace(/^\/+/, '');
-    return path ? `https://ipfs.io/ipfs/${path}` : '';
-  }
+  if (/^ipfs:\/\//i.test(raw)) return raw.replace(/^ipfs:\/\/(?:ipfs\/)?/i, '').replace(/^\/+/, '');
+  if (/^ipfs\//i.test(raw)) return raw.replace(/^ipfs\//i, '').replace(/^\/+/, '');
+  if (/^(?:Qm[1-9A-HJ-NP-Za-km-z]{40,}|b[a-z2-7]{20,})(?:\/|$)/i.test(raw)) return raw.replace(/^\/+/, '');
+  try {
+    const url = new URL(raw);
+    const match = url.pathname.match(/^\/ipfs\/(.+)$/i);
+    return match ? match[1] + (url.search || '') + (url.hash || '') : '';
+  } catch { return ''; }
+}
+
+function contentUriCandidates(value, baseUrl = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+  const ipfsPath = ipfsPathFromValue(raw);
+  if (ipfsPath) return uniqueStrings(IPFS_GATEWAYS.map((gateway) => gateway + ipfsPath));
   if (/^ar:\/\//i.test(raw)) {
     const path = raw.replace(/^ar:\/\//i, '').replace(/^\/+/, '');
-    return path ? `https://arweave.net/${path}` : '';
+    return path ? [`https://arweave.net/${path}`] : [];
   }
-  if (/^data:image\//i.test(raw)) return raw.length <= MAX_DATA_IMAGE_LENGTH ? raw : '';
-  if (/^data:application\/json/i.test(raw)) return raw;
+  if (/^data:image\//i.test(raw)) return raw.length <= MAX_DATA_IMAGE_LENGTH ? [raw] : [];
+  if (/^data:application\/json/i.test(raw)) return [raw];
   try {
     const url = baseUrl ? new URL(raw, baseUrl) : new URL(raw);
-    if (!['http:', 'https:'].includes(url.protocol)) return '';
-    return url.toString();
-  } catch { return ''; }
+    if (!['http:', 'https:'].includes(url.protocol)) return [];
+    return [url.toString()];
+  } catch {
+    if (!baseUrl && /^[a-z0-9.-]+\.[a-z]{2,}(?:\/|$)/i.test(raw)) {
+      try { return [new URL(`https://${raw}`).toString()]; } catch { return []; }
+    }
+    return [];
+  }
+}
+
+function normalizeContentUri(value, baseUrl = '') {
+  return contentUriCandidates(value, baseUrl)[0] || '';
 }
 
 function isPrivateIp(address) {
@@ -111,7 +141,10 @@ async function resolveMetadata(uriHex, tokenId) {
 
   const cacheKey = `${tokenId}:${uriHex}`;
   const cached = metadataCache.get(cacheKey);
-  if (cached && Date.now() - cached.savedAt < CACHE_TTL_MS) return cached.value;
+  if (cached) {
+    const ttl = cached.value?.status === 'unavailable' ? FAILURE_CACHE_TTL_MS : CACHE_TTL_MS;
+    if (Date.now() - cached.savedAt < ttl) return cached.value;
+  }
 
   let value = { status: 'unavailable', uri: decodedUri, name: '', description: '', image_url: '' };
   try {
@@ -125,13 +158,20 @@ async function resolveMetadata(uriHex, tokenId) {
       const json = JSON.parse(raw);
       value = metadataFromJson(json, decodedUri, '');
     } else {
-      const metadataUrl = normalizeContentUri(decodedUri);
-      if (!metadataUrl || /^data:/i.test(metadataUrl)) throw new Error('NFT metadata URI is not supported.');
-      const { response, url } = await fetchPublic(metadataUrl);
+      const metadataCandidates = contentUriCandidates(decodedUri);
+      if (!metadataCandidates.length || /^data:/i.test(metadataCandidates[0])) throw new Error('NFT metadata URI is not supported.');
+      let fetched = null;
+      let lastFetchError = null;
+      for (const metadataUrl of metadataCandidates) {
+        try { fetched = await fetchPublic(metadataUrl); break; }
+        catch (error) { lastFetchError = error; }
+      }
+      if (!fetched) throw lastFetchError || new Error('NFT metadata could not be fetched.');
+      const { response, url } = fetched;
       const contentType = String(response.headers.get('content-type') || '').toLowerCase();
       const imageUrl = directImageUrl(url, contentType);
       if (imageUrl) {
-        value = { status: 'direct-image', uri: decodedUri, metadata_url: url, name: '', description: '', image_url: imageUrl };
+        value = { status: 'direct-image', uri: decodedUri, metadata_url: url, name: '', description: '', image_url: imageUrl, image_candidates: metadataCandidates };
       } else {
         const declaredLength = Number(response.headers.get('content-length') || 0);
         if (declaredLength > MAX_METADATA_BYTES) throw new Error('NFT metadata is too large.');
@@ -156,23 +196,44 @@ async function resolveMetadata(uriHex, tokenId) {
   return value;
 }
 
+function metadataUriValue(value) {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+  return value.uri || value.url || value.src || value.href || value.description || value.content || '';
+}
+
+function firstMediaUri(source) {
+  const pools = [source?.files, source?.media, source?.assets, source?.properties?.files];
+  for (const pool of pools) {
+    if (!Array.isArray(pool)) continue;
+    for (const entry of pool) {
+      const uri = metadataUriValue(entry);
+      if (uri) return uri;
+    }
+  }
+  return '';
+}
+
 function metadataFromJson(json, decodedUri, metadataUrl) {
   const source = json && typeof json === 'object' ? json : {};
-  const imageRaw = source.image || source.image_url || source.imageUrl || source.thumbnail || '';
-  const imageUrl = normalizeContentUri(imageRaw, metadataUrl);
+  const imageRaw = metadataUriValue(source.image) || metadataUriValue(source.image_url) || metadataUriValue(source.imageUrl) ||
+    metadataUriValue(source.thumbnail) || metadataUriValue(source.thumbnail_url) || metadataUriValue(source.preview) ||
+    metadataUriValue(source.properties?.image) || firstMediaUri(source);
+  const imageCandidates = contentUriCandidates(imageRaw, metadataUrl);
   return {
     status: 'resolved',
     uri: decodedUri,
     metadata_url: metadataUrl,
-    name: cleanText(source.name || source.title || '', 180),
-    description: cleanText(source.description || '', 900),
-    image_url: imageUrl,
-    animation_url: normalizeContentUri(source.animation_url || source.animation || '', metadataUrl),
-    external_url: normalizeContentUri(source.external_url || source.external_link || '', metadataUrl),
-    collection: cleanText(source.collection?.name || source.collection || source.project || '', 180),
+    name: cleanText(source.name || source.title || source.asset_name || '', 180),
+    description: cleanText(source.description || source.summary || '', 900),
+    image_url: imageCandidates[0] || '',
+    image_candidates: imageCandidates,
+    animation_url: normalizeContentUri(metadataUriValue(source.animation_url) || metadataUriValue(source.animation) || metadataUriValue(source.video), metadataUrl),
+    external_url: normalizeContentUri(metadataUriValue(source.external_url) || metadataUriValue(source.external_link) || metadataUriValue(source.website), metadataUrl),
+    collection: cleanText(source.collection?.name || source.collection || source.project || source.collection_name || '', 180),
     attributes: Array.isArray(source.attributes) ? source.attributes.slice(0, 80).map((entry) => ({
-      trait_type: cleanText(entry?.trait_type || entry?.type || '', 100),
-      value: cleanText(entry?.value ?? '', 180)
+      trait_type: cleanText(entry?.trait_type || entry?.type || entry?.name || '', 100),
+      value: cleanText(entry?.value ?? entry?.description ?? '', 180)
     })).filter((entry) => entry.trait_type || entry.value) : []
   };
 }
