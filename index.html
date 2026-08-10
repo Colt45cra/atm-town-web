@@ -516,6 +516,12 @@ body.locker-modal-open #controls{visibility:hidden!important}body.locker-modal-o
 .lockerNftDetail{min-width:0;min-height:0;overflow-y:auto;padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:16px;background:linear-gradient(180deg,rgba(7,25,34,.98),rgba(2,11,17,.98))}.lockerNftDetailClose{display:none}.lockerNftDetailPlaceholder{height:100%;min-height:280px;display:grid;place-items:center;align-content:center;gap:9px;color:#789faa;text-align:center}.lockerNftDetailPlaceholder strong{color:#eaffff;font-size:12px}.lockerNftDetailPlaceholder span{max-width:210px;font-size:9px;line-height:1.45}.lockerNftDetailBody{display:grid;gap:10px}.lockerNftDetailArt{aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(88,241,230,.13);border-radius:14px;background:radial-gradient(circle,rgba(88,241,230,.13),rgba(2,10,16,.82) 68%)}.lockerNftDetailArt img{width:100%;height:100%;object-fit:contain}.lockerNftDetailTitle{display:grid;gap:3px}.lockerNftDetailTitle h3{margin:0;color:#efffff;font-size:15px}.lockerNftDetailTitle span{color:#8fb5bf;font-size:8px;font-weight:900;letter-spacing:.08em}.lockerNftBadges{display:flex;flex-wrap:wrap;gap:5px}.lockerNftBadge{padding:5px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#a9cbd3;font-size:7px;font-weight:1000;letter-spacing:.06em}.lockerNftBadge.good{border-color:rgba(112,249,200,.28);color:#70f9c8}.lockerNftBadge.warn{border-color:rgba(255,209,102,.28);color:#ffd166}.lockerNftDescription{max-height:92px;overflow:auto;color:#a5c3cc;font-size:9px;line-height:1.45}.lockerNftFacts{display:grid;gap:6px}.lockerNftFact{display:grid;grid-template-columns:76px minmax(0,1fr);gap:7px;padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.025)}.lockerNftFact span{color:#739aa6;font-size:7px;font-weight:1000;letter-spacing:.08em}.lockerNftFact strong{min-width:0;color:#dffcff;font:800 8px ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.lockerNftFutureActions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:2px}.lockerNftFutureActions button{min-height:34px;padding:6px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:#102a35;color:#759aa5;font-size:7px;font-weight:1000}.lockerNftFutureActions button:disabled{opacity:.62}.lockerNftFutureNote{color:#718f99;font-size:7px;line-height:1.4;text-align:center}.lockerNftLoadingBar{height:3px;overflow:hidden;border-radius:4px;background:rgba(255,255,255,.04)}.lockerNftLoadingBar i{display:block;width:35%;height:100%;background:#58f1e6;animation:lockerNftLoad 1.1s ease-in-out infinite}.lockerNftLoadingBar[hidden]{display:none}.lockerNftTraits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.lockerNftTrait{min-width:0;padding:6px;border-radius:8px;background:rgba(88,241,230,.04);border:1px solid rgba(88,241,230,.08)}.lockerNftTrait span{display:block;color:#6e9aa5;font-size:6px;font-weight:1000;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lockerNftTrait strong{display:block;margin-top:2px;color:#cceff2;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @keyframes lockerNftLoad{0%{transform:translateX(-100%)}50%{transform:translateX(170%)}100%{transform:translateX(360%)}}
 @media(max-width:920px){.lockerNftContent{grid-template-columns:minmax(0,1fr) 260px}.lockerNftGrid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}.lockerNftCard{min-height:166px;grid-template-rows:104px auto auto}}
+
+/* ===== v232: XRPL Trade Beacon ===== */
+.lockerNftFutureActions button{cursor:pointer;transition:border-color .16s ease,background .16s ease,color .16s ease,transform .12s ease}.lockerNftFutureActions button:not(:disabled):active{transform:translateY(1px)}.lockerNftFutureActions button.tradeBeaconAction{border-color:rgba(88,241,230,.28);background:rgba(88,241,230,.09);color:#bffefa}.lockerNftFutureActions button.tradeBeaconAction.active{border-color:rgba(112,249,200,.72);background:rgba(112,249,200,.16);color:#70f9c8}.lockerNftFutureActions button.tradeBeaconClear{border-color:rgba(255,209,102,.26);color:#ffd166}.lockerNftBeaconState{padding:7px 9px;border:1px solid rgba(88,241,230,.12);border-radius:9px;background:rgba(88,241,230,.045);color:#8fb5bf;font-size:8px;line-height:1.45}.lockerNftBeaconState strong{color:#eaffff}.lockerNftBeaconState.trade{border-color:rgba(112,249,200,.25);background:rgba(112,249,200,.055)}
+#tradeBeaconLayer{position:fixed;inset:0;z-index:180;pointer-events:none;overflow:hidden}.tradeBeaconWorld{position:fixed;display:grid;justify-items:center;gap:3px;transform:translate(-50%,-100%);will-change:left,top;filter:drop-shadow(0 5px 10px rgba(0,0,0,.48));transition:opacity .12s ease}.tradeBeaconThumb{width:54px;height:54px;padding:3px;display:grid;place-items:center;overflow:hidden;border:2px solid rgba(88,241,230,.78);border-radius:12px;background:linear-gradient(180deg,rgba(7,29,39,.96),rgba(2,11,17,.96));box-shadow:0 0 0 2px rgba(2,11,17,.72),0 0 18px rgba(88,241,230,.18)}.tradeBeaconWorld.trade .tradeBeaconThumb{border-color:rgba(112,249,200,.92);box-shadow:0 0 0 2px rgba(2,11,17,.72),0 0 22px rgba(112,249,200,.28)}.tradeBeaconThumb img{width:100%;height:100%;object-fit:cover;border-radius:8px}.tradeBeaconFallback{display:grid;place-items:center;width:100%;height:100%;font-size:24px;color:#58f1e6;background:radial-gradient(circle,rgba(88,241,230,.15),rgba(4,17,25,.92) 70%)}.tradeBeaconLabel{max-width:116px;padding:3px 7px;border:1px solid rgba(88,241,230,.32);border-radius:999px;background:rgba(3,13,19,.92);color:#cffffb;font:1000 7px/1.15 system-ui;letter-spacing:.08em;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tradeBeaconWorld.trade .tradeBeaconLabel{border-color:rgba(112,249,200,.46);color:#70f9c8}.tradeBeaconOwner{max-width:112px;color:rgba(226,255,252,.84);font:800 7px/1.1 system-ui;text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tradeNftPanel{position:fixed;inset:0;z-index:6150;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(1,7,12,.82);backdrop-filter:blur(8px)}#tradeNftPanel.open{display:flex}#tradeNftCard{width:min(620px,100%);max-height:min(760px,92vh);overflow:auto;border:1px solid rgba(88,241,230,.36);border-radius:22px;background:linear-gradient(180deg,#102c3a 0%,#07151f 40%,#041019 100%);box-shadow:0 28px 90px rgba(0,0,0,.68)}.tradeNftHeader{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(88,241,230,.14);background:rgba(9,31,42,.96);backdrop-filter:blur(10px)}.tradeNftHeaderCopy{min-width:0}.tradeNftEyebrow{color:#70f9c8;font-size:8px;font-weight:1000;letter-spacing:.16em}.tradeNftHeader h2{margin:3px 0 0;color:#efffff;font-size:18px}.tradeNftClose{width:38px;height:38px;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:#183442;color:#fff;font-size:23px;font-weight:900}.tradeNftBody{display:grid;grid-template-columns:minmax(190px,.9fr) minmax(0,1fr);gap:14px;padding:15px}.tradeNftArt{aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(88,241,230,.16);border-radius:15px;background:radial-gradient(circle,rgba(88,241,230,.14),rgba(2,10,16,.86) 70%)}.tradeNftArt img{width:100%;height:100%;object-fit:contain}.tradeNftInfo{min-width:0;display:grid;align-content:start;gap:9px}.tradeNftMode{justify-self:start;padding:5px 8px;border:1px solid rgba(112,249,200,.35);border-radius:999px;background:rgba(112,249,200,.08);color:#70f9c8;font-size:8px;font-weight:1000;letter-spacing:.08em}.tradeNftName{margin:0;color:#efffff;font-size:19px}.tradeNftOwner{color:#9fc3cc;font-size:9px}.tradeNftFacts{display:grid;gap:6px}.tradeNftFact{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;padding:7px 8px;border-radius:8px;background:rgba(255,255,255,.03)}.tradeNftFact span{color:#739aa6;font-size:7px;font-weight:1000;letter-spacing:.08em}.tradeNftFact strong{min-width:0;color:#dffcff;font:800 8px ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.tradeNftActions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 15px 15px}.tradeNftActions button{min-height:42px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:#102a35;color:#789ba5;font-size:8px;font-weight:1000;letter-spacing:.05em}.tradeNftNote{grid-column:1/-1;color:#789ba5;font-size:8px;line-height:1.45;text-align:center}
+@media(max-width:760px){.tradeBeaconThumb{width:48px;height:48px}.tradeBeaconLabel{font-size:6px}.tradeNftBody{grid-template-columns:1fr}.tradeNftArt{max-height:300px}.tradeNftActions{grid-template-columns:1fr}}
 @media(max-width:760px){.lockerNftView{padding:8px 9px 9px}.lockerNftToolbar{grid-template-columns:1fr;gap:7px}.lockerNftWalletCard{padding:8px 10px}.lockerNftControls{grid-template-columns:minmax(0,1fr) 108px}.lockerNftContent{display:block;min-height:0}.lockerNftGridWrap{height:100%}.lockerNftGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.lockerNftCard{min-height:154px;grid-template-rows:92px auto auto;padding:6px}.lockerNftDetail{display:none;position:absolute;inset:0;z-index:5;border-color:rgba(88,241,230,.25);box-shadow:0 18px 60px rgba(0,0,0,.6)}.lockerNftDetail.open{display:block}.lockerNftDetailClose{display:grid;position:sticky;top:0;z-index:2;float:right;place-items:center;width:31px;height:31px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:#183442;color:#fff;font-size:18px}.lockerNftDetailBody{clear:both;grid-template-columns:minmax(150px,.8fr) minmax(0,1fr);align-items:start}.lockerNftDetailArt{grid-row:1/7}.lockerNftFutureActions{grid-template-columns:1fr}.lockerNftTraits{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:480px){.lockerNftGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.lockerNftDetailBody{grid-template-columns:1fr}.lockerNftDetailArt{grid-row:auto;max-height:300px}.lockerNftTraits{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
@@ -753,9 +759,17 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
         </div>
       </section>
     </main>
-    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Character assets and your read-only XRPL collection are available here.</div><div class="lockerFooterVersion">LOCKER v3 · XRPL COLLECTION · v231</div></footer>
+    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Character assets and your read-only XRPL collection are available here.</div><div class="lockerFooterVersion">LOCKER v4 · XRPL TRADE BEACON · v232</div></footer>
   </div>
 </div>
+
+<div aria-hidden="true" aria-label="Player NFT Trade Beacon" id="tradeNftPanel">
+  <div id="tradeNftCard" role="dialog" aria-modal="true" aria-labelledby="tradeNftTitle">
+    <header class="tradeNftHeader"><div class="tradeNftHeaderCopy"><div class="tradeNftEyebrow">PLAYER TRADE BEACON</div><h2 id="tradeNftTitle">NFT</h2></div><button class="tradeNftClose" id="tradeNftClose" type="button" aria-label="Close NFT viewer">×</button></header>
+    <div id="tradeNftContent"></div>
+  </div>
+</div>
+<div id="tradeBeaconLayer" aria-hidden="true"></div>
 
 <div aria-label="ATM Town access flow" id="landingOverlay">
 <div class="flowShell" data-entry-mode="signed" data-screen="welcome">
@@ -1268,7 +1282,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v231.2',name:ATM_CONFIG?.build?.name||'XRPL NFT IPFS Compatibility'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v232',name:ATM_CONFIG?.build?.name||'XRPL Trade Beacon'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -3755,7 +3769,7 @@ async function connectMultiplayer(){
 }
 function broadcastState(force=false){
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null}}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},tradeBeacon:tradeBeaconBroadcastPayload()}});
 }
 
 const ARCADE_GAME_PRESENCE_CONFIG=Object.freeze({
@@ -4416,7 +4430,7 @@ function drawWorldAliveOverlay(t){
   if(!anchor)return;
   const pulse=.5+.5*Math.sin(t*.0065);
   const radius=16+pulse*8;
-  const label=(currentNearThing.type==='vending'?'USE':(currentNearThing.type==='voice'?'JOIN':(currentMap==='town'&&currentNearThing.id==='townInfoHub'?'MAP':'ACTION')));
+  const label=(currentNearThing.type==='player-nft-beacon'?'VIEW':(currentNearThing.type==='vending'?'USE':(currentNearThing.type==='voice'?'JOIN':(currentMap==='town'&&currentNearThing.id==='townInfoHub'?'MAP':'ACTION'))));
   ctx.save();
   ctx.globalCompositeOperation='lighter';
   ctx.fillStyle='rgba(88,241,230,.16)';
@@ -4842,6 +4856,7 @@ function interiorExitThing(mapId=currentMap){
   return Math.hypot(player.x-exit.x,player.y-exit.y)<exit.radius?exit:null;
 }
 function nearestThing(){
+  const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
   let best=null,dist=99999,bestRadius=175;
   if(currentMap==='hq'){
     const maskedInteraction=hqInteractionThing();
@@ -5298,7 +5313,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
+function interactionHint(thing){if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -5385,7 +5400,8 @@ setInterval(saveAccountLocation,5000);
 window.addEventListener('pagehide',saveAccountLocation);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAccountLocation();});
 function interact(){
-  // Vending has first priority. This also recovers from a stale dialogOpen flag.
+  const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget&&!dialogOpen){tradeNftOpen(tradeTarget);return;}
+  // Vending keeps priority over normal world objects after player Trade Beacons.
   const vending=nearestVendingMachine();
   if(vending&&!vendingOpen){openVending();return;}
   if(dialogOpen)return;
@@ -5680,7 +5696,7 @@ function update(dt){
   hintEl.textContent=interactionHint(nearThing);
   hintEl.style.opacity=nearThing?1:0;
   const registeredEntrance=nearThing&&currentMap==='town'&&ATM_MAPS.fromEntrance(nearThing.id);
-  actionButton.textContent=nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(nearThing.type)?'PLAY':(nearThing&&nearThing.type==='vending'?'USE':(nearThing&&nearThing.type==='voice'?'JOIN':(registeredEntrance?'ENTER':(nearThing&&currentMap==='town'&&nearThing.id==='townInfoHub'?'MAP':'ACTION'))));
+  actionButton.textContent=nearThing?.type==='player-nft-beacon'?'VIEW NFT':(nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(nearThing.type)?'PLAY':(nearThing&&nearThing.type==='vending'?'USE':(nearThing&&nearThing.type==='voice'?'JOIN':(registeredEntrance?'ENTER':(nearThing&&currentMap==='town'&&nearThing.id==='townInfoHub'?'MAP':'ACTION')))));
   actionButton.classList.toggle('available',!!nearThing);
   actionButton.setAttribute('aria-hidden',nearThing?'false':'true');
   actionButton.tabIndex=nearThing?0:-1;
@@ -5794,7 +5810,7 @@ function loop(t){
   // Illumination is intentionally rendered above the player and all outdoor foreground objects.
   if(currentMap==='town')drawTownLightOverlay(ctx);
   drawChatBubbles();
-  ctx.restore();drawWorldAliveUi();drawMini();requestAnimationFrame(loop);
+  ctx.restore();updateTradeBeaconWorldOverlays(t);drawWorldAliveUi();drawMini();requestAnimationFrame(loop);
 }
 syncTownWorldClock();
 setInterval(syncTownWorldClock,5*60*1000);
@@ -5873,6 +5889,8 @@ requestAnimationFrame(loop);
 const ATM_LOCKER_FOUND_KEY='atm_locker_found_items_v1';
 const ATM_LOCKER_LOADOUT_KEY='atm_locker_loadout_v1';
 const ATM_LOCKER_SAVED_CHARACTERS_KEY='atm_locker_saved_characters_v1';
+const ATM_TRADE_BEACON_KEY='atm_trade_beacon_v1';
+
 const ATM_LOCKER_SLOTS=Object.freeze([
   {id:'body',label:'BODY',icon:'🦺'},
   {id:'chest',label:'CHEST',icon:'🖥️'},
@@ -5963,6 +5981,72 @@ window.atmActiveLoadout={...lockerLoadout};
 let lockerState={open:false,tab:'character',slot:'body',filter:'my-characters',direction:'down',nfts:[],ledgerIndex:null,validated:false,status:'idle',error:'',selectedItemId:null,nftMetadata:new Map(),nftMetadataLoading:new Set(),nftSearch:'',nftSort:'serial-desc',selectedNftId:null,nftHydrationGeneration:0,truncated:false};
 let lockerPreviewFrame=1;
 let lockerNftRenderTimer=0;
+let tradeBeaconState=safeJsonParse(safeStorageGet(ATM_TRADE_BEACON_KEY,'{}'),{});
+if(!tradeBeaconState||typeof tradeBeaconState!=='object')tradeBeaconState={};
+const tradeBeaconNodes=new Map();
+let tradeNftViewedTarget=null;
+function tradeBeaconModeLabel(mode){return mode==='open_to_trade'?'OPEN TO TRADE':'SHOWCASE';}
+function tradeBeaconIsLocalActive(){return !!(tradeBeaconState.active&&tradeBeaconState.tokenId&&tradeBeaconState.wallet&&tradeBeaconState.wallet===lockerWalletAddress());}
+function tradeBeaconSafeImageUrl(value){const raw=String(value||'').trim();if(!raw)return '';try{const url=new URL(raw,location.origin);if(url.protocol!=='https:'&&url.origin!==location.origin)return '';const host=url.hostname.toLowerCase();if(host==='localhost'||host.endsWith('.local')||/^127\./.test(host)||/^10\./.test(host)||/^192\.168\./.test(host)||/^169\.254\./.test(host))return '';return url.href;}catch(_e){return '';}}
+function tradeBeaconImageCandidates(beacon){return [beacon?.imageUrl,...(Array.isArray(beacon?.imageCandidates)?beacon.imageCandidates:[])].map(tradeBeaconSafeImageUrl).filter((v,i,a)=>v&&a.indexOf(v)===i).slice(0,4);}
+function tradeBeaconBuildFromNft(nft,mode){
+  const meta=lockerNftMetadata(nft)||{};const candidates=[meta.image_url,...(Array.isArray(meta.image_candidates)?meta.image_candidates:[])].map(v=>String(v||'').trim()).filter((v,i,a)=>v&&a.indexOf(v)===i).slice(0,4);
+  return {active:true,mode:mode==='open_to_trade'?'open_to_trade':'showcase',tokenId:lockerNftTokenId(nft),name:lockerNftDisplayName(nft),collection:String(meta.collection||''),imageUrl:candidates[0]||'',imageCandidates:candidates,issuer:String(nft?.Issuer||''),serial:lockerNftSerial(nft),wallet:lockerWalletAddress(),transferable:nft?.transferable!==false,ledgerIndex:lockerState.ledgerIndex||null,updatedAt:Date.now()};
+}
+function tradeBeaconBroadcastPayload(){
+  if(!tradeBeaconIsLocalActive())return null;
+  const b=tradeBeaconState;return {active:true,mode:b.mode,tokenId:b.tokenId,name:String(b.name||'XRPL NFT').slice(0,100),collection:String(b.collection||'').slice(0,100),imageUrl:String(b.imageUrl||'').slice(0,1200),imageCandidates:tradeBeaconImageCandidates(b),issuer:String(b.issuer||'').slice(0,80),serial:Number.isFinite(Number(b.serial))?Number(b.serial):null,wallet:String(b.wallet||'').slice(0,80),transferable:b.transferable!==false,ledgerIndex:b.ledgerIndex||null,updatedAt:b.updatedAt||Date.now()};
+}
+function tradeBeaconSave(){safeStorageSet(ATM_TRADE_BEACON_KEY,JSON.stringify(tradeBeaconState||{}));}
+async function tradeBeaconSet(nft,mode){
+  if(!nft||!lockerWalletAddress())return false;
+  await lockerLoadNftMetadata(nft);
+  tradeBeaconState=tradeBeaconBuildFromNft(nft,mode);tradeBeaconSave();lockerSetStatus((mode==='open_to_trade'?'Trade beacon active: ':'Showcase active: ')+tradeBeaconState.name+'.','ok');lockerRenderNftDetail();broadcastState(true);return true;
+}
+function tradeBeaconClear(message='Trade beacon cleared.'){
+  tradeBeaconState={};tradeBeaconSave();lockerSetStatus(message,'ok');lockerRenderNftDetail();broadcastState(true);updateTradeBeaconWorldOverlays(performance.now());
+}
+function tradeBeaconValidateOwnership(){
+  if(!tradeBeaconState?.active)return;
+  const wallet=lockerWalletAddress();const owned=lockerState.nfts.some(nft=>lockerNftTokenId(nft)===String(tradeBeaconState.tokenId||'').toUpperCase());
+  if(!wallet||tradeBeaconState.wallet!==wallet||!owned)tradeBeaconClear('Trade beacon cleared because that NFT is no longer verified in this linked wallet.');
+}
+function tradeBeaconSetImage(host,candidates,alt='XRPL NFT'){
+  host.textContent='';const list=(candidates||[]).filter(Boolean);let index=0;
+  const fallback=()=>{host.textContent='';const f=document.createElement('div');f.className='tradeBeaconFallback';f.textContent='◈';host.appendChild(f);};
+  if(!list.length){fallback();return;}
+  const img=document.createElement('img');img.alt=alt;img.referrerPolicy='no-referrer';img.loading='eager';img.decoding='async';img.src=list[0];img.addEventListener('error',()=>{index++;if(index<list.length)img.src=list[index];else fallback();});host.appendChild(img);
+}
+function tradeBeaconEnsureNode(key,beacon,ownerName,local=false){
+  const layer=document.getElementById('tradeBeaconLayer');if(!layer)return null;let node=tradeBeaconNodes.get(key);
+  if(!node){node=document.createElement('div');node.className='tradeBeaconWorld';node.innerHTML='<div class="tradeBeaconThumb"></div><div class="tradeBeaconLabel"></div><div class="tradeBeaconOwner"></div>';layer.appendChild(node);tradeBeaconNodes.set(key,node);}
+  const signature=[beacon?.tokenId,beacon?.mode,beacon?.imageUrl,(beacon?.imageCandidates||[]).join('|'),ownerName].join('::');
+  if(node.dataset.signature!==signature){node.dataset.signature=signature;node.classList.toggle('trade',beacon?.mode==='open_to_trade');tradeBeaconSetImage(node.querySelector('.tradeBeaconThumb'),tradeBeaconImageCandidates(beacon),beacon?.name||'XRPL NFT');node.querySelector('.tradeBeaconLabel').textContent=tradeBeaconModeLabel(beacon?.mode);node.querySelector('.tradeBeaconOwner').textContent=local?'YOU':String(ownerName||'PLAYER');}
+  return node;
+}
+function tradeBeaconScreenPoint(x,y){
+  const rect=canvas.getBoundingClientRect();const sx=rect.left+(x-cam.x)*zoom*(rect.width/Math.max(1,W));const sy=rect.top+(y-cam.y)*zoom*(rect.height/Math.max(1,H));return{x:sx,y:sy,rect};
+}
+function updateTradeBeaconWorldOverlays(t=performance.now()){
+  const activeKeys=new Set();const add=(key,x,y,beacon,ownerName,local=false)=>{if(!beacon?.active||!beacon?.tokenId)return;const point=tradeBeaconScreenPoint(x,y);const margin=85;if(point.x<point.rect.left-margin||point.x>point.rect.right+margin||point.y<point.rect.top-margin||point.y>point.rect.bottom+margin)return;const node=tradeBeaconEnsureNode(key,beacon,ownerName,local);if(!node)return;activeKeys.add(key);const bob=Math.sin((t+(local?0:key.length*83))*.004)*3;node.style.display='grid';node.style.left=Math.round(point.x)+'px';node.style.top=Math.round(point.y-Math.max(62,72*zoom)+bob)+'px';node.style.opacity='1';};
+  if(tradeBeaconIsLocalActive())add('local',player.x,player.y,tradeBeaconState,playerName||'You',true);
+  const now=Date.now();for(const [id,p] of remotePlayers){if(p.map!==currentMap||now-(p.lastSeen||0)>12000||!p.tradeBeacon?.active)continue;add('remote:'+id,p.drawX??p.x,p.drawY??p.y,p.tradeBeacon,p.name||'Player',false);}
+  for(const [key,node] of tradeBeaconNodes){if(activeKeys.has(key))continue;node.remove();tradeBeaconNodes.delete(key);}
+}
+function nearestTradeBeaconRemote(maxDistance=105){
+  const now=Date.now();let best=null,bestDistance=maxDistance;
+  for(const [id,p] of remotePlayers){if(p.map!==currentMap||now-(p.lastSeen||0)>12000||!p.tradeBeacon?.active||!p.tradeBeacon?.tokenId)continue;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);if(!Number.isFinite(x)||!Number.isFinite(y))continue;const d=Math.hypot(player.x-x,player.y-y);if(d<bestDistance){bestDistance=d;best={id:'trade-beacon:'+id,type:'player-nft-beacon',name:(p.name||'Player')+' · '+tradeBeaconModeLabel(p.tradeBeacon.mode),text:'View '+(p.name||'this player')+"'s displayed XRPL NFT.",remoteId:id,remotePlayer:p,beacon:p.tradeBeacon,x,y,radius:maxDistance};}}
+  return best;
+}
+function tradeNftClose(){tradeNftViewedTarget=null;const panel=document.getElementById('tradeNftPanel');if(panel){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}dialogOpen=false;}
+function tradeNftFact(label,value){const row=document.createElement('div');row.className='tradeNftFact';const k=document.createElement('span');k.textContent=label;const v=document.createElement('strong');v.textContent=String(value??'—')||'—';row.append(k,v);return row;}
+function tradeNftOpen(target){
+  const beacon=target?.beacon;if(!beacon)return;tradeNftViewedTarget=target;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';const panel=document.getElementById('tradeNftPanel'),content=document.getElementById('tradeNftContent'),title=document.getElementById('tradeNftTitle');if(!panel||!content)return;panel.classList.add('open');panel.setAttribute('aria-hidden','false');if(title)title.textContent=beacon.name||'XRPL NFT';content.textContent='';
+  const body=document.createElement('div');body.className='tradeNftBody';const art=document.createElement('div');art.className='tradeNftArt';tradeBeaconSetImage(art,tradeBeaconImageCandidates(beacon),beacon.name||'XRPL NFT');const info=document.createElement('div');info.className='tradeNftInfo';const mode=document.createElement('div');mode.className='tradeNftMode';mode.textContent=tradeBeaconModeLabel(beacon.mode);const h=document.createElement('h3');h.className='tradeNftName';h.textContent=beacon.name||'XRPL NFT';const owner=document.createElement('div');owner.className='tradeNftOwner';owner.textContent='Displayed by '+String(target.remotePlayer?.name||'Player')+(beacon.wallet?' · '+lockerShortWallet(beacon.wallet):'');const facts=document.createElement('div');facts.className='tradeNftFacts';facts.append(tradeNftFact('COLLECTION',beacon.collection||'—'),tradeNftFact('SERIAL',beacon.serial??'—'),tradeNftFact('ISSUER',beacon.issuer||'—'),tradeNftFact('TOKEN ID',beacon.tokenId||'—'));info.append(mode,h,owner,facts);body.append(art,info);content.appendChild(body);
+  const actions=document.createElement('div');actions.className='tradeNftActions';for(const [label,titleText] of [['MAKE OFFER','Player XRP offers arrive in the next trading phase.'],['OFFER MY NFT','NFT-for-NFT negotiation arrives in the next trading phase.']]){const b=document.createElement('button');b.type='button';b.disabled=true;b.textContent=label;b.title=titleText;actions.appendChild(b);}const note=document.createElement('div');note.className='tradeNftNote';note.textContent='v232 is a read-only Trade Beacon. No NFT or XRP can move from this screen yet.';actions.appendChild(note);content.appendChild(actions);
+}
+window.atmTradeBeacon=Object.freeze({get:()=>tradeBeaconBroadcastPayload(),clear:()=>tradeBeaconClear(),nearest:()=>nearestTradeBeaconRemote()});
+
 
 function lockerSetStatus(message,tone=''){
   const node=document.getElementById('lockerStatus');if(!node)return;
@@ -6211,8 +6295,12 @@ function lockerRenderNftDetail(){
   const facts=document.createElement('div');facts.className='lockerNftFacts';facts.append(lockerNftFact('ISSUER',nft.Issuer||'—'),lockerNftFact('TAXON',nft.NFTokenTaxon??'—'),lockerNftFact('TOKEN ID',nft.NFTokenID||'—'),lockerNftFact('URI',nft.uri||lockerDecodeHexUri(nft.URI||'')||'No URI'));body.appendChild(facts);
   if(Array.isArray(meta?.attributes)&&meta.attributes.length){const traits=document.createElement('div');traits.className='lockerNftTraits';for(const trait of meta.attributes.slice(0,12)){const item=document.createElement('div');item.className='lockerNftTrait';const label=document.createElement('span');label.textContent=trait.trait_type||'TRAIT';const value=document.createElement('strong');value.textContent=trait.value||'—';item.append(label,value);traits.appendChild(item);}body.appendChild(traits);}
   if(lockerState.nftMetadataLoading.has(lockerNftTokenId(nft))){const load=document.createElement('div');load.className='lockerNftLoadingBar';const i=document.createElement('i');load.appendChild(i);body.appendChild(load);}
-  const actions=document.createElement('div');actions.className='lockerNftFutureActions';for(const [label,title] of [['SHOWCASE','Trade Beacon arrives in Phase 2.'],['TRADE','Player NFT trading arrives in a later phase.'],['SELL','XRPL selling arrives after the read-only collection is proven.']]){const button=document.createElement('button');button.type='button';button.disabled=true;button.textContent=label;button.title=title;actions.appendChild(button);}body.appendChild(actions);
-  const note=document.createElement('div');note.className='lockerNftFutureNote';note.textContent='Phase 1 is read-only. ATM Town never needs your wallet secret or seed to view this collection.';body.appendChild(note);host.appendChild(body);
+  const tokenId=lockerNftTokenId(nft);const activeForThis=tradeBeaconIsLocalActive()&&tradeBeaconState.tokenId===tokenId;const beaconState=document.createElement('div');beaconState.className='lockerNftBeaconState'+(activeForThis&&tradeBeaconState.mode==='open_to_trade'?' trade':'');beaconState.innerHTML=activeForThis?'<strong>BEACON ACTIVE:</strong> '+tradeBeaconModeLabel(tradeBeaconState.mode)+' · visible above your player in multiplayer.':'Choose how this NFT should appear above your player.';body.appendChild(beaconState);
+  const actions=document.createElement('div');actions.className='lockerNftFutureActions';
+  const showcase=document.createElement('button');showcase.type='button';showcase.className='tradeBeaconAction'+(activeForThis&&tradeBeaconState.mode==='showcase'?' active':'');showcase.textContent=activeForThis&&tradeBeaconState.mode==='showcase'?'SHOWCASING':'SHOWCASE';showcase.title='Display this NFT above your character.';showcase.addEventListener('click',()=>tradeBeaconSet(nft,'showcase'));actions.appendChild(showcase);
+  const trade=document.createElement('button');trade.type='button';trade.className='tradeBeaconAction'+(activeForThis&&tradeBeaconState.mode==='open_to_trade'?' active':'');trade.textContent=activeForThis&&tradeBeaconState.mode==='open_to_trade'?'OPEN TO TRADE ✓':'OPEN TO TRADE';trade.title='Display this NFT above your character and invite other players to inspect it.';trade.addEventListener('click',()=>tradeBeaconSet(nft,'open_to_trade'));actions.appendChild(trade);
+  if(tradeBeaconIsLocalActive()){const clear=document.createElement('button');clear.type='button';clear.className='tradeBeaconClear';clear.textContent=activeForThis?'CLEAR BEACON':'CLEAR CURRENT';clear.title=activeForThis?'Remove this NFT from above your player.':'Remove the currently active Trade Beacon.';clear.addEventListener('click',()=>tradeBeaconClear());actions.appendChild(clear);}else{const sell=document.createElement('button');sell.type='button';sell.disabled=true;sell.textContent='SELL';sell.title='On-ledger selling arrives in a later phase.';actions.appendChild(sell);}body.appendChild(actions);
+  const note=document.createElement('div');note.className='lockerNftFutureNote';note.textContent='Trade Beacon is visual/read-only in v232. NFT selling and offers will require Xaman signing in later phases.';body.appendChild(note);host.appendChild(body);
 }
 function lockerRenderNftGrid(){
   const grid=document.getElementById('lockerNftGrid'),empty=document.getElementById('lockerNftEmpty'),count=document.getElementById('lockerNftGridCount'),metaStatus=document.getElementById('lockerNftMetadataStatus');if(!grid||!empty)return;grid.textContent='';
@@ -6250,7 +6338,7 @@ async function lockerRefreshXrpl(silent=false){
     const data=await apiWithAuth('/api/xrpl-inventory',{method:'GET'});
     lockerState.nfts=Array.isArray(data.nfts)?data.nfts:[];
     lockerState.ledgerIndex=data.ledger_index??null;lockerState.validated=data.validated===true;lockerState.truncated=data.truncated===true;lockerState.status='ready';
-    const ownedIds=new Set(lockerState.nfts.map(lockerNftTokenId));for(const key of lockerState.nftMetadata.keys())if(!ownedIds.has(key))lockerState.nftMetadata.delete(key);if(lockerState.selectedNftId&&!ownedIds.has(lockerState.selectedNftId))lockerState.selectedNftId=null;
+    const ownedIds=new Set(lockerState.nfts.map(lockerNftTokenId));for(const key of lockerState.nftMetadata.keys())if(!ownedIds.has(key))lockerState.nftMetadata.delete(key);if(lockerState.selectedNftId&&!ownedIds.has(lockerState.selectedNftId))lockerState.selectedNftId=null;tradeBeaconValidateOwnership();
     lockerSetStatus(`${lockerState.nfts.length} NFT${lockerState.nfts.length===1?'':'s'} found in ${lockerShortWallet(data.account||lockerWalletAddress())}${lockerState.ledgerIndex?' · ledger '+lockerState.ledgerIndex:''}${lockerState.truncated?' · safety limit reached':''}.`,'ok');
     lockerEnforceCharacterOwnership();lockerHydrateNftMetadata();
   }catch(error){
@@ -6357,10 +6445,14 @@ document.querySelectorAll('.lockerTab').forEach(button=>button.addEventListener(
 document.getElementById('lockerNftSearch')?.addEventListener('input',event=>{lockerState.nftSearch=String(event.target.value||'');lockerRenderNftCollection();});
 document.getElementById('lockerNftSort')?.addEventListener('change',event=>{lockerState.nftSort=String(event.target.value||'serial-desc');lockerRenderNftCollection();});
 document.getElementById('lockerNftDetailClose')?.addEventListener('click',()=>{document.getElementById('lockerNftDetail')?.classList.remove('open');});
+document.getElementById('tradeNftClose')?.addEventListener('click',tradeNftClose);
+document.getElementById('tradeNftPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='tradeNftPanel')tradeNftClose();});
+
 document.querySelectorAll('.lockerDirection').forEach(button=>button.addEventListener('click',()=>{lockerState.direction=button.dataset.lockerDirection;lockerRender();}));
 document.getElementById('lockerPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='lockerPanel')lockerClose();});
 window.addEventListener('resize',()=>{if(lockerState.open)lockerDrawPreview();},{passive:true});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&lockerState.open){event.preventDefault();lockerClose();}});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('tradeNftPanel')?.classList.contains('open')){event.preventDefault();tradeNftClose();}});
 Object.values(characterSheetImgs).forEach(image=>image?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();}));Object.values(equipmentSheetImgs).forEach(image=>image?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();}));jetpackOverlayImg?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();});
 lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:classic';lockerSaveLoadout();lockerRender();
 
@@ -6650,6 +6742,7 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
   const originalNearestThing=nearestThing;
   nearestThing=function(){
     if(currentMap==='arcade'){
+      const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
       const exit=interiorExitThing();if(exit)return exit;
       return arcadeInteractionThing();
     }

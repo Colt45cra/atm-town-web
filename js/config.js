@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 2311,
-    version: 'v231.2',
-    name: 'XRPL NFT IPFS Compatibility',
-    title: 'ATM Town v231.2 — XRPL NFT IPFS Compatibility'
+    number: 2320,
+    version: 'v232',
+    name: 'XRPL Trade Beacon',
+    title: 'ATM Town v232 — XRPL Trade Beacon'
   });
 
   const MAPS = Object.freeze({
