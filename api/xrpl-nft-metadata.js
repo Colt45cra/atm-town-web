@@ -6,10 +6,13 @@ const MAX_URI_HEX_LENGTH = 512; // XRPL NFToken URI max is 256 bytes.
 const MAX_METADATA_BYTES = 1_500_000;
 const MAX_DATA_IMAGE_LENGTH = 600_000;
 const CACHE_TTL_MS = 30 * 60 * 1000;
-const FAILURE_CACHE_TTL_MS = 60 * 1000;
+const FAILURE_CACHE_TTL_MS = 45 * 1000;
+const METADATA_FETCH_TIMEOUT_MS = 6000;
 const IPFS_GATEWAYS = Object.freeze([
   'https://ipfs.io/ipfs/',
   'https://dweb.link/ipfs/',
+  'https://nftstorage.link/ipfs/',
+  'https://w3s.link/ipfs/',
   'https://gateway.pinata.cloud/ipfs/'
 ]);
 const metadataCache = globalThis.__atmNftMetadataCache || new Map();
@@ -39,11 +42,26 @@ function ipfsPathFromValue(value) {
   } catch { return ''; }
 }
 
+// A surprising number of older XRPL NFT minters wrote human-readable IPFS
+// filenames such as `Rooster Gang #148.json` directly into the NFToken URI.
+// When that raw path is appended to an HTTP gateway, `#148.json` is interpreted
+// as a URL fragment and never reaches IPFS, producing a false 404. Encode each
+// path segment before constructing gateway URLs so spaces, #, ?, unicode, etc.
+// remain part of the IPFS object path. Existing percent-encoding is normalized
+// instead of double-encoded.
+function encodeIpfsPath(path) {
+  return String(path || '').split('/').map((segment) => {
+    if (!segment) return '';
+    try { return encodeURIComponent(decodeURIComponent(segment)); }
+    catch { return encodeURIComponent(segment); }
+  }).join('/');
+}
+
 function contentUriCandidates(value, baseUrl = '') {
   const raw = String(value || '').trim();
   if (!raw) return [];
   const ipfsPath = ipfsPathFromValue(raw);
-  if (ipfsPath) return uniqueStrings(IPFS_GATEWAYS.map((gateway) => gateway + ipfsPath));
+  if (ipfsPath) { const encodedPath = encodeIpfsPath(ipfsPath); return uniqueStrings(IPFS_GATEWAYS.map((gateway) => gateway + encodedPath)); }
   if (/^ar:\/\//i.test(raw)) {
     const path = raw.replace(/^ar:\/\//i, '').replace(/^\/+/, '');
     return path ? [`https://arweave.net/${path}`] : [];
@@ -110,7 +128,7 @@ async function fetchPublic(value, redirects = 0) {
       'User-Agent': 'ATM-Town-NFT-Metadata/1.0'
     },
     redirect: 'manual',
-    signal: AbortSignal.timeout(7000),
+    signal: AbortSignal.timeout(METADATA_FETCH_TIMEOUT_MS),
     cache: 'force-cache'
   });
 
@@ -121,6 +139,26 @@ async function fetchPublic(value, redirects = 0) {
   }
   if (!response.ok) throw new Error(`NFT metadata returned HTTP ${response.status}.`);
   return { response, url: url.toString() };
+}
+
+async function fetchFirstPublic(candidates) {
+  const urls = uniqueStrings(candidates);
+  if (!urls.length) throw new Error('NFT metadata could not be fetched.');
+  if (urls.length === 1) return fetchPublic(urls[0]);
+
+  // Race independent IPFS gateways. Sequential 6-7 second gateway attempts can
+  // exceed a serverless request window before a healthy fallback is tried.
+  const errors = [];
+  try {
+    return await Promise.any(urls.map(async (url) => {
+      try { return await fetchPublic(url); }
+      catch (error) { errors.push(error); throw error; }
+    }));
+  } catch {
+    const messages = errors.map((error) => cleanText(error?.message || '', 180)).filter(Boolean);
+    const non404 = messages.find((message) => !/HTTP 404/i.test(message));
+    throw new Error(non404 || messages[0] || 'NFT metadata could not be fetched.');
+  }
 }
 
 function directImageUrl(url, contentType = '') {
@@ -160,13 +198,7 @@ async function resolveMetadata(uriHex, tokenId) {
     } else {
       const metadataCandidates = contentUriCandidates(decodedUri);
       if (!metadataCandidates.length || /^data:/i.test(metadataCandidates[0])) throw new Error('NFT metadata URI is not supported.');
-      let fetched = null;
-      let lastFetchError = null;
-      for (const metadataUrl of metadataCandidates) {
-        try { fetched = await fetchPublic(metadataUrl); break; }
-        catch (error) { lastFetchError = error; }
-      }
-      if (!fetched) throw lastFetchError || new Error('NFT metadata could not be fetched.');
+      const fetched = await fetchFirstPublic(metadataCandidates);
       const { response, url } = fetched;
       const contentType = String(response.headers.get('content-type') || '').toLowerCase();
       const imageUrl = directImageUrl(url, contentType);

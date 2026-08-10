@@ -1268,7 +1268,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v231.1',name:ATM_CONFIG?.build?.name||'XRPL NFT Metadata Compatibility'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v231.2',name:ATM_CONFIG?.build?.name||'XRPL NFT IPFS Compatibility'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -6207,6 +6207,7 @@ function lockerRenderNftDetail(){
   badge(nft.transferable?'TRANSFERABLE':'TRANSFER RESTRICTED',nft.transferable?'good':'warn');if(nft.xrp_only)badge('XRP ONLY','warn');if(nft.mutable)badge('MUTABLE URI');if(nft.burnable)badge('BURNABLE');badge(lockerState.validated?'VALIDATED LEDGER':'LEDGER READ');body.appendChild(badges);
   if(meta?.description){const description=document.createElement('div');description.className='lockerNftDescription';description.textContent=meta.description;body.appendChild(description);}
   if(meta?.status==='unavailable'&&meta?.error){const warning=document.createElement('div');warning.className='lockerNftDescription';warning.textContent='Artwork/metadata unavailable: '+meta.error;body.appendChild(warning);}
+  if(meta?.status==='missing'){const warning=document.createElement('div');warning.className='lockerNftDescription';warning.textContent='No metadata URI is stored on this NFToken, so ATM Town has no on-ledger location to retrieve artwork from.';body.appendChild(warning);}
   const facts=document.createElement('div');facts.className='lockerNftFacts';facts.append(lockerNftFact('ISSUER',nft.Issuer||'—'),lockerNftFact('TAXON',nft.NFTokenTaxon??'—'),lockerNftFact('TOKEN ID',nft.NFTokenID||'—'),lockerNftFact('URI',nft.uri||lockerDecodeHexUri(nft.URI||'')||'No URI'));body.appendChild(facts);
   if(Array.isArray(meta?.attributes)&&meta.attributes.length){const traits=document.createElement('div');traits.className='lockerNftTraits';for(const trait of meta.attributes.slice(0,12)){const item=document.createElement('div');item.className='lockerNftTrait';const label=document.createElement('span');label.textContent=trait.trait_type||'TRAIT';const value=document.createElement('strong');value.textContent=trait.value||'—';item.append(label,value);traits.appendChild(item);}body.appendChild(traits);}
   if(lockerState.nftMetadataLoading.has(lockerNftTokenId(nft))){const load=document.createElement('div');load.className='lockerNftLoadingBar';const i=document.createElement('i');load.appendChild(i);body.appendChild(load);}
@@ -6216,7 +6217,7 @@ function lockerRenderNftDetail(){
 function lockerRenderNftGrid(){
   const grid=document.getElementById('lockerNftGrid'),empty=document.getElementById('lockerNftEmpty'),count=document.getElementById('lockerNftGridCount'),metaStatus=document.getElementById('lockerNftMetadataStatus');if(!grid||!empty)return;grid.textContent='';
   const list=lockerNftFiltered();if(count)count.textContent=list.length+' NFT'+(list.length===1?'':'s')+(list.length!==lockerState.nfts.length?' shown':'');
-  const resolved=lockerState.nfts.filter(nft=>{const meta=lockerNftMetadata(nft);return meta&&['resolved','direct-image'].includes(meta.status);}).length;const loading=lockerState.nftMetadataLoading.size;const unavailable=Math.max(0,lockerState.nfts.length-resolved-loading);if(metaStatus)metaStatus.textContent=loading?`Loading artwork · ${resolved}/${lockerState.nfts.length}`:(lockerState.nfts.length?`Artwork ready · ${resolved}/${lockerState.nfts.length}${unavailable?` · ${unavailable} unavailable`:''}`:'Read-only XRPL collection');
+  const resolved=lockerState.nfts.filter(nft=>{const meta=lockerNftMetadata(nft);return meta&&['resolved','direct-image'].includes(meta.status);}).length;const missing=lockerState.nfts.filter(nft=>lockerNftMetadata(nft)?.status==='missing').length;const loading=lockerState.nftMetadataLoading.size;const unavailable=Math.max(0,lockerState.nfts.length-resolved-loading-missing);if(metaStatus)metaStatus.textContent=loading?`Loading artwork · ${resolved}/${lockerState.nfts.length}`:(lockerState.nfts.length?`Artwork ready · ${resolved}/${lockerState.nfts.length}${unavailable?` · ${unavailable} unavailable`:''}${missing?` · ${missing} no URI`:''}`:'Read-only XRPL collection');
   const emptyText=document.getElementById('lockerNftEmptyText');
   if(!list.length){grid.style.display='none';empty.classList.add('visible');if(emptyText)emptyText.textContent=lockerState.nfts.length?'No NFTs match your search.':lockerWalletAddress()?'No NFTs were returned for this linked wallet.':'Link a verified Xaman wallet or refresh XRPL to load your collection.';return;}grid.style.display='grid';empty.classList.remove('visible');
   for(const nft of list){

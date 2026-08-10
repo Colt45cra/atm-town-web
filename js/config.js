@@ -10,9 +10,9 @@
 
   const BUILD = Object.freeze({
     number: 2311,
-    version: 'v231.1',
-    name: 'XRPL NFT Metadata Compatibility',
-    title: 'ATM Town v231.1 — XRPL NFT Metadata Compatibility'
+    version: 'v231.2',
+    name: 'XRPL NFT IPFS Compatibility',
+    title: 'ATM Town v231.2 — XRPL NFT IPFS Compatibility'
   });
 
   const MAPS = Object.freeze({
