@@ -56,3 +56,15 @@ Run this checklist after every version before replacing the production build.
 npm run validate
 npm run audit:assets
 ```
+
+## XRPL NFT collection (v231+)
+
+- Signed-in player with no linked wallet sees a clear link/refresh message rather than a broken grid.
+- Linked Xaman wallet opens **Locker → XRPL NFTs** and returns the wallet's current on-ledger NFT count.
+- NFT cards remain usable when metadata is missing, slow, malformed, or hosted somewhere unavailable.
+- Search works by NFT name, issuer, token ID, collection, serial, taxon, and decoded URI.
+- Sort works for newest/oldest serial, name, and issuer.
+- Selecting an NFT opens the detail panel and shows issuer, taxon, NFTokenID, decoded URI, and transfer flags.
+- IPFS/HTTP(S)/direct-image metadata that resolves successfully displays artwork without blocking the ledger inventory.
+- Mobile/tablet NFT grid remains touch-friendly and the detail panel can be closed.
+- SHOWCASE, TRADE, and SELL remain disabled in Phase 1; no XRPL transaction is created by the collection UI.

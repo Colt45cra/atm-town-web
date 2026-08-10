@@ -1,19 +1,40 @@
-ATM TOWN v228 — OPTIMIZED GITHUB BUILD
+ATM TOWN v231 — XRPL NFT COLLECTION
 
-This is a full repository-layout update, not an index-only update.
+This build is based on the v230 streamed-world repository and adds the Phase 1 read-only XRPL NFT Collection.
 
-1. Extract the ZIP.
-2. Open the extracted ATM-Town-v228-optimized-full folder.
-3. Upload/replace its CONTENTS in the root of your GitHub ATM Town repository.
-4. Preserve the folder structure exactly:
+For a full-build replacement:
+1. Extract the v231 full ZIP.
+2. Upload/replace its CONTENTS in the root of the ATM Town GitHub repository.
+3. Preserve the folder structure exactly:
    /api
    /assets
    /docs
    /js
    /scripts
-5. Root runtime artwork from older builds is no longer needed after v228 because its paths moved under /assets.
-6. Commit the v228 structure together so index.html and asset paths cannot get out of sync.
+4. Commit the v231 files together so index.html, js/config.js, and the new XRPL API endpoints stay in sync.
 
-IMPORTANT FORMAT RULE GOING FORWARD:
+For an incremental update from the exact v230 build used as the source of truth, the changed-files package is preferred. It contains only the files added/modified for v231.
+
+NEW PHASE 1 FILES:
+- /api/xrpl-inventory.js
+- /api/xrpl-nft-metadata.js
+- /docs/XRPL-NFT-COLLECTION.md
+
+UPDATED PHASE 1 FILES:
+- /index.html
+- /js/config.js
+- /scripts/validate-build.mjs
+- /docs/REGRESSION-CHECKLIST.md
+- /README.md
+- /UPLOAD-INSTRUCTIONS.txt
+
+TEST AFTER DEPLOYMENT:
+- Sign in with an account that has a verified Xaman wallet.
+- Open Locker -> XRPL NFTs.
+- Confirm the wallet and on-ledger NFT count load.
+- Open several NFTs and confirm metadata/artwork gracefully loads or falls back.
+- Confirm SHOWCASE / TRADE / SELL are visible but disabled in Phase 1.
+
+IMPORTANT ASSET FORMAT RULE:
 - Visual artwork: WebP when appropriate.
 - Collision/interaction/stair/depth/pixel-data masks: PNG.

@@ -4,9 +4,9 @@ ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/Java
 
 ## Current version
 
-**v230 — World Streaming / Chunk Engine**
+**v231 — XRPL NFT Collection**
 
-This build preserves the optimized gameplay baseline while converting the existing 3120 × 4320 outdoor town to a data-driven 1024px streamed world. The authored full-size source layers remain available for future re-tiling; runtime terrain, masks, night, and lighting load by chunk.
+This build preserves the v230 streamed-world architecture and adds Phase 1 of ATM Town's player-facing XRPL NFT system. Signed-in players with a verified Xaman-linked wallet can open **Locker → XRPL NFTs** to read their on-ledger collection, search/sort it, resolve NFT artwork/metadata, and inspect token details. The new NFT UI is intentionally read-only; selling, Trade Beacon, offers, frames, and world drops build on this foundation in later phases.
 
 ## Project structure
 
@@ -45,4 +45,4 @@ npm run audit:assets
 
 ## Deployment
 
-Upload the **contents** of the v230 build/ZIP to the repository root, preserving all folders and paths. Do not flatten the `/assets`, `/api`, `/js`, `/docs`, or `/scripts` directories.
+Upload the **contents** of the v231 build/ZIP to the repository root, preserving all folders and paths. Do not flatten the `/assets`, `/api`, `/js`, `/docs`, or `/scripts` directories.

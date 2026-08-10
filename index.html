@@ -507,6 +507,18 @@ body.access-flow-open #musicToggle{display:none!important;visibility:hidden!impo
 .lockerFooter{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:9px 15px;border-top:1px solid rgba(255,255,255,.08);background:rgba(2,10,16,.8)}#lockerStatus{font-size:10px;color:#9fc3cc;line-height:1.3}.lockerFooterVersion{font-size:9px;font-weight:1000;letter-spacing:.1em;color:#587985}
 .characterChoice.locked{opacity:.56;filter:grayscale(.5)}.characterChoice.locked::after{content:'LOCKED'!important;background:#ff4fa3!important;color:#fff!important}.characterChoice.locked img{filter:grayscale(.7) drop-shadow(0 9px 10px rgba(0,0,0,.48))}
 body.locker-modal-open #controls{visibility:hidden!important}body.locker-modal-open #hint{display:none!important}body.access-flow-open #lockerButton{display:none!important}
+
+/* ===== v231: read-only XRPL NFT Collection ===== */
+.lockerNftView{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;padding:12px 14px 14px;background:radial-gradient(circle at 75% 8%,rgba(88,241,230,.075),transparent 34%)}
+.lockerNftToolbar{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1.2fr);gap:10px;align-items:end}.lockerNftWalletCard{min-width:0;padding:10px 12px;border:1px solid rgba(88,241,230,.16);border-radius:13px;background:rgba(3,16,24,.7)}.lockerNftWalletCard span{display:block;margin-bottom:4px;font-size:7px;font-weight:1000;letter-spacing:.18em;color:#7da9b5}.lockerNftWalletCard strong{display:block;color:#58f1e6;font:900 11px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lockerNftWalletCard small{display:block;margin-top:4px;color:#8fb5bf;font-size:8px}
+.lockerNftControls{display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:8px}.lockerNftControls input,.lockerNftControls select{width:100%;min-width:0;height:39px;padding:0 11px;border:1px solid rgba(255,255,255,.11);border-radius:11px;background:#071923;color:#eaffff;font:800 10px system-ui;outline:none}.lockerNftControls input:focus,.lockerNftControls select:focus{border-color:#58f1e6;box-shadow:0 0 0 2px rgba(88,241,230,.09)}
+.lockerNftContent{position:relative;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px}.lockerNftGridWrap{min-width:0;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:7px}.lockerNftGridHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px;color:#8fb5bf;font-size:8px;font-weight:900;letter-spacing:.08em}.lockerNftGridHeader strong{color:#dffcff;font-size:9px}.lockerNftGrid{min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:9px;align-content:start;padding:1px 3px 12px 1px}.lockerNftCard{position:relative;min-width:0;min-height:182px;display:grid;grid-template-rows:116px auto auto;gap:6px;padding:7px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:linear-gradient(180deg,rgba(8,31,42,.94),rgba(3,13,20,.98));color:#eaffff;text-align:left;overflow:hidden;touch-action:manipulation}.lockerNftCard:hover,.lockerNftCard.selected{border-color:rgba(88,241,230,.62)}.lockerNftCard.selected{box-shadow:inset 0 0 0 1px rgba(88,241,230,.16)}.lockerNftArt{position:relative;display:grid;place-items:center;border-radius:11px;overflow:hidden;background:radial-gradient(circle at 50% 35%,rgba(88,241,230,.17),rgba(2,10,16,.75) 72%)}.lockerNftArt img{width:100%;height:100%;object-fit:cover;display:block}.lockerNftFallback{display:grid;place-items:center;width:58px;height:58px;border:1px solid rgba(88,241,230,.22);border-radius:16px;background:rgba(88,241,230,.07);color:#58f1e6;font:1000 27px system-ui}.lockerNftSerial{position:absolute;left:6px;top:6px;max-width:88%;padding:4px 6px;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:rgba(1,9,14,.82);color:#ffd166;font:1000 7px ui-monospace,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lockerNftMetaState{position:absolute;right:6px;bottom:6px;width:7px;height:7px;border-radius:50%;background:#58727b;box-shadow:0 0 8px rgba(88,114,123,.4)}.lockerNftMetaState.ready{background:#70f9c8;box-shadow:0 0 8px rgba(112,249,200,.65)}.lockerNftMetaState.loading{background:#ffd166;animation:xamanStatusSpin .8s linear infinite}.lockerNftName{font-size:10px;font-weight:1000;line-height:1.18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lockerNftSub{font-size:7px;font-weight:900;letter-spacing:.06em;color:#81aab5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lockerNftEmpty{display:none;place-items:center;align-content:center;gap:8px;min-height:220px;padding:24px;border:1px dashed rgba(88,241,230,.18);border-radius:16px;color:#8fb5bf;text-align:center}.lockerNftEmpty.visible{display:grid}.lockerNftEmpty b{color:#eaffff;font-size:13px}.lockerNftEmpty span{max-width:350px;font-size:10px;line-height:1.45}
+.lockerNftDetail{min-width:0;min-height:0;overflow-y:auto;padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:16px;background:linear-gradient(180deg,rgba(7,25,34,.98),rgba(2,11,17,.98))}.lockerNftDetailClose{display:none}.lockerNftDetailPlaceholder{height:100%;min-height:280px;display:grid;place-items:center;align-content:center;gap:9px;color:#789faa;text-align:center}.lockerNftDetailPlaceholder strong{color:#eaffff;font-size:12px}.lockerNftDetailPlaceholder span{max-width:210px;font-size:9px;line-height:1.45}.lockerNftDetailBody{display:grid;gap:10px}.lockerNftDetailArt{aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(88,241,230,.13);border-radius:14px;background:radial-gradient(circle,rgba(88,241,230,.13),rgba(2,10,16,.82) 68%)}.lockerNftDetailArt img{width:100%;height:100%;object-fit:contain}.lockerNftDetailTitle{display:grid;gap:3px}.lockerNftDetailTitle h3{margin:0;color:#efffff;font-size:15px}.lockerNftDetailTitle span{color:#8fb5bf;font-size:8px;font-weight:900;letter-spacing:.08em}.lockerNftBadges{display:flex;flex-wrap:wrap;gap:5px}.lockerNftBadge{padding:5px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#a9cbd3;font-size:7px;font-weight:1000;letter-spacing:.06em}.lockerNftBadge.good{border-color:rgba(112,249,200,.28);color:#70f9c8}.lockerNftBadge.warn{border-color:rgba(255,209,102,.28);color:#ffd166}.lockerNftDescription{max-height:92px;overflow:auto;color:#a5c3cc;font-size:9px;line-height:1.45}.lockerNftFacts{display:grid;gap:6px}.lockerNftFact{display:grid;grid-template-columns:76px minmax(0,1fr);gap:7px;padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.025)}.lockerNftFact span{color:#739aa6;font-size:7px;font-weight:1000;letter-spacing:.08em}.lockerNftFact strong{min-width:0;color:#dffcff;font:800 8px ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.lockerNftFutureActions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:2px}.lockerNftFutureActions button{min-height:34px;padding:6px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:#102a35;color:#759aa5;font-size:7px;font-weight:1000}.lockerNftFutureActions button:disabled{opacity:.62}.lockerNftFutureNote{color:#718f99;font-size:7px;line-height:1.4;text-align:center}.lockerNftLoadingBar{height:3px;overflow:hidden;border-radius:4px;background:rgba(255,255,255,.04)}.lockerNftLoadingBar i{display:block;width:35%;height:100%;background:#58f1e6;animation:lockerNftLoad 1.1s ease-in-out infinite}.lockerNftLoadingBar[hidden]{display:none}.lockerNftTraits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.lockerNftTrait{min-width:0;padding:6px;border-radius:8px;background:rgba(88,241,230,.04);border:1px solid rgba(88,241,230,.08)}.lockerNftTrait span{display:block;color:#6e9aa5;font-size:6px;font-weight:1000;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lockerNftTrait strong{display:block;margin-top:2px;color:#cceff2;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes lockerNftLoad{0%{transform:translateX(-100%)}50%{transform:translateX(170%)}100%{transform:translateX(360%)}}
+@media(max-width:920px){.lockerNftContent{grid-template-columns:minmax(0,1fr) 260px}.lockerNftGrid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}.lockerNftCard{min-height:166px;grid-template-rows:104px auto auto}}
+@media(max-width:760px){.lockerNftView{padding:8px 9px 9px}.lockerNftToolbar{grid-template-columns:1fr;gap:7px}.lockerNftWalletCard{padding:8px 10px}.lockerNftControls{grid-template-columns:minmax(0,1fr) 108px}.lockerNftContent{display:block;min-height:0}.lockerNftGridWrap{height:100%}.lockerNftGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.lockerNftCard{min-height:154px;grid-template-rows:92px auto auto;padding:6px}.lockerNftDetail{display:none;position:absolute;inset:0;z-index:5;border-color:rgba(88,241,230,.25);box-shadow:0 18px 60px rgba(0,0,0,.6)}.lockerNftDetail.open{display:block}.lockerNftDetailClose{display:grid;position:sticky;top:0;z-index:2;float:right;place-items:center;width:31px;height:31px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:#183442;color:#fff;font-size:18px}.lockerNftDetailBody{clear:both;grid-template-columns:minmax(150px,.8fr) minmax(0,1fr);align-items:start}.lockerNftDetailArt{grid-row:1/7}.lockerNftFutureActions{grid-template-columns:1fr}.lockerNftTraits{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:480px){.lockerNftGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.lockerNftDetailBody{grid-template-columns:1fr}.lockerNftDetailArt{grid-row:auto;max-height:300px}.lockerNftTraits{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 @media(max-width:760px){#lockerButton{top:177px;padding:8px;width:42px;height:42px;justify-content:center}#lockerButton .lockerButtonLabel{display:none}#lockerCard{height:96vh;min-height:0;border-radius:18px}.lockerHeader{padding:10px}.lockerLogo{width:38px;height:38px;font-size:20px}.lockerTitleCopy h2{font-size:17px}.lockerTitleCopy p{display:none}.lockerWalletBadge{display:none}.lockerIconButton.primary{padding:9px;font-size:8px}.lockerCharacterLayout{grid-template-columns:1fr;grid-template-rows:38% 62%}.lockerPreviewPanel{grid-template-columns:minmax(0,1fr) 70px;grid-template-rows:auto minmax(0,1fr) auto;border-right:0;border-bottom:1px solid rgba(255,255,255,.08);padding:8px}.lockerPreviewPanel>.lockerSectionTitle{grid-column:1/-1}.lockerPreviewPanel #lockerPreviewCanvas{grid-column:1;grid-row:2/4;min-height:0}.lockerDirectionRow{grid-column:2;grid-row:2;display:grid;grid-template-columns:repeat(2,34px);align-content:center}.lockerPreviewMeta{grid-column:2;grid-row:3;display:block;padding:5px}.lockerPreviewMeta span{display:none}.lockerPreviewActions{display:grid;gap:4px;margin-top:5px}.lockerSaveBuild{padding:5px 4px;font-size:7px}.lockerBuilderPanel{grid-template-rows:54px auto minmax(0,1fr);padding:7px 9px 9px;gap:5px}.lockerSlots{display:flex;overflow-x:auto}.lockerSlot{flex-basis:94px;min-height:50px;padding:6px}.lockerSlotIcon{font-size:15px}.lockerItemGrid,.lockerInventoryGrid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}.lockerItemCard{min-height:145px;grid-template-rows:73px auto auto;padding:6px}.lockerItemArt img{height:72px}.lockerTabs{padding:7px 9px}.lockerTab{flex:1;padding:8px}.lockerInventoryView{padding:9px}.lockerInventorySummary{gap:6px}.lockerStat{padding:8px}.lockerStat strong{font-size:15px}.lockerFooter{padding:7px 10px}}
 @media(max-width:430px){.lockerHeaderActions #lockerRefreshButton{font-size:0;width:38px;height:38px}.lockerHeaderActions #lockerRefreshButton::after{content:'↻';font-size:18px}.lockerSlot{flex-basis:86px}.lockerItemGrid,.lockerInventoryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.lockerItemName{font-size:9px}.lockerItemCard{min-height:139px}.lockerItemBadge{font-size:6px}.lockerSourceNote{font-size:9px}}
 
@@ -717,7 +729,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
       <div class="lockerTitleRow"><div class="lockerLogo">ATM</div><div class="lockerTitleCopy"><div class="lockerEyebrow">PLAYER OWNERSHIP</div><h2 id="lockerTitle">Locker</h2><p>Build your character and manage everything you own.</p></div></div>
       <div class="lockerHeaderActions"><div class="lockerWalletBadge" id="lockerWalletBadge">Wallet: <strong>Not linked</strong></div><button class="lockerIconButton primary" id="lockerRefreshButton" type="button">REFRESH XRPL</button><button aria-label="Close Locker" class="lockerIconButton lockerClose" id="lockerCloseButton" type="button">×</button></div>
     </header>
-    <nav class="lockerTabs" aria-label="Locker sections"><button class="lockerTab active" data-locker-tab="character" type="button">CHARACTER</button><button class="lockerTab" data-locker-tab="inventory" type="button">INVENTORY</button></nav>
+    <nav class="lockerTabs" aria-label="Locker sections"><button class="lockerTab active" data-locker-tab="character" type="button">CHARACTER</button><button class="lockerTab" data-locker-tab="inventory" type="button">INVENTORY</button><button class="lockerTab" data-locker-tab="nfts" type="button">XRPL NFTS</button></nav>
     <main class="lockerBody">
       <section class="lockerView active" data-locker-view="character">
         <div class="lockerCharacterLayout">
@@ -728,8 +740,20 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
       <section class="lockerView" data-locker-view="inventory">
         <div class="lockerInventoryView"><div class="lockerInventorySummary"><div class="lockerStat"><span>OWNED ITEMS</span><strong id="lockerOwnedCount">0</strong></div><div class="lockerStat"><span>XRPL NFTS</span><strong id="lockerNftCount">0</strong></div><div class="lockerStat"><span>EQUIPPED</span><strong id="lockerEquippedCount">1</strong></div></div><div class="lockerSourceNote"><b>Ownership rule:</b> NFT-mapped assets are unlocked only by the linked wallet’s validated XRPL holdings. Starter, temporary session, found, and development assets are labeled separately.</div><div class="lockerInventoryGrid" id="lockerInventoryGrid"></div></div>
       </section>
+      <section class="lockerView" data-locker-view="nfts">
+        <div class="lockerNftView">
+          <div class="lockerNftToolbar">
+            <div class="lockerNftWalletCard"><span>LINKED XRPL WALLET</span><strong id="lockerNftWallet">Not linked</strong><small id="lockerNftLedger">Connect Xaman to load your on-ledger collection.</small></div>
+            <div class="lockerNftControls"><input id="lockerNftSearch" type="search" autocomplete="off" placeholder="Search NFT name, issuer, token ID…" aria-label="Search XRPL NFTs"><select id="lockerNftSort" aria-label="Sort XRPL NFTs"><option value="serial-desc">NEWEST SERIAL</option><option value="serial-asc">OLDEST SERIAL</option><option value="name">NAME</option><option value="issuer">ISSUER</option></select></div>
+          </div>
+          <div class="lockerNftContent">
+            <div class="lockerNftGridWrap"><div class="lockerNftGridHeader"><strong id="lockerNftGridCount">0 NFTs</strong><span id="lockerNftMetadataStatus">Read-only XRPL collection</span></div><div class="lockerNftGrid" id="lockerNftGrid"></div><div class="lockerNftEmpty" id="lockerNftEmpty"><b>No NFTs to display</b><span id="lockerNftEmptyText">Link a verified Xaman wallet or refresh XRPL to load your collection.</span></div></div>
+            <aside class="lockerNftDetail" id="lockerNftDetail" aria-label="Selected NFT details"><button class="lockerNftDetailClose" id="lockerNftDetailClose" type="button" aria-label="Close NFT details">×</button><div id="lockerNftDetailContent"><div class="lockerNftDetailPlaceholder"><strong>Select an NFT</strong><span>Tap any NFT in your XRPL collection to inspect its ledger data, artwork, metadata, and transfer flags.</span></div></div></aside>
+          </div>
+        </div>
+      </section>
     </main>
-    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Current assets use starter, session, or development ownership until NFT mappings are added.</div><div class="lockerFooterVersion">LOCKER v2 · BUILD v196</div></footer>
+    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Character assets and your read-only XRPL collection are available here.</div><div class="lockerFooterVersion">LOCKER v3 · XRPL COLLECTION · v231</div></footer>
   </div>
 </div>
 
@@ -1244,7 +1268,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v230',name:ATM_CONFIG?.build?.name||'World Streaming / Chunk Engine'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v231',name:ATM_CONFIG?.build?.name||'XRPL NFT Collection'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -5936,8 +5960,9 @@ let lockerSavedCharacters=safeJsonParse(safeStorageGet(ATM_LOCKER_SAVED_CHARACTE
 if(!Array.isArray(lockerSavedCharacters))lockerSavedCharacters=[];
 let lockerActiveSavedCharacterId=null;
 window.atmActiveLoadout={...lockerLoadout};
-let lockerState={open:false,tab:'character',slot:'body',filter:'my-characters',direction:'down',nfts:[],ledgerIndex:null,validated:false,status:'idle',error:'',selectedItemId:null};
+let lockerState={open:false,tab:'character',slot:'body',filter:'my-characters',direction:'down',nfts:[],ledgerIndex:null,validated:false,status:'idle',error:'',selectedItemId:null,nftMetadata:new Map(),nftMetadataLoading:new Set(),nftSearch:'',nftSort:'serial-desc',selectedNftId:null,nftHydrationGeneration:0,truncated:false};
 let lockerPreviewFrame=1;
+let lockerNftRenderTimer=0;
 
 function lockerSetStatus(message,tone=''){
   const node=document.getElementById('lockerStatus');if(!node)return;
@@ -6132,18 +6157,100 @@ function lockerUpdateWalletBadge(){
   const node=document.getElementById('lockerWalletBadge');if(!node)return;
   const wallet=lockerWalletAddress();node.innerHTML=wallet?'Wallet: <strong title="'+wallet+'">'+lockerShortWallet(wallet)+'</strong>':'Wallet: <strong>Not linked</strong>';
 }
+
+function lockerNftTokenId(nft){return String(nft?.NFTokenID||'').toUpperCase();}
+function lockerNftSerial(nft){return Number.isFinite(Number(nft?.nft_serial))?Number(nft.nft_serial):null;}
+function lockerNftMetadata(nft){return lockerState.nftMetadata.get(lockerNftTokenId(nft))||null;}
+function lockerNftDisplayName(nft){const meta=lockerNftMetadata(nft);const serial=lockerNftSerial(nft);return String(meta?.name||'').trim()||(serial!==null?'XRPL NFT #'+serial:'XRPL NFT');}
+function lockerNftShortToken(nft){const id=lockerNftTokenId(nft);return id.length>16?id.slice(0,8)+'…'+id.slice(-8):id||'Unknown token';}
+function lockerNftShortIssuer(nft){const issuer=String(nft?.Issuer||'');return issuer?lockerShortWallet(issuer):'Unknown issuer';}
+function lockerNftScheduleRender(){clearTimeout(lockerNftRenderTimer);lockerNftRenderTimer=setTimeout(()=>{lockerNftRenderTimer=0;if(lockerState.open)lockerRenderNftCollection();},90);}
+function lockerNftImageNode(nft,detail=false){
+  const host=document.createElement('div');host.className=detail?'lockerNftDetailArt':'lockerNftArt';
+  const meta=lockerNftMetadata(nft);const src=String(meta?.image_url||'').trim();
+  const fallback=()=>{const current=host.querySelector('img');if(current)current.remove();if(!host.querySelector('.lockerNftFallback')){const node=document.createElement('div');node.className='lockerNftFallback';node.textContent='◈';host.insertBefore(node,host.firstChild);}};
+  if(src){
+    const image=document.createElement('img');image.alt=lockerNftDisplayName(nft);image.src=src;image.loading='lazy';image.decoding='async';image.referrerPolicy='no-referrer';image.addEventListener('error',fallback,{once:true});host.appendChild(image);
+  }else fallback();
+  return host;
+}
+function lockerNftFiltered(){
+  const query=String(lockerState.nftSearch||'').trim().toLowerCase();
+  const list=lockerState.nfts.filter(nft=>{
+    if(!query)return true;
+    const meta=lockerNftMetadata(nft);const hay=[lockerNftDisplayName(nft),nft?.Issuer,nft?.NFTokenID,nft?.NFTokenTaxon,nft?.nft_serial,meta?.collection,nft?.uri].join(' ').toLowerCase();return hay.includes(query);
+  });
+  list.sort((a,b)=>{
+    if(lockerState.nftSort==='serial-asc')return (lockerNftSerial(a)??Number.MAX_SAFE_INTEGER)-(lockerNftSerial(b)??Number.MAX_SAFE_INTEGER);
+    if(lockerState.nftSort==='name')return lockerNftDisplayName(a).localeCompare(lockerNftDisplayName(b),undefined,{numeric:true,sensitivity:'base'});
+    if(lockerState.nftSort==='issuer')return String(a?.Issuer||'').localeCompare(String(b?.Issuer||''))||(lockerNftSerial(b)??0)-(lockerNftSerial(a)??0);
+    return (lockerNftSerial(b)??-1)-(lockerNftSerial(a)??-1);
+  });
+  return list;
+}
+function lockerNftSetSelected(nft){
+  lockerState.selectedNftId=lockerNftTokenId(nft)||null;
+  const detail=document.getElementById('lockerNftDetail');if(detail)detail.classList.add('open');
+  lockerRenderNftCollection();
+  if(nft)lockerLoadNftMetadata(nft);
+}
+function lockerNftSelected(){return lockerState.nfts.find(nft=>lockerNftTokenId(nft)===lockerState.selectedNftId)||null;}
+function lockerNftFact(label,value){const row=document.createElement('div');row.className='lockerNftFact';const key=document.createElement('span');key.textContent=label;const val=document.createElement('strong');val.textContent=String(value??'—')||'—';row.append(key,val);return row;}
+function lockerRenderNftDetail(){
+  const host=document.getElementById('lockerNftDetailContent');if(!host)return;host.textContent='';
+  const nft=lockerNftSelected();
+  if(!nft){const empty=document.createElement('div');empty.className='lockerNftDetailPlaceholder';const strong=document.createElement('strong');strong.textContent='Select an NFT';const span=document.createElement('span');span.textContent='Tap any NFT in your XRPL collection to inspect its ledger data, artwork, metadata, and transfer flags.';empty.append(strong,span);host.appendChild(empty);return;}
+  const meta=lockerNftMetadata(nft);const body=document.createElement('div');body.className='lockerNftDetailBody';body.appendChild(lockerNftImageNode(nft,true));
+  const title=document.createElement('div');title.className='lockerNftDetailTitle';const h=document.createElement('h3');h.textContent=lockerNftDisplayName(nft);const sub=document.createElement('span');sub.textContent=(meta?.collection?meta.collection+' · ':'')+(lockerNftSerial(nft)!==null?'SERIAL #'+lockerNftSerial(nft):'ON-LEDGER NFT');title.append(h,sub);body.appendChild(title);
+  const badges=document.createElement('div');badges.className='lockerNftBadges';
+  const badge=(text,tone='')=>{const b=document.createElement('span');b.className='lockerNftBadge'+(tone?' '+tone:'');b.textContent=text;badges.appendChild(b);};
+  badge(nft.transferable?'TRANSFERABLE':'TRANSFER RESTRICTED',nft.transferable?'good':'warn');if(nft.xrp_only)badge('XRP ONLY','warn');if(nft.mutable)badge('MUTABLE URI');if(nft.burnable)badge('BURNABLE');badge(lockerState.validated?'VALIDATED LEDGER':'LEDGER READ');body.appendChild(badges);
+  if(meta?.description){const description=document.createElement('div');description.className='lockerNftDescription';description.textContent=meta.description;body.appendChild(description);}
+  const facts=document.createElement('div');facts.className='lockerNftFacts';facts.append(lockerNftFact('ISSUER',nft.Issuer||'—'),lockerNftFact('TAXON',nft.NFTokenTaxon??'—'),lockerNftFact('TOKEN ID',nft.NFTokenID||'—'),lockerNftFact('URI',nft.uri||lockerDecodeHexUri(nft.URI||'')||'No URI'));body.appendChild(facts);
+  if(Array.isArray(meta?.attributes)&&meta.attributes.length){const traits=document.createElement('div');traits.className='lockerNftTraits';for(const trait of meta.attributes.slice(0,12)){const item=document.createElement('div');item.className='lockerNftTrait';const label=document.createElement('span');label.textContent=trait.trait_type||'TRAIT';const value=document.createElement('strong');value.textContent=trait.value||'—';item.append(label,value);traits.appendChild(item);}body.appendChild(traits);}
+  if(lockerState.nftMetadataLoading.has(lockerNftTokenId(nft))){const load=document.createElement('div');load.className='lockerNftLoadingBar';const i=document.createElement('i');load.appendChild(i);body.appendChild(load);}
+  const actions=document.createElement('div');actions.className='lockerNftFutureActions';for(const [label,title] of [['SHOWCASE','Trade Beacon arrives in Phase 2.'],['TRADE','Player NFT trading arrives in a later phase.'],['SELL','XRPL selling arrives after the read-only collection is proven.']]){const button=document.createElement('button');button.type='button';button.disabled=true;button.textContent=label;button.title=title;actions.appendChild(button);}body.appendChild(actions);
+  const note=document.createElement('div');note.className='lockerNftFutureNote';note.textContent='Phase 1 is read-only. ATM Town never needs your wallet secret or seed to view this collection.';body.appendChild(note);host.appendChild(body);
+}
+function lockerRenderNftGrid(){
+  const grid=document.getElementById('lockerNftGrid'),empty=document.getElementById('lockerNftEmpty'),count=document.getElementById('lockerNftGridCount'),metaStatus=document.getElementById('lockerNftMetadataStatus');if(!grid||!empty)return;grid.textContent='';
+  const list=lockerNftFiltered();if(count)count.textContent=list.length+' NFT'+(list.length===1?'':'s')+(list.length!==lockerState.nfts.length?' shown':'');
+  const resolved=lockerState.nfts.filter(nft=>{const meta=lockerNftMetadata(nft);return meta&&meta.status!=='unavailable';}).length;const loading=lockerState.nftMetadataLoading.size;if(metaStatus)metaStatus.textContent=loading?`Loading artwork · ${resolved}/${lockerState.nfts.length}`:(lockerState.nfts.length?`Metadata ready · ${resolved}/${lockerState.nfts.length}`:'Read-only XRPL collection');
+  const emptyText=document.getElementById('lockerNftEmptyText');
+  if(!list.length){grid.style.display='none';empty.classList.add('visible');if(emptyText)emptyText.textContent=lockerState.nfts.length?'No NFTs match your search.':lockerWalletAddress()?'No NFTs were returned for this linked wallet.':'Link a verified Xaman wallet or refresh XRPL to load your collection.';return;}grid.style.display='grid';empty.classList.remove('visible');
+  for(const nft of list){
+    const tokenId=lockerNftTokenId(nft);const meta=lockerNftMetadata(nft);const button=document.createElement('button');button.type='button';button.className='lockerNftCard'+(tokenId===lockerState.selectedNftId?' selected':'');button.dataset.nftokenId=tokenId;button.appendChild(lockerNftImageNode(nft,false));
+    const art=button.firstChild;const serial=document.createElement('span');serial.className='lockerNftSerial';serial.textContent=lockerNftSerial(nft)!==null?'#'+lockerNftSerial(nft):lockerNftShortToken(nft);art.appendChild(serial);const dot=document.createElement('i');const metaReady=meta&&['resolved','direct-image'].includes(meta.status);dot.className='lockerNftMetaState'+(lockerState.nftMetadataLoading.has(tokenId)?' loading':metaReady?' ready':'');dot.title=metaReady?'Metadata resolved':lockerState.nftMetadataLoading.has(tokenId)?'Loading metadata':meta?'Metadata unavailable':'Ledger data loaded';art.appendChild(dot);
+    const name=document.createElement('span');name.className='lockerNftName';name.textContent=lockerNftDisplayName(nft);const sub=document.createElement('span');sub.className='lockerNftSub';sub.textContent=(meta?.collection?meta.collection+' · ':'')+lockerNftShortIssuer(nft);button.append(name,sub);button.addEventListener('click',()=>lockerNftSetSelected(nft));grid.appendChild(button);
+  }
+}
+function lockerRenderNftCollection(){
+  const wallet=document.getElementById('lockerNftWallet'),ledger=document.getElementById('lockerNftLedger');const address=lockerWalletAddress();if(wallet){wallet.textContent=address||'Not linked';wallet.title=address||'';}if(ledger){ledger.textContent=address?(lockerState.ledgerIndex?`${lockerState.validated?'Validated':'Ledger'} ${lockerState.ledgerIndex}${lockerState.truncated?' · collection truncated by safety cap':''}`:'Ready to read your XRPL collection.'):'Connect Xaman to load your on-ledger collection.';}
+  const search=document.getElementById('lockerNftSearch'),sort=document.getElementById('lockerNftSort');if(search&&search.value!==lockerState.nftSearch)search.value=lockerState.nftSearch;if(sort&&sort.value!==lockerState.nftSort)sort.value=lockerState.nftSort;lockerRenderNftGrid();lockerRenderNftDetail();
+}
+async function lockerLoadNftMetadata(nft){
+  const tokenId=lockerNftTokenId(nft);if(!tokenId||lockerState.nftMetadata.has(tokenId)||lockerState.nftMetadataLoading.has(tokenId))return;const uri=String(nft?.URI||'');
+  if(!uri){lockerState.nftMetadata.set(tokenId,{status:'missing',name:'',description:'',image_url:'',attributes:[]});lockerNftScheduleRender();return;}
+  lockerState.nftMetadataLoading.add(tokenId);lockerNftScheduleRender();
+  try{const data=await apiWithAuth('/api/xrpl-nft-metadata',{method:'POST',body:JSON.stringify({nftoken_id:tokenId,uri})});lockerState.nftMetadata.set(tokenId,data||{status:'unavailable'});}catch(error){lockerState.nftMetadata.set(tokenId,{status:'unavailable',error:error?.message||'Metadata unavailable.',name:'',description:'',image_url:'',attributes:[]});}finally{lockerState.nftMetadataLoading.delete(tokenId);lockerNftScheduleRender();}
+}
+async function lockerHydrateNftMetadata(){
+  const generation=++lockerState.nftHydrationGeneration;const queue=lockerState.nfts.filter(nft=>!lockerState.nftMetadata.has(lockerNftTokenId(nft))&&!lockerState.nftMetadataLoading.has(lockerNftTokenId(nft)));let cursor=0;const workers=Math.min(4,queue.length);
+  await Promise.all(Array.from({length:workers},async()=>{while(generation===lockerState.nftHydrationGeneration&&cursor<queue.length){const nft=queue[cursor++];await lockerLoadNftMetadata(nft);}}));
+}
 async function lockerRefreshXrpl(silent=false){
   const button=document.getElementById('lockerRefreshButton');
-  if(!authSession?.user){lockerState.status='guest';lockerState.nfts=[];lockerSetStatus('Sign in and link Xaman to verify XRPL NFT ownership.','error');lockerRender();return;}
-  if(!lockerWalletAddress()){lockerState.status='unlinked';lockerState.nfts=[];lockerSetStatus('Link a Xaman wallet from your account screen before refreshing XRPL ownership.','error');lockerRender();return;}
+  if(!authSession?.user){lockerState.status='guest';lockerState.nfts=[];lockerState.selectedNftId=null;lockerSetStatus('Sign in and link Xaman to verify XRPL NFT ownership.','error');lockerRender();return;}
+  if(!lockerWalletAddress()){lockerState.status='unlinked';lockerState.nfts=[];lockerState.selectedNftId=null;lockerSetStatus('Link a Xaman wallet from your account screen before refreshing XRPL ownership.','error');lockerRender();return;}
   if(lockerState.status==='loading')return;
   lockerState.status='loading';lockerState.error='';if(button)button.disabled=true;if(!silent)lockerSetStatus('Reading validated NFT ownership from the XRP Ledger…');lockerRender();
   try{
     const data=await apiWithAuth('/api/xrpl-inventory',{method:'GET'});
     lockerState.nfts=Array.isArray(data.nfts)?data.nfts:[];
-    lockerState.ledgerIndex=data.ledger_index??null;lockerState.validated=data.validated===true;lockerState.status='ready';
-    lockerSetStatus(`${lockerState.nfts.length} NFT${lockerState.nfts.length===1?'':'s'} found in ${lockerShortWallet(data.account||lockerWalletAddress())}${lockerState.ledgerIndex?' · ledger '+lockerState.ledgerIndex:''}.`,'ok');
-    lockerEnforceCharacterOwnership();
+    lockerState.ledgerIndex=data.ledger_index??null;lockerState.validated=data.validated===true;lockerState.truncated=data.truncated===true;lockerState.status='ready';
+    const ownedIds=new Set(lockerState.nfts.map(lockerNftTokenId));for(const key of lockerState.nftMetadata.keys())if(!ownedIds.has(key))lockerState.nftMetadata.delete(key);if(lockerState.selectedNftId&&!ownedIds.has(lockerState.selectedNftId))lockerState.selectedNftId=null;
+    lockerSetStatus(`${lockerState.nfts.length} NFT${lockerState.nfts.length===1?'':'s'} found in ${lockerShortWallet(data.account||lockerWalletAddress())}${lockerState.ledgerIndex?' · ledger '+lockerState.ledgerIndex:''}${lockerState.truncated?' · safety limit reached':''}.`,'ok');
+    lockerEnforceCharacterOwnership();lockerHydrateNftMetadata();
   }catch(error){
     lockerState.status='error';lockerState.error=error?.message||'XRPL inventory lookup failed.';lockerSetStatus(lockerState.error,'error');
   }finally{if(button)button.disabled=false;lockerRender();}
@@ -6158,7 +6265,7 @@ function lockerSyncEntryPicker(){
   });
 }
 function lockerSlotName(slot){return ATM_LOCKER_SLOTS.find(entry=>entry.id===slot)?.label||slot.toUpperCase();}
-function lockerSetTab(tab){lockerState.tab=tab;document.querySelectorAll('.lockerTab').forEach(node=>node.classList.toggle('active',node.dataset.lockerTab===tab));document.querySelectorAll('.lockerView').forEach(node=>node.classList.toggle('active',node.dataset.lockerView===tab));lockerRender();}
+function lockerSetTab(tab){lockerState.tab=tab;document.querySelectorAll('.lockerTab').forEach(node=>node.classList.toggle('active',node.dataset.lockerTab===tab));document.querySelectorAll('.lockerView').forEach(node=>node.classList.toggle('active',node.dataset.lockerView===tab));lockerRender();if(tab==='nfts'&&lockerState.nfts.length)lockerHydrateNftMetadata();}
 function lockerCreateSlots(){
   const host=document.getElementById('lockerSlots');if(!host)return;host.textContent='';
   for(const slot of ATM_LOCKER_SLOTS){
@@ -6228,7 +6335,7 @@ function lockerDrawPreview(){
   if(characterId==='classic')drawPreviewEquipment(lockerEquippedItem('hands'));
 }
 function lockerRender(){
-  lockerUpdateWalletBadge();lockerSyncEntryPicker();lockerCreateSlots();lockerCreateFilters();lockerRenderGrids();lockerDrawPreview();
+  lockerUpdateWalletBadge();lockerSyncEntryPicker();lockerCreateSlots();lockerCreateFilters();lockerRenderGrids();lockerDrawPreview();lockerRenderNftCollection();
   const base=lockerItemForCharacter(selectedCharacter);const activeSaved=lockerSavedCharacters.find(build=>build.id===lockerActiveSavedCharacterId)||null;const name=document.getElementById('lockerPreviewName'),slot=document.getElementById('lockerPreviewSlotText'),pill=document.getElementById('lockerPreviewOwnership');if(name)name.textContent=activeSaved?.name||(selectedCharacter==='classic'?'Current ATM Build':base?.name||lockerCharacterName(selectedCharacter));if(slot)slot.textContent=(activeSaved?'Saved character':'Unsaved character build')+' · '+lockerState.direction.toUpperCase();if(pill)pill.textContent=activeSaved?'SAVED':'UNSAVED';
   const owned=ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).owned).length;const equipped=ATM_LOCKER_SLOTS.filter(slot=>!!lockerEquippedItem(slot.id)).length;const ownedNode=document.getElementById('lockerOwnedCount'),nftNode=document.getElementById('lockerNftCount'),equippedNode=document.getElementById('lockerEquippedCount');if(ownedNode)ownedNode.textContent=String(owned);if(nftNode)nftNode.textContent=String(lockerState.nfts.length);if(equippedNode)equippedNode.textContent=String(equipped);
   document.querySelectorAll('.lockerDirection').forEach(node=>node.classList.toggle('active',node.dataset.lockerDirection===lockerState.direction));const dirLabel=document.getElementById('lockerPreviewDirectionLabel');if(dirLabel)dirLabel.textContent=({down:'FRONT',left:'LEFT',up:'BACK',right:'RIGHT'})[lockerState.direction]||lockerState.direction.toUpperCase();
@@ -6245,6 +6352,9 @@ document.getElementById('lockerCloseButton')?.addEventListener('click',lockerClo
 document.getElementById('lockerRefreshButton')?.addEventListener('click',()=>lockerRefreshXrpl(false));
 document.getElementById('lockerSaveCharacterButton')?.addEventListener('click',lockerSaveCurrentCharacter);
 document.querySelectorAll('.lockerTab').forEach(button=>button.addEventListener('click',()=>lockerSetTab(button.dataset.lockerTab)));
+document.getElementById('lockerNftSearch')?.addEventListener('input',event=>{lockerState.nftSearch=String(event.target.value||'');lockerRenderNftCollection();});
+document.getElementById('lockerNftSort')?.addEventListener('change',event=>{lockerState.nftSort=String(event.target.value||'serial-desc');lockerRenderNftCollection();});
+document.getElementById('lockerNftDetailClose')?.addEventListener('click',()=>{document.getElementById('lockerNftDetail')?.classList.remove('open');});
 document.querySelectorAll('.lockerDirection').forEach(button=>button.addEventListener('click',()=>{lockerState.direction=button.dataset.lockerDirection;lockerRender();}));
 document.getElementById('lockerPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='lockerPanel')lockerClose();});
 window.addEventListener('resize',()=>{if(lockerState.open)lockerDrawPreview();},{passive:true});

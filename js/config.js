@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 230,
-    version: 'v230',
-    name: 'World Streaming / Chunk Engine',
-    title: 'ATM Town v230 — World Streaming / Chunk Engine'
+    number: 231,
+    version: 'v231',
+    name: 'XRPL NFT Collection',
+    title: 'ATM Town v231 — XRPL NFT Collection'
   });
 
   const MAPS = Object.freeze({

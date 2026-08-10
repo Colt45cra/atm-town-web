@@ -14,6 +14,8 @@ const requiredFiles = [
   'js/world-streaming.js',
   'js/bootstrap.js',
   'api/_auth.js',
+  'api/xrpl-inventory.js',
+  'api/xrpl-nft-metadata.js',
   'api/_xaman-vending.js',
   'api/xaman-vending-start.js',
   'api/xaman-vending-status.js',
@@ -58,7 +60,8 @@ const requiredFiles = [
   'assets/characters/equipment/jetpack.webp',
   'assets/audio/jetpack-boost.wav',
   'assets/audio/quest-drift.mp3',
-  'docs/ASSET-POLICY.md'
+  'docs/ASSET-POLICY.md',
+  'docs/XRPL-NFT-COLLECTION.md'
 ];
 
 for (const file of requiredFiles) {
@@ -76,8 +79,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!html.includes("version:ATM_CONFIG?.build?.version||'v230'")) errors.push('Missing v230 display build marker.');
-if (!html.includes("name:ATM_CONFIG?.build?.name||'World Streaming / Chunk Engine'")) errors.push('Missing v230 display build name.');
+if (!html.includes("version:ATM_CONFIG?.build?.version||'v231'")) errors.push('Missing v231 display build marker.');
+if (!html.includes("name:ATM_CONFIG?.build?.name||'XRPL NFT Collection'")) errors.push('Missing v231 display build name.');
 if (/data:image\//i.test(html)) errors.push('index.html still contains embedded data:image URIs; runtime art should be external/cacheable.');
 
 const idMatches = [...html.matchAll(/\sid=["']([^"']+)["']/g)].map((match) => match[1]);
@@ -97,7 +100,11 @@ for (const runtimeMarker of [
   "if(t&&t.type==='vending'){openVending();return;}",
   'TOWN_BOT_DEFS',
   'spawnFootstepEffect',
-  'WORLD_ALIVE_DESTINATIONS'
+  'WORLD_ALIVE_DESTINATIONS',
+  'data-locker-tab="nfts"',
+  'id="lockerNftGrid"',
+  'lockerRenderNftCollection',
+  "/api/xrpl-nft-metadata"
 ]) {
   if (!html.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
@@ -106,7 +113,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v230'")) errors.push('js/config.js is not marked v230.');
+if (!configSource.includes("version: 'v231'")) errors.push('js/config.js is not marked v231.');
 
 const registrySandbox = { window: {} };
 vm.runInNewContext(configSource, registrySandbox, { filename: 'js/config.js' });
@@ -202,7 +209,7 @@ try {
 
   const syntaxTargets = [
     'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js',
-    'api/_auth.js', 'api/_xaman-vending.js', 'api/xaman-vending-start.js',
+    'api/_auth.js', 'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/_xaman-vending.js', 'api/xaman-vending-start.js',
     'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js'
   ];
   for (const relative of syntaxTargets) {
@@ -215,10 +222,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v230 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v231 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v230 build validation passed.');
+console.log('ATM Town v231 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);
