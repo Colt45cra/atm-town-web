@@ -943,6 +943,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 <script src="js/config.js"></script>
 <script src="js/maps.js"></script>
 <script src="js/interactions.js"></script>
+<script src="js/world-streaming.js"></script>
 <script src="js/bootstrap.js"></script>
 <script>
 const ATM_CONFIG=window.ATM_TOWN_CONFIG;
@@ -1243,7 +1244,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v229',name:ATM_CONFIG?.build?.name||'Safe Spawn Validation'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v230',name:ATM_CONFIG?.build?.name||'World Streaming / Chunk Engine'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -1629,10 +1630,14 @@ jetpackOverlayImg.src=jetpackOverlaySheet.src;
 const spriteImgs=characterSpriteImgs.classic;
 
 const floorMapImg=new Image(); floorMapImg.decoding='async';
-floorMapImg.src=ATM_MAPS.asset('town','visual');
+floorMapImg.src=ATM_MAPS.asset('town','overview');
 
 const floorMapNightImg=new Image(); floorMapNightImg.decoding='async';
-floorMapNightImg.src=ATM_MAPS.asset('town','nightVisual');
+floorMapNightImg.src=ATM_MAPS.asset('town','nightOverview');
+const townWorldStream=ATMWorldStreaming.create(ATM_MAPS.asset('town','worldManifest'));
+const TOWN_FALLBACK_SIZE=ATM_MAPS.pixelSize('town');
+const TOWN_FALLBACK_BOUNDS=Object.freeze({minX:0,minY:0,maxX:TOWN_FALLBACK_SIZE.w,maxY:TOWN_FALLBACK_SIZE.h,width:TOWN_FALLBACK_SIZE.w,height:TOWN_FALLBACK_SIZE.h});
+function townWorldBounds(){return townWorldStream.getBounds(TOWN_FALLBACK_BOUNDS);}
 const DAY_NIGHT_CYCLE_MS={
   dayHold:20*60*1000,
   fadeToNight:3*60*1000,
@@ -1691,22 +1696,12 @@ function drawFloorMap(C,x,y,w,h){
   C.drawImage(floorMapImg,r.sx,r.sy,r.sw,r.sh,x,y,w,h);
   return true;
 }
-const obstacleMask={canvas:document.createElement('canvas'),scale:8,data:null,ready:false};
-const stairMask={canvas:document.createElement('canvas'),scale:8,data:null,ready:false};
-const collisionMaskImg=new Image(); collisionMaskImg.decoding='async';
-collisionMaskImg.src=ATM_MAPS.asset('town','collision');
-const stairMaskImg=new Image(); stairMaskImg.decoding='async';
-stairMaskImg.src=ATM_MAPS.asset('town','stairs');
-const townLightOverlayImg=new Image(); townLightOverlayImg.decoding='async';
-townLightOverlayImg.src=ATM_MAPS.asset('town','lighting');
-const townInteractionImg=new Image(); townInteractionImg.decoding='async';
-townInteractionImg.src=ATM_MAPS.asset('town','interaction');
-const townInteractionReader=ATM_INTERACTIONS.createMaskReader({
-  id:'ATM Town',
-  image:townInteractionImg,
-  width:world.w*tile,
-  height:world.h*tile,
-  palette:ATM_INTERACTIONS.corePalette
+const obstacleMask={layer:'collision',get ready(){return townWorldStream.isMaskReadyAt('collision',player.x,player.y);}};
+const stairMask={layer:'stairs',get ready(){return townWorldStream.isMaskReadyAt('stairs',player.x,player.y);}};
+const townInteractionReader=Object.freeze({
+  get ready(){return townWorldStream.isMaskReadyAt('interaction',player.x,player.y);},
+  nearest(px,py,radius=38,typeFilter='',step=3){return townWorldStream.nearestInteraction(px,py,radius,typeFilter,step);},
+  typeAt(px,py){return townWorldStream.interactionTypeAt(px,py);}
 });
 const townForegroundPieceDefs=[
   {src:'assets/maps/town/foreground/day/buildings_04_00.webp',x:2036,y:56,w:878,h:378,depth:433,category:'buildings'},
@@ -1761,93 +1756,58 @@ const townForegroundPieceDefs=[
   {src:'assets/maps/town/foreground/day/assets_01_01.webp',x:1631,y:3945,w:228,h:158,depth:4102,category:'assets'},
   {src:'assets/maps/town/foreground/day/assets_01_02.webp',x:1682,y:4119,w:153,h:118,depth:4236,category:'assets'}
 ];
-const townForegroundPieces=townForegroundPieceDefs.map(def=>{const img=new Image();img.decoding='async';img.src=def.src;return {...def,img};});
-// Night foreground files retain the same PNG filenames with a "night_" prefix.
-// Key the lookup by the matching daytime source so depth sorting can swap the
-// correct day/night foreground object without changing its authored depth.
+const townForegroundPieces=townForegroundPieceDefs.map(def=>({...def,img:null,loading:false,lastUsed:0}));
 const townForegroundNightPieces=townForegroundPieceDefs.map(def=>{
-  const img=new Image();
   const nightSrc=def.src.replace('/foreground/day/','/foreground/night/');
-  img.decoding='async';
-  img.src=nightSrc;
-  return {...def,daySrc:def.src,nightSrc,img};
+  return {...def,daySrc:def.src,nightSrc,src:nightSrc,img:null,loading:false,lastUsed:0};
 });
 const townForegroundNightPieceMap=new Map(townForegroundNightPieces.map(piece=>[piece.daySrc,piece]));
+const TOWN_FOREGROUND_STREAM_MARGIN=640;
+const TOWN_FOREGROUND_CACHE_GRACE_MS=15000;
+function townForegroundNearView(piece,margin=TOWN_FOREGROUND_STREAM_MARGIN){
+  const viewW=W/zoom,viewH=H/zoom;
+  return piece.x+piece.w>=cam.x-margin&&piece.x<=cam.x+viewW+margin&&piece.y+piece.h>=cam.y-margin&&piece.y<=cam.y+viewH+margin;
+}
+function ensureTownForegroundImage(piece){
+  if(piece.img||piece.loading)return;
+  piece.loading=true;
+  const img=new Image();img.decoding='async';
+  img.onload=()=>{piece.img=img;piece.loading=false;piece.lastUsed=performance.now();};
+  img.onerror=()=>{piece.loading=false;console.error('Town foreground image failed to decode:',piece.src);};
+  img.src=piece.src;
+}
+function releaseTownForegroundImage(piece){
+  if(!piece.img)return;
+  try{piece.img.src='';}catch(_error){}
+  piece.img=null;
+}
+function updateTownForegroundStreaming(){
+  if(currentMap!=='town')return;
+  const now=performance.now();
+  const needNight=(currentTownNightAlpha||0)>0.001;
+  for(const piece of townForegroundPieces){
+    if(townForegroundNearView(piece)){
+      piece.lastUsed=now;ensureTownForegroundImage(piece);
+      const nightPiece=townForegroundNightPieceMap.get(piece.src);
+      if(needNight&&nightPiece){nightPiece.lastUsed=now;ensureTownForegroundImage(nightPiece);}
+    }else if(piece.img&&now-piece.lastUsed>TOWN_FOREGROUND_CACHE_GRACE_MS)releaseTownForegroundImage(piece);
+  }
+  for(const piece of townForegroundNightPieces){
+    if(!needNight&&piece.img&&now-piece.lastUsed>TOWN_FOREGROUND_CACHE_GRACE_MS)releaseTownForegroundImage(piece);
+    else if(!townForegroundNearView(piece)&&piece.img&&now-piece.lastUsed>TOWN_FOREGROUND_CACHE_GRACE_MS)releaseTownForegroundImage(piece);
+  }
+}
 function drawTownLightOverlay(target=ctx){
-  if(!(townLightOverlayImg.complete&&townLightOverlayImg.naturalWidth)) return;
-  target.save();
+  if(!townWorldStream.hasManifest())return;
+  const view={x:cam.x,y:cam.y,w:W/zoom,h:H/zoom};
   const prevSmooth=target.imageSmoothingEnabled;
   const prevQuality=target.imageSmoothingQuality;
   target.imageSmoothingEnabled=true;
   try{target.imageSmoothingQuality='high';}catch(_e){}
-  target.drawImage(townLightOverlayImg,0,0,world.w*tile,world.h*tile);
+  townWorldStream.drawLayer(target,'lighting',view,1);
   target.imageSmoothingEnabled=prevSmooth;
   try{target.imageSmoothingQuality=prevQuality||'low';}catch(_e){}
-  target.restore();
 }
-
-function drawAuthoredMask(sourceImg,C,x,y,w,h){
-  if(!(sourceImg.complete&&sourceImg.naturalWidth)) return false;
-  // Every authored image is cropped from its own native dimensions. The masks
-  // are much larger than the visual map, so reusing the map crop misaligns them.
-  const r=getSourceRectForImage(sourceImg,sourceImg.naturalWidth||1152,sourceImg.naturalHeight||1536);
-  C.drawImage(sourceImg,r.sx,r.sy,r.sw,r.sh,x,y,w,h);
-  return true;
-}
-function rebuildSingleCollisionMask(){
-  const w=Math.max(1,Math.floor(world.w*obstacleMask.scale));
-  const h=Math.max(1,Math.floor(world.h*obstacleMask.scale));
-  const c=obstacleMask.canvas;c.width=w;c.height=h;
-  const cctx=c.getContext('2d',{willReadFrequently:true});
-  cctx.imageSmoothingEnabled=false;
-  cctx.clearRect(0,0,w,h);
-  if(!drawAuthoredMask(collisionMaskImg,cctx,0,0,w,h)){
-    obstacleMask.ready=false; obstacleMask.data=null; return;
-  }
-  const px=cctx.getImageData(0,0,w,h).data;
-  const blocked=new Uint8Array(w*h);
-  for(let i=0,p=0;i<px.length;i+=4,p++){
-    blocked[p]=(px[i]+px[i+1]+px[i+2]>=420)?1:0;
-  }
-  obstacleMask.data=blocked;
-  obstacleMask.ready=true;
-  resetTownBots();
-  ensureTownPlayerWalkable('collision-mask-ready');
-}
-function rebuildAuthoredStairMask(){
-  const w=Math.max(1,Math.floor(world.w*stairMask.scale));
-  const h=Math.max(1,Math.floor(world.h*stairMask.scale));
-  const c=stairMask.canvas;c.width=w;c.height=h;
-  const cctx=c.getContext('2d',{willReadFrequently:true});
-  cctx.imageSmoothingEnabled=false;
-  cctx.clearRect(0,0,w,h);
-  if(!drawAuthoredMask(stairMaskImg,cctx,0,0,w,h)){
-    stairMask.ready=false; stairMask.data=null; return;
-  }
-  const px=cctx.getImageData(0,0,w,h).data;
-  const stairs=new Uint8Array(w*h);
-  for(let i=0,p=0;i<px.length;i+=4,p++){
-    stairs[p]=(px[i]+px[i+1]+px[i+2]>=420)?1:0;
-  }
-  stairMask.data=stairs;
-  stairMask.ready=true;
-}
-function rebuildAuthoredMasks(){
-  rebuildSingleCollisionMask();
-  rebuildAuthoredStairMask();
-}
-collisionMaskImg.onload=rebuildSingleCollisionMask;
-stairMaskImg.onload=rebuildAuthoredStairMask;
-townInteractionImg.onload=townInteractionReader.rebuild;
-townInteractionImg.onerror=()=>console.error('ATM Town interaction mask failed to decode');
-floorMapImg.onload=()=>{rebuildAuthoredMasks();try{terrainChunks.clear();renderBackground();}catch(e){}};
-floorMapNightImg.onload=()=>{try{terrainChunks.clear();renderBackground();}catch(e){}};
-if(collisionMaskImg.complete&&collisionMaskImg.naturalWidth) setTimeout(rebuildSingleCollisionMask,0);
-if(stairMaskImg.complete&&stairMaskImg.naturalWidth) setTimeout(rebuildAuthoredStairMask,0);
-if(townInteractionImg.complete&&townInteractionImg.naturalWidth) setTimeout(townInteractionReader.rebuild,0);
-if(floorMapImg.complete&&floorMapImg.naturalWidth) setTimeout(rebuildAuthoredMasks,0);
-
-
 
 
 const buildings=[
@@ -2000,11 +1960,9 @@ function rectCollision(px,py,r,b){ return px+r>b.x && px-r<b.x+b.w && py+r>b.y &
 const bridgeWalkRects=[]; // Disabled: no legacy bridge collision overrides.
 const stairRects=[];
 function authoredMaskAt(mask,px,py){
-  if(!mask.ready||!mask.data) return false;
-  const w=mask.canvas.width,h=mask.canvas.height;
-  const mx=Math.max(0,Math.min(w-1,Math.floor((px/(world.w*tile))*w)));
-  const my=Math.max(0,Math.min(h-1,Math.floor((py/(world.h*tile))*h)));
-  return mask.data[my*w+mx]===1;
+  if(!mask||!mask.layer)return false;
+  const value=mask.layer==='stairs'?townWorldStream.stairsAt(px,py):townWorldStream.collisionAt(px,py);
+  return value===1;
 }
 function playerOnStairs(px=player.x,py=player.y){
   return currentMap==='town'&&authoredMaskAt(stairMask,px,py+22);
@@ -2030,11 +1988,10 @@ function landAtFootprint(px,py){
   return samples.every(([ox,oy])=>landAtPoint(px+ox,py+oy));
 }
 function obstacleAtPoint(px,py){
-  if(!obstacleMask.ready||!obstacleMask.data) return false;
-  const w=obstacleMask.canvas.width,h=obstacleMask.canvas.height;
-  const mx=Math.max(0,Math.min(w-1,Math.floor((px/(world.w*tile))*w)));
-  const my=Math.max(0,Math.min(h-1,Math.floor((py/(world.h*tile))*h)));
-  return obstacleMask.data[my*w+mx]===1;
+  const value=townWorldStream.collisionAt(px,py);
+  // Missing/pending collision data is treated as blocked so the player can never
+  // outrun the streamed gameplay mask into an unvalidated area.
+  return value===null?true:value===1;
 }
 function obstacleAtFootprint(px,py){
   // Only the character's feet collide with the authored no-walk mask.
@@ -2071,7 +2028,10 @@ function blocked(nx,ny){
   const activeSize=ATM_MAPS.pixelSize(currentMap);
   const mapW=activeSize.w;
   const mapH=activeSize.h;
-  if(nx<player.r||ny<player.r||nx>mapW-player.r||ny>mapH-player.r) return true;
+  if(currentMap==='town'){
+    const bounds=townWorldBounds();
+    if(nx<bounds.minX+player.r||ny<bounds.minY+player.r||nx>bounds.maxX-player.r||ny>bounds.maxY-player.r)return true;
+  }else if(nx<player.r||ny<player.r||nx>mapW-player.r||ny>mapH-player.r)return true;
   if(currentMap==='hq'){
     return hqObstacleAtFootprint(nx,ny);
   }
@@ -2694,22 +2654,37 @@ function renderTerrainChunk(cx,cy){
 function getTerrainChunk(cx,cy){const key=cx+','+cy;let entry=terrainChunks.get(key);if(!entry){entry={canvas:renderTerrainChunk(cx,cy),last:0};terrainChunks.set(key,entry);}entry.last=++terrainChunkTick;return entry.canvas;}
 
 function drawVisibleTownChunks(){
+  const bounds=townWorldBounds();
+  const view={x:cam.x,y:cam.y,w:W/zoom,h:H/zoom};
+  const nightPreloadLeadMs=60000;
+  const includeNight=(currentTownNightAlpha||0)>0.001||getTownNightAlpha(getSharedTownTimeMs()+nightPreloadLeadMs)>0.001;
+  townWorldStream.updateView({cameraX:view.x,cameraY:view.y,viewportWidth:view.w,viewportHeight:view.h,playerX:player.x,playerY:player.y,collisionPoints:townBotsReady?townBots:[],includeNight});
   const prevSmooth=ctx.imageSmoothingEnabled;
   const prevQuality=ctx.imageSmoothingQuality;
   ctx.imageSmoothingEnabled=true;
   try{ctx.imageSmoothingQuality='high';}catch(_e){}
-  if(floorMapImg.complete&&floorMapImg.naturalWidth){
-    drawFloorMap(ctx,0,0,world.w*tile,world.h*tile);
-  }else{
-    ctx.fillStyle='#cfc1ad';
-    ctx.fillRect(0,0,world.w*tile,world.h*tile);
-  }
-  if(currentTownNightAlpha>0&&floorMapNightImg.complete&&floorMapNightImg.naturalWidth){
-    const r=getSourceRectForImage(floorMapNightImg,3120,4320);
-    ctx.save();
-    ctx.globalAlpha=currentTownNightAlpha;
-    ctx.drawImage(floorMapNightImg,r.sx,r.sy,r.sw,r.sh,0,0,world.w*tile,world.h*tile);
-    ctx.restore();
+  if(townWorldStream.hasManifest()){
+    // A lightweight overview stays underneath streamed chunks. It prevents a
+    // visible blank boundary while a newly requested chunk is decoding without
+    // keeping the original 3120x4320 terrain image in memory.
+    if(floorMapImg.complete&&floorMapImg.naturalWidth){
+      drawFloorMap(ctx,bounds.minX,bounds.minY,bounds.width,bounds.height);
+      if(currentTownNightAlpha>0&&floorMapNightImg.complete&&floorMapNightImg.naturalWidth){
+        const nr=getSourceRectForImage(floorMapNightImg,780,1080);
+        ctx.save();ctx.globalAlpha=currentTownNightAlpha;
+        ctx.drawImage(floorMapNightImg,nr.sx,nr.sy,nr.sw,nr.sh,bounds.minX,bounds.minY,bounds.width,bounds.height);
+        ctx.restore();
+      }
+    }else{
+      const fillX=Math.max(bounds.minX,view.x-2),fillY=Math.max(bounds.minY,view.y-2);
+      const fillR=Math.min(bounds.maxX,view.x+view.w+2),fillB=Math.min(bounds.maxY,view.y+view.h+2);
+      ctx.fillStyle='#cfc1ad';ctx.fillRect(fillX,fillY,Math.max(0,fillR-fillX),Math.max(0,fillB-fillY));
+    }
+    townWorldStream.drawLayer(ctx,'terrain',view,1);
+    if(currentTownNightAlpha>0)townWorldStream.drawLayer(ctx,'night',view,currentTownNightAlpha);
+  }else if(floorMapImg.complete&&floorMapImg.naturalWidth){
+    // Lightweight overview fallback is used only while manifest/chunks initialize.
+    drawFloorMap(ctx,bounds.minX,bounds.minY,bounds.width,bounds.height);
   }
   ctx.imageSmoothingEnabled=prevSmooth;
   try{ctx.imageSmoothingQuality=prevQuality||'low';}catch(_e){}
@@ -4036,10 +4011,13 @@ const TOWN_BOT_DEFS=Object.freeze([
 ]);
 let townBots=[];
 let townBotsReady=false;
+let townBotMasksReady=false;
+const TOWN_BOT_ROUTE_POINTS=Object.freeze(TOWN_BOT_DEFS.flatMap(def=>(def.route||[]).map(point=>Object.freeze({x:point.x,y:point.y}))));
 function clampTownCoord(x,y){
+  const bounds=townWorldBounds();
   return {
-    x:Math.max(36,Math.min(world.w*tile-36,Math.round(x))),
-    y:Math.max(40,Math.min(world.h*tile-30,Math.round(y)))
+    x:Math.max(bounds.minX+36,Math.min(bounds.maxX-36,Math.round(x))),
+    y:Math.max(bounds.minY+40,Math.min(bounds.maxY-30,Math.round(y)))
   };
 }
 function findNearestTownWalkablePoint(x,y,maxRadius=220,step=18){
@@ -4069,9 +4047,9 @@ function ensureTownPlayerWalkable(reason='runtime'){
   jetpackState.lastSafeX=safe.x;
   jetpackState.lastSafeY=safe.y;
   const viewW=W/zoom,viewH=H/zoom;
-  const mapW=world.w*tile,mapH=world.h*tile;
-  cam.x=mapW<=viewW?(mapW-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,mapW-viewW));
-  cam.y=mapH<=viewH?(mapH-viewH)/2:Math.max(0,Math.min(player.y-viewH/2,mapH-viewH));
+  const bounds=townWorldBounds(),mapW=bounds.width,mapH=bounds.height;
+  cam.x=mapW<=viewW?bounds.minX+(mapW-viewW)/2:Math.max(bounds.minX,Math.min(player.x-viewW/2,bounds.maxX-viewW));
+  cam.y=mapH<=viewH?bounds.minY+(mapH-viewH)/2:Math.max(bounds.minY,Math.min(player.y-viewH/2,bounds.maxY-viewH));
   console.info('ATM Town moved player to nearest safe walkable point.',{reason,from:{x:originalX,y:originalY},to:{x:safe.x,y:safe.y}});
   try{saveAccountLocation();}catch(_error){}
   return true;
@@ -4148,7 +4126,7 @@ function createTownBot(def,index){
   };
 }
 function ensureTownBotsReady(){
-  if(townBotsReady||!obstacleMask.ready)return;
+  if(townBotsReady||!townBotMasksReady||!obstacleMask.ready)return;
   townBots=TOWN_BOT_DEFS.map((def,index)=>createTownBot(def,index));
   townBotsReady=true;
 }
@@ -4156,6 +4134,24 @@ function resetTownBots(){
   townBotsReady=false;
   townBots.length=0;
 }
+async function initializeTownStreamingGameplay(){
+  try{
+    await townWorldStream.ready;
+    await Promise.all([
+      townWorldStream.preloadPlayerNeighborhood(player.x,player.y),
+      townWorldStream.preloadMaskPoints(TOWN_BOT_ROUTE_POINTS,['collision','stairs'],1)
+    ]);
+    townBotMasksReady=true;
+    resetTownBots();
+    if(currentMap==='town'){
+      ensureTownBotsReady();
+      ensureTownPlayerWalkable('streamed-world-initialization');
+    }
+  }catch(error){
+    console.error('ATM Town streamed gameplay masks failed to initialize.',error);
+  }
+}
+initializeTownStreamingGameplay();
 function updateTownBots(dt){
   ensureTownBotsReady();
   if(!townBotsReady)return;
@@ -4235,11 +4231,12 @@ function updateTownBots(dt){
 function drawTownBotMiniMarkers(dx,dy,dw,dh){
   ensureTownBotsReady();
   if(!townBotsReady)return;
+  const bounds=townWorldBounds();
   mctx.save();
   mctx.fillStyle='rgba(88,241,230,.88)';
   for(const bot of townBots){
-    const bx=dx+(bot.x/(world.w*tile))*dw;
-    const by=dy+(bot.y/(world.h*tile))*dh;
+    const bx=dx+((bot.x-bounds.minX)/bounds.width)*dw;
+    const by=dy+((bot.y-bounds.minY)/bounds.height)*dh;
     mctx.beginPath();
     mctx.arc(bx,by,2.3,0,Math.PI*2);
     mctx.fill();
@@ -4683,7 +4680,8 @@ function drawDepthScene(t){
   const items=[];
   if(currentMap==='town'){
     ensureTownBotsReady();
-    for(const piece of townForegroundPieces) items.push({depth:piece.depth,type:'townpiece',piece});
+    updateTownForegroundStreaming();
+    for(const piece of townForegroundPieces) if(townForegroundNearView(piece,160)) items.push({depth:piece.depth,type:'townpiece',piece});
     for(const [id,p] of remotePlayers){
       if(p.map!==currentMap)continue;
       items.push({depth:p.drawY+20,type:'remote',p});
@@ -4698,12 +4696,12 @@ function drawDepthScene(t){
         const piece=item.piece;
         const requestedNightAlpha=Math.max(0,Math.min(1,currentTownNightAlpha||0));
         const nightPiece=townForegroundNightPieceMap.get(piece.src);
-        const nightReady=!!(nightPiece&&nightPiece.img.complete&&nightPiece.img.naturalWidth);
+        const nightReady=!!(nightPiece&&nightPiece.img&&nightPiece.img.complete&&nightPiece.img.naturalWidth);
         // Never let a foreground object disappear while its night asset is still
         // loading. Keep the daytime occluder fully visible until the matching
         // night image is ready, then crossfade both at the same authored depth.
         const nightAlpha=nightReady?requestedNightAlpha:0;
-        if(piece.img.complete&&piece.img.naturalWidth){
+        if(piece.img&&piece.img.complete&&piece.img.naturalWidth){
           const dayAlpha=1-nightAlpha;
           if(dayAlpha>0){
             ctx.save();
@@ -5217,11 +5215,12 @@ function directoryLocationData(mapName){
   return [{name:destination.label+' Entrance',description:'Exit point back toward ATM Town.',point:{x:destination.spawn.x,y:destination.spawn.y}}];
 }
 function directorySource(mapName){
-  if(mapName==='hq')return {w:hq.width,h:hq.height,image:hqBaseImg};
-  if(mapName==='gallery')return {w:gallery.width,h:gallery.height,image:galleryBaseImg};
-  if(mapName==='arcade')return {w:arcade.width,h:arcade.height,image:arcadeBaseImg};
-  if(mapName==='lounge')return {w:lounge.width,h:lounge.height,image:loungeBaseImg};
-  return {w:world.w*tile,h:world.h*tile,image:floorMapImg};
+  if(mapName==='hq')return {w:hq.width,h:hq.height,minX:0,minY:0,image:hqBaseImg};
+  if(mapName==='gallery')return {w:gallery.width,h:gallery.height,minX:0,minY:0,image:galleryBaseImg};
+  if(mapName==='arcade')return {w:arcade.width,h:arcade.height,minX:0,minY:0,image:arcadeBaseImg};
+  if(mapName==='lounge')return {w:lounge.width,h:lounge.height,minX:0,minY:0,image:loungeBaseImg};
+  const bounds=townWorldBounds();
+  return {w:bounds.width,h:bounds.height,minX:bounds.minX,minY:bounds.minY,image:floorMapImg};
 }
 function directoryPoint(item){return item.point||zoneCenter(item.zone);}
 function directorySetCanvasSize(mapName){
@@ -5258,7 +5257,7 @@ function drawDirectory(){
   }else if(mapName!=='town'&&source.image.complete&&source.image.naturalWidth){directoryCtx.imageSmoothingEnabled=false;directoryCtx.drawImage(source.image,0,0,source.image.naturalWidth,source.image.naturalHeight,dx,dy,dw,dh);}
   else{directoryCtx.fillStyle='#142631';directoryCtx.fillRect(dx,dy,dw,dh);}
   directoryCtx.strokeStyle='rgba(88,241,230,.58)';directoryCtx.lineWidth=2;directoryCtx.strokeRect(dx+1,dy+1,dw-2,dh-2);
-  const mapPoint=(x,y)=>({x:dx+x/source.w*dw,y:dy+y/source.h*dh});
+  const mapPoint=(x,y)=>({x:dx+((x-(source.minX||0))/source.w)*dw,y:dy+((y-(source.minY||0))/source.h)*dh});
   const locations=directoryLocationData(mapName);
   locations.forEach((item,index)=>{
     const p=directoryPoint(item),m=mapPoint(p.x,p.y),selected=index===directorySelectedIndex;
@@ -5295,11 +5294,19 @@ function switchMap(map,sourceBuilding=null){
     player.y=destination.spawn.y;
     player.dir=destination.direction;
   }
-  if(map==='town'&&obstacleMask.ready)ensureTownPlayerWalkable('map-entry');
-  const activeW=destination.pixelSize.w,activeH=destination.pixelSize.h;
+  if(map==='town'){
+    townWorldStream.preloadPlayerNeighborhood(player.x,player.y).then(()=>ensureTownPlayerWalkable('map-entry')).catch(error=>console.error('ATM Town map-entry preload failed.',error));
+  }
   const viewW=W/zoom,viewH=H/zoom;
-  cam.x=activeW<=viewW?(activeW-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,activeW-viewW));
-  cam.y=activeH<=viewH?(activeH-viewH)/2:Math.max(0,Math.min(player.y-viewH/2,activeH-viewH));
+  if(map==='town'){
+    const bounds=townWorldBounds();
+    cam.x=bounds.width<=viewW?bounds.minX+(bounds.width-viewW)/2:Math.max(bounds.minX,Math.min(player.x-viewW/2,bounds.maxX-viewW));
+    cam.y=bounds.height<=viewH?bounds.minY+(bounds.height-viewH)/2:Math.max(bounds.minY,Math.min(player.y-viewH/2,bounds.maxY-viewH));
+  }else{
+    const activeW=destination.pixelSize.w,activeH=destination.pixelSize.h;
+    cam.x=activeW<=viewW?(activeW-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,activeW-viewW));
+    cam.y=activeH<=viewH?(activeH-viewH)/2:Math.max(0,Math.min(player.y-viewH/2,activeH-viewH));
+  }
   broadcastState(true);
   saveAccountLocation();
 }
@@ -5318,10 +5325,35 @@ function restoreAccountLocation(){
   const allowedMaps=new Set(['town','hq','gallery','arcade','lounge']);
   if(!saved||!allowedMaps.has(saved.map)||!Number.isFinite(saved.x)||!Number.isFinite(saved.y))return false;
   const destination=ATM_MAPS.runtime(saved.map,townZoom),pad=24;
-  currentMap=saved.map;zoom=destination.zoom;player.x=Math.max(pad,Math.min(destination.pixelSize.w-pad,saved.x));player.y=Math.max(pad,Math.min(destination.pixelSize.h-pad,saved.y));player.dir=['up','down','left','right'].includes(saved.dir)?saved.dir:destination.direction;
-  if(currentMap==='town'&&obstacleMask.ready)ensureTownPlayerWalkable('saved-location-restore');
+  currentMap=saved.map;zoom=destination.zoom;
+  if(currentMap==='town'){
+    const applySavedTownPoint=()=>{
+      const bounds=townWorldBounds();
+      player.x=Math.max(bounds.minX+pad,Math.min(bounds.maxX-pad,saved.x));
+      player.y=Math.max(bounds.minY+pad,Math.min(bounds.maxY-pad,saved.y));
+    };
+    applySavedTownPoint();
+    townWorldStream.ready.then(()=>{
+      // Re-apply against manifest bounds so future negative saved coordinates are
+      // not lost if account restore happens before manifest fetch completes.
+      applySavedTownPoint();
+      return townWorldStream.preloadPlayerNeighborhood(player.x,player.y);
+    }).then(()=>ensureTownPlayerWalkable('saved-location-restore')).catch(error=>console.error('ATM Town saved-location preload failed.',error));
+  }else{
+    player.x=Math.max(pad,Math.min(destination.pixelSize.w-pad,saved.x));
+    player.y=Math.max(pad,Math.min(destination.pixelSize.h-pad,saved.y));
+  }
+  player.dir=['up','down','left','right'].includes(saved.dir)?saved.dir:destination.direction;
   const mapLabel=document.getElementById('mapLabel');if(mapLabel)mapLabel.textContent=destination.label+' · '+ATM_DISPLAY_BUILD.version;
-  const viewW=W/zoom,viewH=H/zoom;cam.x=destination.pixelSize.w<=viewW?(destination.pixelSize.w-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,destination.pixelSize.w-viewW));cam.y=destination.pixelSize.h<=viewH?(destination.pixelSize.h-viewH)/2:Math.max(0,Math.min(player.y-viewH/2,destination.pixelSize.h-viewH));
+  const viewW=W/zoom,viewH=H/zoom;
+  if(currentMap==='town'){
+    const bounds=townWorldBounds();
+    cam.x=bounds.width<=viewW?bounds.minX+(bounds.width-viewW)/2:Math.max(bounds.minX,Math.min(player.x-viewW/2,bounds.maxX-viewW));
+    cam.y=bounds.height<=viewH?bounds.minY+(bounds.height-viewH)/2:Math.max(bounds.minY,Math.min(player.y-viewH/2,bounds.maxY-viewH));
+  }else{
+    cam.x=destination.pixelSize.w<=viewW?(destination.pixelSize.w-viewW)/2:Math.max(0,Math.min(player.x-viewW/2,destination.pixelSize.w-viewW));
+    cam.y=destination.pixelSize.h<=viewH?(destination.pixelSize.h-viewH)/2:Math.max(0,Math.min(player.y-viewH/2,destination.pixelSize.h-viewH));
+  }
   broadcastState(true);return true;
 }
 window.atmRestoreAccountLocation=restoreAccountLocation;
@@ -5503,8 +5535,14 @@ function update(dt){
     }
     const nx=player.x+jetpackState.momentumX*dt;
     const ny=player.y+jetpackState.momentumY*dt;
-    player.x=Math.max(player.r,Math.min(mapW-player.r,nx));
-    player.y=Math.max(player.r,Math.min(mapH-player.r,ny));
+    if(currentMap==='town'){
+      const bounds=townWorldBounds();
+      player.x=Math.max(bounds.minX+player.r,Math.min(bounds.maxX-player.r,nx));
+      player.y=Math.max(bounds.minY+player.r,Math.min(bounds.maxY-player.r,ny));
+    }else{
+      player.x=Math.max(player.r,Math.min(mapW-player.r,nx));
+      player.y=Math.max(player.r,Math.min(mapH-player.r,ny));
+    }
     moved=Math.hypot(player.x-beforeX,player.y-beforeY)>0.05;
   }else if(jumpState.active){
     const jumpSpeed=player.speed*(powerUps.speed>0?1.5:1);
@@ -5603,8 +5641,14 @@ function update(dt){
   const activeW=activeSize.w;
   const activeH=activeSize.h;
   const viewW=W/zoom,viewH=H/zoom;
-  cam.x=activeW<=viewW?(activeW-viewW)/2:Math.max(0,Math.min(cam.x,activeW-viewW));
-  cam.y=activeH<=viewH?(activeH-viewH)/2:Math.max(0,Math.min(cam.y,activeH-viewH));
+  if(currentMap==='town'){
+    const bounds=townWorldBounds();
+    cam.x=bounds.width<=viewW?bounds.minX+(bounds.width-viewW)/2:Math.max(bounds.minX,Math.min(cam.x,bounds.maxX-viewW));
+    cam.y=bounds.height<=viewH?bounds.minY+(bounds.height-viewH)/2:Math.max(bounds.minY,Math.min(cam.y,bounds.maxY-viewH));
+  }else{
+    cam.x=activeW<=viewW?(activeW-viewW)/2:Math.max(0,Math.min(cam.x,activeW-viewW));
+    cam.y=activeH<=viewH?(activeH-viewH)/2:Math.max(0,Math.min(cam.y,activeH-viewH));
+  }
   const nearThing=nearestThing();
   currentNearThing=nearThing;
   updateWorldAlive(dt);
@@ -5678,7 +5722,8 @@ function drawMini(){
   }
   mctx.fillStyle='#08202b';
   mctx.fillRect(0,0,220,148);
-  const mapRatio=world.w/world.h;
+  const bounds=townWorldBounds();
+  const mapRatio=bounds.width/bounds.height;
   const boxRatio=220/148;
   let dw,dh,dx,dy;
   if(mapRatio<boxRatio){
@@ -5703,8 +5748,8 @@ function drawMini(){
     mctx.fillStyle='#cfc1ad';mctx.fillRect(dx,dy,dw,dh);
   }
   mctx.strokeStyle='rgba(88,241,230,.55)';mctx.lineWidth=2;mctx.strokeRect(dx+1,dy+1,dw-2,dh-2);
-  const px=dx+(player.x/(world.w*tile))*dw;
-  const py=dy+(player.y/(world.h*tile))*dh;
+  const px=dx+((player.x-bounds.minX)/bounds.width)*dw;
+  const py=dy+((player.y-bounds.minY)/bounds.height)*dh;
   drawTownBotMiniMarkers(dx,dy,dw,dh);
   mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(px,py,4,0,Math.PI*2);mctx.fill();
 }

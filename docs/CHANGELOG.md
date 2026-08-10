@@ -1,5 +1,16 @@
 # ATM Town Changelog
 
+## v230 — World Streaming / Chunk Engine
+
+- Converted the existing 3120 × 4320 outdoor town to a 1024px global chunk grid without moving existing world coordinates.
+- Added `assets/world/manifest.json`, streamed terrain/night/lighting, lossless PNG collision/interaction/stairs chunks, and lightweight overview maps.
+- Added `js/world-streaming.js` with camera-driven visual preloading, compact gameplay-mask caching, safe pending-collision behavior, cache eviction, missing-chunk handling, and negative-coordinate lookup.
+- Preserved authored foreground/depth objects and added camera-local lazy loading for day/night foreground images.
+- Updated minimap/directory and camera/saved-position math to use manifest world bounds.
+- Added bot-aware collision/stair streaming so off-camera NPC walking remains valid.
+- Added `scripts/tile-world.py`, `scripts/validate-world.py`, expansion documentation, and programmatic pixel-alignment validation.
+- Removed 133 unreferenced loose root-level duplicate media files left behind in the uploaded optimized build; organized `assets/` copies remain.
+
 ## v160 — Map Runtime Registry
 
 ### Map runtime architecture

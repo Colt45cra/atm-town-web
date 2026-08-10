@@ -21,13 +21,18 @@ ATM Town is an HTML5 Canvas browser game with a large legacy runtime in `index.h
    - Pixel classification and nearby searches
    - Shared rectangle/zone geometry helpers
    - Shared interaction prompts
-4. `js/bootstrap.js`
+4. `js/world-streaming.js`
+   - Outdoor world manifest loading
+   - Camera-driven visual chunk loading/cache eviction
+   - Compact collision/stair/interaction chunk decoding
+   - Negative-coordinate chunk lookup
+5. `js/bootstrap.js`
    - Safe local-storage wrappers
    - Safe JSON parsing
    - Non-blocking Supabase library loading
    - Global boot-error display
    - Build identity initialization
-5. Inline runtime in `index.html`
+6. Inline runtime in `index.html`
    - Existing gameplay engine
    - Character data and sprites
    - Rendering and depth sorting
@@ -49,7 +54,7 @@ Cyan    ATM terminal
 Green   voice chat
 ```
 
-Town, ATM HQ, and Community Lounge use this shared reader. Gallery and Arcade currently use registry-based doorway exit fallbacks because they do not yet have authored interaction masks.
+ATM HQ and Community Lounge use this shared reader directly. Town uses the same classifier through the streamed interaction-chunk manager. Gallery and Arcade currently use registry-based doorway exit fallbacks because they do not yet have authored interaction masks.
 
 The interaction module detects a type. Map-specific metadata still supplies the location name, description, destination, or feature action. This separation prevents duplicated color-reading code while preserving current gameplay.
 
@@ -80,3 +85,8 @@ Each registered map now defines its entry spawn, entry direction, entry zoom, To
 ## Next recommended extraction
 
 v161 should move one interior map's runtime assets into `assets/maps/<map>/` by changing registry paths only.
+
+
+## Outdoor streamed-world contract (v230)
+
+The outdoor town now uses `assets/world/manifest.json` and `js/world-streaming.js`. Terrain, night, lighting, collision, interaction, and stairs share one 1024px global chunk grid. The current town keeps its existing 0..3120 / 0..4320 coordinate space while the chunk math supports negative coordinates for future expansion. Foreground/depth art remains individually authored and depth-sorted, with lazy image loading around the camera. See `docs/WORLD-STREAMING.md`.

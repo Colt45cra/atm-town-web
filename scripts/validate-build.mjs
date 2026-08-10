@@ -11,6 +11,7 @@ const requiredFiles = [
   'js/config.js',
   'js/maps.js',
   'js/interactions.js',
+  'js/world-streaming.js',
   'js/bootstrap.js',
   'api/_auth.js',
   'api/_xaman-vending.js',
@@ -23,6 +24,17 @@ const requiredFiles = [
   'assets/maps/town/masks/collision.png',
   'assets/maps/town/masks/stairs.png',
   'assets/maps/town/masks/interaction.png',
+  'assets/world/manifest.json',
+  'assets/world/tiler-report.json',
+  'assets/world/overview/day.webp',
+  'assets/world/overview/night.webp',
+  'scripts/tile-world.py',
+  'scripts/validate-world.py',
+  'requirements-map-tiler.txt',
+  'docs/WORLD-STREAMING.md',
+  'docs/MAP-EXPANSION-WORKFLOW.md',
+  'docs/WORLD-STREAMING-VALIDATION.md',
+  'docs/LEGACY-ROOT-ASSET-REMOVALS.txt',
   'assets/maps/hq/visual.webp',
   'assets/maps/hq/masks/collision.png',
   'assets/maps/hq/masks/depth.png',
@@ -55,7 +67,7 @@ for (const file of requiredFiles) {
 }
 
 const html = await readFile(path.join(root, 'index.html'), 'utf8');
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/bootstrap.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -64,8 +76,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!html.includes("version:'v228'")) errors.push('Missing v228 display build marker.');
-if (!html.includes("name:'Asset Architecture Optimization'")) errors.push('Missing v228 display build name.');
+if (!html.includes("version:ATM_CONFIG?.build?.version||'v230'")) errors.push('Missing v230 display build marker.');
+if (!html.includes("name:ATM_CONFIG?.build?.name||'World Streaming / Chunk Engine'")) errors.push('Missing v230 display build name.');
 if (/data:image\//i.test(html)) errors.push('index.html still contains embedded data:image URIs; runtime art should be external/cacheable.');
 
 const idMatches = [...html.matchAll(/\sid=["']([^"']+)["']/g)].map((match) => match[1]);
@@ -74,7 +86,8 @@ for (const id of idMatches) idCounts.set(id, (idCounts.get(id) || 0) + 1);
 for (const [id, count] of idCounts) if (count > 1) errors.push(`Duplicate HTML id: ${id} (${count})`);
 
 for (const runtimeMarker of [
-  'townInteractionReader=ATM_INTERACTIONS.createMaskReader',
+  'const townWorldStream=ATMWorldStreaming.create',
+  'townWorldStream.nearestInteraction',
   'hqInteractionReader=ATM_INTERACTIONS.createMaskReader',
   'loungeInteractionReader=ATM_INTERACTIONS.createMaskReader',
   'const destination=ATM_MAPS.runtime(map,townZoom)',
@@ -93,7 +106,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v228'")) errors.push('js/config.js is not marked v228.');
+if (!configSource.includes("version: 'v230'")) errors.push('js/config.js is not marked v230.');
 
 const registrySandbox = { window: {} };
 vm.runInNewContext(configSource, registrySandbox, { filename: 'js/config.js' });
@@ -138,6 +151,34 @@ const nightFiles = (await readdir(nightDir)).sort();
 if (dayFiles.length !== nightFiles.length) errors.push(`Town foreground day/night count mismatch: ${dayFiles.length} vs ${nightFiles.length}`);
 for (const dayFile of dayFiles) if (!nightFiles.includes(dayFile)) errors.push(`Missing night foreground pair for: ${dayFile}`);
 
+// Streamed world metadata and generated chunk references must be deployable.
+let worldManifest = null;
+try {
+  worldManifest = JSON.parse(await readFile(path.join(root, 'assets/world/manifest.json'), 'utf8'));
+  if (worldManifest.chunkSize !== 1024) errors.push(`World chunkSize expected 1024, received ${worldManifest.chunkSize}`);
+  if (!worldManifest.coordinateSystem?.supportsNegativeCoordinates) errors.push('World manifest must support negative chunk/world coordinates.');
+  if (worldManifest.bounds?.width !== 3120 || worldManifest.bounds?.height !== 4320) errors.push('Phase 1 world bounds must remain 3120 × 4320.');
+  const cells = worldManifest.cells || {};
+  if (Object.keys(cells).length !== 20) errors.push(`Phase 1 expected 20 logical chunk cells, received ${Object.keys(cells).length}`);
+  for (const [layerName, layer] of Object.entries(worldManifest.layers || {})) {
+    if (['collision', 'interaction', 'stairs'].includes(layerName) && layer.format !== 'png') {
+      errors.push(`Streamed gameplay-data layer must remain PNG: ${layerName}.${layer.format}`);
+    }
+    for (const key of layer.chunks || []) {
+      const file = `${layer.path}/${key}.${layer.format}`;
+      try { await access(path.join(root, file)); }
+      catch { errors.push(`World manifest chunk is missing: ${file}`); }
+      if (!cells[key]) errors.push(`World layer ${layerName} references unknown cell: ${key}`);
+    }
+  }
+  for (const overviewPath of [worldManifest.overview?.day, worldManifest.overview?.night].filter(Boolean)) {
+    try { await access(path.join(root, overviewPath)); }
+    catch { errors.push(`World overview asset is missing: ${overviewPath}`); }
+  }
+} catch (error) {
+  errors.push(`World manifest could not be parsed: ${error.message}`);
+}
+
 // Deployment root should not regress to loose runtime image/audio files.
 const rootEntries = await readdir(root, { withFileTypes: true });
 for (const entry of rootEntries) {
@@ -160,7 +201,7 @@ try {
   }
 
   const syntaxTargets = [
-    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/bootstrap.js',
+    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js',
     'api/_auth.js', 'api/_xaman-vending.js', 'api/xaman-vending-start.js',
     'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js'
   ];
@@ -174,10 +215,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v228 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v230 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v228 build validation passed.');
+console.log('ATM Town v230 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);

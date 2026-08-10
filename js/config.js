@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v228: map entry, exit, zoom, spawn, runtime settings, and structured asset paths live in one registry.
+ * v230: world streaming metadata joins map entry/exit/zoom/spawn runtime settings.
  * Keep this file data-only. Runtime behavior belongs in the appropriate module.
  */
 (function initializeATMTownConfig(global) {
@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 228,
-    version: 'v228',
-    name: 'Asset Architecture Optimization',
-    title: 'ATM Town v228 — Asset Architecture Optimization'
+    number: 230,
+    version: 'v230',
+    name: 'World Streaming / Chunk Engine',
+    title: 'ATM Town v230 — World Streaming / Chunk Engine'
   });
 
   const MAPS = Object.freeze({
@@ -28,12 +28,9 @@
       exitTarget: null,
       townReturn: null,
       assets: Object.freeze({
-        visual: 'assets/maps/town/visual.webp',
-        nightVisual: 'assets/maps/town/night.webp',
-        collision: 'assets/maps/town/masks/collision.png',
-        stairs: 'assets/maps/town/masks/stairs.png',
-        lighting: 'assets/maps/town/lighting.webp',
-        interaction: 'assets/maps/town/masks/interaction.png'
+        worldManifest: 'assets/world/manifest.json',
+        overview: 'assets/world/overview/day.webp',
+        nightOverview: 'assets/world/overview/night.webp'
       })
     }),
     hq: Object.freeze({

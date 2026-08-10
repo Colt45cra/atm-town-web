@@ -1,0 +1,390 @@
+{
+  "schemaVersion": 1,
+  "worldId": "atm-town",
+  "chunkSize": 1024,
+  "coordinateSystem": {
+    "units": "pixels",
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "supportsNegativeCoordinates": true,
+    "chunkNaming": "{chunkX}_{chunkY}",
+    "note": "Existing ATM Town remains at its authored world coordinates; future chunks may use negative chunk coordinates."
+  },
+  "bounds": {
+    "minX": 0,
+    "minY": 0,
+    "maxX": 3120,
+    "maxY": 4320,
+    "width": 3120,
+    "height": 4320
+  },
+  "spawn": {
+    "x": 1560,
+    "y": 3850
+  },
+  "streaming": {
+    "visualPreloadMargin": 384,
+    "maskNeighborhoodRadius": 1,
+    "visualCacheLimitPerLayer": 18,
+    "maskCacheLimitPerLayer": 12,
+    "cacheGraceMs": 15000,
+    "collisionSampleStep": 6,
+    "collisionSampleOffset": 3
+  },
+  "overview": {
+    "day": "assets/world/overview/day.webp",
+    "night": "assets/world/overview/night.webp",
+    "width": 780,
+    "height": 1080
+  },
+  "cells": {
+    "0_0": {
+      "x": 0,
+      "y": 0,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 0,
+      "chunkY": 0
+    },
+    "1_0": {
+      "x": 1024,
+      "y": 0,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 1,
+      "chunkY": 0
+    },
+    "2_0": {
+      "x": 2048,
+      "y": 0,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 2,
+      "chunkY": 0
+    },
+    "3_0": {
+      "x": 3072,
+      "y": 0,
+      "width": 48,
+      "height": 1024,
+      "chunkX": 3,
+      "chunkY": 0
+    },
+    "0_1": {
+      "x": 0,
+      "y": 1024,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 0,
+      "chunkY": 1
+    },
+    "1_1": {
+      "x": 1024,
+      "y": 1024,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 1,
+      "chunkY": 1
+    },
+    "2_1": {
+      "x": 2048,
+      "y": 1024,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 2,
+      "chunkY": 1
+    },
+    "3_1": {
+      "x": 3072,
+      "y": 1024,
+      "width": 48,
+      "height": 1024,
+      "chunkX": 3,
+      "chunkY": 1
+    },
+    "0_2": {
+      "x": 0,
+      "y": 2048,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 0,
+      "chunkY": 2
+    },
+    "1_2": {
+      "x": 1024,
+      "y": 2048,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 1,
+      "chunkY": 2
+    },
+    "2_2": {
+      "x": 2048,
+      "y": 2048,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 2,
+      "chunkY": 2
+    },
+    "3_2": {
+      "x": 3072,
+      "y": 2048,
+      "width": 48,
+      "height": 1024,
+      "chunkX": 3,
+      "chunkY": 2
+    },
+    "0_3": {
+      "x": 0,
+      "y": 3072,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 0,
+      "chunkY": 3
+    },
+    "1_3": {
+      "x": 1024,
+      "y": 3072,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 1,
+      "chunkY": 3
+    },
+    "2_3": {
+      "x": 2048,
+      "y": 3072,
+      "width": 1024,
+      "height": 1024,
+      "chunkX": 2,
+      "chunkY": 3
+    },
+    "3_3": {
+      "x": 3072,
+      "y": 3072,
+      "width": 48,
+      "height": 1024,
+      "chunkX": 3,
+      "chunkY": 3
+    },
+    "0_4": {
+      "x": 0,
+      "y": 4096,
+      "width": 1024,
+      "height": 224,
+      "chunkX": 0,
+      "chunkY": 4
+    },
+    "1_4": {
+      "x": 1024,
+      "y": 4096,
+      "width": 1024,
+      "height": 224,
+      "chunkX": 1,
+      "chunkY": 4
+    },
+    "2_4": {
+      "x": 2048,
+      "y": 4096,
+      "width": 1024,
+      "height": 224,
+      "chunkX": 2,
+      "chunkY": 4
+    },
+    "3_4": {
+      "x": 3072,
+      "y": 4096,
+      "width": 48,
+      "height": 224,
+      "chunkX": 3,
+      "chunkY": 4
+    }
+  },
+  "layers": {
+    "terrain": {
+      "path": "assets/world/terrain",
+      "format": "webp",
+      "chunks": [
+        "0_0",
+        "1_0",
+        "2_0",
+        "3_0",
+        "0_1",
+        "1_1",
+        "2_1",
+        "3_1",
+        "0_2",
+        "1_2",
+        "2_2",
+        "3_2",
+        "0_3",
+        "1_3",
+        "2_3",
+        "3_3",
+        "0_4",
+        "1_4",
+        "2_4",
+        "3_4"
+      ],
+      "omittedEmptyChunks": [],
+      "emptyMeaning": null
+    },
+    "night": {
+      "path": "assets/world/night",
+      "format": "webp",
+      "chunks": [
+        "0_0",
+        "1_0",
+        "2_0",
+        "3_0",
+        "0_1",
+        "1_1",
+        "2_1",
+        "3_1",
+        "0_2",
+        "1_2",
+        "2_2",
+        "3_2",
+        "0_3",
+        "1_3",
+        "2_3",
+        "3_3",
+        "0_4",
+        "1_4",
+        "2_4",
+        "3_4"
+      ],
+      "omittedEmptyChunks": [],
+      "emptyMeaning": null
+    },
+    "collision": {
+      "path": "assets/world/collision",
+      "format": "png",
+      "chunks": [
+        "0_0",
+        "1_0",
+        "2_0",
+        "3_0",
+        "0_1",
+        "1_1",
+        "2_1",
+        "3_1",
+        "0_2",
+        "1_2",
+        "2_2",
+        "3_2",
+        "0_3",
+        "1_3",
+        "2_3",
+        "3_3",
+        "0_4",
+        "1_4",
+        "2_4",
+        "3_4"
+      ],
+      "omittedEmptyChunks": [],
+      "emptyMeaning": "zero-data"
+    },
+    "interaction": {
+      "path": "assets/world/interaction",
+      "format": "png",
+      "chunks": [
+        "0_0",
+        "1_0",
+        "2_0",
+        "0_1",
+        "1_1",
+        "0_2",
+        "2_2",
+        "0_3",
+        "1_3",
+        "2_3",
+        "3_3"
+      ],
+      "omittedEmptyChunks": [
+        "3_0",
+        "2_1",
+        "3_1",
+        "1_2",
+        "3_2",
+        "0_4",
+        "1_4",
+        "2_4",
+        "3_4"
+      ],
+      "emptyMeaning": "zero-data"
+    },
+    "stairs": {
+      "path": "assets/world/stairs",
+      "format": "png",
+      "chunks": [
+        "0_0",
+        "1_0",
+        "2_0",
+        "0_1",
+        "1_1",
+        "3_1",
+        "0_2",
+        "1_2",
+        "2_2",
+        "3_2",
+        "0_3",
+        "2_3"
+      ],
+      "omittedEmptyChunks": [
+        "3_0",
+        "2_1",
+        "1_3",
+        "3_3",
+        "0_4",
+        "1_4",
+        "2_4",
+        "3_4"
+      ],
+      "emptyMeaning": "zero-data"
+    },
+    "lighting": {
+      "path": "assets/world/lighting",
+      "format": "webp",
+      "chunks": [
+        "1_0",
+        "0_1",
+        "1_1",
+        "2_1",
+        "0_2",
+        "1_2",
+        "2_2",
+        "3_2",
+        "0_3",
+        "1_3",
+        "2_3"
+      ],
+      "omittedEmptyChunks": [
+        "0_0",
+        "2_0",
+        "3_0",
+        "3_1",
+        "3_3",
+        "0_4",
+        "1_4",
+        "2_4",
+        "3_4"
+      ],
+      "emptyMeaning": "transparent"
+    }
+  },
+  "regions": [
+    {
+      "id": "atm-town-core",
+      "label": "ATM Town",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 3120,
+        "maxY": 4320
+      },
+      "metadata": {}
+    }
+  ]
+}

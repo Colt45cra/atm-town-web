@@ -4,9 +4,9 @@ ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/Java
 
 ## Current version
 
-**v228 — Asset Architecture Optimization**
+**v230 — World Streaming / Chunk Engine**
 
-This build preserves the v227 gameplay baseline while reorganizing runtime assets for faster downloads, browser caching, cleaner GitHub maintenance, and future large-world/chunk streaming.
+This build preserves the optimized gameplay baseline while converting the existing 3120 × 4320 outdoor town to a data-driven 1024px streamed world. The authored full-size source layers remain available for future re-tiling; runtime terrain, masks, night, and lighting load by chunk.
 
 ## Project structure
 
@@ -15,7 +15,8 @@ index.html              Main game runtime and UI
 api/                    Vercel serverless endpoints
 js/                     Shared config, maps, interactions, startup helpers
 assets/
-  maps/                  Map visuals, foregrounds and PNG gameplay masks
+  maps/                  Authored map sources, interiors, foregrounds and PNG gameplay masks
+  world/                 Runtime streamed town chunks, overview and manifest
   characters/            Playable characters, equipment and thumbnails
   ui/                    Landing/UI artwork extracted from the HTML
   audio/                 Music and sound effects
@@ -38,9 +39,10 @@ See `docs/ASSET-POLICY.md`.
 
 ```bash
 npm run validate
+npm run validate:world
 npm run audit:assets
 ```
 
 ## Deployment
 
-Upload the **contents** of the v228 folder to the repository root, preserving all folders and paths. Do not flatten the `/assets`, `/api`, `/js`, `/docs`, or `/scripts` directories.
+Upload the **contents** of the v230 build/ZIP to the repository root, preserving all folders and paths. Do not flatten the `/assets`, `/api`, `/js`, `/docs`, or `/scripts` directories.

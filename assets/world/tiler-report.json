@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "sourceDimensions": {
+    "width": 3120,
+    "height": 4320
+  },
+  "chunkSize": 1024,
+  "grid": {
+    "columns": 4,
+    "rows": 5,
+    "cells": 20
+  },
+  "verifiedGeneratedChunks": 94,
+  "layers": {
+    "terrain": {
+      "source": "assets/maps/town/visual.webp",
+      "sourceSha256": "0c4adaa81d7ecc0fc637a31f3732c6ae900bf3fa2e11759f56e71dc68f4fc25a",
+      "format": "webp",
+      "generatedChunks": 20,
+      "skippedEmptyChunks": 0
+    },
+    "night": {
+      "source": "assets/maps/town/night.webp",
+      "sourceSha256": "c7caab99b566d9fab7f9be1c14ea6637585fb07d7f79db00d10bc22fdebc7383",
+      "format": "webp",
+      "generatedChunks": 20,
+      "skippedEmptyChunks": 0
+    },
+    "collision": {
+      "source": "assets/maps/town/masks/collision.png",
+      "sourceSha256": "084d5877e62aa5d5934e8cf8e70b1b51c203bf5ce3a1ffac7f10a2982e5a0911",
+      "format": "png",
+      "generatedChunks": 20,
+      "skippedEmptyChunks": 0
+    },
+    "interaction": {
+      "source": "assets/maps/town/masks/interaction.png",
+      "sourceSha256": "7554ee9a03917e9cd8bec3567f53372c6c60c978068a112b4ecea0edc861e72d",
+      "format": "png",
+      "generatedChunks": 11,
+      "skippedEmptyChunks": 9
+    },
+    "stairs": {
+      "source": "assets/maps/town/masks/stairs.png",
+      "sourceSha256": "446c0c168636f4448264a81dc8397698a4aadfea07be1d22d1565736d08ec6ee",
+      "format": "png",
+      "generatedChunks": 12,
+      "skippedEmptyChunks": 8
+    },
+    "lighting": {
+      "source": "assets/maps/town/lighting.webp",
+      "sourceSha256": "7046f6ee7dab451a257fd4a32914c19750793015875e84c46c71c1150e7b07d4",
+      "format": "webp",
+      "generatedChunks": 11,
+      "skippedEmptyChunks": 9
+    }
+  },
+  "overview": {
+    "width": 780,
+    "height": 1080,
+    "format": "webp"
+  },
+  "maskPolicy": "collision, interaction, and stairs remain lossless PNG; no gameplay mask is written as WebP",
+  "verification": "Every generated chunk was decoded and pixel-compared against its exact source crop."
+}
