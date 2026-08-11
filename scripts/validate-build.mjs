@@ -80,8 +80,11 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!html.includes("version:ATM_CONFIG?.build?.version||'v232'")) errors.push('Missing v232 display build marker.');
-if (!html.includes("name:ATM_CONFIG?.build?.name||'XRPL Trade Beacon'")) errors.push('Missing v232 display build name.');
+if (!html.includes("version:ATM_CONFIG?.build?.version||'v232.1'")) errors.push('Missing v232.1 display build marker.');
+if (!html.includes("name:ATM_CONFIG?.build?.name||'XRPL Trade Beacon'")) errors.push('Missing XRPL Trade Beacon display build fallback.');
+if (!html.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
+if (!html.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
+if (!html.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
 if (/data:image\//i.test(html)) errors.push('index.html still contains embedded data:image URIs; runtime art should be external/cacheable.');
 
 const idMatches = [...html.matchAll(/\sid=["']([^"']+)["']/g)].map((match) => match[1]);
@@ -119,7 +122,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v232'")) errors.push('js/config.js is not marked v232.');
+if (!configSource.includes("version: 'v232.1'")) errors.push('js/config.js is not marked v232.1.');
 
 const registrySandbox = { window: {} };
 vm.runInNewContext(configSource, registrySandbox, { filename: 'js/config.js' });
@@ -228,10 +231,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v232 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v232.1 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v232 build validation passed.');
+console.log('ATM Town v232.1 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);

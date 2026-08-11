@@ -10,9 +10,9 @@
 
   const BUILD = Object.freeze({
     number: 2320,
-    version: 'v232',
-    name: 'XRPL Trade Beacon',
-    title: 'ATM Town v232 — XRPL Trade Beacon'
+    version: 'v232.1',
+    name: 'Trade Beacon Airborne + Fuzzy Bot Fix',
+    title: 'ATM Town v232.1 — Trade Beacon Airborne + Fuzzy Bot Fix'
   });
 
   const MAPS = Object.freeze({

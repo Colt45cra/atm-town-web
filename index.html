@@ -759,7 +759,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
         </div>
       </section>
     </main>
-    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Character assets and your read-only XRPL collection are available here.</div><div class="lockerFooterVersion">LOCKER v4 · XRPL TRADE BEACON · v232</div></footer>
+    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Character assets and your read-only XRPL collection are available here.</div><div class="lockerFooterVersion">LOCKER v4 · XRPL TRADE BEACON · v232.1</div></footer>
   </div>
 </div>
 
@@ -1282,7 +1282,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v232',name:ATM_CONFIG?.build?.name||'XRPL Trade Beacon'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v232.1',name:ATM_CONFIG?.build?.name||'XRPL Trade Beacon'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -4042,7 +4042,7 @@ function roundedRectPath(x,y,w,h,r=7){const rr=Math.min(r,w/2,h/2);ctx.beginPath
 
 const TOWN_BOT_DEFS=Object.freeze([
   Object.freeze({id:'bot-atm',name:'ATM Bot',characterId:'classic',speed:74,pauseBase:1.4,route:[{x:1558,y:711},{x:1676,y:905},{x:1496,y:1084},{x:1376,y:870}]}),
-  Object.freeze({id:'bot-fuzzy',name:'Fuzzy',characterId:'fuzzy',speed:72,pauseBase:1.7,route:[{x:888,y:659},{x:1048,y:820},{x:902,y:1014},{x:732,y:852}]}),
+  Object.freeze({id:'bot-fuzzy',name:'Fuzzy',characterId:'fuzzy',speed:72,pauseBase:1.7,route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]}),
   Object.freeze({id:'bot-miracle',name:'Miracle',characterId:'miracle',speed:70,pauseBase:1.9,route:[{x:1206,y:1922},{x:1378,y:2076},{x:1228,y:2258},{x:1048,y:2104}]}),
   Object.freeze({id:'bot-luci',name:'Luci',characterId:'luci',speed:76,pauseBase:1.5,route:[{x:2472,y:555},{x:2632,y:706},{x:2740,y:700},{x:2740,y:600},{x:2470,y:600},{x:2314,y:720}]}),
   Object.freeze({id:'bot-triskeleton',name:'Triskeleton',characterId:'triskeleton',speed:68,pauseBase:2.1,route:[{x:1820,y:3309},{x:2050,y:3300},{x:2200,y:3350},{x:2100,y:3400},{x:1900,y:3400},{x:1650,y:3400}]})
@@ -6028,9 +6028,12 @@ function tradeBeaconScreenPoint(x,y){
   const rect=canvas.getBoundingClientRect();const sx=rect.left+(x-cam.x)*zoom*(rect.width/Math.max(1,W));const sy=rect.top+(y-cam.y)*zoom*(rect.height/Math.max(1,H));return{x:sx,y:sy,rect};
 }
 function updateTradeBeaconWorldOverlays(t=performance.now()){
-  const activeKeys=new Set();const add=(key,x,y,beacon,ownerName,local=false)=>{if(!beacon?.active||!beacon?.tokenId)return;const point=tradeBeaconScreenPoint(x,y);const margin=85;if(point.x<point.rect.left-margin||point.x>point.rect.right+margin||point.y<point.rect.top-margin||point.y>point.rect.bottom+margin)return;const node=tradeBeaconEnsureNode(key,beacon,ownerName,local);if(!node)return;activeKeys.add(key);const bob=Math.sin((t+(local?0:key.length*83))*.004)*3;node.style.display='grid';node.style.left=Math.round(point.x)+'px';node.style.top=Math.round(point.y-Math.max(62,72*zoom)+bob)+'px';node.style.opacity='1';};
-  if(tradeBeaconIsLocalActive())add('local',player.x,player.y,tradeBeaconState,playerName||'You',true);
-  const now=Date.now();for(const [id,p] of remotePlayers){if(p.map!==currentMap||now-(p.lastSeen||0)>12000||!p.tradeBeacon?.active)continue;add('remote:'+id,p.drawX??p.x,p.drawY??p.y,p.tradeBeacon,p.name||'Player',false);}
+  // Anchor the DOM beacon to the same airborne Y used by drawPlayerSprite.
+  // This keeps the NFT directly above jumping/jetpacking local and remote players
+  // instead of leaving it behind at the character's ground coordinate.
+  const activeKeys=new Set();const add=(key,x,y,lift,beacon,ownerName,local=false)=>{if(!beacon?.active||!beacon?.tokenId)return;const airborneLift=Math.max(0,Number(lift)||0);const point=tradeBeaconScreenPoint(x,y-airborneLift);const margin=85;if(point.x<point.rect.left-margin||point.x>point.rect.right+margin||point.y<point.rect.top-margin||point.y>point.rect.bottom+margin)return;const node=tradeBeaconEnsureNode(key,beacon,ownerName,local);if(!node)return;activeKeys.add(key);const bob=Math.sin((t+(local?0:key.length*83))*.004)*3;node.style.display='grid';node.style.left=Math.round(point.x)+'px';node.style.top=Math.round(point.y-Math.max(62,72*zoom)+bob)+'px';node.style.opacity='1';};
+  if(tradeBeaconIsLocalActive())add('local',player.x,player.y,jumpLift(),tradeBeaconState,playerName||'You',true);
+  const now=Date.now();for(const [id,p] of remotePlayers){if(p.map!==currentMap||now-(p.lastSeen||0)>12000||!p.tradeBeacon?.active)continue;add('remote:'+id,p.drawX??p.x,p.drawY??p.y,p.jump||0,p.tradeBeacon,p.name||'Player',false);}
   for(const [key,node] of tradeBeaconNodes){if(activeKeys.has(key))continue;node.remove();tradeBeaconNodes.delete(key);}
 }
 function nearestTradeBeaconRemote(maxDistance=105){
