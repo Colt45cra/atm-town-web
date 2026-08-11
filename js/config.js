@@ -9,10 +9,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 2320,
-    version: 'v232.1',
-    name: 'Trade Beacon Airborne + Fuzzy Bot Fix',
-    title: 'ATM Town v232.1 — Trade Beacon Airborne + Fuzzy Bot Fix'
+    number: 233,
+    version: 'v233',
+    name: 'Leaderboards + NFT Offers',
+    title: 'ATM Town v233 — Leaderboards + NFT Offers'
   });
 
   const MAPS = Object.freeze({

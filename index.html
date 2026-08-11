@@ -655,6 +655,13 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
   #powerHud{top:104px}
 }
 
+
+/* ===== v233: Arcade Leaderboards + signed XRPL player offers ===== */
+.arcadeLeaderboardOpen{width:100%;margin-top:7px;padding:9px 11px;border:1px solid rgba(88,241,230,.28);border-radius:10px;background:rgba(88,241,230,.07);color:#bffefa;font:1000 9px system-ui;letter-spacing:.08em}
+#arcadeLeaderboardPanel{position:fixed;inset:0;z-index:9700;display:none;align-items:center;justify-content:center;padding:12px;background:rgba(1,7,12,.88);backdrop-filter:blur(9px)}#arcadeLeaderboardPanel.open{display:flex}#arcadeLeaderboardCard{width:min(680px,100%);max-height:min(760px,92dvh);display:grid;grid-template-rows:auto auto minmax(0,1fr);overflow:hidden;border:1px solid rgba(88,241,230,.42);border-radius:22px;background:linear-gradient(180deg,#102c3a,#06151f);box-shadow:0 30px 90px rgba(0,0,0,.72)}.arcadeLeaderboardHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08)}.arcadeLeaderboardHeader span{display:block;color:#70f9c8;font:1000 8px system-ui;letter-spacing:.15em}.arcadeLeaderboardHeader h2{margin:3px 0 0;color:#efffff;font-size:19px}.arcadeLeaderboardClose{width:38px;height:38px;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:#183442;color:#fff;font-size:22px;font-weight:900}.arcadeLeaderboardMeta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 15px;color:#8fb5bf;font-size:9px;border-bottom:1px solid rgba(255,255,255,.06)}.arcadeLeaderboardMeta strong{color:#ffd166}.arcadeLeaderboardList{min-height:180px;overflow-y:auto;padding:8px 12px 14px}.arcadeLeaderboardRow{display:grid;grid-template-columns:34px 38px minmax(0,1fr) auto;gap:9px;align-items:center;padding:8px 7px;border-bottom:1px solid rgba(255,255,255,.055)}.arcadeLeaderboardRank{color:#ffd166;font:1000 13px ui-monospace,monospace;text-align:center}.arcadeLeaderboardAvatar{width:34px;height:38px;object-fit:contain;image-rendering:pixelated}.arcadeLeaderboardPlayer{min-width:0}.arcadeLeaderboardPlayer strong{display:block;color:#efffff;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.arcadeLeaderboardPlayer small{display:block;margin-top:3px;color:#7299a5;font:800 7px ui-monospace,monospace}.arcadeLeaderboardScore{color:#70f9c8;font:1000 11px system-ui;text-align:right}.arcadeLeaderboardEmpty{padding:32px 18px;color:#8fb5bf;text-align:center;font-size:10px;line-height:1.5}
+.tradeOfferComposer{grid-column:1/-1;display:grid;gap:8px;padding:10px;border:1px solid rgba(112,249,200,.2);border-radius:11px;background:rgba(112,249,200,.045)}.tradeOfferComposer label{display:grid;gap:5px;color:#8fb5bf;font-size:8px;font-weight:1000;letter-spacing:.08em}.tradeOfferAmountRow{display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:7px}.tradeOfferAmountRow input{min-width:0;width:100%;height:40px;padding:0 10px;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:#061923;color:#efffff;font:900 13px system-ui;outline:none}.tradeOfferAmountRow span{display:grid;place-items:center;border:1px solid rgba(255,209,102,.25);border-radius:9px;background:rgba(255,209,102,.07);color:#ffd166;font:1000 10px system-ui}.tradeOfferSubmit{min-height:42px!important;border-color:rgba(112,249,200,.44)!important;background:rgba(112,249,200,.12)!important;color:#70f9c8!important}.tradeOfferStatus{min-height:16px;color:#8fb5bf;font-size:8px;line-height:1.4}.tradeOfferStatus.ok{color:#70f9c8}.tradeOfferStatus.error{color:#ff9bbf}.lockerNftOffers{display:grid;gap:7px;padding:9px;border:1px solid rgba(255,209,102,.16);border-radius:11px;background:rgba(255,209,102,.035)}.lockerNftOffersHeader{display:flex;justify-content:space-between;gap:8px;align-items:center}.lockerNftOffersHeader strong{color:#ffd166;font-size:9px}.lockerNftOffersHeader span{color:#789ba5;font-size:7px}.lockerNftOfferRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border-radius:9px;background:rgba(255,255,255,.035)}.lockerNftOfferRow strong{display:block;color:#efffff;font-size:10px}.lockerNftOfferRow small{display:block;margin-top:2px;color:#789ba5;font-size:7px}.lockerNftOfferAccept{min-height:34px;border:1px solid rgba(112,249,200,.36);border-radius:8px;background:rgba(112,249,200,.1);color:#70f9c8;font:1000 8px system-ui}.lockerNftOffersEmpty{color:#789ba5;font-size:8px;line-height:1.4}
+@media(max-width:600px){.arcadeLeaderboardRow{grid-template-columns:28px 30px minmax(0,1fr) auto;gap:6px;padding:7px 3px}.arcadeLeaderboardAvatar{width:29px;height:32px}.arcadeLeaderboardScore{font-size:9px}.arcadeLeaderboardPlayer strong{font-size:9px}}
+
 </style>
 </head>
 <body class="access-flow-open">
@@ -670,7 +677,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
       <div class="skyRunStats"><div class="skyRunStat"><span>TIME</span><strong id="skyRunTime">0:00.00</strong></div><div class="skyRunStat gold"><span>CASH</span><strong id="skyRunCash">0/17</strong></div><div class="skyRunStat"><span>CHECKPOINT</span><strong id="skyRunCheckpoint">START</strong></div></div>
       <button aria-label="Exit ATM Sky Run" id="skyRunClose" type="button">×</button>
     </header>
-    <div class="skyRunStage"><canvas id="skyRunCanvas" width="960" height="540"></canvas><div class="skyRunAbility" id="skyRunAbility">STANDARD PHYSICS</div><div id="skyRunMessage"><h3>Rooftop Vault Run</h3><p>Race across the ATM Town rooftops, collect cash, activate checkpoints, and reach the vault.</p><div class="skyRunRules"><div class="skyRunRule"><b>17</b>Cash pickups</div><div class="skyRunRule"><b>3</b>Checkpoints</div><div class="skyRunRule"><b>1</b>Vault finish</div></div><p id="skyRunMessageDetail">Desktop: A/D or arrows to move, Space to jump. Mobile: drag the joystick and tap the play area to jump.</p><button id="skyRunStart" type="button">START RUN</button></div></div>
+    <div class="skyRunStage"><canvas id="skyRunCanvas" width="960" height="540"></canvas><div class="skyRunAbility" id="skyRunAbility">STANDARD PHYSICS</div><div id="skyRunMessage"><h3>Rooftop Vault Run</h3><p>Race across the ATM Town rooftops, collect cash, activate checkpoints, and reach the vault.</p><div class="skyRunRules"><div class="skyRunRule"><b>17</b>Cash pickups</div><div class="skyRunRule"><b>3</b>Checkpoints</div><div class="skyRunRule"><b>1</b>Vault finish</div></div><p id="skyRunMessageDetail">Desktop: A/D or arrows to move, Space to jump. Mobile: drag the joystick and tap the play area to jump.</p><button id="skyRunStart" type="button">START RUN</button><button class="arcadeLeaderboardOpen" data-leaderboard-game="sky-run" type="button">TOP 20 LEADERBOARD</button></div></div>
     <footer class="skyRunFooter"><div class="skyRunHelp">MOVE: A/D or ←/→ · JUMP: SPACE/W/↑ or tap anywhere in the play area.</div><div class="skyRunTouch"><div aria-label="Horizontal movement joystick" class="skyRunJoystick" id="skyRunJoystick"><div class="skyRunJoystickKnob" id="skyRunJoystickKnob"></div></div></div><div aria-label="Tap to jump" class="skyRunJumpZone" id="skyRunJumpZone"><span>TAP TO JUMP</span><small>HOLD FOR JETPACK THRUST</small></div></footer>
   </div>
 </div>
@@ -682,7 +689,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
       <div class="platformPanicStats"><div class="platformPanicStat"><span>TIME</span><strong id="platformPanicTime">0:00</strong></div><div class="platformPanicStat gold"><span>COINS</span><strong id="platformPanicCoins">0</strong></div><div class="platformPanicStat"><span>HEIGHT</span><strong id="platformPanicHeight">0m</strong></div></div>
       <button aria-label="Exit ATM Platform Panic" id="platformPanicClose" type="button">×</button>
     </header>
-    <div class="platformPanicStage"><canvas id="platformPanicCanvas" width="960" height="540"></canvas><div class="platformPanicAbility" id="platformPanicAbility">STANDARD PHYSICS</div><div id="platformPanicMessage"><h3>Platform Panic</h3><p>Climb an endless tower of platforms while the lava accelerates beneath you.</p><div class="platformPanicRules"><div class="platformPanicRule"><b>∞</b>Platforms</div><div class="platformPanicRule"><b>$</b>Collect coins</div><div class="platformPanicRule"><b>↑</b>Lava speeds up</div></div><p id="platformPanicMessageDetail">Drag the joystick to move. Tap anywhere in the play area to jump.</p><button id="platformPanicStart" type="button">START CLIMB</button></div></div>
+    <div class="platformPanicStage"><canvas id="platformPanicCanvas" width="960" height="540"></canvas><div class="platformPanicAbility" id="platformPanicAbility">STANDARD PHYSICS</div><div id="platformPanicMessage"><h3>Platform Panic</h3><p>Climb an endless tower of platforms while the lava accelerates beneath you.</p><div class="platformPanicRules"><div class="platformPanicRule"><b>∞</b>Platforms</div><div class="platformPanicRule"><b>$</b>Collect coins</div><div class="platformPanicRule"><b>↑</b>Lava speeds up</div></div><p id="platformPanicMessageDetail">Drag the joystick to move. Tap anywhere in the play area to jump.</p><button id="platformPanicStart" type="button">START CLIMB</button><button class="arcadeLeaderboardOpen" data-leaderboard-game="platform-panic" type="button">TOP 20 LEADERBOARD</button></div></div>
     <footer class="platformPanicFooter"><div class="platformPanicHelp">MOVE: A/D or ←/→ · JUMP: SPACE/W/↑ or tap anywhere in the play area.</div><div class="platformPanicTouch"><div aria-label="Horizontal movement joystick" class="platformPanicJoystick" id="platformPanicJoystick"><div class="platformPanicJoystickKnob" id="platformPanicJoystickKnob"></div></div></div><div class="platformPanicTapHint">TAP PLAY AREA TO JUMP</div></footer>
   </div>
 </div>
@@ -694,7 +701,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
       <div class="ringRumbleStats"><div class="ringRumbleStat"><span>ALIVE</span><strong id="ringRumbleAlive">1/1</strong></div><div class="ringRumbleStat hot"><span>RING</span><strong id="ringRumbleRing">4</strong></div><div class="ringRumbleStat"><span>NEXT DROP</span><strong id="ringRumbleDrop">--</strong></div></div>
       <button aria-label="Exit ATM Ring Rumble" id="ringRumbleClose" type="button">×</button>
     </header>
-    <div class="ringRumbleStage"><canvas id="ringRumbleCanvas" width="960" height="540"></canvas><div class="ringRumbleStatus" id="ringRumbleStatus">SOLO PRACTICE</div><div id="ringRumbleMessage"><h3>Ring Rumble</h3><p>Stay on the platform while the outside rings fall away. Slam into opponents and bounce them into the void.</p><div class="ringRumbleRules"><div class="ringRumbleRule"><b>4 → 1</b>Falling rings</div><div class="ringRumbleRule"><b>BOUNCE</b>Player collisions</div><div class="ringRumbleRule"><b>LAST</b>Player wins</div></div><p id="ringRumbleMessageDetail">Move with the joystick or WASD. Solo testing includes CPU opponents.</p><button id="ringRumbleStart" type="button">START PRACTICE</button></div></div>
+    <div class="ringRumbleStage"><canvas id="ringRumbleCanvas" width="960" height="540"></canvas><div class="ringRumbleStatus" id="ringRumbleStatus">SOLO PRACTICE</div><div id="ringRumbleMessage"><h3>Ring Rumble</h3><p>Stay on the platform while the outside rings fall away. Slam into opponents and bounce them into the void.</p><div class="ringRumbleRules"><div class="ringRumbleRule"><b>4 → 1</b>Falling rings</div><div class="ringRumbleRule"><b>BOUNCE</b>Player collisions</div><div class="ringRumbleRule"><b>LAST</b>Player wins</div></div><p id="ringRumbleMessageDetail">Move with the joystick or WASD. Solo testing includes CPU opponents.</p><button id="ringRumbleStart" type="button">START PRACTICE</button><button class="arcadeLeaderboardOpen" data-leaderboard-game="ring-rumble" type="button">TOP 20 LEADERBOARD</button></div></div>
     <footer class="ringRumbleFooter"><div class="ringRumbleHelp">MOVE: WASD or arrows · Collide at speed to knock opponents farther.</div><div class="ringRumbleTouch"><div aria-label="Arena movement joystick" class="ringRumbleJoystick" id="ringRumbleJoystick"><div class="ringRumbleJoystickKnob" id="ringRumbleJoystickKnob"></div></div></div><div class="ringRumbleTip">STAY CENTERED<br>HIT FAST TO KNOCK BACK</div></footer>
   </div>
 </div>
@@ -707,7 +714,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
       <div class="flappyJetpackStats"><div class="flappyJetpackStat"><span>SCORE</span><strong id="flappyJetpackScore">0</strong></div><div class="flappyJetpackStat gold"><span>COINS</span><strong id="flappyJetpackCoins">0</strong></div><div class="flappyJetpackStat"><span>BEST</span><strong id="flappyJetpackBest">0</strong></div></div>
       <button aria-label="Exit ATM Flappy Jetpack" id="flappyJetpackClose" type="button">×</button>
     </header>
-    <div class="flappyJetpackStage"><canvas id="flappyJetpackCanvas" width="960" height="540"></canvas><div class="flappyJetpackMode" id="flappyJetpackMode">STANDARD FLIGHT</div><div id="flappyJetpackMessage"><h3>Flappy Jetpack</h3><p>Tap to fire the jetpack, climb through the gaps, and collect ATM coins without hitting the towers.</p><div class="flappyJetpackRules"><div class="flappyJetpackRule"><b>TAP</b>Boost upward</div><div class="flappyJetpackRule"><b>GAPS</b>Score points</div><div class="flappyJetpackRule"><b>$</b>Collect coins</div></div><p id="flappyJetpackMessageDetail">Tap anywhere in the play area. Desktop players can also use Space or the up arrow.</p><button id="flappyJetpackStart" type="button">START FLIGHT</button></div></div>
+    <div class="flappyJetpackStage"><canvas id="flappyJetpackCanvas" width="960" height="540"></canvas><div class="flappyJetpackMode" id="flappyJetpackMode">STANDARD FLIGHT</div><div id="flappyJetpackMessage"><h3>Flappy Jetpack</h3><p>Tap to fire the jetpack, climb through the gaps, and collect ATM coins without hitting the towers.</p><div class="flappyJetpackRules"><div class="flappyJetpackRule"><b>TAP</b>Boost upward</div><div class="flappyJetpackRule"><b>GAPS</b>Score points</div><div class="flappyJetpackRule"><b>$</b>Collect coins</div></div><p id="flappyJetpackMessageDetail">Tap anywhere in the play area. Desktop players can also use Space or the up arrow.</p><button id="flappyJetpackStart" type="button">START FLIGHT</button><button class="arcadeLeaderboardOpen" data-leaderboard-game="flappy-jetpack" type="button">TOP 20 LEADERBOARD</button></div></div>
     <footer class="flappyJetpackFooter"><span><b>TAP ANYWHERE</b> TO FIRE THE JETPACK</span></footer>
   </div>
 </div>
@@ -759,7 +766,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
         </div>
       </section>
     </main>
-    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Character assets and your read-only XRPL collection are available here.</div><div class="lockerFooterVersion">LOCKER v4 · XRPL TRADE BEACON · v232.1</div></footer>
+    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Character assets and your read-only XRPL collection are available here.</div><div class="lockerFooterVersion">LOCKER v5 · XRPL OFFERS · v233</div></footer>
   </div>
 </div>
 
@@ -767,6 +774,13 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
   <div id="tradeNftCard" role="dialog" aria-modal="true" aria-labelledby="tradeNftTitle">
     <header class="tradeNftHeader"><div class="tradeNftHeaderCopy"><div class="tradeNftEyebrow">PLAYER TRADE BEACON</div><h2 id="tradeNftTitle">NFT</h2></div><button class="tradeNftClose" id="tradeNftClose" type="button" aria-label="Close NFT viewer">×</button></header>
     <div id="tradeNftContent"></div>
+  </div>
+</div>
+<div aria-hidden="true" aria-label="ATM Town Arcade Leaderboard" id="arcadeLeaderboardPanel">
+  <div id="arcadeLeaderboardCard" role="dialog" aria-modal="true" aria-labelledby="arcadeLeaderboardTitle">
+    <header class="arcadeLeaderboardHeader"><div><span>ATM COMPETITION ENGINE</span><h2 id="arcadeLeaderboardTitle">TOP 20</h2></div><button class="arcadeLeaderboardClose" id="arcadeLeaderboardClose" type="button" aria-label="Close leaderboard">×</button></header>
+    <div class="arcadeLeaderboardMeta"><span id="arcadeLeaderboardMetric">VERIFIED SCORES</span><strong id="arcadeLeaderboardStatus">TOP 20</strong></div>
+    <div class="arcadeLeaderboardList" id="arcadeLeaderboardList"><div class="arcadeLeaderboardEmpty">Loading leaderboard…</div></div>
   </div>
 </div>
 <div id="tradeBeaconLayer" aria-hidden="true"></div>
@@ -1282,7 +1296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v232.1',name:ATM_CONFIG?.build?.name||'XRPL Trade Beacon'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v233',name:ATM_CONFIG?.build?.name||'Leaderboards + NFT Offers'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -3725,6 +3739,11 @@ async function connectMultiplayer(){
     realtimeChannel.on('broadcast',{event:'chat'},({payload})=>{
       if(payload.id!==playerId)showBubble(payload.id,payload.name,payload.message,payload.x,payload.y,payload.map);
     });
+    realtimeChannel.on('broadcast',{event:'nft_trade_offer'},({payload})=>{
+      if(!payload||String(payload.sellerWallet||'')!==lockerWalletAddress())return;
+      const amount=Number(payload.amountXrp||0);showXrplPaymentToast(`${payload.buyerName||'A player'} made a ${amount} XRP offer on your displayed NFT.`,'success',10000);
+      lockerState.nftBuyOffers.delete(String(payload.tokenId||'').toUpperCase());
+    });
     realtimeChannel.on('broadcast',{event:'leave'},({payload})=>remotePlayers.delete(payload.id));
 
     await new Promise((resolve,reject)=>{
@@ -5978,7 +5997,7 @@ let lockerSavedCharacters=safeJsonParse(safeStorageGet(ATM_LOCKER_SAVED_CHARACTE
 if(!Array.isArray(lockerSavedCharacters))lockerSavedCharacters=[];
 let lockerActiveSavedCharacterId=null;
 window.atmActiveLoadout={...lockerLoadout};
-let lockerState={open:false,tab:'character',slot:'body',filter:'my-characters',direction:'down',nfts:[],ledgerIndex:null,validated:false,status:'idle',error:'',selectedItemId:null,nftMetadata:new Map(),nftMetadataLoading:new Set(),nftSearch:'',nftSort:'serial-desc',selectedNftId:null,nftHydrationGeneration:0,truncated:false};
+let lockerState={open:false,tab:'character',slot:'body',filter:'my-characters',direction:'down',nfts:[],ledgerIndex:null,validated:false,status:'idle',error:'',selectedItemId:null,nftMetadata:new Map(),nftMetadataLoading:new Set(),nftBuyOffers:new Map(),nftOffersLoading:new Set(),nftSearch:'',nftSort:'serial-desc',selectedNftId:null,nftHydrationGeneration:0,truncated:false};
 let lockerPreviewFrame=1;
 let lockerNftRenderTimer=0;
 let tradeBeaconState=safeJsonParse(safeStorageGet(ATM_TRADE_BEACON_KEY,'{}'),{});
@@ -6043,11 +6062,63 @@ function nearestTradeBeaconRemote(maxDistance=105){
 }
 function tradeNftClose(){tradeNftViewedTarget=null;const panel=document.getElementById('tradeNftPanel');if(panel){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}dialogOpen=false;}
 function tradeNftFact(label,value){const row=document.createElement('div');row.className='tradeNftFact';const k=document.createElement('span');k.textContent=label;const v=document.createElement('strong');v.textContent=String(value??'—')||'—';row.append(k,v);return row;}
+const ATM_NFT_TRADE_PENDING_KEY='atm_nft_trade_pending_v233';
+let nftTradePollTimer=null;
+function savePendingNftTrade(value){try{localStorage.setItem(ATM_NFT_TRADE_PENDING_KEY,JSON.stringify(value||{}));}catch(_e){}}
+function readPendingNftTrade(){try{return JSON.parse(localStorage.getItem(ATM_NFT_TRADE_PENDING_KEY)||'null');}catch(_e){return null;}}
+function clearPendingNftTrade(){try{localStorage.removeItem(ATM_NFT_TRADE_PENDING_KEY);}catch(_e){}}
+function tradeOfferSetStatus(message,tone=''){const node=document.getElementById('tradeOfferStatus');if(node){node.textContent=message||'';node.className='tradeOfferStatus'+(tone?' '+tone:'');}}
+function broadcastNftOfferNotice(data){if(!realtimeChannel||!onlineMode)return;try{realtimeChannel.send({type:'broadcast',event:'nft_trade_offer',payload:{sellerWallet:String(data?.counterparty_wallet||''),tokenId:String(data?.token_id||''),offerIndex:String(data?.offer_index||''),amountXrp:Number(data?.amount_xrp||0),buyerName:playerName||'ATM Player',sentAt:Date.now()}});}catch(_e){}}
+function pollNftTradePayload(payloadUuid){
+  if(!/^[0-9a-f-]{36}$/i.test(String(payloadUuid||'')))return;if(nftTradePollTimer)clearTimeout(nftTradePollTimer);let attempts=0;
+  const check=async()=>{if(document.hidden){nftTradePollTimer=setTimeout(check,1800);return;}attempts++;
+    try{const data=await apiWithAuth('/api/xrpl-nft-offer-status?payload_uuid='+encodeURIComponent(payloadUuid));
+      if(data.status==='open'){clearPendingNftTrade();nftTradePollTimer=null;tradeOfferSetStatus(`Offer confirmed on XRPL · ${data.amount_xrp} XRP.`,'ok');showXrplPaymentToast(`NFT offer confirmed · ${data.amount_xrp} XRP`,'success',9000);broadcastNftOfferNotice(data);return;}
+      if(data.status==='accepted'){clearPendingNftTrade();nftTradePollTimer=null;showXrplPaymentToast('NFT trade completed on XRPL. Refreshing your collection…','success',9000);setTimeout(()=>lockerRefreshXrpl(false),900);return;}
+      if(['failed','rejected','expired'].includes(data.status)){clearPendingNftTrade();nftTradePollTimer=null;const msg=data.error||`NFT offer ${data.status}.`;tradeOfferSetStatus(msg,'error');showXrplPaymentToast(msg,'error',9000);return;}
+      tradeOfferSetStatus(data.phase==='validating'?'Signed · validating the exact XRPL transaction…':data.phase==='opened'?'Xaman opened · waiting for your signature…':'Waiting for Xaman…');
+    }catch(error){tradeOfferSetStatus(error.message||'Could not check NFT offer.','error');}
+    if(attempts<100)nftTradePollTimer=setTimeout(check,3000);
+  };check();
+}
+async function startNftBuyOffer(target,amountXrp){
+  const beacon=target?.beacon;if(!beacon)return;if(!authSession?.user){tradeOfferSetStatus('Sign in to make an NFT offer.','error');return;}if(!lockerWalletAddress()){tradeOfferSetStatus('Link and verify Xaman before making an offer.','error');return;}
+  const amount=String(amountXrp||'').trim();if(!/^\d+(?:\.\d{1,6})?$/.test(amount)||Number(amount)<=0){tradeOfferSetStatus('Enter a valid XRP offer greater than zero.','error');return;}
+  const submit=document.getElementById('tradeOfferSubmit');if(submit)submit.disabled=true;tradeOfferSetStatus('Creating XRPL buy offer…');
+  try{const data=await apiWithAuth('/api/xrpl-nft-offer-start',{method:'POST',body:JSON.stringify({token_id:beacon.tokenId,seller_wallet:beacon.wallet,amount_xrp:amount})});savePendingNftTrade({payload_uuid:data.payload_uuid,action:'create_buy_offer',token_id:data.token_id,seller_wallet:data.seller_wallet,amount_xrp:data.amount_xrp,created_at:Date.now()});tradeOfferSetStatus('Opening Xaman. Review the NFT and XRP amount, sign, then return to this browser tab.');pollNftTradePayload(data.payload_uuid);window.location.assign(data.deeplink);}catch(error){tradeOfferSetStatus(error.message||'Could not create NFT offer.','error');if(submit)submit.disabled=false;}
+}
+async function startAcceptNftBuyOffer(nft,offer){
+  if(!authSession?.user||!lockerWalletAddress()){lockerSetStatus('Link and verify Xaman before accepting NFT offers.','error');return;}
+  const ok=confirm(`Accept ${offer.amount_xrp} XRP from ${offer.buyer_name||offer.buyer_wallet||'this buyer'} for ${lockerNftDisplayName(nft)}? This transfers the NFT if the XRPL transaction succeeds.`);if(!ok)return;
+  lockerSetStatus('Creating Xaman acceptance request…');
+  try{const data=await apiWithAuth('/api/xrpl-nft-offer-accept-start',{method:'POST',body:JSON.stringify({token_id:lockerNftTokenId(nft),offer_index:offer.offer_index})});savePendingNftTrade({payload_uuid:data.payload_uuid,action:'accept_buy_offer',token_id:data.token_id,offer_index:data.offer_index,amount_xrp:data.amount_xrp,created_at:Date.now()});lockerSetStatus('Opening Xaman. Review the NFT sale carefully before signing.','ok');pollNftTradePayload(data.payload_uuid);window.location.assign(data.deeplink);}catch(error){lockerSetStatus(error.message||'Could not accept NFT offer.','error');}
+}
+function resumePendingNftTrade(){const pending=readPendingNftTrade();if(!pending?.payload_uuid||!authSession?.access_token)return;if(Date.now()-Number(pending.created_at||0)>45*60*1000){clearPendingNftTrade();return;}pollNftTradePayload(pending.payload_uuid);}
+window.addEventListener('focus',()=>setTimeout(resumePendingNftTrade,250));document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(resumePendingNftTrade,250);});
+
 function tradeNftOpen(target){
   const beacon=target?.beacon;if(!beacon)return;tradeNftViewedTarget=target;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';const panel=document.getElementById('tradeNftPanel'),content=document.getElementById('tradeNftContent'),title=document.getElementById('tradeNftTitle');if(!panel||!content)return;panel.classList.add('open');panel.setAttribute('aria-hidden','false');if(title)title.textContent=beacon.name||'XRPL NFT';content.textContent='';
   const body=document.createElement('div');body.className='tradeNftBody';const art=document.createElement('div');art.className='tradeNftArt';tradeBeaconSetImage(art,tradeBeaconImageCandidates(beacon),beacon.name||'XRPL NFT');const info=document.createElement('div');info.className='tradeNftInfo';const mode=document.createElement('div');mode.className='tradeNftMode';mode.textContent=tradeBeaconModeLabel(beacon.mode);const h=document.createElement('h3');h.className='tradeNftName';h.textContent=beacon.name||'XRPL NFT';const owner=document.createElement('div');owner.className='tradeNftOwner';owner.textContent='Displayed by '+String(target.remotePlayer?.name||'Player')+(beacon.wallet?' · '+lockerShortWallet(beacon.wallet):'');const facts=document.createElement('div');facts.className='tradeNftFacts';facts.append(tradeNftFact('COLLECTION',beacon.collection||'—'),tradeNftFact('SERIAL',beacon.serial??'—'),tradeNftFact('ISSUER',beacon.issuer||'—'),tradeNftFact('TOKEN ID',beacon.tokenId||'—'));info.append(mode,h,owner,facts);body.append(art,info);content.appendChild(body);
-  const actions=document.createElement('div');actions.className='tradeNftActions';for(const [label,titleText] of [['MAKE OFFER','Player XRP offers arrive in the next trading phase.'],['OFFER MY NFT','NFT-for-NFT negotiation arrives in the next trading phase.']]){const b=document.createElement('button');b.type='button';b.disabled=true;b.textContent=label;b.title=titleText;actions.appendChild(b);}const note=document.createElement('div');note.className='tradeNftNote';note.textContent='v232 is a read-only Trade Beacon. No NFT or XRP can move from this screen yet.';actions.appendChild(note);content.appendChild(actions);
+  const actions=document.createElement('div');actions.className='tradeNftActions';
+  const offer=document.createElement('button');offer.type='button';offer.textContent='MAKE XRP OFFER';offer.disabled=beacon.mode!=='open_to_trade';offer.title=offer.disabled?'This player is showcasing this NFT but is not currently open to trade.':'Create a real XRPL NFT buy offer signed with Xaman.';actions.appendChild(offer);
+  const nftSwap=document.createElement('button');nftSwap.type='button';nftSwap.disabled=true;nftSwap.textContent='OFFER MY NFT';nftSwap.title='NFT-for-NFT negotiation is the next trading phase.';actions.appendChild(nftSwap);
+  const composer=document.createElement('div');composer.className='tradeOfferComposer';composer.hidden=true;const label=document.createElement('label');label.textContent='YOUR XRP OFFER';const row=document.createElement('div');row.className='tradeOfferAmountRow';const input=document.createElement('input');input.id='tradeOfferAmount';input.type='number';input.min='0.000001';input.step='0.000001';input.inputMode='decimal';input.placeholder='25';const currency=document.createElement('span');currency.textContent='XRP';row.append(input,currency);label.appendChild(row);const submit=document.createElement('button');submit.type='button';submit.id='tradeOfferSubmit';submit.className='tradeOfferSubmit';submit.textContent='REVIEW & SIGN WITH XAMAN';const status=document.createElement('div');status.id='tradeOfferStatus';status.className='tradeOfferStatus';status.textContent='The offer is created on XRPL only after you approve it in Xaman.';composer.append(label,submit,status);actions.appendChild(composer);
+  offer.addEventListener('click',()=>{composer.hidden=!composer.hidden;if(!composer.hidden)input.focus();});submit.addEventListener('click',()=>startNftBuyOffer(target,input.value));
+  const note=document.createElement('div');note.className='tradeNftNote';note.textContent='ATM Town never receives either wallet secret. XRP buy offers and acceptance are native XRPL transactions reviewed in Xaman.';actions.appendChild(note);content.appendChild(actions);
 }
+
+async function lockerLoadBuyOffers(nft,force=false){const tokenId=lockerNftTokenId(nft);if(!tokenId||lockerState.nftOffersLoading.has(tokenId))return;if(!force&&lockerState.nftBuyOffers.has(tokenId))return;lockerState.nftOffersLoading.add(tokenId);lockerRenderNftDetail();try{const data=await apiWithAuth('/api/xrpl-nft-offers?token_id='+encodeURIComponent(tokenId));lockerState.nftBuyOffers.set(tokenId,Array.isArray(data.offers)?data.offers:[]);lockerSetStatus(`${(data.offers||[]).length} active XRP buy offer${(data.offers||[]).length===1?'':'s'} found on XRPL.`,'ok');}catch(error){lockerSetStatus(error.message||'Could not load NFT buy offers.','error');}finally{lockerState.nftOffersLoading.delete(tokenId);lockerRenderNftDetail();}}
+
+const ATM_LEADERBOARD_GAMES=Object.freeze({'sky-run':{label:'ATM Sky Run',metric:'FASTEST TIME'},'platform-panic':{label:'ATM Platform Panic',metric:'HIGHEST CLIMB'},'flappy-jetpack':{label:'ATM Flappy Jetpack',metric:'HIGH SCORE'},'ring-rumble':{label:'ATM Ring Rumble',metric:'ONLINE WINS'}});
+const arcadeLeaderboardSessions=new Map();
+function leaderboardCharacterPreview(id){if(id==='fuzzy')return 'assets/characters/thumbnails/character-fuzzy.webp';if(id==='miracle')return 'assets/characters/thumbnails/character-miracle.webp';if(id==='luci')return 'assets/characters/thumbnails/character-luci.webp';if(id==='triskeleton')return 'assets/characters/thumbnails/character-triskeleton.webp';return 'assets/characters/thumbnails/character-atm.webp';}
+async function atmLeaderboardStart(gameId,metadata={}){if(!authSession?.access_token||!ATM_LEADERBOARD_GAMES[gameId])return null;const pending=apiWithAuth('/api/leaderboards',{method:'POST',body:JSON.stringify({action:'start',game_id:gameId,metadata})}).then(data=>{arcadeLeaderboardSessions.set(gameId,data.session_id);return data.session_id;}).catch(error=>{console.warn('Leaderboard session start failed:',error);return null;});arcadeLeaderboardSessions.set(gameId,pending);return pending;}
+async function atmLeaderboardSubmit(gameId,result={}){if(!authSession?.access_token)return null;let session=arcadeLeaderboardSessions.get(gameId);if(session&&typeof session.then==='function')session=await session;if(!session)return null;arcadeLeaderboardSessions.delete(gameId);try{const data=await apiWithAuth('/api/leaderboards',{method:'POST',body:JSON.stringify({action:'submit',game_id:gameId,session_id:session,score_value:Math.round(Number(result.score_value)||0),secondary_value:Math.round(Number(result.secondary_value)||0),details:result.details||{}})});return data;}catch(error){console.warn('Leaderboard submission failed:',error);return null;}}
+function arcadeLeaderboardClose(){const panel=document.getElementById('arcadeLeaderboardPanel');if(panel){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}}
+async function arcadeLeaderboardOpen(gameId){const cfg=ATM_LEADERBOARD_GAMES[gameId];if(!cfg)return;const panel=document.getElementById('arcadeLeaderboardPanel'),title=document.getElementById('arcadeLeaderboardTitle'),metric=document.getElementById('arcadeLeaderboardMetric'),status=document.getElementById('arcadeLeaderboardStatus'),list=document.getElementById('arcadeLeaderboardList');if(!panel||!list)return;panel.classList.add('open');panel.setAttribute('aria-hidden','false');title.textContent=cfg.label+' · TOP 20';metric.textContent=cfg.metric+' · SESSION-VERIFIED';status.textContent='LOADING';list.innerHTML='<div class="arcadeLeaderboardEmpty">Loading verified scores…</div>';try{const response=await fetch('/api/leaderboards?game_id='+encodeURIComponent(gameId),{cache:'no-store'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Leaderboard unavailable.');status.textContent=(data.entries?.length||0)+'/20';list.textContent='';if(!data.entries?.length){list.innerHTML='<div class="arcadeLeaderboardEmpty">No verified scores yet. Sign in and be the first player on the board.</div>';return;}for(const entry of data.entries){const row=document.createElement('div');row.className='arcadeLeaderboardRow';const rank=document.createElement('div');rank.className='arcadeLeaderboardRank';rank.textContent='#'+entry.rank;const avatar=document.createElement('img');avatar.className='arcadeLeaderboardAvatar';avatar.src=leaderboardCharacterPreview(entry.character);avatar.alt='';const player=document.createElement('div');player.className='arcadeLeaderboardPlayer';const name=document.createElement('strong');name.textContent=entry.player_name||'ATM Player';const wallet=document.createElement('small');wallet.textContent=entry.wallet||'NO WALLET LINKED';player.append(name,wallet);const score=document.createElement('div');score.className='arcadeLeaderboardScore';score.textContent=entry.score_display;row.append(rank,avatar,player,score);list.appendChild(row);}}catch(error){status.textContent='UNAVAILABLE';list.innerHTML='<div class="arcadeLeaderboardEmpty"></div>';list.firstChild.textContent=error.message||'Leaderboard unavailable.';}}
+window.atmLeaderboardStart=atmLeaderboardStart;window.atmLeaderboardSubmit=atmLeaderboardSubmit;window.atmOpenLeaderboard=arcadeLeaderboardOpen;
+document.querySelectorAll('.arcadeLeaderboardOpen').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();arcadeLeaderboardOpen(button.dataset.leaderboardGame);}));document.getElementById('arcadeLeaderboardClose')?.addEventListener('click',arcadeLeaderboardClose);document.getElementById('arcadeLeaderboardPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='arcadeLeaderboardPanel')arcadeLeaderboardClose();});
+
 window.atmTradeBeacon=Object.freeze({get:()=>tradeBeaconBroadcastPayload(),clear:()=>tradeBeaconClear(),nearest:()=>nearestTradeBeaconRemote()});
 
 
@@ -6302,8 +6373,9 @@ function lockerRenderNftDetail(){
   const actions=document.createElement('div');actions.className='lockerNftFutureActions';
   const showcase=document.createElement('button');showcase.type='button';showcase.className='tradeBeaconAction'+(activeForThis&&tradeBeaconState.mode==='showcase'?' active':'');showcase.textContent=activeForThis&&tradeBeaconState.mode==='showcase'?'SHOWCASING':'SHOWCASE';showcase.title='Display this NFT above your character.';showcase.addEventListener('click',()=>tradeBeaconSet(nft,'showcase'));actions.appendChild(showcase);
   const trade=document.createElement('button');trade.type='button';trade.className='tradeBeaconAction'+(activeForThis&&tradeBeaconState.mode==='open_to_trade'?' active':'');trade.textContent=activeForThis&&tradeBeaconState.mode==='open_to_trade'?'OPEN TO TRADE ✓':'OPEN TO TRADE';trade.title='Display this NFT above your character and invite other players to inspect it.';trade.addEventListener('click',()=>tradeBeaconSet(nft,'open_to_trade'));actions.appendChild(trade);
-  if(tradeBeaconIsLocalActive()){const clear=document.createElement('button');clear.type='button';clear.className='tradeBeaconClear';clear.textContent=activeForThis?'CLEAR BEACON':'CLEAR CURRENT';clear.title=activeForThis?'Remove this NFT from above your player.':'Remove the currently active Trade Beacon.';clear.addEventListener('click',()=>tradeBeaconClear());actions.appendChild(clear);}else{const sell=document.createElement('button');sell.type='button';sell.disabled=true;sell.textContent='SELL';sell.title='On-ledger selling arrives in a later phase.';actions.appendChild(sell);}body.appendChild(actions);
-  const note=document.createElement('div');note.className='lockerNftFutureNote';note.textContent='Trade Beacon is visual/read-only in v232. NFT selling and offers will require Xaman signing in later phases.';body.appendChild(note);host.appendChild(body);
+  if(tradeBeaconIsLocalActive()){const clear=document.createElement('button');clear.type='button';clear.className='tradeBeaconClear';clear.textContent=activeForThis?'CLEAR BEACON':'CLEAR CURRENT';clear.title=activeForThis?'Remove this NFT from above your player.':'Remove the currently active Trade Beacon.';clear.addEventListener('click',()=>tradeBeaconClear());actions.appendChild(clear);}else{const sell=document.createElement('button');sell.type='button';sell.disabled=true;sell.textContent='SELL';sell.title='Public sell listings are the next marketplace phase.';actions.appendChild(sell);}const offersButton=document.createElement('button');offersButton.type='button';offersButton.className='tradeBeaconAction';offersButton.textContent=lockerState.nftOffersLoading.has(tokenId)?'LOADING OFFERS…':lockerState.nftBuyOffers.has(tokenId)?'REFRESH BUY OFFERS':'BUY OFFERS';offersButton.disabled=lockerState.nftOffersLoading.has(tokenId)||!nft.transferable;offersButton.addEventListener('click',()=>lockerLoadBuyOffers(nft,true));actions.appendChild(offersButton);body.appendChild(actions);
+  if(lockerState.nftBuyOffers.has(tokenId)||lockerState.nftOffersLoading.has(tokenId)){const offersBox=document.createElement('div');offersBox.className='lockerNftOffers';const oh=document.createElement('div');oh.className='lockerNftOffersHeader';const os=document.createElement('strong');os.textContent='XRPL BUY OFFERS';const oc=document.createElement('span');const offerRows=lockerState.nftBuyOffers.get(tokenId)||[];oc.textContent=lockerState.nftOffersLoading.has(tokenId)?'CHECKING LEDGER':offerRows.length+' ACTIVE';oh.append(os,oc);offersBox.appendChild(oh);if(lockerState.nftOffersLoading.has(tokenId)){const empty=document.createElement('div');empty.className='lockerNftOffersEmpty';empty.textContent='Reading active buy offers from the validated XRP Ledger…';offersBox.appendChild(empty);}else if(!offerRows.length){const empty=document.createElement('div');empty.className='lockerNftOffersEmpty';empty.textContent='No active XRP buy offers were found for this NFT.';offersBox.appendChild(empty);}else for(const offer of offerRows){const row=document.createElement('div');row.className='lockerNftOfferRow';const copy=document.createElement('div');const amount=document.createElement('strong');amount.textContent=offer.amount_xrp+' XRP';const who=document.createElement('small');who.textContent=(offer.buyer_name||'XRPL buyer')+' · '+(offer.buyer_wallet||'wallet');copy.append(amount,who);const accept=document.createElement('button');accept.type='button';accept.className='lockerNftOfferAccept';accept.textContent='ACCEPT';accept.addEventListener('click',()=>startAcceptNftBuyOffer(nft,offer));row.append(copy,accept);offersBox.appendChild(row);}body.appendChild(offersBox);}
+  const note=document.createElement('div');note.className='lockerNftFutureNote';note.textContent='v233 supports real XRP buy offers and owner acceptance through Xaman. Public SELL listings and NFT-for-NFT negotiation come next.';body.appendChild(note);host.appendChild(body);
 }
 function lockerRenderNftGrid(){
   const grid=document.getElementById('lockerNftGrid'),empty=document.getElementById('lockerNftEmpty'),count=document.getElementById('lockerNftGridCount'),metaStatus=document.getElementById('lockerNftMetadataStatus');if(!grid||!empty)return;grid.textContent='';
@@ -6455,7 +6527,7 @@ document.querySelectorAll('.lockerDirection').forEach(button=>button.addEventLis
 document.getElementById('lockerPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='lockerPanel')lockerClose();});
 window.addEventListener('resize',()=>{if(lockerState.open)lockerDrawPreview();},{passive:true});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&lockerState.open){event.preventDefault();lockerClose();}});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('tradeNftPanel')?.classList.contains('open')){event.preventDefault();tradeNftClose();}});
+document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(document.getElementById('arcadeLeaderboardPanel')?.classList.contains('open')){event.preventDefault();arcadeLeaderboardClose();return;}if(document.getElementById('tradeNftPanel')?.classList.contains('open')){event.preventDefault();tradeNftClose();}});
 Object.values(characterSheetImgs).forEach(image=>image?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();}));Object.values(equipmentSheetImgs).forEach(image=>image?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();}));jetpackOverlayImg?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();});
 lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:classic';lockerSaveLoadout();lockerRender();
 
@@ -6523,10 +6595,10 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
     ui.time.textContent='0:00.00';ui.cash.textContent='0/17';ui.checkpoint.textContent='START';
     ui.ability.textContent=state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS';
   }
-  function startRun(){resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');requestAnimationFrame(loop);}
+  function startRun(){resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('sky-run',{mode:'time-trial'});requestAnimationFrame(loop);}
   function showIntro(){resetRun();ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='Rooftop Vault Run';ui.messageDetail.textContent='Desktop: A/D or arrows to move, Space to jump. Mobile: drag the joystick and tap the play area to jump.';ui.start.textContent='START RUN';}
   function showFinish(){
-    state.running=false;state.finished=true;saveBest();ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='VAULT REACHED!';
+    state.running=false;state.finished=true;saveBest();window.atmLeaderboardSubmit?.('sky-run',{score_value:Math.round(state.time*1000),secondary_value:runner.cash,details:{cash:runner.cash}});ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='VAULT REACHED!';
     ui.messageDetail.textContent=`Time ${fmtTime(state.time)} · Cash ${runner.cash}/17${state.best?` · Best ${fmtTime(state.best)}`:''}`;ui.start.textContent='RUN AGAIN';
   }
   function openSkyRun(){
@@ -6882,6 +6954,7 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
   function finish(reason='Lava caught you'){
     state.running=false;
     const height=Math.max(0,Math.floor((START_Y-runner.y)/10));
+    window.atmLeaderboardSubmit?.('platform-panic',{score_value:height,secondary_value:runner.coins,details:{coins:runner.coins,elapsed_ms:Math.round(state.elapsed*1000)}});
     try{
       state.bestHeight=Math.max(Number(localStorage.getItem('atm_platform_panic_best_height_v2')||0),height);
       state.bestCoins=Math.max(Number(localStorage.getItem('atm_platform_panic_best_coins_v2')||0),runner.coins);
@@ -6893,7 +6966,7 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
     ui.start.textContent='CLIMB AGAIN';
   }
 
-  function startRun(){resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');requestAnimationFrame(loop);}
+  function startRun(){resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('platform-panic',{mode:'endless'});requestAnimationFrame(loop);}
   function open(){
     if(state.open)return;state.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';
     if(jumpState?.active)jumpState.active=false;if(jetpackState?.active)endJetpack();
@@ -7216,7 +7289,7 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
       const ownsBots=!state.online||payload.hostId===me.id;
       if(entity.isBot&&ownsBots)bots.set(entity.id,entity);else remote.set(entity.id,entity);
     });
-    hideMessage();broadcastState(true);requestAnimationFrame(loop);
+    hideMessage();if(state.online)window.atmLeaderboardStart?.('ring-rumble',{online:true,round_id:state.roundId});broadcastState(true);requestAnimationFrame(loop);
   }
 
   function receiveState(p){
@@ -7398,6 +7471,7 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
   function finishRound(winnerId,winnerName,fromNetwork){
     if(state.finished)return;state.running=false;state.finished=true;state.winner=winnerName||'No one';
     const localWin=winnerId===me.id;setMessage(localWin?'YOU WIN!':`${state.winner} WINS`,localWin?'You survived the collapsing arena.':`Last player standing: ${state.winner}.`,'PLAY AGAIN');
+    if(localWin&&state.online)window.atmLeaderboardSubmit?.('ring-rumble',{score_value:1,secondary_value:0,details:{online:true,round_id:state.roundId,duration_ms:Math.round(state.elapsed*1000)}});
     if(!fromNetwork)broadcastState(true);
   }
 
@@ -7530,8 +7604,8 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
   }
   function setMessage(title,detail,button){ui.message.querySelector('h3').textContent=title;ui.detail.textContent=detail;ui.start.textContent=button;ui.message.classList.remove('hidden');}
   function showIntro(){reset();setMessage('Flappy Jetpack','Tap anywhere in the play area. Desktop players can also use Space or the up arrow.','START FLIGHT');}
-  function start(){reset();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');flap();requestAnimationFrame(loop);}
-  function end(reason){if(!state.running)return;state.running=false;state.over=true;saveBest();setMessage('FLIGHT OVER',`${reason} · Score ${state.score} · Coins ${state.coins} · Best ${state.best}`,'FLY AGAIN');}
+  function start(){reset();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('flappy-jetpack',{mode:state.astronaut?'astronaut':'standard'});flap();requestAnimationFrame(loop);}
+  function end(reason){if(!state.running)return;state.running=false;state.over=true;saveBest();window.atmLeaderboardSubmit?.('flappy-jetpack',{score_value:state.score,secondary_value:state.coins,details:{coins:state.coins,duration_ms:Math.round(state.time*1000)}});setMessage('FLIGHT OVER',`${reason} · Score ${state.score} · Coins ${state.coins} · Best ${state.best}`,'FLY AGAIN');}
   function open(){
     if(state.open)return;state.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';
     if(jumpState?.active)jumpState.active=false;if(jetpackState?.active)endJetpack();

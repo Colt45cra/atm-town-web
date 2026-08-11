@@ -16,6 +16,12 @@ const requiredFiles = [
   'api/_auth.js',
   'api/xrpl-inventory.js',
   'api/xrpl-nft-metadata.js',
+  'api/leaderboards.js',
+  'api/_xrpl-nft-trading.js',
+  'api/xrpl-nft-offer-start.js',
+  'api/xrpl-nft-offer-accept-start.js',
+  'api/xrpl-nft-offer-status.js',
+  'api/xrpl-nft-offers.js',
   'api/_xaman-vending.js',
   'api/xaman-vending-start.js',
   'api/xaman-vending-status.js',
@@ -62,7 +68,9 @@ const requiredFiles = [
   'assets/audio/quest-drift.mp3',
   'docs/ASSET-POLICY.md',
   'docs/XRPL-NFT-COLLECTION.md',
-  'docs/XRPL-TRADE-BEACON.md'
+  'docs/XRPL-TRADE-BEACON.md',
+  'docs/V233-LEADERBOARDS-NFT-OFFERS.md',
+  'supabase/ATM-Town-v233.sql'
 ];
 
 for (const file of requiredFiles) {
@@ -80,8 +88,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!html.includes("version:ATM_CONFIG?.build?.version||'v232.1'")) errors.push('Missing v232.1 display build marker.');
-if (!html.includes("name:ATM_CONFIG?.build?.name||'XRPL Trade Beacon'")) errors.push('Missing XRPL Trade Beacon display build fallback.');
+if (!html.includes("version:ATM_CONFIG?.build?.version||'v233'")) errors.push('Missing v233 display build marker.');
+if (!html.includes("name:ATM_CONFIG?.build?.name||'Leaderboards + NFT Offers'")) errors.push('Missing v233 display build fallback.');
 if (!html.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!html.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!html.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -113,7 +121,16 @@ for (const runtimeMarker of [
   'nearestTradeBeaconRemote',
   "'VIEW NFT'",
   'id="tradeBeaconLayer"',
-  'id="tradeNftPanel"'
+  'id="tradeNftPanel"',
+  'id="arcadeLeaderboardPanel"',
+  '/api/leaderboards',
+  'atmLeaderboardStart',
+  'atmLeaderboardSubmit',
+  'MAKE XRP OFFER',
+  '/api/xrpl-nft-offer-start',
+  '/api/xrpl-nft-offer-accept-start',
+  '/api/xrpl-nft-offer-status',
+  '/api/xrpl-nft-offers'
 ]) {
   if (!html.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
@@ -122,7 +139,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v232.1'")) errors.push('js/config.js is not marked v232.1.');
+if (!configSource.includes("version: 'v233'")) errors.push('js/config.js is not marked v233.');
 
 const registrySandbox = { window: {} };
 vm.runInNewContext(configSource, registrySandbox, { filename: 'js/config.js' });
@@ -218,7 +235,9 @@ try {
 
   const syntaxTargets = [
     'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js',
-    'api/_auth.js', 'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/_xaman-vending.js', 'api/xaman-vending-start.js',
+    'api/_auth.js', 'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/leaderboards.js',
+    'api/_xrpl-nft-trading.js', 'api/xrpl-nft-offer-start.js', 'api/xrpl-nft-offer-accept-start.js',
+    'api/xrpl-nft-offer-status.js', 'api/xrpl-nft-offers.js', 'api/_xaman-vending.js', 'api/xaman-vending-start.js',
     'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js'
   ];
   for (const relative of syntaxTargets) {
@@ -231,10 +250,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v232.1 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v233 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v232.1 build validation passed.');
+console.log('ATM Town v233 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);
