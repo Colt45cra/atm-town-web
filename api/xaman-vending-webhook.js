@@ -1,9 +1,9 @@
-import { adminClient } from './_auth.js';
+import { adminClient } from '../lib/auth.js';
 import {
   extractXamanPayloadUuid,
   verifyXamanWebhookSignature,
   resolveXamanVendingPayment
-} from './_xaman-vending.js';
+} from '../lib/xaman-vending.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

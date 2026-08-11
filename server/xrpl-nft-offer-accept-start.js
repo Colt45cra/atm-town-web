@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { setCors, requireUser, sendError } from './_auth.js';
-import { XRPL_ADDRESS, NFT_ID, OFFER_ID, findOwnedNft, getBuyOffers, createXamanTransaction, cancelXamanTransaction } from './_xrpl-nft-trading.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
+import { XRPL_ADDRESS, NFT_ID, OFFER_ID, findOwnedNft, getBuyOffers, createXamanTransaction, cancelXamanTransaction } from '../lib/xrpl-nft-trading.js';
 
 function tableMissing(error) { const t = `${error?.code || ''} ${error?.message || ''}`.toLowerCase(); return t.includes('42p01') || t.includes('does not exist') || t.includes('could not find the table'); }
 export default async function handler(req, res) {

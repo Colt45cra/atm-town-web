@@ -1,4 +1,4 @@
-import { setCors, requireUser, sendError } from './_auth.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
 
 const XAMAN_API_BASE = 'https://xumm.app/api/v1/platform';
 const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;

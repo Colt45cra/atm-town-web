@@ -1,5 +1,5 @@
-import { setCors, requireUser, sendError } from './_auth.js';
-import { resolveXamanVendingPayment } from './_xaman-vending.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
+import { resolveXamanVendingPayment } from '../lib/xaman-vending.js';
 
 const ATM_CURRENCY = 'ATM';
 const ATM_ISSUER = 'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ';

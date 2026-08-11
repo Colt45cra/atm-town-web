@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { setCors, requireUser, sendError } from './_auth.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
 import {
   XAMAN_API_BASE,
   ATM_CURRENCY,
@@ -8,7 +8,7 @@ import {
   readJson,
   xamanHeaders,
   xamanError
-} from './_xaman-vending.js';
+} from '../lib/xaman-vending.js';
 
 const XRPL_RPC_URL = String(process.env.XRPL_RPC_URL || 'https://s1.ripple.com:51234/').trim();
 const UNIT_PRICE = 100;

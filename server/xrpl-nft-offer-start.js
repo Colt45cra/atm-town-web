@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { setCors, requireUser, sendError } from './_auth.js';
-import { XRPL_ADDRESS, NFT_ID, findOwnedNft, createXamanTransaction, cancelXamanTransaction } from './_xrpl-nft-trading.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
+import { XRPL_ADDRESS, NFT_ID, findOwnedNft, createXamanTransaction, cancelXamanTransaction } from '../lib/xrpl-nft-trading.js';
 
 const MAX_XRP = 1000000000;
 function xrpToDrops(value) {

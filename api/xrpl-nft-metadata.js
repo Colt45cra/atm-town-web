@@ -1,6 +1,6 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { setCors, requireUser, sendError } from './_auth.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
 
 const MAX_URI_HEX_LENGTH = 512; // XRPL NFToken URI max is 256 bytes.
 const MAX_METADATA_BYTES = 1_500_000;

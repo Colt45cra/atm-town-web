@@ -1296,7 +1296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v233',name:ATM_CONFIG?.build?.name||'Leaderboards + NFT Offers'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v233.1',name:ATM_CONFIG?.build?.name||'Leaderboards + NFT Offers · Serverless Router'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -3582,7 +3582,7 @@ async function linkXamanWallet(){
   const btn=document.getElementById('linkWalletBtn');btn.disabled=true;btn.textContent='Opening Xaman…';
   setXamanLinkBar('Creating a secure wallet verification request…','waiting');
   try{
-    const data=await apiWithAuth('/api/xaman-link-start',{method:'POST',body:'{}'});
+    const data=await apiWithAuth('/api/xaman-link?action=start',{method:'POST',body:'{}'});
     const pending={payload_uuid:data.payload_uuid,expires_at:data.expires_at||null,created_at:new Date().toISOString()};
     savePendingXamanLink(pending);
     try{localStorage.setItem('atm_signup_pending','1');}catch(_error){}
@@ -3606,7 +3606,7 @@ function pollWalletLink(payloadUuid){
     if(document.hidden){walletPollTimer=setTimeout(check,1800);return;}
     attempts++;
     try{
-      const data=await apiWithAuth('/api/xaman-link-status?payload_uuid='+encodeURIComponent(payloadUuid));
+      const data=await apiWithAuth('/api/xaman-link?action=status&payload_uuid='+encodeURIComponent(payloadUuid));
       if(data.status==='signed'){
         finishWalletPoll();clearPendingXamanLink();
         await loadPlayerAccount();
@@ -6072,7 +6072,7 @@ function broadcastNftOfferNotice(data){if(!realtimeChannel||!onlineMode)return;t
 function pollNftTradePayload(payloadUuid){
   if(!/^[0-9a-f-]{36}$/i.test(String(payloadUuid||'')))return;if(nftTradePollTimer)clearTimeout(nftTradePollTimer);let attempts=0;
   const check=async()=>{if(document.hidden){nftTradePollTimer=setTimeout(check,1800);return;}attempts++;
-    try{const data=await apiWithAuth('/api/xrpl-nft-offer-status?payload_uuid='+encodeURIComponent(payloadUuid));
+    try{const data=await apiWithAuth('/api/xrpl-nft-trade?action=status&payload_uuid='+encodeURIComponent(payloadUuid));
       if(data.status==='open'){clearPendingNftTrade();nftTradePollTimer=null;tradeOfferSetStatus(`Offer confirmed on XRPL · ${data.amount_xrp} XRP.`,'ok');showXrplPaymentToast(`NFT offer confirmed · ${data.amount_xrp} XRP`,'success',9000);broadcastNftOfferNotice(data);return;}
       if(data.status==='accepted'){clearPendingNftTrade();nftTradePollTimer=null;showXrplPaymentToast('NFT trade completed on XRPL. Refreshing your collection…','success',9000);setTimeout(()=>lockerRefreshXrpl(false),900);return;}
       if(['failed','rejected','expired'].includes(data.status)){clearPendingNftTrade();nftTradePollTimer=null;const msg=data.error||`NFT offer ${data.status}.`;tradeOfferSetStatus(msg,'error');showXrplPaymentToast(msg,'error',9000);return;}
@@ -6085,13 +6085,13 @@ async function startNftBuyOffer(target,amountXrp){
   const beacon=target?.beacon;if(!beacon)return;if(!authSession?.user){tradeOfferSetStatus('Sign in to make an NFT offer.','error');return;}if(!lockerWalletAddress()){tradeOfferSetStatus('Link and verify Xaman before making an offer.','error');return;}
   const amount=String(amountXrp||'').trim();if(!/^\d+(?:\.\d{1,6})?$/.test(amount)||Number(amount)<=0){tradeOfferSetStatus('Enter a valid XRP offer greater than zero.','error');return;}
   const submit=document.getElementById('tradeOfferSubmit');if(submit)submit.disabled=true;tradeOfferSetStatus('Creating XRPL buy offer…');
-  try{const data=await apiWithAuth('/api/xrpl-nft-offer-start',{method:'POST',body:JSON.stringify({token_id:beacon.tokenId,seller_wallet:beacon.wallet,amount_xrp:amount})});savePendingNftTrade({payload_uuid:data.payload_uuid,action:'create_buy_offer',token_id:data.token_id,seller_wallet:data.seller_wallet,amount_xrp:data.amount_xrp,created_at:Date.now()});tradeOfferSetStatus('Opening Xaman. Review the NFT and XRP amount, sign, then return to this browser tab.');pollNftTradePayload(data.payload_uuid);window.location.assign(data.deeplink);}catch(error){tradeOfferSetStatus(error.message||'Could not create NFT offer.','error');if(submit)submit.disabled=false;}
+  try{const data=await apiWithAuth('/api/xrpl-nft-trade?action=start',{method:'POST',body:JSON.stringify({token_id:beacon.tokenId,seller_wallet:beacon.wallet,amount_xrp:amount})});savePendingNftTrade({payload_uuid:data.payload_uuid,action:'create_buy_offer',token_id:data.token_id,seller_wallet:data.seller_wallet,amount_xrp:data.amount_xrp,created_at:Date.now()});tradeOfferSetStatus('Opening Xaman. Review the NFT and XRP amount, sign, then return to this browser tab.');pollNftTradePayload(data.payload_uuid);window.location.assign(data.deeplink);}catch(error){tradeOfferSetStatus(error.message||'Could not create NFT offer.','error');if(submit)submit.disabled=false;}
 }
 async function startAcceptNftBuyOffer(nft,offer){
   if(!authSession?.user||!lockerWalletAddress()){lockerSetStatus('Link and verify Xaman before accepting NFT offers.','error');return;}
   const ok=confirm(`Accept ${offer.amount_xrp} XRP from ${offer.buyer_name||offer.buyer_wallet||'this buyer'} for ${lockerNftDisplayName(nft)}? This transfers the NFT if the XRPL transaction succeeds.`);if(!ok)return;
   lockerSetStatus('Creating Xaman acceptance request…');
-  try{const data=await apiWithAuth('/api/xrpl-nft-offer-accept-start',{method:'POST',body:JSON.stringify({token_id:lockerNftTokenId(nft),offer_index:offer.offer_index})});savePendingNftTrade({payload_uuid:data.payload_uuid,action:'accept_buy_offer',token_id:data.token_id,offer_index:data.offer_index,amount_xrp:data.amount_xrp,created_at:Date.now()});lockerSetStatus('Opening Xaman. Review the NFT sale carefully before signing.','ok');pollNftTradePayload(data.payload_uuid);window.location.assign(data.deeplink);}catch(error){lockerSetStatus(error.message||'Could not accept NFT offer.','error');}
+  try{const data=await apiWithAuth('/api/xrpl-nft-trade?action=accept',{method:'POST',body:JSON.stringify({token_id:lockerNftTokenId(nft),offer_index:offer.offer_index})});savePendingNftTrade({payload_uuid:data.payload_uuid,action:'accept_buy_offer',token_id:data.token_id,offer_index:data.offer_index,amount_xrp:data.amount_xrp,created_at:Date.now()});lockerSetStatus('Opening Xaman. Review the NFT sale carefully before signing.','ok');pollNftTradePayload(data.payload_uuid);window.location.assign(data.deeplink);}catch(error){lockerSetStatus(error.message||'Could not accept NFT offer.','error');}
 }
 function resumePendingNftTrade(){const pending=readPendingNftTrade();if(!pending?.payload_uuid||!authSession?.access_token)return;if(Date.now()-Number(pending.created_at||0)>45*60*1000){clearPendingNftTrade();return;}pollNftTradePayload(pending.payload_uuid);}
 window.addEventListener('focus',()=>setTimeout(resumePendingNftTrade,250));document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(resumePendingNftTrade,250);});
@@ -6107,7 +6107,7 @@ function tradeNftOpen(target){
   const note=document.createElement('div');note.className='tradeNftNote';note.textContent='ATM Town never receives either wallet secret. XRP buy offers and acceptance are native XRPL transactions reviewed in Xaman.';actions.appendChild(note);content.appendChild(actions);
 }
 
-async function lockerLoadBuyOffers(nft,force=false){const tokenId=lockerNftTokenId(nft);if(!tokenId||lockerState.nftOffersLoading.has(tokenId))return;if(!force&&lockerState.nftBuyOffers.has(tokenId))return;lockerState.nftOffersLoading.add(tokenId);lockerRenderNftDetail();try{const data=await apiWithAuth('/api/xrpl-nft-offers?token_id='+encodeURIComponent(tokenId));lockerState.nftBuyOffers.set(tokenId,Array.isArray(data.offers)?data.offers:[]);lockerSetStatus(`${(data.offers||[]).length} active XRP buy offer${(data.offers||[]).length===1?'':'s'} found on XRPL.`,'ok');}catch(error){lockerSetStatus(error.message||'Could not load NFT buy offers.','error');}finally{lockerState.nftOffersLoading.delete(tokenId);lockerRenderNftDetail();}}
+async function lockerLoadBuyOffers(nft,force=false){const tokenId=lockerNftTokenId(nft);if(!tokenId||lockerState.nftOffersLoading.has(tokenId))return;if(!force&&lockerState.nftBuyOffers.has(tokenId))return;lockerState.nftOffersLoading.add(tokenId);lockerRenderNftDetail();try{const data=await apiWithAuth('/api/xrpl-nft-trade?action=offers&token_id='+encodeURIComponent(tokenId));lockerState.nftBuyOffers.set(tokenId,Array.isArray(data.offers)?data.offers:[]);lockerSetStatus(`${(data.offers||[]).length} active XRP buy offer${(data.offers||[]).length===1?'':'s'} found on XRPL.`,'ok');}catch(error){lockerSetStatus(error.message||'Could not load NFT buy offers.','error');}finally{lockerState.nftOffersLoading.delete(tokenId);lockerRenderNftDetail();}}
 
 const ATM_LEADERBOARD_GAMES=Object.freeze({'sky-run':{label:'ATM Sky Run',metric:'FASTEST TIME'},'platform-panic':{label:'ATM Platform Panic',metric:'HIGHEST CLIMB'},'flappy-jetpack':{label:'ATM Flappy Jetpack',metric:'HIGH SCORE'},'ring-rumble':{label:'ATM Ring Rumble',metric:'ONLINE WINS'}});
 const arcadeLeaderboardSessions=new Map();

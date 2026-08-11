@@ -1,4 +1,4 @@
-import { setCors, requireUser } from './_auth.js';
+import { setCors, requireUser } from '../lib/auth.js';
 
 const XAMAN_API_BASE = 'https://xumm.app/api/v1/platform';
 const ATM_TOWN_RETURN_URL = 'https://atm-town-web.vercel.app/?xaman_return=1&payload={id}';

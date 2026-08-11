@@ -1,4 +1,4 @@
-import { setCors, requireUser, sendError } from './_auth.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
 
 const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const PAGE_LIMIT = 400;

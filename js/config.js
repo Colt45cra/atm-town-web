@@ -10,8 +10,8 @@
 
   const BUILD = Object.freeze({
     number: 233,
-    version: 'v233',
-    name: 'Leaderboards + NFT Offers',
+    version: 'v233.1',
+    name: 'Leaderboards + NFT Offers · Serverless Router',
     title: 'ATM Town v233 — Leaderboards + NFT Offers'
   });
 

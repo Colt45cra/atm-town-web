@@ -1,5 +1,5 @@
-import { setCors, requireUser, sendError } from './_auth.js';
-import { XRPL_ADDRESS, NFT_ID, findOwnedNft, getBuyOffers } from './_xrpl-nft-trading.js';
+import { setCors, requireUser, sendError } from '../lib/auth.js';
+import { XRPL_ADDRESS, NFT_ID, findOwnedNft, getBuyOffers } from '../lib/xrpl-nft-trading.js';
 
 function shortWallet(value) { const v = String(value || ''); return XRPL_ADDRESS.test(v) ? `${v.slice(0, 6)}…${v.slice(-6)}` : ''; }
 export default async function handler(req, res) {

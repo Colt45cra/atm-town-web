@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { setCors, requireUser, adminClient, sendError } from './_auth.js';
+import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
 
 const GAME_CONFIG = Object.freeze({
   'sky-run': { label: 'ATM Sky Run', metric: 'FASTEST TIME', direction: 'asc' },
