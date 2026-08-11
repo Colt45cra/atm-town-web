@@ -96,7 +96,24 @@ async function submitScore(req, res) {
   const { data: session, error: sessionError } = await admin.from('arcade_game_sessions')
     .select('*').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
   if (sessionError) throw setupError(sessionError);
-  if (!session || session.game_id !== gameId || session.status !== 'active') return res.status(409).json({ error: 'This game session is no longer eligible for submission.' });
+  if (!session || session.game_id !== gameId) return res.status(409).json({ error: 'This game session is no longer eligible for submission.' });
+
+  const existingScore = async () => {
+    const { data, error } = await admin.from('arcade_scores')
+      .select('id,score_value,secondary_value,verified').eq('session_id', sessionId).eq('user_id', user.id).maybeSingle();
+    if (error) throw setupError(error);
+    return data || null;
+  };
+  const respondExisting = async (score) => {
+    if (session.status !== 'submitted') {
+      await admin.from('arcade_game_sessions').update({ status: 'submitted', ended_at: session.ended_at || new Date().toISOString() }).eq('id', sessionId).eq('user_id', user.id);
+    }
+    return res.status(200).json({ submitted: true, verified: score.verified === true, idempotent: true, score_id: score.id, score_display: formatScore(gameId, score.score_value, score.secondary_value) });
+  };
+
+  const alreadySaved = await existingScore();
+  if (alreadySaved) return respondExisting(alreadySaved);
+  if (session.status !== 'active') return res.status(409).json({ error: 'This game session is no longer eligible for submission.' });
 
   const scoreValue = Math.round(Number(req.body?.score_value));
   const secondaryValue = Math.round(Number(req.body?.secondary_value || 0));
@@ -107,7 +124,6 @@ async function submitScore(req, res) {
     await admin.from('arcade_game_sessions').update({ status: 'rejected', ended_at: new Date().toISOString() }).eq('id', sessionId);
     return res.status(422).json({ error: validation.reason, verified: false });
   }
-
   const profile = await playerProfile(admin, user.id);
   const scoreId = randomUUID();
   const row = {
@@ -125,11 +141,16 @@ async function submitScore(req, res) {
     details: { ...details, server_elapsed_ms: elapsedMs }
   };
   const { error: insertError } = await admin.from('arcade_scores').insert(row);
-  if (insertError) throw setupError(insertError);
+  if (insertError) {
+    if (String(insertError.code || '') === '23505') {
+      const racedScore = await existingScore();
+      if (racedScore) return respondExisting(racedScore);
+    }
+    throw setupError(insertError);
+  }
   await admin.from('arcade_game_sessions').update({ status: 'submitted', ended_at: new Date().toISOString() }).eq('id', sessionId);
-  return res.status(201).json({ submitted: true, verified: true, score_id: scoreId, score_display: formatScore(gameId, scoreValue, secondaryValue) });
+  return res.status(201).json({ submitted: true, verified: true, idempotent: false, score_id: scoreId, score_display: formatScore(gameId, scoreValue, secondaryValue) });
 }
-
 async function getLeaderboard(req, res) {
   const gameId = String(req.query?.game_id || '').trim();
   const cfg = gameConfig(gameId);

@@ -72,6 +72,8 @@ const requiredFiles = [
   'docs/XRPL-TRADE-BEACON.md',
   'docs/V233-LEADERBOARDS-NFT-OFFERS.md',
   'docs/V233.1-SERVERLESS-ROUTER-HOTFIX.md',
+  'docs/V233.2-SCORE-RELIABILITY.md',
+  'scripts/apply-v2332-score-reliability.py',
   'scripts/apply-v2331.sh',
   'api/xaman-link.js',
   'server/xaman-link-start.js',
@@ -94,8 +96,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!html.includes("version:ATM_CONFIG?.build?.version||'v233.1'")) errors.push('Missing v233.1 display build marker.');
-if (!html.includes("name:ATM_CONFIG?.build?.name||'Leaderboards + NFT Offers · Serverless Router'")) errors.push('Missing v233.1 display build fallback.');
+if (!html.includes("version:ATM_CONFIG?.build?.version||'v233.2'")) errors.push('Missing v233.2 display build marker.');
+if (!html.includes("name:ATM_CONFIG?.build?.name||'Reliable Leaderboards + NFT Offers'")) errors.push('Missing v233.2 display build fallback.');
 if (!html.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!html.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!html.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -132,6 +134,8 @@ for (const runtimeMarker of [
   '/api/leaderboards',
   'atmLeaderboardStart',
   'atmLeaderboardSubmit',
+  'ATM_LEADERBOARD_PENDING_KEY',
+  'retryPendingLeaderboardScores',
   'MAKE XRP OFFER',
   '/api/xrpl-nft-trade?action=start',
   '/api/xrpl-nft-trade?action=accept',
@@ -143,11 +147,14 @@ for (const runtimeMarker of [
   if (!html.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
 
+const leaderboardApiSource = await readFile(path.join(root, 'api', 'leaderboards.js'), 'utf8');
+if (!leaderboardApiSource.includes('idempotent: true')) errors.push('Leaderboard API is missing idempotent score recovery.');
+if (!leaderboardApiSource.includes("String(insertError.code || '') === '23505'")) errors.push('Leaderboard API is missing duplicate-session race recovery.');
 const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v233.1'")) errors.push('js/config.js is not marked v233.1.');
+if (!configSource.includes("version: 'v233.2'")) errors.push('js/config.js is not marked v233.2.');
 
 const registrySandbox = { window: {} };
 vm.runInNewContext(configSource, registrySandbox, { filename: 'js/config.js' });
@@ -224,7 +231,7 @@ try {
 const apiEntries = await readdir(path.join(root, 'api'), { withFileTypes: true });
 const apiFunctionFiles = apiEntries.filter((entry) => entry.isFile() && entry.name.endsWith('.js'));
 if (apiFunctionFiles.length > 12) errors.push(`Vercel Hobby API function limit exceeded: ${apiFunctionFiles.length} api/*.js files (max 12).`);
-if (apiFunctionFiles.length !== 11) errors.push(`v233.1 expects 11 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
+if (apiFunctionFiles.length !== 11) errors.push(`v233.2 expects 11 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
 for (const obsolete of ['_auth.js','_xaman-vending.js','_xrpl-nft-trading.js','xaman-link-start.js','xaman-link-status.js','xrpl-nft-offer-start.js','xrpl-nft-offer-status.js','xrpl-nft-offers.js','xrpl-nft-offer-accept-start.js']) {
   if (apiFunctionFiles.some((entry) => entry.name === obsolete)) errors.push(`Obsolete API route/helper still present and would consume a Vercel function slot: api/${obsolete}`);
 }
@@ -267,10 +274,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v233.1 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v233.2 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v233.1 build validation passed.');
+console.log('ATM Town v233.2 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);
