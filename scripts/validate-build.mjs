@@ -64,6 +64,14 @@ const requiredFiles = [
   'assets/characters/playable/miracle.webp',
   'assets/characters/playable/luci.webp',
   'assets/characters/playable/triskeleton.webp',
+  'assets/characters/playable/phnix.webp',
+  'assets/characters/playable/bear.webp',
+  'assets/characters/playable/xoge.webp',
+  'assets/characters/playable/flippy.webp',
+  'assets/characters/thumbnails/character-phnix.webp',
+  'assets/characters/thumbnails/character-bear.webp',
+  'assets/characters/thumbnails/character-xoge.webp',
+  'assets/characters/thumbnails/character-flippy.webp',
   'assets/characters/equipment/jetpack.webp',
   'assets/audio/jetpack-boost.wav',
   'assets/audio/quest-drift.mp3',
@@ -176,6 +184,13 @@ for (const runtimeMarker of [
   'window.atmApiWithAuth=apiWithAuth'
 ]) {
   if (!runtimeSource.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
+}
+
+for (const characterId of ['phnix','bear','xoge','flippy']) {
+  if (!gameRuntimeParts[0].includes(`characterId:'${characterId}'`)) errors.push(`New playable character is missing from starter Locker catalog: ${characterId}`);
+  if (!gameRuntimeParts[0].includes(`'${characterId}'`)) errors.push(`New playable character is missing from game runtime registry: ${characterId}`);
+  if (!html.includes(`data-character="${characterId}"`)) errors.push(`New playable character is missing from signup character rail: ${characterId}`);
+  if (!html.includes(`data-profile-character="${characterId}"`)) errors.push(`New playable character is missing from profile picker: ${characterId}`);
 }
 
 if (!gameRuntimeParts[0].includes('function nearestThing(){')) errors.push('Game core runtime is missing nearestThing definition.');
