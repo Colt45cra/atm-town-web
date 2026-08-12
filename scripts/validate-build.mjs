@@ -73,7 +73,10 @@ const requiredFiles = [
   'docs/V233-LEADERBOARDS-NFT-OFFERS.md',
   'docs/V233.1-SERVERLESS-ROUTER-HOTFIX.md',
   'docs/V233.2-SCORE-RELIABILITY.md',
-  'scripts/apply-v2332-score-reliability.py',
+  'docs/V234-EMBEDDED-WALLET-PHASE1.md',
+  'js/wallet/embedded-wallet.js',
+  'api/embedded-wallet.js',
+  'supabase/ATM-Town-v234.sql',
   'scripts/apply-v2331.sh',
   'api/xaman-link.js',
   'server/xaman-link-start.js',
@@ -87,7 +90,7 @@ for (const file of requiredFiles) {
 }
 
 const html = await readFile(path.join(root, 'index.html'), 'utf8');
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -96,8 +99,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!html.includes("version:ATM_CONFIG?.build?.version||'v233.2'")) errors.push('Missing v233.2 display build marker.');
-if (!html.includes("name:ATM_CONFIG?.build?.name||'Reliable Leaderboards + NFT Offers'")) errors.push('Missing v233.2 display build fallback.');
+if (!html.includes("version:ATM_CONFIG?.build?.version||'v234'")) errors.push('Missing v234 display build marker.');
+if (!html.includes("name:ATM_CONFIG?.build?.name||'Embedded Wallet — Testnet Phase 1'")) errors.push('Missing v234 display build fallback.');
 if (!html.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!html.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!html.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -142,7 +145,10 @@ for (const runtimeMarker of [
   '/api/xrpl-nft-trade?action=status&payload_uuid=',
   '/api/xrpl-nft-trade?action=offers&token_id=',
   '/api/xaman-link?action=start',
-  '/api/xaman-link?action=status&payload_uuid='
+  '/api/xaman-link?action=status&payload_uuid=',
+  'id="embeddedWalletBtn"',
+  'js/wallet/embedded-wallet.js',
+  'window.atmApiWithAuth=apiWithAuth'
 ]) {
   if (!html.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
@@ -154,13 +160,37 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v233.2'")) errors.push('js/config.js is not marked v233.2.');
+if (!configSource.includes("version: 'v234'")) errors.push('js/config.js is not marked v234.');
 
 const registrySandbox = { window: {} };
 vm.runInNewContext(configSource, registrySandbox, { filename: 'js/config.js' });
 vm.runInNewContext(mapsSource, registrySandbox, { filename: 'js/maps.js' });
 const registry = registrySandbox.window.ATMMaps;
 const config = registrySandbox.window.ATM_TOWN_CONFIG;
+
+if (config.embeddedWallet?.network !== 'testnet') errors.push('Embedded wallet must remain Testnet-only in v234.');
+if (!String(config.embeddedWallet?.rpcHttp || '').includes('altnet.rippletest.net')) errors.push('Embedded wallet config must use XRPL Testnet RPC.');
+const embeddedWalletSource = await readFile(path.join(root, 'js', 'wallet', 'embedded-wallet.js'), 'utf8');
+const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
+const embeddedWalletSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v234.sql'), 'utf8');
+if (!embeddedWalletSource.includes("const NETWORK = 'testnet'")) errors.push('Embedded wallet client is not hard-gated to Testnet.');
+if (!embeddedWalletSource.includes('Wallet.generate()')) errors.push('Embedded wallet is not generating the XRPL keypair in the browser.');
+if (!embeddedWalletSource.includes("crypto.subtle.encrypt")) errors.push('Embedded wallet client is missing local Web Crypto encryption.');
+if (!embeddedWalletSource.includes("extensions:{prf:")) errors.push('Embedded wallet client is missing WebAuthn PRF unlock support.');
+if (/localStorage|sessionStorage/.test(embeddedWalletSource) && /seed/i.test(embeddedWalletSource)) errors.push('Embedded wallet source may persist seed material in web storage.');
+if (!embeddedWalletApiSource.includes("const NETWORK = 'testnet'")) errors.push('Embedded wallet API is not hard-gated to Testnet.');
+if (!embeddedWalletApiSource.includes('XRPL_TESTNET_RPC_URL')) errors.push('Embedded wallet API must use a dedicated XRPL_TESTNET_RPC_URL override.');
+if (/s1\.ripple\.com|xrplcluster\.com|force_network[^\n]*MAINNET/i.test(embeddedWalletApiSource)) errors.push('Embedded wallet API contains a Mainnet endpoint/marker.');
+if (!embeddedWalletApiSource.includes("from('embedded_wallets')")) errors.push('Embedded wallet API is not isolated to embedded_wallets.');
+if (/from\('player_accounts'\)/.test(embeddedWalletApiSource)) errors.push('Embedded wallet API must not overwrite player_accounts.wallet_address.');
+if (!embeddedWalletSql.includes('alter table public.embedded_wallets enable row level security')) errors.push('Embedded wallet table must have RLS enabled.');
+if (/create policy/i.test(embeddedWalletSql)) errors.push('v234 embedded_wallets should expose no direct browser RLS policies.');
+
+// Existing Xaman/Mainnet paths must remain unchanged and separate from the Testnet wallet.
+const vendingSource = await readFile(path.join(root, 'api', 'xaman-vending-start.js'), 'utf8');
+const nftTradingSource = await readFile(path.join(root, 'lib', 'xrpl-nft-trading.js'), 'utf8');
+if (!vendingSource.includes("force_network: 'MAINNET'") && !vendingSource.includes('force_network:"MAINNET"') && !vendingSource.includes("force_network:'MAINNET'")) errors.push('Xaman vending must remain explicitly Mainnet.');
+if (!nftTradingSource.includes("force_network: 'MAINNET'") && !nftTradingSource.includes('force_network:"MAINNET"') && !nftTradingSource.includes("force_network:'MAINNET'")) errors.push('Xaman NFT trading must remain explicitly Mainnet.');
 
 const expectedZooms = { hq: 0.60, gallery: 0.60, arcade: 0.60, lounge: 0.70 };
 for (const [mapId, expectedZoom] of Object.entries(expectedZooms)) {
@@ -231,7 +261,7 @@ try {
 const apiEntries = await readdir(path.join(root, 'api'), { withFileTypes: true });
 const apiFunctionFiles = apiEntries.filter((entry) => entry.isFile() && entry.name.endsWith('.js'));
 if (apiFunctionFiles.length > 12) errors.push(`Vercel Hobby API function limit exceeded: ${apiFunctionFiles.length} api/*.js files (max 12).`);
-if (apiFunctionFiles.length !== 11) errors.push(`v233.2 expects 11 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
+if (apiFunctionFiles.length !== 12) errors.push(`v234 expects 12 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
 for (const obsolete of ['_auth.js','_xaman-vending.js','_xrpl-nft-trading.js','xaman-link-start.js','xaman-link-status.js','xrpl-nft-offer-start.js','xrpl-nft-offer-status.js','xrpl-nft-offers.js','xrpl-nft-offer-accept-start.js']) {
   if (apiFunctionFiles.some((entry) => entry.name === obsolete)) errors.push(`Obsolete API route/helper still present and would consume a Vercel function slot: api/${obsolete}`);
 }
@@ -257,10 +287,10 @@ try {
   }
 
   const syntaxTargets = [
-    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js',
+    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js',
     'lib/auth.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js',
     'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/leaderboards.js', 'api/xrpl-nft-trade.js',
-    'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js',
+    'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js', 'api/embedded-wallet.js',
     'server/xaman-link-start.js', 'server/xaman-link-status.js',
     'server/xrpl-nft-offer-start.js', 'server/xrpl-nft-offer-accept-start.js', 'server/xrpl-nft-offer-status.js', 'server/xrpl-nft-offers.js'
   ];
@@ -274,10 +304,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v233.2 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v234 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v233.2 build validation passed.');
+console.log('ATM Town v234 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);

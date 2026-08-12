@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v234: adds isolated XRPL Testnet embedded-wallet runtime configuration.
  * v230: world streaming metadata joins map entry/exit/zoom/spawn runtime settings.
  * Keep this file data-only. Runtime behavior belongs in the appropriate module.
  */
@@ -9,10 +10,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 233,
-    version: 'v233.2',
-    name: 'Reliable Leaderboards + NFT Offers',
-    title: 'ATM Town v233.2 — Reliable Leaderboards + NFT Offers'
+    number: 234,
+    version: 'v234',
+    name: 'Embedded Wallet — Testnet Phase 1',
+    title: 'ATM Town v234 — Embedded Wallet · Testnet Phase 1'
   });
 
   const MAPS = Object.freeze({
@@ -113,10 +114,21 @@
     'https://unpkg.com/@supabase/supabase-js@2.105.0'
   ]);
 
+  const EMBEDDED_WALLET = Object.freeze({
+    network: 'testnet',
+    rpcHttp: 'https://s.altnet.rippletest.net:51234/',
+    explorerBase: 'https://testnet.xrpl.org/accounts/',
+    xrplBrowserSources: Object.freeze([
+      'https://cdn.jsdelivr.net/npm/xrpl@5.0.0/build/xrpl-latest-min.js',
+      'https://unpkg.com/xrpl@5.0.0/build/xrpl-latest-min.js'
+    ])
+  });
+
   global.ATM_TOWN_CONFIG = Object.freeze({
     tileSize: TILE_SIZE,
     build: BUILD,
     maps: MAPS,
-    supabaseCdnSources: SUPABASE_CDN_SOURCES
+    supabaseCdnSources: SUPABASE_CDN_SOURCES,
+    embeddedWallet: EMBEDDED_WALLET
   });
 })(window);
