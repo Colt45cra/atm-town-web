@@ -3,7 +3,10 @@
 
   const CONFIG = window.ATM_TOWN_CONFIG?.embeddedWallet || {};
   const NETWORK = 'testnet';
-  const TESTNET_WS = String(CONFIG.rpcWs || 'wss://s.altnet.rippletest.net:51233/');
+  const TESTNET_HTTP_SOURCES = Object.freeze((Array.isArray(CONFIG.rpcHttpSources)?CONFIG.rpcHttpSources:[CONFIG.rpcHttp]).map(value=>String(value||'').trim()).filter(Boolean));
+  const TESTNET_RPC_TIMEOUT_MS = 7_000;
+  const TESTNET_SUBMIT_WAIT_MS = 90_000;
+  const TESTNET_POLL_INTERVAL_MS = 1_500;
   const PAYMENT_PREVIEW_TTL_MS = 60 * 1000;
   const MIN_LEDGER_HEADROOM = 2;
   const MAX_TEST_PAYMENT_DROPS = 10_000_000n; // 10 Testnet XRP hard cap.
@@ -171,13 +174,74 @@
     })();
     return xrplLoadPromise;
   }
-  async function withTestnetClient(callback){
-    if(!/^wss:\/\/s\.altnet\.rippletest\.net:51233\/?$/i.test(TESTNET_WS))throw new Error('Embedded wallet transaction endpoint is not the approved XRPL Testnet server.');
-    const xrpl=await loadXrpl();
-    if(typeof xrpl.Client!=='function')throw new Error('XRPL Testnet client is unavailable.');
-    const client=new xrpl.Client(TESTNET_WS);
-    try{await client.connect();return await callback(client,xrpl);}
-    finally{try{await client.disconnect();}catch(_error){}}
+  function approvedTestnetHttpUrl(value){
+    try{
+      const url=new URL(String(value||''));
+      if(url.protocol!=='https:')return false;
+      const host=url.host.toLowerCase();
+      return host==='testnet.xrpl-labs.com'||host==='testnet.honeycluster.io'||host==='s.altnet.rippletest.net:51234';
+    }catch(_error){return false;}
+  }
+  async function testnetRpc(method,params=[{}],options={}){
+    const retryCodes=new Set((options.retryXrplCodes||[]).map(value=>String(value)));
+    const sources=TESTNET_HTTP_SOURCES.filter(approvedTestnetHttpUrl);
+    if(!sources.length)throw new Error('ATM Pay has no approved XRPL Testnet HTTPS endpoints configured.');
+    const payload=JSON.stringify({method,params:Array.isArray(params)?params:[params]});
+    let lastError=null;
+    for(const endpoint of sources){
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),TESTNET_RPC_TIMEOUT_MS);
+      try{
+        const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:payload,signal:controller.signal,cache:'no-store',referrerPolicy:'no-referrer'});
+        if(!response.ok){lastError=new Error(`XRPL Testnet endpoint failed (${response.status}).`);continue;}
+        const json=await response.json(); const result=json?.result||{};
+        if(result.status==='error'||result.error){
+          const error=new Error(result.error_message||result.error||'XRPL Testnet request failed.'); error.xrplCode=String(result.error||'');
+          if(retryCodes.has(error.xrplCode)){lastError=error;continue;}
+          throw error;
+        }
+        return result;
+      }catch(error){
+        if(error?.xrplCode&&!retryCodes.has(error.xrplCode))throw error;
+        lastError=error;
+      }finally{clearTimeout(timer);}
+    }
+    if(lastError?.xrplCode)throw lastError;
+    throw new Error('XRPL Testnet is temporarily unreachable. ATM Pay did not sign or send anything. Please try again in a moment.');
+  }
+  function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+  function safeFeeDrops(feeResult){
+    const drops=feeResult?.drops||{};
+    const candidates=[drops.open_ledger_fee,drops.minimum_fee,drops.base_fee].map(value=>BigInt(String(value||'0')));
+    const base=candidates.reduce((max,value)=>value>max?value:max,0n);
+    if(base<=0n)throw new Error('XRPL Testnet did not return a usable network fee.');
+    return (base*12n+9n)/10n;
+  }
+  async function prepareTestnetPaymentTx(account,destination,amountDrops,memos){
+    const [accountInfo,feeInfo]=await Promise.all([
+      testnetRpc('account_info',[{account,ledger_index:'current',queue:true}]),
+      testnetRpc('fee',[{}]),
+    ]);
+    const sequence=Number(accountInfo?.account_data?.Sequence);
+    const ledgerIndex=Number(feeInfo?.ledger_current_index||accountInfo?.ledger_current_index);
+    const feeDrops=safeFeeDrops(feeInfo);
+    if(!Number.isSafeInteger(sequence)||sequence<=0)throw new Error('XRPL Testnet did not return a valid account sequence.');
+    if(!Number.isSafeInteger(ledgerIndex)||ledgerIndex<=0)throw new Error('XRPL Testnet did not return a valid ledger index.');
+    return {tx:{TransactionType:'Payment',Account:account,Destination:destination,Amount:String(amountDrops),Fee:feeDrops.toString(),Sequence:sequence,LastLedgerSequence:ledgerIndex+20,Memos:memos},ledgerIndex};
+  }
+  async function submitSignedBlobAndWait(txBlob,txHash,lastLedgerSequence){
+    const submitResult=await testnetRpc('submit',[{tx_blob:String(txBlob),fail_hard:false}]);
+    const started=Date.now(); let lastLedger=0;
+    while(Date.now()-started<TESTNET_SUBMIT_WAIT_MS){
+      try{
+        const txResult=await testnetRpc('tx',[{transaction:String(txHash),binary:false}],{retryXrplCodes:['txnNotFound']});
+        if(txResult?.validated===true)return txResult;
+      }catch(error){if(error?.xrplCode!=='txnNotFound')throw error;}
+      try{const feeInfo=await testnetRpc('fee',[{}]);lastLedger=Number(feeInfo?.ledger_current_index||0)||lastLedger;}catch(_error){}
+      if(lastLedger&&lastLedger>Number(lastLedgerSequence))break;
+      await sleep(TESTNET_POLL_INTERVAL_MS);
+    }
+    return {hash:String(txHash),validated:false,engine_result:String(submitResult?.engine_result||'UNKNOWN'),tx_json:submitResult?.tx_json||null,ledger_index:lastLedger||null};
   }
 
   async function withDecryptedWallet(record,vaultKey,callback){
@@ -542,11 +606,7 @@
       const validAddress=typeof xrpl.isValidClassicAddress==='function'?xrpl.isValidClassicAddress(destination):CLASSIC_ADDRESS_RE.test(destination);
       if(!validAddress||destination===state.record.address)throw new Error('ATM Pay recipient settlement route is invalid. Nothing was signed.');
       if(String(intent.amount_drops)!==amount.drops)throw new Error('ATM Pay amount changed during preparation. Nothing was signed.');
-      const preparedLedger=await withTestnetClient(async(client)=>{
-        const tx=await client.autofill({TransactionType:'Payment',Account:state.record.address,Destination:destination,Amount:amount.drops,Memos:expectedIntentMemos(intent.id)});
-        const ledgerIndex=await client.getLedgerIndex();
-        return {tx,ledgerIndex};
-      });
+      const preparedLedger=await prepareTestnetPaymentTx(state.record.address,destination,amount.drops,expectedIntentMemos(intent.id));
       const tx=preparedLedger.tx||{}; assertOnlyAllowedPaymentFields(tx,intent.id);
       if(tx.Account!==state.record.address||tx.Destination!==destination||String(tx.Amount||'')!==amount.drops)throw new Error('Prepared XRPL transaction did not match the ATM Pay request. Nothing was signed.');
       const feeDrops=BigInt(String(tx.Fee||'0'));
@@ -584,16 +644,15 @@
     return intent;
   }
   async function recheckLiveLedgerBeforeSigning(prepared){
-    return withTestnetClient(async(client)=>{
-      const [ledgerIndex,accountInfo]=await Promise.all([
-        client.getLedgerIndex(),
-        client.request({command:'account_info',account:state.record.address,ledger_index:'validated',queue:false})
-      ]);
-      const liveSequence=Number(accountInfo?.result?.account_data?.Sequence);
-      if(!Number.isSafeInteger(liveSequence)||liveSequence!==prepared.sequence)throw new Error('Your ATM Pay balance changed since review. Review the payment again.');
-      if(Number(prepared.lastLedgerSequence)<=Number(ledgerIndex)+MIN_LEDGER_HEADROOM)throw new Error('That payment review is too close to expiration. Review it again.');
-      return Number(ledgerIndex);
-    });
+    const [accountInfo,feeInfo]=await Promise.all([
+      testnetRpc('account_info',[{account:state.record.address,ledger_index:'validated',queue:false}]),
+      testnetRpc('fee',[{}]),
+    ]);
+    const liveSequence=Number(accountInfo?.account_data?.Sequence);
+    const ledgerIndex=Number(feeInfo?.ledger_current_index||accountInfo?.ledger_index||0);
+    if(!Number.isSafeInteger(liveSequence)||liveSequence!==prepared.sequence)throw new Error('Your ATM Pay balance changed since review. Review the payment again.');
+    if(!Number.isSafeInteger(ledgerIndex)||Number(prepared.lastLedgerSequence)<=ledgerIndex+MIN_LEDGER_HEADROOM)throw new Error('That payment review is too close to expiration. Review it again.');
+    return ledgerIndex;
   }
   async function authorizeVaultForOperation(method){
     if(method==='passkey')return unlockVaultWithPasskey(state.record);
@@ -631,8 +690,8 @@
       state.lastTransaction={hash:String(signed.hash),recipient:prepared.recipient,amountXrp:prepared.amountXrp,result:'SUBMISSION PENDING',validated:false,ledgerIndex:null};
       await walletApi()('/api/embedded-wallet?action=pay-submitted',{method:'POST',body:JSON.stringify({intent_id:prepared.payIntentId,tx_hash:String(signed.hash)})});
       setMessage('Authorized. Sending payment to XRPL Testnet…');
-      const response=await withTestnetClient(async(client)=>client.submitAndWait(signed.tx_blob));
-      const result=response?.result||{}; const hash=transactionHash(result,signed.hash); const code=paymentResultCode(result)||'UNKNOWN';
+      const result=await submitSignedBlobAndWait(signed.tx_blob,signed.hash,prepared.lastLedgerSequence);
+      const hash=transactionHash(result,signed.hash); const code=paymentResultCode(result)||'UNKNOWN';
       if(hash&&hash.toUpperCase()!==String(signed.hash).toUpperCase())throw new Error('XRPL returned a different transaction hash than the locally signed payment.');
       const validated=result.validated===true;
       let serverVerified=null;

@@ -85,6 +85,7 @@ const requiredFiles = [
   'docs/V234-EMBEDDED-WALLET-PHASE2.md',
   'docs/V234.1-WALLET-SECURITY-HARDENING.md',
   'docs/V234.2-ATM-PAY.md',
+  'docs/V234.2.4-ATM-PAY-MOBILE-RPC.md',
   'scripts/generate-security-headers.mjs',
   'vercel.json',
   'package.json',
@@ -97,6 +98,7 @@ const requiredFiles = [
   'js/runtime/darts.js',
   'api/embedded-wallet.js',
   'lib/atm-pay.js',
+  'lib/xrpl-testnet-rpc.js',
   'supabase/ATM-Town-v234.sql',
   'supabase/ATM-Town-v234.2.sql',
   'scripts/apply-v2331.sh',
@@ -204,7 +206,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v234.2'")) errors.push('js/config.js is not marked v234.2.');
+if (!configSource.includes("version: 'v234.2.4'")) errors.push('js/config.js is not marked v234.2.4.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -214,12 +216,16 @@ const registry = registrySandbox.window.ATMMaps;
 const config = registrySandbox.window.ATM_TOWN_CONFIG;
 
 if (config.embeddedWallet?.network !== 'testnet') errors.push('Embedded wallet must remain Testnet-only in v234.');
-if (!String(config.embeddedWallet?.rpcHttp || '').includes('altnet.rippletest.net')) errors.push('Embedded wallet config must use XRPL Testnet RPC.');
-if (!/^wss:\/\/s\.altnet\.rippletest\.net:51233\/?$/i.test(String(config.embeddedWallet?.rpcWs || ''))) errors.push('Embedded wallet signing client must use the approved XRPL Testnet WebSocket endpoint.');
+const rpcHttpSources = Array.isArray(config.embeddedWallet?.rpcHttpSources) ? config.embeddedWallet.rpcHttpSources.map(String) : [];
+for (const requiredRpc of ['https://testnet.xrpl-labs.com/','https://testnet.honeycluster.io/','https://s.altnet.rippletest.net:51234/']) {
+  if (!rpcHttpSources.includes(requiredRpc)) errors.push(`v234.2.4 missing resilient Testnet HTTPS RPC endpoint: ${requiredRpc}`);
+}
+if ('rpcWs' in (config.embeddedWallet || {})) errors.push('v234.2.4 ATM Pay should not depend on a browser Testnet WebSocket endpoint.');
 if (!String(config.embeddedWallet?.explorerTxBase || '').startsWith('https://testnet.xrpl.org/transactions/')) errors.push('Embedded wallet transaction explorer must remain on XRPL Testnet.');
 const embeddedWalletSource = await readFile(path.join(root, 'js', 'wallet', 'embedded-wallet.js'), 'utf8');
 const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
 const atmPaySource = await readFile(path.join(root, 'lib', 'atm-pay.js'), 'utf8');
+const testnetRpcSource = await readFile(path.join(root, 'lib', 'xrpl-testnet-rpc.js'), 'utf8');
 const embeddedWalletSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v234.sql'), 'utf8');
 const atmPaySql = await readFile(path.join(root, 'supabase', 'ATM-Town-v234.2.sql'), 'utf8');
 if (!embeddedWalletSource.includes("const NETWORK = 'testnet'")) errors.push('Embedded wallet client is not hard-gated to Testnet.');
@@ -232,8 +238,9 @@ if (/state\.(?:wallet|seed)\b/.test(embeddedWalletSource)) errors.push('v234.1 m
 if (/AUTO_LOCK_MS/.test(embeddedWalletSource)) errors.push('v234.1 should use operation-scoped key decryption rather than a timed unlocked-wallet session.');
 if (!embeddedWalletSource.includes('withDecryptedWallet(state.record,vault,async(wallet)=>wallet.sign(tx))')) errors.push('v234.1 must decrypt and sign inside the operation-scoped wallet callback.');
 if (!embeddedWalletSource.includes('FRESH AUTH PER PAYMENT')) errors.push('v234.2 fresh-authorization payment marker is missing.');
-if (!embeddedWalletSource.includes("client.autofill({TransactionType:'Payment'")) errors.push('Wallet must autofill the Testnet payment before preview/signing.');
-if (!embeddedWalletSource.includes('client.submitAndWait(signed.tx_blob)')) errors.push('Wallet must submit the locally signed blob directly to XRPL Testnet.');
+if (!embeddedWalletSource.includes('prepareTestnetPaymentTx')) errors.push('v234.2.4 wallet must prepare payment fields through resilient Testnet HTTPS JSON-RPC.');
+if (!embeddedWalletSource.includes("testnetRpc('submit'") || !embeddedWalletSource.includes('submitSignedBlobAndWait')) errors.push('v234.2.4 wallet must submit the locally signed blob directly with resilient Testnet HTTPS JSON-RPC.');
+if (/new xrpl\.Client|submitAndWait\(|client\.autofill\(/.test(embeddedWalletSource)) errors.push('v234.2.4 ATM Pay must not depend on browser WebSocket Client/autofill/submitAndWait.');
 if (!embeddedWalletSource.includes('MAX_TEST_PAYMENT_DROPS = 10_000_000n')) errors.push('Small-payment hard cap is missing.');
 if (!embeddedWalletSource.includes('MAX_TEST_FEE_DROPS = 10_000n')) errors.push('Fee safety ceiling is missing.');
 if (!embeddedWalletSource.includes('PAYMENT_PREVIEW_TTL_MS = 60 * 1000')) errors.push('Prepared-payment expiry guard is missing.');
@@ -246,14 +253,16 @@ if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-verify')) er
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-submitted')) errors.push('v234.2 client must durably mark the locally signed transaction hash before XRPL broadcast.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-complete')) errors.push('v234.2 client is missing post-ledger ATM Pay verification/activity recording.');
 if (!embeddedWalletSource.includes('atmPayIntentId') || !embeddedWalletSource.includes('recipientUserId') || !embeddedWalletSource.includes('recipientHandle')) errors.push('v234.2 canonical signing digest must bind ATM Pay identity to the XRPL transaction.');
-if (!embeddedWalletSource.includes("ATM_PAY_MEMO_TYPE = 'ATM-PAY-INTENT'") || !embeddedWalletSource.includes('Memos:expectedIntentMemos(intent.id)')) errors.push('v234.2 must bind the unique ATM Pay intent ID into the signed XRPL Payment memo.');
+if (!embeddedWalletSource.includes("ATM_PAY_MEMO_TYPE = 'ATM-PAY-INTENT'") || !embeddedWalletSource.includes('expectedIntentMemos(intent.id)')) errors.push('v234.2 must bind the unique ATM Pay intent ID into the signed XRPL Payment memo.');
 if (/escapeHtml\(prepared\.destination\)|\$\{prepared\.destination\}/.test(embeddedWalletSource)) errors.push('v234.2 must not render the settlement address in the normal payment review.');
 if (!embeddedWalletSource.includes('copyEmergencySeed')) errors.push('v234.1 emergency seed export path is missing.');
 if (/\$\{\s*(?:escapeHtml\(\s*)?seed\b|textContent\s*=\s*seed/i.test(embeddedWalletSource)) errors.push('Emergency seed material must never be rendered into page HTML.');
 if (/walletApi\([^\n]*tx_blob/i.test(embeddedWalletSource)) errors.push('Signed XRPL transaction blobs must not be relayed through the ATM Town authenticated API.');
 if (!embeddedWalletApiSource.includes("const NETWORK = 'testnet'")) errors.push('Embedded wallet API is not hard-gated to Testnet.');
-if (!embeddedWalletApiSource.includes('XRPL_TESTNET_RPC_URL')) errors.push('Embedded wallet API must use a dedicated XRPL_TESTNET_RPC_URL override.');
-if (!embeddedWalletApiSource.includes('AbortSignal.timeout(RPC_TIMEOUT_MS)')) errors.push('v234.1 embedded-wallet RPC timeout guard is missing.');
+if (!embeddedWalletApiSource.includes('xrplTestnetRpc')) errors.push('Embedded wallet API must use the resilient shared Testnet RPC helper.');
+if (!testnetRpcSource.includes('XRPL_TESTNET_RPC_URL')) errors.push('Shared Testnet RPC helper must honor XRPL_TESTNET_RPC_URL override.');
+if (!testnetRpcSource.includes('AbortSignal.timeout')) errors.push('Shared Testnet RPC helper is missing a bounded request timeout.');
+for (const host of ['testnet.xrpl-labs.com','testnet.honeycluster.io','s.altnet.rippletest.net:51234']) { if (!testnetRpcSource.includes(host)) errors.push(`Shared Testnet RPC helper missing endpoint: ${host}`); }
 if (!embeddedWalletApiSource.includes('assertExactKeys')) errors.push('v234.1 encrypted-backup exact-schema validation is missing.');
 if (!embeddedWalletApiSource.includes('existing.address !== address')) errors.push('v234.1 must block silent replacement of an account embedded-wallet address.');
 if (/s1\.ripple\.com|xrplcluster\.com|force_network[^\n]*MAINNET/i.test(embeddedWalletApiSource)) errors.push('Embedded wallet API contains a Mainnet endpoint/marker.');
@@ -267,6 +276,7 @@ if (!atmPaySource.includes("new Set(['pay-status','pay-search','pay-activity'"))
 if (!atmPaySource.includes("from('atm_pay_profiles')") || !atmPaySource.includes("from('atm_pay_intents')") || !atmPaySource.includes("from('atm_pay_requests')")) errors.push('v234.2 ATM Pay server persistence is incomplete.');
 if (!atmPaySource.includes("route_type: 'embedded'") || !atmPaySource.includes("network: NETWORK") || !atmPaySource.includes("asset: ASSET")) errors.push('v234.2 ATM Pay intent route/network/asset binding is missing.');
 if (!atmPaySource.includes("rpc('tx', [{ transaction: txHash, binary: false }])")) errors.push('v234.2 server must independently look up the final XRPL transaction by hash.');
+if (!atmPaySource.includes('xrplTestnetRpc')) errors.push('v234.2.4 ATM Pay server verification must use resilient Testnet RPC fallback.');
 if (!atmPaySource.includes("txResult?.validated === true") || !atmPaySource.includes("tx?.Account !== senderWallet.address") || !atmPaySource.includes("tx?.Destination !== intent.destination_address") || !atmPaySource.includes("String(tx?.Amount || '') !== String(intent.amount_drops)") || !atmPaySource.includes('intentMemoMatches(tx, intent.id)')) errors.push('v234.2 server-side validated-ledger payment matching is incomplete.');
 if (!atmPaySource.includes('async function markSubmitted') || !atmPaySource.includes("'pay-submitted'")) errors.push('v234.2 server must persist a submitted transaction hash before broadcast for retry-safe UX.');
 if (/tx_blob|seed|private[_-]?key/i.test(atmPaySource) && /req\.body|destination_address/.test(atmPaySource) && atmPaySource.includes('tx_blob')) errors.push('ATM Pay server helper must not accept or relay signed transaction blobs/private keys.');
@@ -290,6 +300,8 @@ if (!scriptDirective) errors.push('v234.1 CSP script-src directive is missing.')
 if (scriptDirective.includes("'unsafe-inline'") || scriptDirective.includes("'unsafe-eval'")) errors.push('v234.1 script-src must not allow unsafe-inline or unsafe-eval.');
 if (scriptDirective.includes('unpkg.com')) errors.push('v234.1 CSP must not authorize the removed unpkg runtime fallback.');
 if (/sha256-/i.test(scriptDirective)) errors.push('v234.2.2 CSP must not depend on inline-script hashes.');
+for (const endpoint of ['https://testnet.xrpl-labs.com','https://testnet.honeycluster.io','https://s.altnet.rippletest.net:51234']) { if (!csp.includes(endpoint)) errors.push(`v234.2.4 CSP connect-src missing ${endpoint}.`); }
+if (csp.includes('wss://s.altnet.rippletest.net:51233')) errors.push('v234.2.4 CSP should not retain the flaky browser Testnet WebSocket dependency.');
 const executableInlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .filter((match) => !/\bsrc\s*=/.test(match[1]) && match[2].trim().length > 0);
 if (executableInlineScripts.length) errors.push(`v234.2.2 forbids executable inline JavaScript; found ${executableInlineScripts.length} inline block(s).`);
@@ -436,10 +448,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v234.2 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v234.2.4 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v234.2 build validation passed.');
+console.log('ATM Town v234.2.4 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

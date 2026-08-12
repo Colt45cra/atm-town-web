@@ -1,11 +1,9 @@
 import { requireUser, sendError, setCors } from '../lib/auth.js';
 import { handleAtmPayAction, isAtmPayAction } from '../lib/atm-pay.js';
-
-const TESTNET_RPC = process.env.XRPL_TESTNET_RPC_URL || 'https://s.altnet.rippletest.net:51234/';
+import { xrplTestnetRpc } from '../lib/xrpl-testnet-rpc.js';
 const NETWORK = 'testnet';
 const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const MAX_BACKUP_BYTES = 24 * 1024;
-const RPC_TIMEOUT_MS = 8_000;
 
 function noStore(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -103,26 +101,7 @@ async function readWallet(admin, userId) {
 }
 
 async function rpc(method, params) {
-  let response;
-  try {
-    response = await fetch(TESTNET_RPC, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ method, params }),
-      signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
-    });
-  } catch (error) {
-    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new Error('XRPL Testnet request timed out.');
-    throw error;
-  }
-  if (!response.ok) throw new Error(`XRPL Testnet request failed (${response.status}).`);
-  const json = await response.json();
-  if (json?.result?.status === 'error') {
-    const err = new Error(json.result.error_message || json.result.error || 'XRPL Testnet request failed.');
-    err.xrplCode = json.result.error;
-    throw err;
-  }
-  return json?.result || {};
+  return xrplTestnetRpc(method, params);
 }
 
 async function readBalance(address) {

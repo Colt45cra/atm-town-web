@@ -24,7 +24,7 @@ const csp = [
   `img-src 'self' data: blob: https:`,
   `media-src 'self' blob: https:`,
   `font-src 'self' data:`,
-  `connect-src 'self' https://xnyjurertwohlqczaeux.supabase.co wss://xnyjurertwohlqczaeux.supabase.co https://s.altnet.rippletest.net:51234 wss://s.altnet.rippletest.net:51233 https://*.livekit.cloud wss://*.livekit.cloud`,
+  `connect-src 'self' https://xnyjurertwohlqczaeux.supabase.co wss://xnyjurertwohlqczaeux.supabase.co https://testnet.xrpl-labs.com https://testnet.honeycluster.io https://s.altnet.rippletest.net:51234 https://*.livekit.cloud wss://*.livekit.cloud`,
   `frame-src https://www.youtube-nocookie.com`,
   `worker-src 'self' blob:`,
   `child-src 'self' blob:`,
