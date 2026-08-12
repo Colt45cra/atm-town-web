@@ -14,6 +14,7 @@
     "validate": "node scripts/validate-build.mjs",
     "audit:assets": "node scripts/audit-assets.mjs",
     "tile:world": "python3 scripts/tile-world.py",
-    "validate:world": "python3 scripts/validate-world.py"
+    "validate:world": "python3 scripts/validate-world.py",
+    "security:headers": "node scripts/generate-security-headers.mjs"
   }
 }

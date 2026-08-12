@@ -1,0 +1,41 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-CUwaRzCDoK89umufeyTdemRSX98neUZpKZaIrgbuMGE=' 'sha256-WaceCHPqBnNO1NLuAE9uiucDnMCxwfOmHsuWJS9QCKo=' 'sha256-AhvBokW2yMf6/aepPG59hwwAtLrSU59dR2ysOgJ/P2s=' 'sha256-6Q3I2MZ13FeKokdYpi+HKP2Dt20LkLVkxWSpFE8S3JY=' 'sha256-/rQdOUBQuRxMtFq4Z4q8fH9V61mNLS1Yw1n9HobT6Z0='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' https://xnyjurertwohlqczaeux.supabase.co wss://xnyjurertwohlqczaeux.supabase.co https://s.altnet.rippletest.net:51234 wss://s.altnet.rippletest.net:51233 https://*.livekit.cloud wss://*.livekit.cloud; frame-src https://www.youtube-nocookie.com; worker-src 'self' blob:; child-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), geolocation=(), microphone=(self), payment=(), usb=(), serial=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
+        {
+          "key": "X-Permitted-Cross-Domain-Policies",
+          "value": "none"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 /*
  * ATM Town runtime configuration
+ * v234.2: adds ATM Pay identity, request, activity, and server-bound Testnet payment intents.
+ * v234.1: hardens the isolated XRPL Testnet embedded-wallet runtime configuration.
  * v234: adds isolated XRPL Testnet embedded-wallet runtime configuration.
  * v230: world streaming metadata joins map entry/exit/zoom/spawn runtime settings.
  * Keep this file data-only. Runtime behavior belongs in the appropriate module.
@@ -10,10 +12,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 234,
-    version: 'v234',
-    name: 'Embedded Wallet — Testnet Phase 2',
-    title: 'ATM Town v234 — Embedded Wallet · Testnet Phase 2'
+    number: 234.2,
+    version: 'v234.2',
+    name: 'ATM Pay',
+    title: 'ATM Town v234.2 — ATM Pay'
   });
 
   const MAPS = Object.freeze({
@@ -110,8 +112,7 @@
   });
 
   const SUPABASE_CDN_SOURCES = Object.freeze([
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0',
-    'https://unpkg.com/@supabase/supabase-js@2.105.0'
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0'
   ]);
 
   const EMBEDDED_WALLET = Object.freeze({
@@ -121,8 +122,7 @@
     explorerBase: 'https://testnet.xrpl.org/accounts/',
     explorerTxBase: 'https://testnet.xrpl.org/transactions/',
     xrplBrowserSources: Object.freeze([
-      'https://cdn.jsdelivr.net/npm/xrpl@5.0.0/build/xrpl-latest-min.js',
-      'https://unpkg.com/xrpl@5.0.0/build/xrpl-latest-min.js'
+      'https://cdn.jsdelivr.net/npm/xrpl@5.0.0/build/xrpl-latest-min.js'
     ])
   });
 

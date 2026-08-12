@@ -832,7 +832,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 <div class="signupOptions">
 <button class="flowSecondary" id="registerPasskeyBtn" type="button">Add fingerprint / passkey</button>
 <button class="flowSecondary cyan" id="linkWalletBtn" type="button">Connect Xaman</button>
-<button class="flowSecondary atmWallet" id="embeddedWalletBtn" type="button"><span class="identityBtnIcon">◇</span>ATM Wallet · Testnet</button>
+<button class="flowSecondary atmWallet" id="embeddedWalletBtn" type="button"><span class="identityBtnIcon">◇</span>ATM Pay · Testnet</button>
 <button class="flowTextButton" id="signOutBtn" type="button">Use a different email</button>
 </div>
 <div aria-live="polite" class="xamanLinkBar" id="xamanLinkBar" hidden role="status"><span id="xamanLinkBarText">Waiting for Xaman…</span></div>
@@ -842,7 +842,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 </div>
 <div class="flowCard signupNextCard">
 <div class="cardHeading"><span>2</span><div><strong>Secure your account</strong><small>A passkey lets the Log In button open your phone's fingerprint, face, or device lock.</small></div></div>
-<div class="cardHeading"><span>3</span><div><strong>Optional XRPL wallet</strong><small>Connect Xaman for your existing XRPL wallet, or create a separate passkey/recovery-secured ATM Wallet on Testnet.</small></div></div>
+<div class="cardHeading"><span>3</span><div><strong>Wallet & ATM Pay</strong><small>Keep Xaman for your existing XRPL wallet, or set up ATM Pay on Testnet to send and request money by @name.</small></div></div>
 <button class="flowPrimary cyan" disabled="" id="signupContinueBtn" type="button">Continue to character selection</button>
 <div aria-live="polite" class="flowStatus" id="signupStatus">Verify your email to continue.</div>
 </div>
@@ -1298,7 +1298,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v234',name:ATM_CONFIG?.build?.name||'Embedded Wallet — Testnet Phase 2'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v234.2',name:ATM_CONFIG?.build?.name||'ATM Pay'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;

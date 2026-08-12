@@ -4,19 +4,20 @@
   const CONFIG = window.ATM_TOWN_CONFIG?.embeddedWallet || {};
   const NETWORK = 'testnet';
   const TESTNET_WS = String(CONFIG.rpcWs || 'wss://s.altnet.rippletest.net:51233/');
-  const AUTO_LOCK_MS = 5 * 60 * 1000;
   const PAYMENT_PREVIEW_TTL_MS = 60 * 1000;
-  const MAX_TEST_PAYMENT_DROPS = 10_000_000n; // 10 Testnet XRP hard cap for Phase 2.
+  const MIN_LEDGER_HEADROOM = 2;
+  const MAX_TEST_PAYMENT_DROPS = 10_000_000n; // 10 Testnet XRP hard cap.
   const MAX_TEST_FEE_DROPS = 10_000n; // 0.01 Testnet XRP safety ceiling.
   const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
+  const PAYMENT_TX_FIELDS = new Set(['TransactionType','Account','Destination','Amount','Fee','Sequence','LastLedgerSequence','Memos']);
+  const ATM_PAY_MEMO_TYPE = 'ATM-PAY-INTENT';
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
-  let state = { record:null, wallet:null, seed:null, recoveryKey:null, busy:false, preparedPayment:null, lastTransaction:null };
-  let lockTimer = null;
+  let state = { record:null, recoveryKey:null, busy:false, preparedPayment:null, lastTransaction:null, payProfile:null, paySuggestedHandle:'', payDisplayName:'ATM Player', payView:'send', selectedRecipient:null, recipientSearchResults:[], paySearchQuery:'', activity:[], requestDraft:null, xrplDetailsVisible:false };
   let xrplLoadPromise = null;
+  let paySearchTimer = null;
 
   function randomBytes(length){ const out=new Uint8Array(length); crypto.getRandomValues(out); return out; }
-  function concatBytes(...parts){ const size=parts.reduce((n,p)=>n+p.length,0); const out=new Uint8Array(size); let offset=0; for(const p of parts){out.set(p,offset);offset+=p.length;} return out; }
   function bytesToB64u(bytes){
     let binary=''; const chunk=0x8000;
     for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
@@ -37,6 +38,8 @@
   }
   function escapeHtml(value){return String(value??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));}
   function shortAddress(value){value=String(value||'');return value.length>18?value.slice(0,9)+'…'+value.slice(-7):value;}
+  function utf8ToHex(value){return Array.from(textEncoder.encode(String(value||'')),byte=>byte.toString(16).padStart(2,'0')).join('').toUpperCase();}
+  function expectedIntentMemos(intentId){return [{Memo:{MemoType:utf8ToHex(ATM_PAY_MEMO_TYPE),MemoData:utf8ToHex(String(intentId||''))}}];}
   function dropsToXrpText(drops){
     const value=BigInt(String(drops||'0')); const whole=value/1_000_000n; const fraction=(value%1_000_000n).toString().padStart(6,'0');
     return `${whole}.${fraction}`;
@@ -47,7 +50,7 @@
     const [wholeText,fractionText='']=text.split('.');
     const drops=BigInt(wholeText)*1_000_000n+BigInt((fractionText+'000000').slice(0,6));
     if(drops<=0n)throw new Error('Testnet payment amount must be greater than 0 XRP.');
-    if(drops>MAX_TEST_PAYMENT_DROPS)throw new Error('Phase 2 limits each test payment to 10 XRP.');
+    if(drops>MAX_TEST_PAYMENT_DROPS)throw new Error('ATM Town currently limits each test payment to 10 XRP.');
     return {drops:drops.toString(),xrp:dropsToXrpText(drops)};
   }
   function paymentResultCode(result){
@@ -60,16 +63,19 @@
     if(typeof window.atmApiWithAuth!=='function')throw new Error('ATM Town account session is not ready. Sign in first.');
     return window.atmApiWithAuth;
   }
+  function clearRecoveryKey(){if(state.recoveryKey){state.recoveryKey.fill?.(0);state.recoveryKey=null;}}
+  function clearPreparedPayment(){state.preparedPayment=null;}
+  function clearEphemeral(clearRecovery=false){clearPreparedPayment();if(clearRecovery)clearRecoveryKey();}
 
   async function importAesKey(bytes, usages){return crypto.subtle.importKey('raw',bytes,{name:'AES-GCM'},false,usages);}
-  async function encryptBytes(keyBytes,plainBytes,iv,aad){
+  async function encryptBytes(keyBytes,plainBytes,iv,aadText){
     const key=await importAesKey(keyBytes,['encrypt']);
-    const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:textEncoder.encode(aad)},key,plainBytes);
+    const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:textEncoder.encode(aadText)},key,plainBytes);
     return new Uint8Array(cipher);
   }
-  async function decryptBytes(keyBytes,cipherBytes,iv,aad){
+  async function decryptBytes(keyBytes,cipherBytes,iv,aadText){
     const key=await importAesKey(keyBytes,['decrypt']);
-    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:textEncoder.encode(aad)},key,cipherBytes);
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:textEncoder.encode(aadText)},key,cipherBytes);
     return new Uint8Array(plain);
   }
   async function hkdf(secret,salt,info){
@@ -77,14 +83,16 @@
     const bits=await crypto.subtle.deriveBits({name:'HKDF',hash:'SHA-256',salt,info:textEncoder.encode(info)},material,256);
     return new Uint8Array(bits);
   }
+  async function sha256Text(text){const digest=await crypto.subtle.digest('SHA-256',textEncoder.encode(text));return bytesToB64u(new Uint8Array(digest));}
   function aad(kind,address){return `ATM-TOWN|${kind}|v1|${NETWORK}|${address}`;}
 
   async function wrapVaultKey(vaultKey,secret,kind,address){
     const salt=randomBytes(32), iv=randomBytes(12);
     const kek=await hkdf(secret,salt,`ATM Town ${kind} wallet key wrapping v1`);
-    const ciphertext=await encryptBytes(kek,vaultKey,iv,aad(`wallet-wrap-${kind}`,address));
-    kek.fill(0);
-    return {kdf:'HKDF-SHA-256',salt:bytesToB64u(salt),iv:bytesToB64u(iv),ciphertext:bytesToB64u(ciphertext)};
+    try{
+      const ciphertext=await encryptBytes(kek,vaultKey,iv,aad(`wallet-wrap-${kind}`,address));
+      return {kdf:'HKDF-SHA-256',salt:bytesToB64u(salt),iv:bytesToB64u(iv),ciphertext:bytesToB64u(ciphertext)};
+    }finally{kek.fill(0);}
   }
   async function unwrapVaultKey(wrapper,secret,kind,address){
     const kek=await hkdf(secret,b64uToBytes(wrapper.salt),`ATM Town ${kind} wallet key wrapping v1`);
@@ -125,20 +133,27 @@
     const credentialId=bytesToB64u(new Uint8Array(credential.rawId));
     let prfResult=credential.getClientExtensionResults?.()?.prf?.results?.first;
     let prfBytes=prfResult?new Uint8Array(prfResult):null;
-    if(!prfBytes){
-      try{prfBytes=await prfFromCredential(credentialId,prfSalt);}catch(_error){prfBytes=null;}
-    }
+    if(!prfBytes){try{prfBytes=await prfFromCredential(credentialId,prfSalt);}catch(_error){prfBytes=null;}}
     if(!prfBytes)return null;
-    const wrapper=await wrapVaultKey(vaultKey,prfBytes,'passkey',address); prfBytes.fill(0);
-    return {credential_id:credentialId,prf_salt:bytesToB64u(prfSalt),...wrapper};
+    try{
+      const wrapper=await wrapVaultKey(vaultKey,prfBytes,'passkey',address);
+      return {credential_id:credentialId,prf_salt:bytesToB64u(prfSalt),...wrapper};
+    }finally{prfBytes.fill(0);}
   }
   async function unlockVaultWithPasskey(record){
     const wrapper=record?.encrypted_backup?.passkey;
-    if(!wrapper)throw new Error('This backup does not have a passkey unlock. Use the recovery key.');
-    if(!webAuthnSupported())throw new Error('Passkey unlock is not available in this browser. Use the recovery key.');
+    if(!wrapper)throw new Error('This backup does not have a wallet passkey. Use the recovery key.');
+    if(!webAuthnSupported())throw new Error('Passkey authorization is not available in this browser. Use the recovery key.');
     const prf=await prfFromCredential(wrapper.credential_id,b64uToBytes(wrapper.prf_salt));
-    if(!prf)throw new Error('This authenticator does not provide the WebAuthn PRF needed to unlock the wallet. Use the recovery key.');
+    if(!prf)throw new Error('This authenticator did not return the WebAuthn PRF needed for this wallet. Use the recovery key.');
     try{return await unwrapVaultKey(wrapper,prf,'passkey',record.address);}finally{prf.fill(0);}
+  }
+  async function unlockVaultWithRecovery(record,recoveryText){
+    let recovery=null;
+    try{
+      recovery=parseRecoveryKey(recoveryText);
+      return await unwrapVaultKey(record.encrypted_backup.recovery,recovery,'recovery',record.address);
+    }finally{recovery?.fill(0);}
   }
 
   async function loadXrpl(){
@@ -148,7 +163,7 @@
     xrplLoadPromise=(async()=>{
       for(const src of sources){
         try{
-          await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=true;s.crossOrigin='anonymous';s.onload=resolve;s.onerror=()=>reject(new Error('XRPL library failed to load.'));document.head.appendChild(s);});
+          await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=true;s.crossOrigin='anonymous';s.referrerPolicy='no-referrer';s.onload=resolve;s.onerror=()=>reject(new Error('XRPL library failed to load.'));document.head.appendChild(s);});
           if(window.xrpl?.Wallet)return window.xrpl;
         }catch(_error){}
       }
@@ -156,7 +171,6 @@
     })();
     return xrplLoadPromise;
   }
-
   async function withTestnetClient(callback){
     if(!/^wss:\/\/s\.altnet\.rippletest\.net:51233\/?$/i.test(TESTNET_WS))throw new Error('Embedded wallet transaction endpoint is not the approved XRPL Testnet server.');
     const xrpl=await loadXrpl();
@@ -166,29 +180,24 @@
     finally{try{await client.disconnect();}catch(_error){}}
   }
 
-  function clearUnlocked(clearRecovery=false){
-    state.preparedPayment=null;
-    if(state.seed)state.seed=null;
-    state.wallet=null;
-    if(clearRecovery&&state.recoveryKey){state.recoveryKey.fill?.(0);state.recoveryKey=null;}
-    if(lockTimer)clearTimeout(lockTimer); lockTimer=null;
-  }
-  function scheduleAutoLock(){if(lockTimer)clearTimeout(lockTimer);lockTimer=setTimeout(()=>{clearUnlocked(false);render();setMessage('Wallet auto-locked.','info');},AUTO_LOCK_MS);}
-  function lock(options={}){clearUnlocked(!!options.clearRecovery);render();}
-
-  async function decryptPayload(record,vaultKey){
+  async function withDecryptedWallet(record,vaultKey,callback){
     const backup=record?.encrypted_backup;
     if(!backup||backup.version!==1||backup.network!==NETWORK)throw new Error('Unsupported encrypted wallet backup.');
     const payload=await decryptBytes(vaultKey,b64uToBytes(backup.payload.ciphertext),b64uToBytes(backup.payload.iv),aad('wallet-payload',record.address));
-    let decoded;
-    try{decoded=JSON.parse(textDecoder.decode(payload));}finally{payload.fill(0);}
-    if(decoded?.version!==1||decoded?.network!==NETWORK||decoded?.address!==record.address||typeof decoded?.seed!=='string')throw new Error('Wallet backup integrity check failed.');
-    const xrpl=await loadXrpl();
-    const wallet=xrpl.Wallet.fromSeed(decoded.seed);
-    if(wallet.classicAddress!==record.address)throw new Error('Recovered key does not match the saved XRPL address.');
-    state.wallet=wallet; state.seed=decoded.seed; decoded.seed=''; scheduleAutoLock();
-    return wallet;
+    let decoded=null;
+    try{
+      decoded=JSON.parse(textDecoder.decode(payload));
+      if(decoded?.version!==1||decoded?.network!==NETWORK||decoded?.address!==record.address||typeof decoded?.seed!=='string')throw new Error('Wallet backup integrity check failed.');
+      const xrpl=await loadXrpl();
+      const wallet=xrpl.Wallet.fromSeed(decoded.seed);
+      if(wallet.classicAddress!==record.address)throw new Error('Recovered key does not match the saved XRPL address.');
+      return await callback(wallet,decoded.seed);
+    }finally{
+      if(decoded&&typeof decoded.seed==='string')decoded.seed='';
+      payload.fill(0);
+    }
   }
+  async function verifyVault(record,vaultKey){return withDecryptedWallet(record,vaultKey,async()=>true);}
 
   async function fetchRecord(){
     const data=await walletApi()('/api/embedded-wallet?action=status',{method:'GET'});
@@ -199,16 +208,41 @@
     state.record={...(state.record||{}),...data.wallet,encrypted_backup:backup}; return state.record;
   }
 
+  async function fetchPayStatus(){
+    const data=await walletApi()('/api/embedded-wallet?action=pay-status',{method:'GET'});
+    state.payProfile=data.profile||null;
+    state.paySuggestedHandle=String(data.suggested_handle||'');
+    state.payDisplayName=String(data.display_name||'ATM Player');
+    return data;
+  }
+  async function fetchPayActivity(options={}){
+    if(!state.payProfile)return [];
+    try{
+      const data=await walletApi()('/api/embedded-wallet?action=pay-activity',{method:'GET'});
+      state.activity=Array.isArray(data.items)?data.items:[];
+      if(state.payView==='activity')render();
+      if(!options.silent)setMessage('ATM Pay activity refreshed.','ok');
+      return state.activity;
+    }catch(error){if(!options.silent)setMessage(error.message||'Could not load ATM Pay activity.','error');return state.activity;}
+  }
+  function personInitial(person){return String(person?.display_name||person?.handle||'A').trim().charAt(0).toUpperCase()||'A';}
+  function normalizeRecipient(value){
+    if(!value||typeof value!=='object')return null;
+    const userId=String(value.user_id||''); const handle=String(value.handle||'');
+    if(!/^[0-9a-f-]{36}$/i.test(userId)||!/^[a-z0-9_]{3,20}$/.test(handle))return null;
+    return {user_id:userId,handle,display_name:String(value.display_name||'ATM Player').slice(0,30),character_id:String(value.character_id||'classic').slice(0,40),atm_pay_ready:value.atm_pay_ready!==false};
+  }
+
   function ensureUi(){
     if(document.getElementById('atmEmbeddedWalletModal'))return;
     const style=document.createElement('style'); style.textContent=`
 #atmEmbeddedWalletModal{position:fixed;inset:0;z-index:10080;display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));background:rgba(0,7,12,.86);backdrop-filter:blur(10px)}
-#atmEmbeddedWalletModal.open{display:flex}.atmWalletCard{width:min(560px,100%);max-height:min(760px,92dvh);overflow:auto;background:linear-gradient(180deg,#0c1d29,#07131c);border:1px solid rgba(88,241,230,.25);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.55);color:#eafcff;padding:18px}.atmWalletHead{display:flex;gap:12px;align-items:flex-start}.atmWalletHead>div{min-width:0;flex:1}.atmWalletHead h3{margin:0;font-size:20px}.atmWalletHead small{display:block;color:#8fb1bf;line-height:1.4;margin-top:4px}.atmWalletClose{border:0;background:#182b37;color:#dffcff;border-radius:10px;width:38px;height:38px;font-size:21px}.atmWalletTestnet{display:inline-flex;margin-top:10px;padding:5px 9px;border-radius:999px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-weight:900;font-size:10px;letter-spacing:.08em}.atmWalletBody{display:grid;gap:12px;margin-top:14px}.atmWalletPanel{border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:13px;background:rgba(255,255,255,.035)}.atmWalletPanel strong{display:block;font-size:12px}.atmWalletPanel p{margin:6px 0 0;color:#9db9c5;font-size:11px;line-height:1.5}.atmWalletAddress{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;overflow-wrap:anywhere;color:#70f9c8;margin-top:7px}.atmWalletBalance{font-size:28px;font-weight:1000;margin-top:6px}.atmWalletActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWalletActions .wide{grid-column:1/-1}.atmWalletBtn{border:0;border-radius:12px;padding:11px 12px;font-weight:1000;font-size:10px;letter-spacing:.04em;text-transform:uppercase;background:#183142;color:#eafcff;border:1px solid rgba(88,241,230,.16)}.atmWalletBtn.primary{background:linear-gradient(90deg,#58f1e6,#70f9c8);color:#052029}.atmWalletBtn.gold{background:linear-gradient(90deg,#facd69,#f0a54e);color:#261600}.atmWalletBtn.danger{border-color:rgba(255,112,132,.3);color:#ffadb9}.atmWalletBtn:disabled{opacity:.45}.atmWalletInput{width:100%;margin-top:8px;background:#041018;border:1px solid rgba(88,241,230,.2);border-radius:11px;color:#fff;padding:11px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;box-sizing:border-box}.atmWalletRecovery{word-break:break-all;background:#031018;padding:10px;border-radius:10px;border:1px dashed rgba(255,209,102,.4);color:#ffe2a0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;margin-top:8px}.atmWalletLabel{display:block;margin-top:10px;color:#8fb1bf;font-size:10px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.atmWalletTxGrid{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:7px 10px;margin-top:10px;font-size:11px}.atmWalletTxGrid span{color:#88a8b5}.atmWalletTxGrid b{overflow-wrap:anywhere;text-align:right}.atmWalletTxActions{margin-top:10px}.atmWalletTxStatus{font-size:16px;font-weight:1000;margin-top:7px}.atmWalletTxResult.ok{border-color:rgba(112,249,200,.32)}.atmWalletTxResult.error{border-color:rgba(255,112,132,.38)}.atmWalletTxResult.pending{border-color:rgba(255,209,102,.38)}.atmWalletLink{display:inline-flex;margin-top:9px;color:#70f9c8;font-size:11px;font-weight:900;text-decoration:none}.atmWalletWarning{color:#ffd166!important}.atmWalletMsg{min-height:18px;font-size:11px;line-height:1.45;color:#9fc3cc}.atmWalletMsg.ok{color:#70f9c8}.atmWalletMsg.error{color:#ff9eae}.atmWalletSpinner{opacity:.7}
-@media(max-width:560px){.atmWalletCard{padding:14px;border-radius:17px}.atmWalletActions{grid-template-columns:1fr}.atmWalletActions .wide{grid-column:auto}.atmWalletBalance{font-size:24px}}
+#atmEmbeddedWalletModal.open{display:flex}.atmWalletCard{width:min(590px,100%);max-height:min(800px,92dvh);overflow:auto;background:linear-gradient(180deg,#0c1d29,#07131c);border:1px solid rgba(88,241,230,.25);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.55);color:#eafcff;padding:18px}.atmWalletHead{display:flex;gap:12px;align-items:flex-start}.atmWalletHead>div{min-width:0;flex:1}.atmWalletHead h3{margin:0;font-size:22px}.atmWalletHead small{display:block;color:#8fb1bf;line-height:1.4;margin-top:4px}.atmWalletClose{border:0;background:#182b37;color:#dffcff;border-radius:10px;width:38px;height:38px;font-size:21px}.atmWalletTestnet{display:inline-flex;margin-top:10px;padding:5px 9px;border-radius:999px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-weight:900;font-size:10px;letter-spacing:.08em}.atmWalletSecurityBadge{display:inline-flex;margin:8px 0 0 6px;padding:5px 9px;border-radius:999px;background:rgba(112,249,200,.08);border:1px solid rgba(112,249,200,.25);color:#70f9c8;font-weight:900;font-size:9px;letter-spacing:.06em}.atmWalletBody{display:grid;gap:12px;margin-top:14px}.atmWalletPanel{border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:13px;background:rgba(255,255,255,.035)}.atmWalletPanel strong{display:block;font-size:12px}.atmWalletPanel p{margin:6px 0 0;color:#9db9c5;font-size:11px;line-height:1.5}.atmWalletAddress{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;overflow-wrap:anywhere;color:#70f9c8;margin-top:7px}.atmWalletBalance{font-size:28px;font-weight:1000;margin-top:3px}.atmWalletActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWalletActions .wide{grid-column:1/-1}.atmWalletBtn{border:0;border-radius:12px;padding:11px 12px;font-weight:1000;font-size:10px;letter-spacing:.04em;text-transform:uppercase;background:#183142;color:#eafcff;border:1px solid rgba(88,241,230,.16)}.atmWalletBtn.primary{background:linear-gradient(90deg,#58f1e6,#70f9c8);color:#052029}.atmWalletBtn.gold{background:linear-gradient(90deg,#facd69,#f0a54e);color:#261600}.atmWalletBtn.danger{border-color:rgba(255,112,132,.3);color:#ffadb9}.atmWalletBtn:disabled{opacity:.45}.atmWalletInput{width:100%;margin-top:8px;background:#041018;border:1px solid rgba(88,241,230,.2);border-radius:11px;color:#fff;padding:12px 12px;font-family:inherit;font-size:13px;box-sizing:border-box}.atmWalletRecovery{word-break:break-all;background:#031018;padding:10px;border-radius:10px;border:1px dashed rgba(255,209,102,.4);color:#ffe2a0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;margin-top:8px}.atmWalletLabel{display:block;margin-top:10px;color:#8fb1bf;font-size:10px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.atmWalletTxGrid{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:7px 10px;margin-top:10px;font-size:11px}.atmWalletTxGrid span{color:#88a8b5}.atmWalletTxGrid b{overflow-wrap:anywhere;text-align:right}.atmWalletTxActions{margin-top:10px}.atmWalletTxStatus{font-size:16px;font-weight:1000;margin-top:7px}.atmWalletTxResult.ok{border-color:rgba(112,249,200,.32)}.atmWalletTxResult.error{border-color:rgba(255,112,132,.38)}.atmWalletTxResult.pending{border-color:rgba(255,209,102,.38)}.atmWalletLink{display:inline-flex;margin-top:9px;color:#70f9c8;font-size:11px;font-weight:900;text-decoration:none}.atmWalletWarning{color:#ffd166!important}.atmWalletSecurity{color:#70f9c8!important}.atmWalletMsg{min-height:18px;font-size:11px;line-height:1.45;color:#9fc3cc}.atmWalletMsg.ok{color:#70f9c8}.atmWalletMsg.error{color:#ff9eae}.atmPayHero{display:flex;align-items:center;gap:12px}.atmPayAvatar{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#173d4c,#102631);border:1px solid rgba(88,241,230,.25);font-size:18px;font-weight:1000;color:#70f9c8;flex:0 0 auto}.atmPayHeroText{min-width:0;flex:1}.atmPayHeroText b{display:block;font-size:15px}.atmPayHandle{color:#70f9c8;font-size:12px;font-weight:900;margin-top:2px}.atmPayTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.atmPayTab{border:1px solid rgba(88,241,230,.12);background:#102431;color:#a8c4ce;border-radius:11px;padding:9px 6px;font-size:9px;font-weight:1000;text-transform:uppercase}.atmPayTab.active{background:rgba(88,241,230,.12);color:#70f9c8;border-color:rgba(88,241,230,.3)}.atmPayPerson{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid rgba(255,255,255,.08);background:#0a1922;color:#eafcff;border-radius:13px;padding:10px;margin-top:7px}.atmPayPerson .atmPayAvatar{width:36px;height:36px;border-radius:12px;font-size:15px}.atmPayPersonText{min-width:0;flex:1}.atmPayPersonText b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.atmPayPersonText span{display:block;color:#70f9c8;font-size:10px;margin-top:2px}.atmPayPersonAction{font-size:9px;color:#8fb1bf;font-weight:900}.atmPaySelected{display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px;border-radius:13px;background:rgba(112,249,200,.06);border:1px solid rgba(112,249,200,.16)}.atmPayAmountWrap{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0}.atmPayAmountInput{width:170px;max-width:65%;background:transparent;border:0;border-bottom:1px solid rgba(88,241,230,.25);color:#fff;text-align:center;font-size:34px;font-weight:1000;outline:none}.atmPayAmountUnit{font-size:14px;font-weight:1000;color:#70f9c8}.atmPayReview{text-align:center;padding:8px 0}.atmPayReview .atmPayAvatar{margin:0 auto 8px;width:56px;height:56px;border-radius:18px;font-size:22px}.atmPayReviewAmount{font-size:34px;font-weight:1000;margin:8px 0}.atmPayReviewName{font-size:16px;font-weight:1000}.atmPayMeta{font-size:10px;color:#8fb1bf;margin-top:6px;line-height:1.5}.atmPaySearchResults{margin-top:8px}.atmPayEmpty{padding:14px;text-align:center;color:#7f9aa6;font-size:11px}.atmPayActivityItem{border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:11px;margin-top:8px;background:rgba(255,255,255,.025)}.atmPayActivityTop{display:flex;gap:10px;align-items:center}.atmPayActivityTop .atmPayAvatar{width:34px;height:34px;border-radius:11px;font-size:14px}.atmPayActivityMain{min-width:0;flex:1}.atmPayActivityMain b{display:block;font-size:11px}.atmPayActivityMain span{display:block;color:#8fb1bf;font-size:9px;margin-top:2px}.atmPayActivityAmount{font-size:13px;font-weight:1000}.atmPayActivityActions{display:flex;gap:6px;margin-top:9px}.atmPayActivityActions .atmWalletBtn{flex:1;padding:8px}.atmPayStatusPill{display:inline-flex;margin-top:7px;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:1000;text-transform:uppercase;background:rgba(255,255,255,.06);color:#9db9c5}.atmPayStatusPill.ok{background:rgba(112,249,200,.08);color:#70f9c8}.atmPaySetupHandle{display:flex;align-items:center;gap:0;margin-top:9px}.atmPaySetupHandle span{padding:12px 0 12px 12px;background:#041018;border:1px solid rgba(88,241,230,.2);border-right:0;border-radius:11px 0 0 11px;color:#70f9c8;font-weight:1000}.atmPaySetupHandle input{margin-top:0;border-radius:0 11px 11px 0;border-left:0;padding-left:3px}.atmPayDetails{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
+@media(max-width:560px){.atmWalletCard{padding:14px;border-radius:17px}.atmWalletActions{grid-template-columns:1fr}.atmWalletActions .wide{grid-column:auto}.atmWalletBalance{font-size:24px}.atmPayTabs{gap:4px}.atmPayTab{font-size:8px;padding:9px 3px}.atmPayAmountInput{font-size:30px}}
 `;
     document.head.appendChild(style);
     const modal=document.createElement('div'); modal.id='atmEmbeddedWalletModal'; modal.setAttribute('role','dialog'); modal.setAttribute('aria-modal','true'); modal.setAttribute('aria-labelledby','atmWalletTitle');
-    modal.innerHTML=`<div class="atmWalletCard"><div class="atmWalletHead"><div><h3 id="atmWalletTitle">ATM Embedded Wallet</h3><small>Non-custodial XRPL wallet. Keys are generated and decrypted only on this device.</small><span class="atmWalletTestnet">XRPL TESTNET ONLY</span></div><button class="atmWalletClose" id="atmWalletClose" type="button" aria-label="Close">×</button></div><div class="atmWalletBody" id="atmWalletBody"></div><div class="atmWalletMsg" id="atmWalletMsg" aria-live="polite"></div></div>`;
+    modal.innerHTML=`<div class="atmWalletCard"><div class="atmWalletHead"><div><h3 id="atmWalletTitle">ATM Pay</h3><small>Pay people by name. XRPL settlement stays behind the scenes.</small><span class="atmWalletTestnet">TESTNET PREVIEW</span><span class="atmWalletSecurityBadge">FRESH AUTH PER PAYMENT</span></div><button class="atmWalletClose" id="atmWalletClose" type="button" aria-label="Close">×</button></div><div class="atmWalletBody" id="atmWalletBody"></div><div class="atmWalletMsg" id="atmWalletMsg" aria-live="polite"></div></div>`;
     document.body.appendChild(modal);
     document.getElementById('atmWalletClose')?.addEventListener('click',close);
     modal.addEventListener('click',event=>{if(event.target===modal)close();});
@@ -218,31 +252,73 @@
   }
   function setBusy(busy,message){state.busy=!!busy;document.querySelectorAll('#atmEmbeddedWalletModal button').forEach(btn=>{if(btn.id!=='atmWalletClose')btn.disabled=!!busy;});if(message)setMessage(message);}
 
+  function personHtml(person,actionText='SELECT'){
+    const p=normalizeRecipient(person); if(!p)return '';
+    return `<button class="atmPayPerson" type="button" data-recipient-id="${escapeHtml(p.user_id)}"><span class="atmPayAvatar">${escapeHtml(personInitial(p))}</span><span class="atmPayPersonText"><b>${escapeHtml(p.display_name)}</b><span>@${escapeHtml(p.handle)}</span></span><span class="atmPayPersonAction">${escapeHtml(actionText)}</span></button>`;
+  }
+  function recipientResultsHtml(){
+    if(!state.paySearchQuery)return '<div class="atmPayEmpty">Search by ATM Pay @handle or player name.</div>';
+    if(!state.recipientSearchResults.length)return '<div class="atmPayEmpty">No ATM Pay users found yet.</div>';
+    return state.recipientSearchResults.map(person=>personHtml(person,state.payView==='request'?'REQUEST':'PAY')).join('');
+  }
+  function selectedRecipientHtml(person){
+    const p=normalizeRecipient(person); if(!p)return '';
+    return `<div class="atmPaySelected"><span class="atmPayAvatar">${escapeHtml(personInitial(p))}</span><span class="atmPayPersonText"><b>${escapeHtml(p.display_name)}</b><span>@${escapeHtml(p.handle)}</span></span><button class="atmWalletBtn" id="atmPayChangeRecipient" type="button">Change</button></div>`;
+  }
   function transactionResultHtml(){
     const tx=state.lastTransaction; if(!tx?.hash)return '';
     const explorerBase=String(CONFIG.explorerTxBase||'https://testnet.xrpl.org/transactions/');
-    const status=tx.result||'STATUS UNKNOWN'; const validated=tx.validated===true;
-    const detail=validated?(status==='tesSUCCESS'?'Validated successfully on XRPL Testnet.':`Validated with result ${status}.`):'Submission status is not confirmed. Check the Testnet explorer before trying another payment.';
-    return `<div class="atmWalletPanel atmWalletTxResult ${validated&&status==='tesSUCCESS'?'ok':validated?'error':'pending'}"><strong>Last locally signed transaction</strong><div class="atmWalletTxStatus">${escapeHtml(status)}${validated?' · VALIDATED':''}</div><p>${escapeHtml(detail)}</p><div class="atmWalletAddress">${escapeHtml(tx.hash)}</div><p>${escapeHtml(tx.amountXrp||'—')} XRP → ${escapeHtml(shortAddress(tx.destination||''))}${tx.ledgerIndex?` · ledger ${escapeHtml(tx.ledgerIndex)}`:''}</p><a class="atmWalletLink" href="${escapeHtml(explorerBase+encodeURIComponent(tx.hash))}" target="_blank" rel="noopener noreferrer">View Testnet transaction ↗</a></div>`;
+    const status=tx.result||'STATUS UNKNOWN'; const validated=tx.validated===true; const recipient=normalizeRecipient(tx.recipient)||{display_name:'ATM Player',handle:'player'};
+    const detail=validated?(status==='tesSUCCESS'?`${tx.amountXrp} XRP sent to ${recipient.display_name}.`:`Transaction validated with result ${status}.`):'Payment status is not confirmed yet.';
+    return `<div class="atmWalletPanel atmWalletTxResult ${validated&&status==='tesSUCCESS'?'ok':validated?'error':'pending'}"><strong>${validated&&status==='tesSUCCESS'?'Payment complete':'Last payment'}</strong><div class="atmWalletTxStatus">${validated&&status==='tesSUCCESS'?'✓ SENT':escapeHtml(status)}</div><p>${escapeHtml(detail)}</p><p class="atmWalletSecurity">@${escapeHtml(recipient.handle)}</p><a class="atmWalletLink" href="${escapeHtml(explorerBase+encodeURIComponent(tx.hash))}" target="_blank" rel="noopener noreferrer">Transaction details ↗</a></div>`;
   }
-  function paymentPanelHtml(){
-    const prepared=state.preparedPayment;
-    if(prepared){
-      return `<div class="atmWalletPanel atmWalletTxPreview"><strong>Review Testnet payment before signing</strong><div class="atmWalletTxGrid"><span>Send</span><b>${escapeHtml(prepared.amountXrp)} XRP</b><span>To</span><b title="${escapeHtml(prepared.destination)}">${escapeHtml(shortAddress(prepared.destination))}</b><span>Network fee</span><b>${escapeHtml(prepared.feeXrp)} XRP</b><span>Sequence</span><b>${escapeHtml(prepared.sequence)}</b><span>Expires after ledger</span><b>${escapeHtml(prepared.lastLedgerSequence)}</b></div><p class="atmWalletWarning">Your XRPL seed stays in browser memory. Pressing Sign & Send signs locally, then sends only the signed transaction blob directly to XRPL Testnet over WebSocket.</p><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn primary" id="atmWalletSignPayment" type="button">Sign & Send Testnet</button><button class="atmWalletBtn" id="atmWalletCancelPayment" type="button">Cancel</button></div></div>`;
-    }
-    return `<div class="atmWalletPanel"><strong>Send Testnet XRP · Phase 2</strong><p>Prepare first so the exact amount, destination, network fee, sequence and expiration ledger are visible before anything is signed.</p><label class="atmWalletLabel" for="atmWalletPaymentDestination">Destination</label><input class="atmWalletInput" id="atmWalletPaymentDestination" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="r… Testnet classic address"><label class="atmWalletLabel" for="atmWalletPaymentAmount">Amount · max 10 Testnet XRP</label><input class="atmWalletInput" id="atmWalletPaymentAmount" type="text" inputmode="decimal" autocomplete="off" value="1.000000"><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn primary wide" id="atmWalletPreparePayment" type="button">Prepare Testnet Payment</button></div></div>`;
+  function paySearchHtml(mode){
+    return `<div class="atmWalletPanel"><strong>${mode==='request'?'Who do you want to request from?':'Who do you want to pay?'}</strong><label class="atmWalletLabel" for="atmPaySearch">Search ATM Town</label><input class="atmWalletInput" id="atmPaySearch" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" value="${escapeHtml(state.paySearchQuery)}" placeholder="@handle or player name"><div class="atmPaySearchResults" id="atmPaySearchResults">${recipientResultsHtml()}</div></div>`;
   }
-  function bindPaymentUi(){
-    document.getElementById('atmWalletPreparePayment')?.addEventListener('click',prepareTestnetPayment);
-    document.getElementById('atmWalletSignPayment')?.addEventListener('click',signAndSubmitTestnetPayment);
-    document.getElementById('atmWalletCancelPayment')?.addEventListener('click',()=>{state.preparedPayment=null;render();setMessage('Prepared Testnet payment cancelled.');});
+  function paymentReviewHtml(){
+    const prepared=state.preparedPayment; if(!prepared)return '';
+    const passkey=!!state.record?.encrypted_backup?.passkey; const recipient=normalizeRecipient(prepared.recipient);
+    return `<div class="atmWalletPanel atmWalletTxPreview"><div class="atmPayReview"><span class="atmPayAvatar">${escapeHtml(personInitial(recipient))}</span><div class="atmPayReviewName">${escapeHtml(recipient.display_name)}</div><div class="atmPayHandle">@${escapeHtml(recipient.handle)}</div><div class="atmPayReviewAmount">${escapeHtml(prepared.amountXrp)} XRP</div>${prepared.note?`<p>“${escapeHtml(prepared.note)}”</p>`:''}<div class="atmPayMeta">XRPL Testnet · network fee ${escapeHtml(prepared.feeXrp)} XRP<br>Your authorization is bound to this exact recipient, amount, fee, sequence and expiration.</div></div>${passkey?'':`<label class="atmWalletLabel" for="atmWalletSignRecoveryInput">ATM1 recovery key</label><input class="atmWalletInput" id="atmWalletSignRecoveryInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key">`}<div class="atmWalletActions atmWalletTxActions">${passkey?`<button class="atmWalletBtn primary wide" id="atmWalletSignPaymentPasskey" type="button">Pay ${escapeHtml(prepared.amountXrp)} XRP</button>`:`<button class="atmWalletBtn primary wide" id="atmWalletSignPaymentRecovery" type="button">Authorize & Pay ${escapeHtml(prepared.amountXrp)} XRP</button>`}${passkey?'<button class="atmWalletBtn" id="atmWalletShowRecoverySign" type="button">Use Recovery Key</button>':''}<button class="atmWalletBtn" id="atmWalletCancelPayment" type="button">Cancel</button></div><div id="atmWalletRecoverySignFallback"></div></div>`;
   }
-
+  function sendViewHtml(){
+    if(state.preparedPayment)return paymentReviewHtml();
+    if(!state.selectedRecipient)return paySearchHtml('send');
+    const request=state.requestDraft;
+    return `<div class="atmWalletPanel"><strong>${request?'Pay request':'Send money'}</strong>${selectedRecipientHtml(state.selectedRecipient)}<div class="atmPayAmountWrap"><input class="atmPayAmountInput" id="atmPayAmount" type="text" inputmode="decimal" autocomplete="off" value="${escapeHtml(request?.amount_xrp||'1.00')}" ${request?'readonly':''}><span class="atmPayAmountUnit">XRP</span></div>${request?`<p>This amount came from the request and cannot be changed.</p>`:''}<label class="atmWalletLabel" for="atmPayNote">Note · optional</label><input class="atmWalletInput" id="atmPayNote" maxlength="80" type="text" autocomplete="off" value="${escapeHtml(request?.note||'')}" ${request?'readonly':''} placeholder="What's it for?"><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn primary wide" id="atmPayReviewPayment" type="button">Review Payment</button></div></div>`;
+  }
+  function requestViewHtml(){
+    if(!state.selectedRecipient)return paySearchHtml('request');
+    return `<div class="atmWalletPanel"><strong>Request money</strong>${selectedRecipientHtml(state.selectedRecipient)}<div class="atmPayAmountWrap"><input class="atmPayAmountInput" id="atmPayRequestAmount" type="text" inputmode="decimal" autocomplete="off" value="1.00"><span class="atmPayAmountUnit">XRP</span></div><label class="atmWalletLabel" for="atmPayRequestNote">Note · optional</label><input class="atmWalletInput" id="atmPayRequestNote" maxlength="80" type="text" autocomplete="off" placeholder="What's it for?"><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn primary wide" id="atmPayCreateRequest" type="button">Send Request</button></div></div>`;
+  }
+  function activityItemHtml(item){
+    const person=normalizeRecipient(item?.other)||{display_name:'ATM Player',handle:'player',user_id:''};
+    const isPayment=item.kind==='payment';
+    let verb='';
+    if(isPayment)verb=item.direction==='sent'?`Paid ${person.display_name}`:`${person.display_name} paid you`;
+    else verb=item.direction==='requested'?`Requested from ${person.display_name}`:`${person.display_name} requested`;
+    const status=String(item.status||'pending'); const ok=status==='validated'||status==='paid';
+    const canPay=item.kind==='request'&&item.direction==='request_received'&&status==='pending'&&Date.parse(item.expires_at||0)>Date.now();
+    const canDecline=canPay; const canCancel=item.kind==='request'&&item.direction==='requested'&&status==='pending';
+    return `<div class="atmPayActivityItem"><div class="atmPayActivityTop"><span class="atmPayAvatar">${escapeHtml(personInitial(person))}</span><span class="atmPayActivityMain"><b>${escapeHtml(verb)}</b><span>@${escapeHtml(person.handle)}${item.note?` · ${escapeHtml(item.note)}`:''}</span></span><span class="atmPayActivityAmount">${escapeHtml(item.amount_xrp)} XRP</span></div><span class="atmPayStatusPill ${ok?'ok':''}">${escapeHtml(status)}</span>${isPayment&&item.tx_hash?` <a class="atmWalletLink" href="${escapeHtml(String(CONFIG.explorerTxBase||'https://testnet.xrpl.org/transactions/')+encodeURIComponent(item.tx_hash))}" target="_blank" rel="noopener noreferrer">Details ↗</a>`:''}${canPay||canDecline||canCancel?`<div class="atmPayActivityActions">${canPay?`<button class="atmWalletBtn primary" data-pay-request="${escapeHtml(item.id)}" type="button">Pay</button>`:''}${canDecline?`<button class="atmWalletBtn" data-decline-request="${escapeHtml(item.id)}" type="button">Decline</button>`:''}${canCancel?`<button class="atmWalletBtn" data-cancel-request="${escapeHtml(item.id)}" type="button">Cancel Request</button>`:''}</div>`:''}</div>`;
+  }
+  function activityViewHtml(){
+    return `<div class="atmWalletPanel"><strong>Activity</strong><p>Payments and requests use ATM Town identities. XRPL addresses stay out of the normal flow.</p><div id="atmPayActivityList">${state.activity.length?state.activity.map(activityItemHtml).join(''):'<div class="atmPayEmpty">No ATM Pay activity yet.</div>'}</div><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn wide" id="atmPayRefreshActivity" type="button">Refresh Activity</button></div></div>`;
+  }
+  function settingsViewHtml(){
+    const passkey=!!state.record?.encrypted_backup?.passkey;
+    return `<div class="atmWalletPanel"><strong>ATM Pay security</strong><p class="atmWalletSecurity">Your XRPL signing key is encrypted when not in use. Every payment signature requires fresh authorization and is created locally on this device.</p><p>${passkey?'Wallet passkey protection is active. Recovery-key authorization remains available as backup.':'Recovery-key authorization is active. Add a PRF-capable wallet passkey for faster payments.'}</p></div><div class="atmWalletPanel"><strong>Recovery & backup</strong>${passkey?'':`<label class="atmWalletLabel" for="atmWalletManagementRecovery">ATM1 recovery key for passkey setup/export</label><input class="atmWalletInput" id="atmWalletManagementRecovery" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key">`}<div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn" id="atmWalletRefreshBalance" type="button">Refresh Balance</button>${passkey?'':'<button class="atmWalletBtn" id="atmWalletAddPasskey" type="button">Add Wallet Passkey</button>'}<button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download Encrypted Backup</button>${passkey?'<button class="atmWalletBtn danger" id="atmWalletCopySeedPasskey" type="button">Emergency Seed Copy</button>':'<button class="atmWalletBtn danger" id="atmWalletCopySeedRecovery" type="button">Emergency Seed Copy</button>'}</div></div><div class="atmWalletPanel"><strong>Advanced XRPL details</strong><p>Most people never need these. ATM Pay uses your identity instead.</p><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn wide" id="atmPayToggleXrplDetails" type="button">${state.xrplDetailsVisible?'Hide':'Show'} XRPL Details</button></div>${state.xrplDetailsVisible?`<div class="atmPayDetails"><span class="atmWalletLabel">Network</span><div>XRPL TESTNET</div><span class="atmWalletLabel">Public address</span><div class="atmWalletAddress">${escapeHtml(state.record.address)}</div></div>`:''}</div>`;
+  }
+  function dashboardViewHtml(){
+    if(state.payView==='request')return requestViewHtml();
+    if(state.payView==='activity')return activityViewHtml();
+    if(state.payView==='settings')return settingsViewHtml();
+    return sendViewHtml();
+  }
   function render(){
     ensureUi(); const body=document.getElementById('atmWalletBody'); if(!body)return;
-    const record=state.record, unlocked=!!state.wallet;
+    const record=state.record;
     if(!record){
-      body.innerHTML=`<div class="atmWalletPanel"><strong>Create your ATM Wallet</strong><p>A new XRPL keypair will be generated here in your browser. ATM Town will receive only the public address and encrypted backup.</p><p class="atmWalletWarning">This v234 wallet is Testnet only. Never import or send Mainnet funds to it.</p></div><div class="atmWalletActions"><button class="atmWalletBtn primary wide" id="atmWalletCreate" type="button">Create Testnet Wallet</button><button class="atmWalletBtn wide" id="atmWalletRestoreFile" type="button">Restore encrypted backup</button><input id="atmWalletRestoreInput" type="file" accept="application/json,.json" hidden></div>`;
+      body.innerHTML=`<div class="atmWalletPanel"><strong>Set up ATM Pay</strong><p>Create a secure payment account on this device so you can send and receive by @name. Wallet addresses stay out of the normal experience.</p><p class="atmWalletWarning">ATM Pay is still XRPL Testnet only. Test XRP has no Mainnet value.</p></div><div class="atmWalletActions"><button class="atmWalletBtn primary wide" id="atmWalletCreate" type="button">Set Up ATM Pay</button><button class="atmWalletBtn wide" id="atmWalletRestoreFile" type="button">Restore ATM Pay Backup</button><input id="atmWalletRestoreInput" type="file" accept="application/json,.json" hidden></div>`;
       document.getElementById('atmWalletCreate')?.addEventListener('click',createWallet);
       document.getElementById('atmWalletRestoreFile')?.addEventListener('click',()=>document.getElementById('atmWalletRestoreInput')?.click());
       document.getElementById('atmWalletRestoreInput')?.addEventListener('change',restoreEncryptedBackupFile);
@@ -250,87 +326,159 @@
     }
     const passkey=!!record.encrypted_backup?.passkey;
     if(state.recoveryKey){renderCreationSuccess(passkey);return;}
-    body.innerHTML=`<div class="atmWalletPanel"><strong>XRPL Testnet address</strong><div class="atmWalletAddress" title="${escapeHtml(record.address)}">${escapeHtml(record.address)}</div><div class="atmWalletBalance" id="atmWalletBalance">— XRP</div><p id="atmWalletFunded">Validated Testnet balance.</p></div>${transactionResultHtml()}${unlocked?paymentPanelHtml():''}${unlocked?`<div class="atmWalletPanel"><strong>Wallet unlocked on this device</strong><p>The seed is held in memory only and will auto-lock after five minutes.</p></div><div class="atmWalletActions"><button class="atmWalletBtn" id="atmWalletRefreshBalance" type="button">Refresh balance</button>${passkey?'':'<button class="atmWalletBtn" id="atmWalletAddPasskey" type="button">Add wallet passkey</button>'}<button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download encrypted backup</button><button class="atmWalletBtn danger" id="atmWalletRevealSeed" type="button">Reveal Testnet seed</button><button class="atmWalletBtn wide" id="atmWalletLock" type="button">Lock wallet now</button></div>`:`<div class="atmWalletPanel"><strong>Unlock wallet</strong><p>${passkey?'Use the wallet passkey on this device, or use the recovery key on any compatible browser.':'This authenticator did not provide a wallet PRF when the backup was created. Use your recovery key to unlock.'}</p><input class="atmWalletInput" id="atmWalletRecoveryInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key"></div><div class="atmWalletActions">${passkey?'<button class="atmWalletBtn primary" id="atmWalletUnlockPasskey" type="button">Unlock with passkey</button>':''}<button class="atmWalletBtn ${passkey?'':'primary'}" id="atmWalletUnlockRecovery" type="button">Unlock with recovery key</button><button class="atmWalletBtn" id="atmWalletRefreshBalance" type="button">Refresh balance</button><button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download encrypted backup</button></div>`}`;
+    if(!state.payProfile){
+      const suggested=state.paySuggestedHandle||'atmplayer';
+      body.innerHTML=`<div class="atmWalletPanel"><strong>Choose your ATM Pay name</strong><p>This is what people will search, pay, and request. Your XRPL wallet address stays behind the scenes.</p><div class="atmPaySetupHandle"><span>@</span><input class="atmWalletInput" id="atmPayHandleInput" type="text" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false" value="${escapeHtml(suggested)}"></div><p class="atmWalletWarning">Choose carefully. Handle changes are locked during this security preview.</p></div><div class="atmWalletActions"><button class="atmWalletBtn primary wide" id="atmPayClaimHandle" type="button">Create ATM Pay Name</button></div>`;
+      document.getElementById('atmPayClaimHandle')?.addEventListener('click',claimPayHandle);
+      return;
+    }
+    body.innerHTML=`<div class="atmWalletPanel atmPayHero"><span class="atmPayAvatar">${escapeHtml(personInitial(state.payProfile))}</span><span class="atmPayHeroText"><b>${escapeHtml(state.payProfile.display_name||state.payDisplayName)}</b><span class="atmPayHandle">@${escapeHtml(state.payProfile.handle)}</span></span><span><div class="atmWalletBalance" id="atmWalletBalance">—</div><small>XRP</small></span></div>${transactionResultHtml()}<div class="atmPayTabs"><button class="atmPayTab ${state.payView==='send'?'active':''}" data-pay-view="send" type="button">Send</button><button class="atmPayTab ${state.payView==='request'?'active':''}" data-pay-view="request" type="button">Request</button><button class="atmPayTab ${state.payView==='activity'?'active':''}" data-pay-view="activity" type="button">Activity</button><button class="atmPayTab ${state.payView==='settings'?'active':''}" data-pay-view="settings" type="button">Security</button></div>${dashboardViewHtml()}`;
+    bindDashboardUi(); refreshBalance({silent:true});
+  }
+
+  function bindRecipientButtons(){
+    document.querySelectorAll('#atmEmbeddedWalletModal [data-recipient-id]').forEach(button=>button.addEventListener('click',()=>{
+      const id=String(button.dataset.recipientId||''); const person=state.recipientSearchResults.find(item=>item.user_id===id); if(!person)return;
+      state.selectedRecipient=person; state.paySearchQuery=''; state.recipientSearchResults=[]; clearPreparedPayment(); render(); setMessage(`${state.payView==='request'?'Request from':'Pay'} @${person.handle}.`);
+    }));
+  }
+  function updateRecipientResults(){const host=document.getElementById('atmPaySearchResults');if(!host)return;host.innerHTML=recipientResultsHtml();bindRecipientButtons();}
+  async function runRecipientSearch(query){
+    state.paySearchQuery=String(query||'').trim();
+    if(state.paySearchQuery.length<2){state.recipientSearchResults=[];updateRecipientResults();return;}
+    try{
+      const data=await walletApi()(`/api/embedded-wallet?action=pay-search&q=${encodeURIComponent(state.paySearchQuery)}`,{method:'GET'});
+      state.recipientSearchResults=(Array.isArray(data.results)?data.results:[]).map(normalizeRecipient).filter(Boolean); updateRecipientResults();
+    }catch(error){state.recipientSearchResults=[];updateRecipientResults();setMessage(error.message||'Could not search ATM Pay users.','error');}
+  }
+  async function claimPayHandle(){
+    const handle=String(document.getElementById('atmPayHandleInput')?.value||'').trim().toLowerCase().replace(/^@+/, '');
+    try{
+      setBusy(true,'Creating your ATM Pay name…');
+      const data=await walletApi()('/api/embedded-wallet?action=pay-claim-handle',{method:'POST',body:JSON.stringify({handle})});
+      state.payProfile=normalizeRecipient(data.profile); state.payView='send'; render(); await fetchPayActivity({silent:true}); setMessage(`ATM Pay is ready. People can now find you as @${state.payProfile.handle}.`,'ok');
+    }catch(error){setMessage(error.message||'Could not create that ATM Pay name.','error');}
+    finally{setBusy(false);}
+  }
+  async function createPayRequest(){
+    const recipient=normalizeRecipient(state.selectedRecipient); if(!recipient)return;
+    try{
+      const amount=parseTestXrpAmount(document.getElementById('atmPayRequestAmount')?.value||'');
+      const note=String(document.getElementById('atmPayRequestNote')?.value||'').trim().slice(0,80);
+      setBusy(true,`Sending request to @${recipient.handle}…`);
+      await walletApi()('/api/embedded-wallet?action=pay-request',{method:'POST',body:JSON.stringify({payer_id:recipient.user_id,amount_drops:amount.drops,note})});
+      state.selectedRecipient=null; state.payView='activity'; await fetchPayActivity({silent:true}); render(); setMessage(`Request sent to @${recipient.handle}.`,'ok');
+    }catch(error){setMessage(error.message||'Could not send ATM Pay request.','error');}
+    finally{setBusy(false);}
+  }
+  function requestItemById(id){return state.activity.find(item=>item.kind==='request'&&item.id===id)||null;}
+  async function actOnPayRequest(id,requestAction){
+    try{setBusy(true,requestAction==='decline'?'Declining request…':'Cancelling request…');await walletApi()('/api/embedded-wallet?action=pay-request-action',{method:'POST',body:JSON.stringify({request_id:id,request_action:requestAction})});await fetchPayActivity({silent:true});render();setMessage(requestAction==='decline'?'Request declined.':'Request cancelled.','ok');}
+    catch(error){setMessage(error.message||'Could not update request.','error');}finally{setBusy(false);}
+  }
+  function payRequestedItem(id){
+    const item=requestItemById(id); if(!item||item.status!=='pending')return;
+    const recipient=normalizeRecipient(item.other); if(!recipient)return;
+    state.payView='send';state.selectedRecipient=recipient;state.requestDraft={id:item.id,amount_drops:item.amount_drops,amount_xrp:item.amount_xrp,note:item.note||''};state.preparedPayment=null;render();setMessage(`Review @${recipient.handle}'s request before paying.`);
+  }
+  function bindDashboardUi(){
+    document.querySelectorAll('#atmEmbeddedWalletModal [data-pay-view]').forEach(button=>button.addEventListener('click',()=>{
+      state.payView=String(button.dataset.payView||'send'); state.selectedRecipient=null; state.requestDraft=null; clearPreparedPayment(); state.paySearchQuery=''; state.recipientSearchResults=[]; render(); if(state.payView==='activity')fetchPayActivity({silent:true});
+    }));
+    const search=document.getElementById('atmPaySearch'); if(search)search.addEventListener('input',()=>{clearTimeout(paySearchTimer);paySearchTimer=setTimeout(()=>runRecipientSearch(search.value),260);});
+    bindRecipientButtons();
+    document.getElementById('atmPayChangeRecipient')?.addEventListener('click',()=>{state.selectedRecipient=null;state.requestDraft=null;clearPreparedPayment();render();});
+    document.getElementById('atmPayReviewPayment')?.addEventListener('click',prepareAtmPayPayment);
+    document.getElementById('atmWalletSignPaymentPasskey')?.addEventListener('click',()=>signAndSubmitAtmPayPayment('passkey'));
+    document.getElementById('atmWalletSignPaymentRecovery')?.addEventListener('click',()=>signAndSubmitAtmPayPayment('recovery'));
+    document.getElementById('atmWalletShowRecoverySign')?.addEventListener('click',showRecoverySignFallback);
+    document.getElementById('atmWalletCancelPayment')?.addEventListener('click',cancelPreparedAtmPayPayment);
+    document.getElementById('atmPayCreateRequest')?.addEventListener('click',createPayRequest);
+    document.getElementById('atmPayRefreshActivity')?.addEventListener('click',()=>fetchPayActivity());
+    document.querySelectorAll('#atmEmbeddedWalletModal [data-pay-request]').forEach(button=>button.addEventListener('click',()=>payRequestedItem(String(button.dataset.payRequest||''))));
+    document.querySelectorAll('#atmEmbeddedWalletModal [data-decline-request]').forEach(button=>button.addEventListener('click',()=>actOnPayRequest(String(button.dataset.declineRequest||''),'decline')));
+    document.querySelectorAll('#atmEmbeddedWalletModal [data-cancel-request]').forEach(button=>button.addEventListener('click',()=>actOnPayRequest(String(button.dataset.cancelRequest||''),'cancel')));
     document.getElementById('atmWalletRefreshBalance')?.addEventListener('click',refreshBalance);
     document.getElementById('atmWalletExportBackup')?.addEventListener('click',downloadEncryptedBackup);
-    document.getElementById('atmWalletUnlockPasskey')?.addEventListener('click',unlockWithPasskey);
-    document.getElementById('atmWalletUnlockRecovery')?.addEventListener('click',unlockWithRecovery);
     document.getElementById('atmWalletAddPasskey')?.addEventListener('click',addPasskeyWrapper);
-    document.getElementById('atmWalletRevealSeed')?.addEventListener('click',revealSeed);
-    document.getElementById('atmWalletLock')?.addEventListener('click',()=>{lock();setMessage('Wallet locked.');});
-    bindPaymentUi();
-    refreshBalance({silent:true});
+    document.getElementById('atmWalletCopySeedPasskey')?.addEventListener('click',()=>copyEmergencySeed('passkey'));
+    document.getElementById('atmWalletCopySeedRecovery')?.addEventListener('click',()=>copyEmergencySeed('recovery'));
+    document.getElementById('atmPayToggleXrplDetails')?.addEventListener('click',()=>{state.xrplDetailsVisible=!state.xrplDetailsVisible;render();});
+  }
+  function showRecoverySignFallback(){
+    const host=document.getElementById('atmWalletRecoverySignFallback'); if(!host)return;
+    host.innerHTML=`<label class="atmWalletLabel" for="atmWalletSignRecoveryInput">ATM1 recovery key</label><input class="atmWalletInput" id="atmWalletSignRecoveryInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key"><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn primary wide" id="atmWalletSignPaymentRecovery" type="button">Authorize & Pay</button></div>`;
+    document.getElementById('atmWalletSignPaymentRecovery')?.addEventListener('click',()=>signAndSubmitAtmPayPayment('recovery'));
   }
 
   async function open(){
     ensureUi(); document.getElementById('atmEmbeddedWalletModal')?.classList.add('open'); setMessage('');
-    try{setBusy(true,'Loading encrypted wallet status…');await fetchRecord();render();setMessage(state.record?'Encrypted Testnet wallet backup loaded.':'No embedded wallet exists yet.');}
-    catch(error){render();setMessage(error.message||'Could not load embedded wallet.','error');}
+    try{
+      setBusy(true,'Opening ATM Pay…');
+      await fetchRecord();
+      await fetchPayStatus();
+      if(state.payProfile)await fetchPayActivity({silent:true});
+      render();
+      setMessage(state.payProfile?`ATM Pay ready as @${state.payProfile.handle}.`:state.record?'Choose your ATM Pay @name to finish setup.':'Set up ATM Pay to send and receive by name.');
+    }catch(error){render();setMessage(error.message||'Could not open ATM Pay.','error');}
     finally{setBusy(false);}
   }
-  function close(){document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');}
+  function close(){
+    if(state.recoveryKey){
+      const proceed=window.confirm('Your newly created wallet recovery key has not been marked as saved. Close anyway and erase it from this page?');
+      if(!proceed)return;
+      clearRecoveryKey();
+    }
+    clearPreparedPayment(); state.selectedRecipient=null;state.requestDraft=null;state.paySearchQuery='';state.recipientSearchResults=[];document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');
+  }
 
   async function createWallet(){
     if(state.record)return;
     if(!window.crypto?.subtle){setMessage('Web Crypto is unavailable in this browser. Wallet creation is blocked.','error');return;}
     setBusy(true,'Generating XRPL Testnet wallet locally…');
-    let recoveryBytes=null,vaultKey=null;
+    let recoveryBytes=null,vaultKey=null,wallet=null,seed='';
     try{
-      const xrpl=await loadXrpl(); const wallet=xrpl.Wallet.generate();
-      const address=wallet.classicAddress, seed=wallet.seed;
+      const xrpl=await loadXrpl(); wallet=xrpl.Wallet.generate();
+      const address=wallet.classicAddress; seed=wallet.seed;
       if(!address||!seed)throw new Error('XRPL wallet generation did not return a usable keypair.');
       vaultKey=randomBytes(32); recoveryBytes=randomBytes(32);
       const payloadIv=randomBytes(12);
       const payloadPlain=textEncoder.encode(JSON.stringify({version:1,network:NETWORK,address,seed}));
       const payloadCipher=await encryptBytes(vaultKey,payloadPlain,payloadIv,aad('wallet-payload',address)); payloadPlain.fill(0);
       const recovery=await wrapVaultKey(vaultKey,recoveryBytes,'recovery',address);
-      setMessage('Secure the wallet with your device passkey if supported…');
+      setMessage('Securing the wallet with your device passkey if supported…');
       let passkey=null; try{passkey=await createWalletPasskey(address,vaultKey);}catch(_error){passkey=null;}
       const backup={version:1,network:NETWORK,address,payload:{alg:'AES-GCM',iv:bytesToB64u(payloadIv),ciphertext:bytesToB64u(payloadCipher)},recovery,passkey,created_at:new Date().toISOString()};
       await saveBackup(backup);
-      state.wallet=wallet; state.seed=seed; state.recoveryKey=recoveryBytes; recoveryBytes=null; scheduleAutoLock();
+      state.recoveryKey=recoveryBytes; recoveryBytes=null;
       renderCreationSuccess(passkey);
-    }catch(error){clearUnlocked(true);render();setMessage(error.message||'Wallet creation failed. No wallet secret was uploaded.','error');}
-    finally{if(vaultKey)vaultKey.fill(0);if(recoveryBytes)recoveryBytes.fill(0);setBusy(false);}
+    }catch(error){clearEphemeral(true);render();setMessage(error.message||'Wallet creation failed. No wallet secret was uploaded.','error');}
+    finally{seed='';wallet=null;vaultKey?.fill(0);recoveryBytes?.fill(0);setBusy(false);}
   }
   function renderCreationSuccess(passkey){
     const body=document.getElementById('atmWalletBody'); if(!body||!state.record||!state.recoveryKey)return;
     const recoveryText=formatRecoveryKey(state.recoveryKey);
-    body.innerHTML=`<div class="atmWalletPanel"><strong>Wallet created</strong><div class="atmWalletAddress">${escapeHtml(state.record.address)}</div><p>${passkey?'Wallet passkey protection is active.':'This device did not expose WebAuthn PRF, so recovery-key unlock is active.'}</p></div><div class="atmWalletPanel"><strong>Save this recovery key now</strong><p class="atmWalletWarning">ATM Town does not know this key and cannot recreate it. It unlocks the encrypted backup.</p><div class="atmWalletRecovery" id="atmWalletRecoveryDisplay">${escapeHtml(recoveryText)}</div></div><div class="atmWalletActions"><button class="atmWalletBtn gold" id="atmWalletCopyRecovery" type="button">Copy recovery key</button><button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download encrypted backup</button><button class="atmWalletBtn primary wide" id="atmWalletRecoverySaved" type="button">I saved my recovery key</button></div>`;
+    body.innerHTML=`<div class="atmWalletPanel"><strong>ATM Pay security created</strong><p>${passkey?'Device passkey protection is active.':'This device did not expose WebAuthn PRF, so recovery-key authorization is active.'}</p><p class="atmWalletSecurity">Your signing key is already encrypted again. ATM Town does not keep it unlocked.</p></div><div class="atmWalletPanel"><strong>Save this recovery key now</strong><p class="atmWalletWarning">ATM Town does not know this key and cannot recreate it. It unlocks your encrypted ATM Pay backup if you lose device access.</p><div class="atmWalletRecovery" id="atmWalletRecoveryDisplay">${escapeHtml(recoveryText)}</div></div><div class="atmWalletActions"><button class="atmWalletBtn gold" id="atmWalletCopyRecovery" type="button">Copy Recovery Key</button><button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download Encrypted Backup</button><button class="atmWalletBtn primary wide" id="atmWalletRecoverySaved" type="button">I Saved My Recovery Key</button></div>`;
     document.getElementById('atmWalletCopyRecovery')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(recoveryText);setMessage('Recovery key copied. Store it somewhere private.','ok');}catch(_error){setMessage('Copy was blocked. Select and save the recovery key manually.','error');}});
     document.getElementById('atmWalletExportBackup')?.addEventListener('click',downloadEncryptedBackup);
-    document.getElementById('atmWalletRecoverySaved')?.addEventListener('click',()=>{state.recoveryKey.fill(0);state.recoveryKey=null;render();setMessage('Recovery step completed. Wallet remains unlocked on this device.','ok');});
-    setMessage('Wallet created. Save the recovery key before continuing.','ok');
+    document.getElementById('atmWalletRecoverySaved')?.addEventListener('click',async()=>{clearRecoveryKey();try{await fetchPayStatus();}catch(_error){}render();setMessage('Recovery saved. Choose your ATM Pay @name next.','ok');});
+    setMessage('ATM Pay security created. Save the recovery key before continuing.','ok');
   }
 
-  async function unlockWithRecovery(){
-    const input=document.getElementById('atmWalletRecoveryInput'); let recovery=null,vault=null;
-    try{
-      setBusy(true,'Decrypting locally with your recovery key…'); recovery=parseRecoveryKey(input?.value||'');
-      vault=await unwrapVaultKey(state.record.encrypted_backup.recovery,recovery,'recovery',state.record.address);
-      await decryptPayload(state.record,vault); if(input)input.value=''; render();setMessage('Wallet unlocked locally.','ok');
-    }catch(error){setMessage(error?.name==='OperationError'?'Recovery key did not unlock this backup.':(error.message||'Recovery unlock failed.'),'error');}
-    finally{recovery?.fill(0);vault?.fill(0);setBusy(false);}
-  }
-  async function unlockWithPasskey(){
-    let vault=null;
-    try{setBusy(true,'Waiting for wallet passkey…');vault=await unlockVaultWithPasskey(state.record);await decryptPayload(state.record,vault);render();setMessage('Wallet unlocked with passkey.','ok');}
-    catch(error){setMessage(error.message||'Passkey unlock failed. Use the recovery key if needed.','error');}
-    finally{vault?.fill(0);setBusy(false);}
-  }
   async function addPasskeyWrapper(){
-    if(!state.wallet||!state.seed){setMessage('Unlock the wallet first.','error');return;}
+    if(!state.record)return;
     let vaultKey=null;
     try{
-      setBusy(true,'Adding a wallet passkey…');
-      const recoveryInput=window.prompt('Enter your ATM1 recovery key to authorize adding a new wallet passkey.');
-      if(!recoveryInput){setMessage('Passkey setup cancelled.');return;}
-      const recovery=parseRecoveryKey(recoveryInput);
-      try{vaultKey=await unwrapVaultKey(state.record.encrypted_backup.recovery,recovery,'recovery',state.record.address);}finally{recovery.fill(0);}
+      setBusy(true,'Authorizing passkey setup…');
+      const input=document.getElementById('atmWalletManagementRecovery');
+      const recoveryText=String(input?.value||'').trim();
+      if(!recoveryText)throw new Error('Enter the ATM1 recovery key first.');
+      vaultKey=await unlockVaultWithRecovery(state.record,recoveryText); if(input)input.value='';
+      await verifyVault(state.record,vaultKey);
       const passkey=await createWalletPasskey(state.record.address,vaultKey);
-      if(!passkey)throw new Error('This authenticator does not support the WebAuthn PRF required for wallet unlock. Recovery-key unlock remains available.');
-      const backup={...state.record.encrypted_backup,passkey,updated_at:new Date().toISOString()}; await saveBackup(backup);render();setMessage('Wallet passkey added.','ok');
-    }catch(error){setMessage(error.message||'Could not add wallet passkey.','error');}
+      if(!passkey)throw new Error('This authenticator does not support the WebAuthn PRF required for wallet signing authorization. Recovery-key authorization remains available.');
+      const backup={...state.record.encrypted_backup,passkey,updated_at:new Date().toISOString()}; await saveBackup(backup);render();setMessage('Wallet passkey added. No signing key was retained.','ok');
+    }catch(error){setMessage(error?.name==='OperationError'?'Recovery key did not unlock this backup.':(error.message||'Could not add wallet passkey.'),'error');}
     finally{vaultKey?.fill(0);setBusy(false);}
   }
 
@@ -348,88 +496,166 @@
       recovery=parseRecoveryKey(recoveryInput);
       vault=await unwrapVaultKey(backup.recovery,recovery,'recovery',backup.address);
       const candidate={network:NETWORK,address:backup.address,encrypted_backup:backup};
-      state.lastTransaction=null;
-      state.record=candidate;
-      await decryptPayload(candidate,vault);
+      await verifyVault(candidate,vault);
+      state.lastTransaction=null; state.record=candidate;
       await saveBackup(backup);
-      render(); setMessage('Encrypted backup restored and verified locally.','ok');
-    }catch(error){
-      clearUnlocked(true); state.record=null; render();
-      setMessage(error?.name==='OperationError'?'Recovery key did not unlock that backup.':(error.message||'Encrypted backup restore failed.'),'error');
-    }finally{recovery?.fill(0);vault?.fill(0);setBusy(false);}
+      render(); setMessage('Encrypted backup restored and verified locally. No signing key was retained.','ok');
+    }catch(error){state.record=null;clearEphemeral(true);render();setMessage(error?.name==='OperationError'?'Recovery key did not unlock that backup.':(error.message||'Encrypted backup restore failed.'),'error');}
+    finally{recovery?.fill(0);vault?.fill(0);setBusy(false);}
   }
 
-  async function prepareTestnetPayment(){
-    if(!state.record||!state.wallet||!state.seed){setMessage('Unlock the ATM Testnet wallet before preparing a payment.','error');return;}
-    const destination=String(document.getElementById('atmWalletPaymentDestination')?.value||'').trim();
-    const amountInput=document.getElementById('atmWalletPaymentAmount')?.value||'';
+  function assertOnlyAllowedPaymentFields(tx,intentId){
+    const keys=Object.keys(tx||{});
+    const extra=keys.filter(key=>!PAYMENT_TX_FIELDS.has(key));
+    if(extra.length)throw new Error(`Prepared transaction contains unexpected field${extra.length===1?'':'s'}: ${extra.join(', ')}. Nothing will be signed.`);
+    if(tx.TransactionType!=='Payment')throw new Error('Only direct XRP Payment transactions are allowed.');
+    if(typeof tx.Amount!=='string'||!/^[0-9]+$/.test(tx.Amount))throw new Error('Only direct XRP amounts in drops are allowed.');
+    if('DestinationTag' in tx||'SendMax' in tx||'Paths' in tx||'Signers' in tx)throw new Error('Prepared transaction contains a field not allowed by the ATM Town wallet policy.');
+    const expected=expectedIntentMemos(intentId);
+    const memos=tx.Memos;
+    if(!Array.isArray(memos)||memos.length!==1||!memos[0]?.Memo||Object.keys(memos[0]).length!==1)throw new Error('ATM Pay transaction binding is missing. Nothing will be signed.');
+    const memo=memos[0].Memo;
+    const memoKeys=Object.keys(memo).sort();
+    if(memoKeys.length!==2||memoKeys[0]!=='MemoData'||memoKeys[1]!=='MemoType'||String(memo.MemoType||'').toUpperCase()!==expected[0].Memo.MemoType||String(memo.MemoData||'').toUpperCase()!==expected[0].Memo.MemoData)throw new Error('ATM Pay transaction binding changed. Nothing will be signed.');
+  }
+  function canonicalPaymentIntent(prepared,tx){
+    assertOnlyAllowedPaymentFields(tx,prepared.payIntentId);
+    return JSON.stringify({
+      atmPayIntentId:String(prepared.payIntentId||''),recipientUserId:String(prepared.recipient?.user_id||''),recipientHandle:String(prepared.recipient?.handle||''),
+      TransactionType:tx.TransactionType,Account:tx.Account,Destination:tx.Destination,Amount:String(tx.Amount),Fee:String(tx.Fee),Sequence:Number(tx.Sequence),LastLedgerSequence:Number(tx.LastLedgerSequence),Memos:tx.Memos,network:NETWORK
+    });
+  }
+
+  async function prepareAtmPayPayment(){
+    if(!state.record||!state.payProfile){setMessage('Finish ATM Pay setup first.','error');return;}
+    const recipient=normalizeRecipient(state.selectedRecipient); if(!recipient){setMessage('Choose an ATM Pay recipient first.','error');return;}
+    const amountInput=state.requestDraft?.amount_xrp||document.getElementById('atmPayAmount')?.value||'';
+    const note=String(document.getElementById('atmPayNote')?.value||state.requestDraft?.note||'').trim().slice(0,80);
     try{
-      setBusy(true,'Preparing transaction from the validated XRPL Testnet ledger…');
+      setBusy(true,`Preparing payment to @${recipient.handle}…`);
+      const amount=parseTestXrpAmount(amountInput);
+      const intentData=await walletApi()('/api/embedded-wallet?action=pay-prepare',{method:'POST',body:JSON.stringify({recipient_id:recipient.user_id,amount_drops:amount.drops,note,request_id:state.requestDraft?.id||null})});
+      const intent=intentData?.intent; const serverRecipient=normalizeRecipient(intent?.recipient);
+      if(!intent?.id||!serverRecipient||serverRecipient.user_id!==recipient.user_id||serverRecipient.handle!==recipient.handle)throw new Error('ATM Pay recipient identity changed during preparation. Nothing was signed.');
+      const destination=String(intent.destination_address||'');
       const xrpl=await loadXrpl();
       const validAddress=typeof xrpl.isValidClassicAddress==='function'?xrpl.isValidClassicAddress(destination):CLASSIC_ADDRESS_RE.test(destination);
-      if(!validAddress)throw new Error('Enter a valid XRPL classic destination address beginning with r.');
-      if(destination===state.record.address)throw new Error('XRPL direct XRP payments cannot use the same sending and destination address.');
-      const amount=parseTestXrpAmount(amountInput);
-      const prepared=await withTestnetClient(async(client)=>{
-        const tx=await client.autofill({TransactionType:'Payment',Account:state.record.address,Destination:destination,Amount:amount.drops});
+      if(!validAddress||destination===state.record.address)throw new Error('ATM Pay recipient settlement route is invalid. Nothing was signed.');
+      if(String(intent.amount_drops)!==amount.drops)throw new Error('ATM Pay amount changed during preparation. Nothing was signed.');
+      const preparedLedger=await withTestnetClient(async(client)=>{
+        const tx=await client.autofill({TransactionType:'Payment',Account:state.record.address,Destination:destination,Amount:amount.drops,Memos:expectedIntentMemos(intent.id)});
         const ledgerIndex=await client.getLedgerIndex();
         return {tx,ledgerIndex};
       });
-      const tx=prepared.tx||{};
-      if(tx.TransactionType!=='Payment'||tx.Account!==state.record.address||tx.Destination!==destination||String(tx.Amount||'')!==amount.drops){
-        throw new Error('Prepared XRPL transaction did not match the requested payment. Nothing was signed.');
-      }
+      const tx=preparedLedger.tx||{}; assertOnlyAllowedPaymentFields(tx,intent.id);
+      if(tx.Account!==state.record.address||tx.Destination!==destination||String(tx.Amount||'')!==amount.drops)throw new Error('Prepared XRPL transaction did not match the ATM Pay request. Nothing was signed.');
       const feeDrops=BigInt(String(tx.Fee||'0'));
       if(feeDrops<=0n||feeDrops>MAX_TEST_FEE_DROPS)throw new Error(`XRPL Testnet fee safety check blocked ${dropsToXrpText(feeDrops)} XRP.`);
-      const sequence=Number(tx.Sequence),lastLedgerSequence=Number(tx.LastLedgerSequence),ledgerIndex=Number(prepared.ledgerIndex);
+      const sequence=Number(tx.Sequence),lastLedgerSequence=Number(tx.LastLedgerSequence),ledgerIndex=Number(preparedLedger.ledgerIndex);
       if(!Number.isSafeInteger(sequence)||sequence<=0)throw new Error('Prepared transaction is missing a valid XRPL account sequence.');
-      if(!Number.isSafeInteger(lastLedgerSequence)||lastLedgerSequence<=0)throw new Error('Prepared transaction is missing LastLedgerSequence.');
-      if(!Number.isSafeInteger(ledgerIndex)||lastLedgerSequence<=ledgerIndex)throw new Error('Prepared transaction expiration is already invalid.');
-      state.preparedPayment={tx,destination,amountDrops:amount.drops,amountXrp:amount.xrp,feeDrops:feeDrops.toString(),feeXrp:dropsToXrpText(feeDrops),sequence,lastLedgerSequence,ledgerIndex,preparedAt:Date.now()};
-      scheduleAutoLock(); render(); setMessage('Payment prepared from XRPL Testnet. Review every field before signing.','ok');
-    }catch(error){state.preparedPayment=null;setMessage(error.message||'Could not prepare the Testnet payment. Nothing was signed.','error');}
+      if(!Number.isSafeInteger(lastLedgerSequence)||lastLedgerSequence<=0)throw new Error('Prepared transaction is missing its ledger expiration.');
+      if(!Number.isSafeInteger(ledgerIndex)||lastLedgerSequence<=ledgerIndex+MIN_LEDGER_HEADROOM)throw new Error('Prepared payment does not have enough ledger-expiration headroom.');
+      const prepared={tx,payIntentId:String(intent.id),recipient:serverRecipient,destination,amountDrops:amount.drops,amountXrp:amount.xrp,note:String(intent.note||note),requestId:intent.request_id||state.requestDraft?.id||null,feeDrops:feeDrops.toString(),feeXrp:dropsToXrpText(feeDrops),sequence,lastLedgerSequence,ledgerIndex,preparedAt:Date.now(),intentDigest:''};
+      prepared.intentDigest=await sha256Text(canonicalPaymentIntent(prepared,tx));
+      state.preparedPayment=prepared; render(); setMessage(`Review your payment to @${serverRecipient.handle}, then authorize it.`,'ok');
+    }catch(error){clearPreparedPayment();setMessage(error.message||'Could not prepare ATM Pay payment. Nothing was signed.','error');}
     finally{setBusy(false);}
   }
 
-  function assertPreparedPaymentStillSafe(prepared){
-    if(!prepared||!state.record||!state.wallet||!state.seed)throw new Error('Unlock and prepare the Testnet payment again.');
-    if(Date.now()-Number(prepared.preparedAt||0)>PAYMENT_PREVIEW_TTL_MS)throw new Error('That payment preview expired. Prepare it again with current ledger values.');
-    const tx=prepared.tx||{};
-    if(tx.TransactionType!=='Payment'||tx.Account!==state.record.address||tx.Destination!==prepared.destination||String(tx.Amount||'')!==prepared.amountDrops)throw new Error('Prepared payment changed before signing. Nothing was signed.');
+  async function assertPreparedPaymentStillSafe(prepared){
+    if(!prepared||!state.record)throw new Error('Review the ATM Pay payment again.');
+    if(Date.now()-Number(prepared.preparedAt||0)>PAYMENT_PREVIEW_TTL_MS)throw new Error('That ATM Pay review expired. Review the payment again.');
+    const recipient=normalizeRecipient(prepared.recipient); if(!recipient)throw new Error('ATM Pay recipient identity is missing.');
+    const tx=prepared.tx||{}; assertOnlyAllowedPaymentFields(tx,prepared.payIntentId);
+    if(tx.Account!==state.record.address||tx.Destination!==prepared.destination||String(tx.Amount||'')!==prepared.amountDrops)throw new Error('Prepared payment changed before signing. Nothing was signed.');
     if(Number(tx.Sequence)!==prepared.sequence||Number(tx.LastLedgerSequence)!==prepared.lastLedgerSequence)throw new Error('Prepared sequence or ledger expiration changed. Nothing was signed.');
     const feeDrops=BigInt(String(tx.Fee||'0'));
     if(feeDrops!==BigInt(prepared.feeDrops)||feeDrops<=0n||feeDrops>MAX_TEST_FEE_DROPS)throw new Error('Prepared network fee failed the signing safety check.');
-    if(BigInt(prepared.amountDrops)<=0n||BigInt(prepared.amountDrops)>MAX_TEST_PAYMENT_DROPS)throw new Error('Prepared amount failed the Phase 2 safety cap.');
+    if(BigInt(prepared.amountDrops)<=0n||BigInt(prepared.amountDrops)>MAX_TEST_PAYMENT_DROPS)throw new Error('Prepared amount failed the test-payment safety cap.');
+    const digest=await sha256Text(canonicalPaymentIntent(prepared,tx));
+    if(digest!==prepared.intentDigest)throw new Error('ATM Pay intent integrity check failed. Nothing was signed.');
     return tx;
   }
+  async function verifyServerPayIntent(prepared){
+    const data=await walletApi()('/api/embedded-wallet?action=pay-verify',{method:'POST',body:JSON.stringify({intent_id:prepared.payIntentId})});
+    const intent=data?.intent; const recipient=normalizeRecipient(intent?.recipient);
+    if(data?.valid!==true||!recipient)throw new Error('ATM Pay could not re-verify this recipient. Nothing was signed.');
+    if(String(intent.id)!==prepared.payIntentId||recipient.user_id!==prepared.recipient.user_id||recipient.handle!==prepared.recipient.handle||String(intent.amount_drops)!==prepared.amountDrops||String(intent.destination_address)!==prepared.destination)throw new Error('ATM Pay recipient routing changed after review. Nothing was signed.');
+    return intent;
+  }
+  async function recheckLiveLedgerBeforeSigning(prepared){
+    return withTestnetClient(async(client)=>{
+      const [ledgerIndex,accountInfo]=await Promise.all([
+        client.getLedgerIndex(),
+        client.request({command:'account_info',account:state.record.address,ledger_index:'validated',queue:false})
+      ]);
+      const liveSequence=Number(accountInfo?.result?.account_data?.Sequence);
+      if(!Number.isSafeInteger(liveSequence)||liveSequence!==prepared.sequence)throw new Error('Your ATM Pay balance changed since review. Review the payment again.');
+      if(Number(prepared.lastLedgerSequence)<=Number(ledgerIndex)+MIN_LEDGER_HEADROOM)throw new Error('That payment review is too close to expiration. Review it again.');
+      return Number(ledgerIndex);
+    });
+  }
+  async function authorizeVaultForOperation(method){
+    if(method==='passkey')return unlockVaultWithPasskey(state.record);
+    if(method==='recovery'){
+      const input=document.getElementById('atmWalletSignRecoveryInput')||document.getElementById('atmWalletManagementRecovery');
+      const value=String(input?.value||'').trim();
+      if(!value)throw new Error('Enter the ATM1 recovery key to authorize this operation.');
+      const vault=await unlockVaultWithRecovery(state.record,value); if(input)input.value=''; return vault;
+    }
+    throw new Error('Unsupported wallet authorization method.');
+  }
+  async function cancelPreparedAtmPayPayment(){
+    const id=state.preparedPayment?.payIntentId;
+    clearPreparedPayment();state.requestDraft=null;render();setMessage('Payment cancelled. Nothing was signed.');
+    if(id){try{await walletApi()('/api/embedded-wallet?action=pay-cancel-intent',{method:'POST',body:JSON.stringify({intent_id:id})});}catch(_error){}}
+  }
 
-  async function signAndSubmitTestnetPayment(){
-    const prepared=state.preparedPayment;
-    let signed=null;
+  async function signAndSubmitAtmPayPayment(method){
+    const prepared=state.preparedPayment; let signed=null,vault=null;
     try{
-      const tx=assertPreparedPaymentStillSafe(prepared);
-      const approved=window.confirm(`SIGN XRPL TESTNET PAYMENT?\n\nSend: ${prepared.amountXrp} XRP\nTo: ${prepared.destination}\nFee: ${prepared.feeXrp} XRP\n\nThis is Testnet only. The transaction will be signed locally on this device.`);
-      if(!approved){setMessage('Testnet signing cancelled. Nothing was submitted.');return;}
-      setBusy(true,'Signing locally on this device…');
-      signed=state.wallet.sign(tx);
-      if(!signed?.tx_blob||!signed?.hash||!/^[A-F0-9]{64}$/i.test(String(signed.hash)))throw new Error('Local XRPL signing did not return a valid signed transaction.');
-      state.lastTransaction={hash:String(signed.hash),destination:prepared.destination,amountXrp:prepared.amountXrp,result:'SUBMISSION PENDING',validated:false,ledgerIndex:null};
-      setMessage('Signed locally. Submitting only the signed blob directly to XRPL Testnet…');
+      await assertPreparedPaymentStillSafe(prepared);
+      setBusy(true,`Checking @${prepared.recipient.handle} before authorization…`);
+      await verifyServerPayIntent(prepared);
+      setMessage(method==='passkey'?`Confirm ${prepared.amountXrp} XRP to @${prepared.recipient.handle} with your device passkey.`:'Authorize this payment with your ATM1 recovery key.');
+      vault=await authorizeVaultForOperation(method);
+      await assertPreparedPaymentStillSafe(prepared);
+      await verifyServerPayIntent(prepared);
+      setMessage('Authorization accepted. Rechecking the live Testnet ledger…');
+      await recheckLiveLedgerBeforeSigning(prepared);
+      const tx=await assertPreparedPaymentStillSafe(prepared);
+      setMessage('Signing this payment locally…');
+      signed=await withDecryptedWallet(state.record,vault,async(wallet)=>wallet.sign(tx));
+      vault.fill(0); vault=null;
+      if(!signed?.tx_blob||!signed?.hash||!/^[A-F0-9]{64}$/i.test(String(signed.hash)))throw new Error('Local XRPL signing did not return a valid transaction.');
+      state.lastTransaction={hash:String(signed.hash),recipient:prepared.recipient,amountXrp:prepared.amountXrp,result:'SUBMISSION PENDING',validated:false,ledgerIndex:null};
+      await walletApi()('/api/embedded-wallet?action=pay-submitted',{method:'POST',body:JSON.stringify({intent_id:prepared.payIntentId,tx_hash:String(signed.hash)})});
+      setMessage('Authorized. Sending payment to XRPL Testnet…');
       const response=await withTestnetClient(async(client)=>client.submitAndWait(signed.tx_blob));
       const result=response?.result||{}; const hash=transactionHash(result,signed.hash); const code=paymentResultCode(result)||'UNKNOWN';
-      if(hash&&hash.toUpperCase()!==String(signed.hash).toUpperCase())throw new Error('XRPL returned a different transaction hash than the locally signed transaction.');
+      if(hash&&hash.toUpperCase()!==String(signed.hash).toUpperCase())throw new Error('XRPL returned a different transaction hash than the locally signed payment.');
       const validated=result.validated===true;
-      state.lastTransaction={hash:String(signed.hash),destination:prepared.destination,amountXrp:prepared.amountXrp,result:code,validated,ledgerIndex:result.ledger_index||result.ledgerIndex||null};
-      state.preparedPayment=null;
-      clearUnlocked(false); render();
-      await refreshBalance({silent:true});
-      if(validated&&code==='tesSUCCESS')setMessage('Testnet payment signed locally and validated successfully. Wallet locked after signing.','ok');
-      else if(validated)setMessage(`Testnet transaction validated with ${code}. The fee may have been consumed. Wallet locked after signing.`,'error');
-      else setMessage('XRPL submission returned without validated finality. Check the transaction hash before sending anything else. Wallet locked.','error');
+      let serverVerified=null;
+      if(validated){
+        serverVerified=await walletApi()('/api/embedded-wallet?action=pay-complete',{method:'POST',body:JSON.stringify({intent_id:prepared.payIntentId,tx_hash:String(signed.hash)})});
+        if(serverVerified?.validated!==true)throw new Error('ATM Pay could not verify the validated XRPL payment.');
+      }
+      state.lastTransaction={hash:String(signed.hash),recipient:prepared.recipient,amountXrp:prepared.amountXrp,result:String(serverVerified?.result||code),validated:Boolean(validated&&serverVerified?.validated),ledgerIndex:serverVerified?.ledger_index||result.ledger_index||result.ledgerIndex||null};
+      clearPreparedPayment();state.selectedRecipient=null;state.requestDraft=null;render();await refreshBalance({silent:true});await fetchPayActivity({silent:true});
+      if(state.lastTransaction.validated&&state.lastTransaction.result==='tesSUCCESS')setMessage(`Paid @${prepared.recipient.handle} ${prepared.amountXrp} XRP. ✓`,'ok');
+      else if(validated)setMessage(`Payment validated with ${state.lastTransaction.result}. Check Activity before trying again.`,'error');
+      else setMessage('Payment submission returned without validated finality. Check Activity before trying again.','error');
     }catch(error){
-      if(signed?.hash){state.lastTransaction={...(state.lastTransaction||{}),hash:String(signed.hash),destination:prepared?.destination||'',amountXrp:prepared?.amountXrp||'',result:'STATUS UNKNOWN',validated:false};clearUnlocked(false);render();}
-      setMessage(error.message||'Testnet transaction failed. If signing occurred, check the displayed hash before trying again.','error');
-    }finally{setBusy(false);}
+      if(signed?.hash){
+        state.lastTransaction={...(state.lastTransaction||{}),hash:String(signed.hash),recipient:prepared?.recipient||null,amountXrp:prepared?.amountXrp||'',result:'STATUS UNKNOWN',validated:false};
+        try{
+          const verified=await walletApi()('/api/embedded-wallet?action=pay-complete',{method:'POST',body:JSON.stringify({intent_id:prepared?.payIntentId,tx_hash:String(signed.hash)})});
+          if(verified?.validated){state.lastTransaction={...state.lastTransaction,result:String(verified.result||'UNKNOWN'),validated:true,ledgerIndex:verified.ledger_index||null};clearPreparedPayment();state.selectedRecipient=null;state.requestDraft=null;await fetchPayActivity({silent:true});}
+        }catch(_verifyError){}
+        render();
+      }
+      setMessage(error?.name==='OperationError'?'ATM Pay authorization failed. Nothing new will be signed without another authorization.':(error.message||'ATM Pay transaction failed. If signing occurred, check Activity before trying again.'),'error');
+    }finally{vault?.fill(0);setBusy(false);}
   }
 
   async function refreshBalance(options={}){
@@ -437,7 +663,7 @@
     const el=document.getElementById('atmWalletBalance'),note=document.getElementById('atmWalletFunded'); if(el&&!options.silent)el.textContent='… XRP';
     try{
       const data=await walletApi()('/api/embedded-wallet?action=balance',{method:'GET'});
-      if(el)el.textContent=`${data.balance_xrp} XRP`; if(note)note.textContent=data.funded?'Validated XRPL Testnet balance.':'Account is not funded on Testnet yet.';
+      if(el)el.textContent=`${data.balance_xrp}`; if(note)note.textContent=data.funded?'Validated XRPL Testnet balance.':'Account is not funded on Testnet yet.';
       if(!options.silent)setMessage('Testnet balance refreshed.','ok');
     }catch(error){if(el)el.textContent='— XRP';if(note)note.textContent='Balance unavailable.';if(!options.silent)setMessage(error.message||'Could not read Testnet balance.','error');}
   }
@@ -446,20 +672,30 @@
     const exportData={type:'ATM-TOWN-ENCRYPTED-XRPL-WALLET',warning:'TESTNET ONLY',exported_at:new Date().toISOString(),backup:state.record.encrypted_backup};
     const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a');a.href=url;a.download=`atm-town-testnet-wallet-${state.record.address}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage('Encrypted backup downloaded. It still requires your recovery key or wallet passkey.','ok');
   }
-  function revealSeed(){
-    if(!state.seed){setMessage('Unlock the wallet before exporting its seed.','error');return;}
-    if(!window.confirm('Reveal the XRPL TESTNET seed? Anyone with this seed can control this Testnet wallet. Never paste a Mainnet seed here.'))return;
-    const body=document.getElementById('atmWalletBody'); if(!body)return;
-    const panel=document.createElement('div'); panel.className='atmWalletPanel'; panel.innerHTML=`<strong>XRPL Testnet seed — keep private</strong><p class="atmWalletWarning">This is the only plaintext export. ATM Town has not uploaded it.</p><div class="atmWalletRecovery">${escapeHtml(state.seed)}</div>`; body.prepend(panel); setMessage('Testnet seed revealed locally. Close or lock the wallet when finished.');
+  async function copyEmergencySeed(method){
+    if(!state.record)return; let vault=null;
+    try{
+      const approved=window.confirm('EMERGENCY TESTNET SEED EXPORT\n\nThis copies the plaintext XRPL Testnet seed to your clipboard. Anyone who gets that seed can control this wallet. Continue?');
+      if(!approved)return;
+      setBusy(true,method==='passkey'?'Waiting for wallet passkey…':'Authorizing emergency export with recovery key…');
+      vault=await authorizeVaultForOperation(method);
+      await withDecryptedWallet(state.record,vault,async(_wallet,seed)=>{
+        if(!navigator.clipboard?.writeText)throw new Error('Secure clipboard access is unavailable in this browser. Use the encrypted backup + recovery key instead.');
+        await navigator.clipboard.writeText(seed);
+      });
+      setMessage('Testnet seed copied for emergency export. Clear your clipboard after storing it securely. No seed was displayed or retained by ATM Town.','ok');
+    }catch(error){setMessage(error?.name==='OperationError'?'Wallet authorization failed.':(error.message||'Emergency seed export failed.'),'error');}
+    finally{vault?.fill(0);setBusy(false);}
   }
 
   function bindButton(){
     const button=document.getElementById('embeddedWalletBtn'); if(!button||button.dataset.atmWalletBound)return; button.dataset.atmWalletBound='1'; button.addEventListener('click',open);
   }
-  function refreshButton(){const button=document.getElementById('embeddedWalletBtn');if(button)button.innerHTML='<span class="identityBtnIcon">◇</span>ATM WALLET · TESTNET';}
+  function refreshButton(){const button=document.getElementById('embeddedWalletBtn');if(button)button.innerHTML='<span class="identityBtnIcon">◇</span>ATM PAY · TESTNET';}
 
-  window.ATMEmbeddedWallet={open,close,lock,resetForAuthChange:()=>{clearUnlocked(true);state.record=null;state.lastTransaction=null;close();render();},refresh:async()=>{try{await fetchRecord();refreshButton();}catch(_error){}}};
+  window.ATMEmbeddedWallet={open,close,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.selectedRecipient=null;state.requestDraft=null;document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:async()=>{try{await fetchRecord();await fetchPayStatus();refreshButton();}catch(_error){}}};
+  window.ATMPay={open,refresh:window.ATMEmbeddedWallet.refresh};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();bindButton();refreshButton();});else{ensureUi();bindButton();refreshButton();}
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)lock({clearRecovery:false});});
-  window.addEventListener('pagehide',()=>lock({clearRecovery:true}));
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPreparedPayment();if(!state.recoveryKey)render();}});
+  window.addEventListener('pagehide',()=>clearEphemeral(true));
 })();

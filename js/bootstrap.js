@@ -32,6 +32,7 @@
         script.src = sources[index++];
         script.async = true;
         script.crossOrigin = 'anonymous';
+        script.referrerPolicy = 'no-referrer';
         script.onload = () => global.supabase ? resolve(global.supabase) : tryNext();
         script.onerror = () => {
           script.remove();

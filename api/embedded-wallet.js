@@ -1,54 +1,95 @@
 import { requireUser, sendError, setCors } from '../lib/auth.js';
+import { handleAtmPayAction, isAtmPayAction } from '../lib/atm-pay.js';
 
 const TESTNET_RPC = process.env.XRPL_TESTNET_RPC_URL || 'https://s.altnet.rippletest.net:51234/';
 const NETWORK = 'testnet';
 const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const MAX_BACKUP_BYTES = 24 * 1024;
+const RPC_TIMEOUT_MS = 8_000;
 
 function noStore(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Pragma', 'no-cache');
 }
 
+function badRequest(message) {
+  return Object.assign(new Error(message), { status: 400 });
+}
+
+function assertPlainObject(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw badRequest(`${label} is invalid.`);
+  return value;
+}
+
+function assertExactKeys(value, allowed, required, label) {
+  const object = assertPlainObject(value, label);
+  const keys = Object.keys(object);
+  const extra = keys.filter((key) => !allowed.includes(key));
+  if (extra.length) throw badRequest(`${label} contains unsupported field${extra.length === 1 ? '' : 's'}: ${extra.join(', ')}.`);
+  const missing = required.filter((key) => !(key in object));
+  if (missing.length) throw badRequest(`${label} is missing required field${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}.`);
+  return object;
+}
+
+function assertB64u(value, label, { exactBytes = null, minBytes = 1, maxBytes = 4096 } = {}) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value)) throw badRequest(`${label} must be canonical base64url.`);
+  let bytes;
+  try { bytes = Buffer.from(value, 'base64url'); }
+  catch { throw badRequest(`${label} is not valid base64url.`); }
+  if (bytes.toString('base64url') !== value) throw badRequest(`${label} must use canonical base64url encoding.`);
+  if (exactBytes != null && bytes.length !== exactBytes) throw badRequest(`${label} has an invalid byte length.`);
+  if (bytes.length < minBytes || bytes.length > maxBytes) throw badRequest(`${label} has an invalid byte length.`);
+  return value;
+}
+
+function assertIsoTimestamp(value, label) {
+  if (typeof value !== 'string' || value.length > 64 || !Number.isFinite(Date.parse(value))) throw badRequest(`${label} must be a valid timestamp.`);
+  return value;
+}
+
+function assertWrapper(wrapper, kind) {
+  const isPasskey = kind === 'passkey';
+  const allowed = isPasskey
+    ? ['kdf', 'credential_id', 'prf_salt', 'salt', 'iv', 'ciphertext']
+    : ['kdf', 'salt', 'iv', 'ciphertext'];
+  const object = assertExactKeys(wrapper, allowed, allowed, `${kind} wrapper`);
+  if (object.kdf !== 'HKDF-SHA-256') throw badRequest(`${kind} wrapper KDF is invalid.`);
+  assertB64u(object.salt, `${kind} wrapper salt`, { exactBytes: 32 });
+  assertB64u(object.iv, `${kind} wrapper IV`, { exactBytes: 12 });
+  assertB64u(object.ciphertext, `${kind} wrapper ciphertext`, { exactBytes: 48 });
+  if (isPasskey) {
+    assertB64u(object.credential_id, 'passkey credential id', { minBytes: 1, maxBytes: 1024 });
+    assertB64u(object.prf_salt, 'passkey PRF salt', { exactBytes: 32 });
+  }
+  return object;
+}
+
 function assertWalletBackup(backup) {
-  if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
-    throw Object.assign(new Error('Encrypted wallet backup is required.'), { status: 400 });
-  }
-  const encoded = JSON.stringify(backup);
-  if (Buffer.byteLength(encoded, 'utf8') > MAX_BACKUP_BYTES) {
-    throw Object.assign(new Error('Encrypted wallet backup is too large.'), { status: 413 });
-  }
-  if (/"(?:seed|secret|private[_-]?key|privateKey)"\s*:/i.test(encoded)) {
-    throw Object.assign(new Error('Plaintext wallet secrets must never be sent to ATM Town.'), { status: 400 });
-  }
-  if (backup.version !== 1 || backup.network !== NETWORK) {
-    throw Object.assign(new Error('Only ATM Town Testnet wallet backup version 1 is accepted.'), { status: 400 });
-  }
-  if (!CLASSIC_ADDRESS_RE.test(String(backup.address || ''))) {
-    throw Object.assign(new Error('A valid XRPL classic address is required.'), { status: 400 });
-  }
-  const payload = backup.payload || {};
-  const recovery = backup.recovery || {};
-  if (payload.alg !== 'AES-GCM' || typeof payload.iv !== 'string' || typeof payload.ciphertext !== 'string') {
-    throw Object.assign(new Error('Encrypted wallet payload is incomplete.'), { status: 400 });
-  }
-  if (recovery.kdf !== 'HKDF-SHA-256' || typeof recovery.salt !== 'string' || typeof recovery.iv !== 'string' || typeof recovery.ciphertext !== 'string') {
-    throw Object.assign(new Error('Recovery wrapper is incomplete.'), { status: 400 });
-  }
-  if (backup.passkey != null) {
-    const passkey = backup.passkey;
-    if (
-      passkey.kdf !== 'HKDF-SHA-256' ||
-      typeof passkey.credential_id !== 'string' ||
-      typeof passkey.prf_salt !== 'string' ||
-      typeof passkey.salt !== 'string' ||
-      typeof passkey.iv !== 'string' ||
-      typeof passkey.ciphertext !== 'string'
-    ) {
-      throw Object.assign(new Error('Passkey wrapper is incomplete.'), { status: 400 });
-    }
-  }
-  return backup;
+  const object = assertExactKeys(
+    backup,
+    ['version', 'network', 'address', 'payload', 'recovery', 'passkey', 'created_at', 'updated_at'],
+    ['version', 'network', 'address', 'payload', 'recovery', 'passkey', 'created_at'],
+    'Encrypted wallet backup',
+  );
+
+  const encoded = JSON.stringify(object);
+  if (Buffer.byteLength(encoded, 'utf8') > MAX_BACKUP_BYTES) throw Object.assign(new Error('Encrypted wallet backup is too large.'), { status: 413 });
+  // Defense in depth: exact schemas above are authoritative; this also catches accidental future secret-named fields.
+  if (/"(?:seed|secret|private[_-]?key|privateKey)"\s*:/i.test(encoded)) throw badRequest('Plaintext wallet secrets must never be sent to ATM Town.');
+
+  if (object.version !== 1 || object.network !== NETWORK) throw badRequest('Only ATM Town Testnet wallet backup version 1 is accepted.');
+  if (!CLASSIC_ADDRESS_RE.test(String(object.address || ''))) throw badRequest('A valid XRPL classic address is required.');
+
+  const payload = assertExactKeys(object.payload, ['alg', 'iv', 'ciphertext'], ['alg', 'iv', 'ciphertext'], 'Encrypted wallet payload');
+  if (payload.alg !== 'AES-GCM') throw badRequest('Encrypted wallet payload algorithm is invalid.');
+  assertB64u(payload.iv, 'wallet payload IV', { exactBytes: 12 });
+  assertB64u(payload.ciphertext, 'wallet payload ciphertext', { minBytes: 64, maxBytes: 4096 });
+
+  assertWrapper(object.recovery, 'recovery');
+  if (object.passkey !== null) assertWrapper(object.passkey, 'passkey');
+  assertIsoTimestamp(object.created_at, 'Wallet backup created_at');
+  if (object.updated_at != null) assertIsoTimestamp(object.updated_at, 'Wallet backup updated_at');
+  return object;
 }
 
 async function readWallet(admin, userId) {
@@ -62,11 +103,18 @@ async function readWallet(admin, userId) {
 }
 
 async function rpc(method, params) {
-  const response = await fetch(TESTNET_RPC, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ method, params })
-  });
+  let response;
+  try {
+    response = await fetch(TESTNET_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method, params }),
+      signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new Error('XRPL Testnet request timed out.');
+    throw error;
+  }
   if (!response.ok) throw new Error(`XRPL Testnet request failed (${response.status}).`);
   const json = await response.json();
   if (json?.result?.status === 'error') {
@@ -97,6 +145,8 @@ export default async function handler(req, res) {
     const { admin, user } = await requireUser(req);
     const action = String(req.query?.action || (req.method === 'POST' ? 'save' : 'status')).toLowerCase();
 
+    if (isAtmPayAction(action)) return await handleAtmPayAction(req, res, { admin, user, action });
+
     if (req.method === 'GET' && action === 'status') {
       const row = await readWallet(admin, user.id);
       return res.status(200).json({
@@ -105,8 +155,8 @@ export default async function handler(req, res) {
           address: row.address,
           encrypted_backup: row.encrypted_backup,
           created_at: row.created_at,
-          updated_at: row.updated_at
-        } : null
+          updated_at: row.updated_at,
+        } : null,
       });
     }
 
@@ -123,9 +173,20 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && action === 'save') {
       const backup = assertWalletBackup(req.body?.encrypted_backup || req.body?.backup);
       const address = String(req.body?.address || backup.address || '');
-      if (address !== backup.address || !CLASSIC_ADDRESS_RE.test(address)) {
-        throw Object.assign(new Error('Wallet address does not match the encrypted backup.'), { status: 400 });
+      if (address !== backup.address || !CLASSIC_ADDRESS_RE.test(address)) throw badRequest('Wallet address does not match the encrypted backup.');
+
+      // A normal wrapper refresh may update ciphertext for the SAME public address. Replacing
+      // the account's wallet address needs a future dedicated, explicit recovery flow instead
+      // of silently overwriting the only encrypted backup associated with this account.
+      const existing = await readWallet(admin, user.id);
+      if (existing && existing.address !== address) {
+        throw Object.assign(new Error('Embedded wallet replacement is blocked. Use a dedicated wallet-replacement recovery flow.'), { status: 409 });
       }
+      const existingCreatedAt = existing?.encrypted_backup?.created_at;
+      if (existingCreatedAt && existingCreatedAt !== backup.created_at) {
+        throw Object.assign(new Error('Embedded wallet backup identity changed unexpectedly.'), { status: 409 });
+      }
+
       const now = new Date().toISOString();
       const { data, error } = await admin
         .from('embedded_wallets')
@@ -134,7 +195,7 @@ export default async function handler(req, res) {
           network: NETWORK,
           address,
           encrypted_backup: backup,
-          updated_at: now
+          updated_at: now,
         }, { onConflict: 'user_id' })
         .select('network,address,created_at,updated_at')
         .single();
