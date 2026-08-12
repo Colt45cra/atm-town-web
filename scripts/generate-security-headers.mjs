@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -7,20 +6,19 @@ const htmlPath = path.join(root, 'index.html');
 const outputPath = path.join(root, 'vercel.json');
 const html = await readFile(htmlPath, 'utf8');
 
-const inlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
-  .filter((match) => !/\bsrc\s*=/.test(match[1]))
-  .map((match) => match[2]);
+// v234.2.2: executable inline JavaScript is intentionally forbidden.
+// Game/runtime code must live in same-origin external .js files so CSP does
+// not depend on large inline-script hashes that can drift from deployed HTML.
+const executableInlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+  .filter((match) => !/\bsrc\s*=/.test(match[1]) && match[2].trim().length > 0);
 
-if (!inlineScripts.length) throw new Error('No inline scripts found; refusing to generate an incomplete CSP.');
-
-const scriptHashes = [...new Set(inlineScripts.map((source) => {
-  const digest = createHash('sha256').update(source, 'utf8').digest('base64');
-  return `'sha256-${digest}'`;
-}))];
+if (executableInlineScripts.length) {
+  throw new Error(`Executable inline JavaScript found (${executableInlineScripts.length}). Move it to a same-origin .js file before generating security headers.`);
+}
 
 const csp = [
   `default-src 'self'`,
-  `script-src 'self' https://cdn.jsdelivr.net ${scriptHashes.join(' ')}`,
+  `script-src 'self' https://cdn.jsdelivr.net`,
   `script-src-attr 'none'`,
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data: blob: https:`,
@@ -57,4 +55,4 @@ const vercel = {
 };
 
 await writeFile(outputPath, `${JSON.stringify(vercel, null, 2)}\n`, 'utf8');
-console.log(`Generated vercel.json with ${scriptHashes.length} inline-script SHA-256 CSP hashes.`);
+console.log('Generated vercel.json with zero executable inline scripts; same-origin runtime scripts are authorized by CSP self.');

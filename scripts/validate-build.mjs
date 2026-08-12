@@ -1,6 +1,5 @@
 import { mkdtemp, readFile, rm, writeFile, access, readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -82,6 +81,12 @@ const requiredFiles = [
   'vercel.json',
   'package.json',
   'js/wallet/embedded-wallet.js',
+  'js/runtime/game-core.js',
+  'js/runtime/sky-run.js',
+  'js/runtime/platform-panic.js',
+  'js/runtime/ring-rumble.js',
+  'js/runtime/flappy-jetpack.js',
+  'js/runtime/darts.js',
   'api/embedded-wallet.js',
   'lib/atm-pay.js',
   'supabase/ATM-Town-v234.sql',
@@ -99,7 +104,17 @@ for (const file of requiredFiles) {
 }
 
 const html = await readFile(path.join(root, 'index.html'), 'utf8');
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js'];
+const gameRuntimeParts = await Promise.all([
+  readFile(path.join(root, 'js/runtime/game-core.js'), 'utf8'),
+  readFile(path.join(root, 'js/runtime/sky-run.js'), 'utf8'),
+  readFile(path.join(root, 'js/runtime/platform-panic.js'), 'utf8'),
+  readFile(path.join(root, 'js/runtime/ring-rumble.js'), 'utf8'),
+  readFile(path.join(root, 'js/runtime/flappy-jetpack.js'), 'utf8'),
+  readFile(path.join(root, 'js/runtime/darts.js'), 'utf8'),
+]);
+const gameRuntimeSource = gameRuntimeParts.join('\n');
+const runtimeSource = `${html}\n${gameRuntimeSource}`;
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -108,12 +123,12 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!html.includes("version:ATM_CONFIG?.build?.version||'v234.2'")) errors.push('Missing v234.2 display build marker.');
-if (!html.includes("name:ATM_CONFIG?.build?.name||'ATM Pay'")) errors.push('Missing v234.2 ATM Pay display fallback.');
-if (!html.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
-if (!html.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
-if (!html.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
-if (/data:image\//i.test(html)) errors.push('index.html still contains embedded data:image URIs; runtime art should be external/cacheable.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v234.2'")) errors.push('Missing v234.2 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'ATM Pay'")) errors.push('Missing v234.2 ATM Pay display fallback.');
+if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
+if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
+if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
+if (/data:image\//i.test(runtimeSource)) errors.push('index.html still contains embedded data:image URIs; runtime art should be external/cacheable.');
 
 const idMatches = [...html.matchAll(/\sid=["']([^"']+)["']/g)].map((match) => match[1]);
 const idCounts = new Map();
@@ -160,8 +175,12 @@ for (const runtimeMarker of [
   'ATM Pay · Testnet',
   'window.atmApiWithAuth=apiWithAuth'
 ]) {
-  if (!html.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
+  if (!runtimeSource.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
+
+if (!gameRuntimeParts[0].includes('function nearestThing(){')) errors.push('Game core runtime is missing nearestThing definition.');
+if (!gameRuntimeParts[1].includes('const originalNearestThing=nearestThing;')) errors.push('Sky Run runtime is missing the arcade nearestThing extension.');
+if (!html.includes('<script src="js/runtime/game-core.js"></script>\n<script src="js/runtime/sky-run.js"></script>')) errors.push('Game core must load immediately before the Sky Run arcade extension.');
 
 const leaderboardApiSource = await readFile(path.join(root, 'api', 'leaderboards.js'), 'utf8');
 if (!leaderboardApiSource.includes('idempotent: true')) errors.push('Leaderboard API is missing idempotent score recovery.');
@@ -244,7 +263,7 @@ if (!atmPaySql.includes("handle ~ '^[a-z0-9_]{3,20}$'")) errors.push('v234.2 ATM
 if (!atmPaySql.includes('atm_pay_intents_one_active_request_idx') || !atmPaySql.includes("status in ('pending','submitted','validated')")) errors.push('v234.2 payment requests need a database guard against duplicate active/completed payments.');
 
 
-// v234.1 browser-runtime hardening: generated CSP must authorize current inline scripts by SHA-256 hash.
+// v234.2.2 browser-runtime hardening: all executable JavaScript must be external.
 const vercelConfig = JSON.parse(await readFile(path.join(root, 'vercel.json'), 'utf8'));
 const securityHeaders = vercelConfig?.headers?.[0]?.headers || [];
 const headerValue = (name) => String(securityHeaders.find((header) => String(header.key).toLowerCase() === name.toLowerCase())?.value || '');
@@ -255,12 +274,19 @@ const scriptDirective = csp.split(';').map((part) => part.trim()).find((part) =>
 if (!scriptDirective) errors.push('v234.1 CSP script-src directive is missing.');
 if (scriptDirective.includes("'unsafe-inline'") || scriptDirective.includes("'unsafe-eval'")) errors.push('v234.1 script-src must not allow unsafe-inline or unsafe-eval.');
 if (scriptDirective.includes('unpkg.com')) errors.push('v234.1 CSP must not authorize the removed unpkg runtime fallback.');
-const inlineForCsp = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
-  .filter((match) => !/\bsrc\s*=/.test(match[1]))
-  .map((match) => match[2]);
-for (const inlineSource of inlineForCsp) {
-  const hash = `'sha256-${createHash('sha256').update(inlineSource, 'utf8').digest('base64')}'`;
-  if (!scriptDirective.includes(hash)) errors.push(`CSP is missing current inline-script hash: ${hash}`);
+if (/sha256-/i.test(scriptDirective)) errors.push('v234.2.2 CSP must not depend on inline-script hashes.');
+const executableInlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+  .filter((match) => !/\bsrc\s*=/.test(match[1]) && match[2].trim().length > 0);
+if (executableInlineScripts.length) errors.push(`v234.2.2 forbids executable inline JavaScript; found ${executableInlineScripts.length} inline block(s).`);
+for (const runtimeFile of [
+  'js/runtime/game-core.js',
+  'js/runtime/sky-run.js',
+  'js/runtime/platform-panic.js',
+  'js/runtime/ring-rumble.js',
+  'js/runtime/flappy-jetpack.js',
+  'js/runtime/darts.js',
+]) {
+  if (!html.includes(`<script src="${runtimeFile}"></script>`)) errors.push(`index.html does not load external runtime script: ${runtimeFile}`);
 }
 for (const requiredHeader of ['Referrer-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'Cross-Origin-Opener-Policy', 'Permissions-Policy', 'Strict-Transport-Security']) {
   if (!headerValue(requiredHeader)) errors.push(`v234.1 security header is missing: ${requiredHeader}`);
@@ -295,7 +321,7 @@ for (const [mapId, map] of Object.entries(config.maps)) {
 }
 
 // Directly referenced local runtime assets should all exist.
-const sourceBundle = `${html}\n${configSource}`;
+const sourceBundle = `${html}\n${configSource}\n${gameRuntimeSource}`;
 const assetRefs = new Set();
 for (const match of sourceBundle.matchAll(/["'`](assets\/[A-Za-z0-9_./() -]+\.(?:webp|png|wav|mp3))["'`]/g)) assetRefs.add(match[1]);
 for (const asset of assetRefs) {
@@ -357,15 +383,23 @@ for (const entry of rootEntries) {
 
 const tempDirectory = await mkdtemp(path.join(os.tmpdir(), 'atm-town-validate-'));
 try {
-  const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-    .filter((match) => !/\ssrc=/.test(match[0]))
-    .map((match) => match[1]);
-  if (!inlineScripts.length) errors.push('No inline game scripts were found.');
-  for (let index = 0; index < inlineScripts.length; index += 1) {
-    const target = path.join(tempDirectory, `inline-${index + 1}.js`);
-    await writeFile(target, inlineScripts[index]);
+  // Runtime files execute as classic browser scripts. Check them from a temporary
+  // directory outside this package's module scope so node --check uses Script semantics.
+  const classicRuntimeFiles = [
+    'js/runtime/game-core.js',
+    'js/runtime/sky-run.js',
+    'js/runtime/platform-panic.js',
+    'js/runtime/ring-rumble.js',
+    'js/runtime/flappy-jetpack.js',
+    'js/runtime/darts.js',
+  ];
+  for (let index = 0; index < classicRuntimeFiles.length; index += 1) {
+    const relative = classicRuntimeFiles[index];
+    const source = await readFile(path.join(root, relative), 'utf8');
+    const target = path.join(tempDirectory, `classic-runtime-${index + 1}.js`);
+    await writeFile(target, source);
     const result = spawnSync(process.execPath, ['--check', target], { encoding: 'utf8' });
-    if (result.status !== 0) errors.push(`Inline JavaScript block ${index + 1} failed syntax:\n${result.stderr.trim()}`);
+    if (result.status !== 0) errors.push(`Classic runtime JavaScript failed syntax for ${relative}:\n${result.stderr.trim()}`);
   }
 
   const syntaxTargets = [
@@ -393,4 +427,4 @@ if (errors.length) {
 }
 
 console.log('ATM Town v234.2 build validation passed.');
-console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, and every inline JavaScript block.`);
+console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
