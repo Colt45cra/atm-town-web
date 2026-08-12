@@ -255,9 +255,9 @@ const scriptDirective = csp.split(';').map((part) => part.trim()).find((part) =>
 if (!scriptDirective) errors.push('v234.1 CSP script-src directive is missing.');
 if (scriptDirective.includes("'unsafe-inline'") || scriptDirective.includes("'unsafe-eval'")) errors.push('v234.1 script-src must not allow unsafe-inline or unsafe-eval.');
 if (scriptDirective.includes('unpkg.com')) errors.push('v234.1 CSP must not authorize the removed unpkg runtime fallback.');
-const inlineForCsp = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-  .filter((match) => !/\ssrc\s*=/.test(match[0]))
-  .map((match) => match[1]);
+const inlineForCsp = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+  .filter((match) => !/\bsrc\s*=/.test(match[1]))
+  .map((match) => match[2]);
 for (const inlineSource of inlineForCsp) {
   const hash = `'sha256-${createHash('sha256').update(inlineSource, 'utf8').digest('base64')}'`;
   if (!scriptDirective.includes(hash)) errors.push(`CSP is missing current inline-script hash: ${hash}`);

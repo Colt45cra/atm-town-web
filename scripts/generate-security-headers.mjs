@@ -7,9 +7,9 @@ const htmlPath = path.join(root, 'index.html');
 const outputPath = path.join(root, 'vercel.json');
 const html = await readFile(htmlPath, 'utf8');
 
-const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-  .filter((match) => !/\ssrc\s*=/.test(match[0]))
-  .map((match) => match[1]);
+const inlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+  .filter((match) => !/\bsrc\s*=/.test(match[1]))
+  .map((match) => match[2]);
 
 if (!inlineScripts.length) throw new Error('No inline scripts found; refusing to generate an incomplete CSP.');
 
