@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v234.2.5: routes ATM Pay XRPL network transport through the authenticated ATM Town API while keeping signing local.
  * v234.2.4: makes ATM Pay mobile-friendly by using resilient HTTPS JSON-RPC Testnet transport.
  * v234.2: adds ATM Pay identity, request, activity, and server-bound Testnet payment intents.
  * v234.1: hardens the isolated XRPL Testnet embedded-wallet runtime configuration.
@@ -13,10 +14,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 234.24,
-    version: 'v234.2.4',
+    number: 234.25,
+    version: 'v234.2.5',
     name: 'ATM Pay',
-    title: 'ATM Town v234.2.4 — ATM Pay Mobile Reliability'
+    title: 'ATM Town v234.2.5 — ATM Pay Seamless Relay'
   });
 
   const MAPS = Object.freeze({
@@ -118,12 +119,6 @@
 
   const EMBEDDED_WALLET = Object.freeze({
     network: 'testnet',
-    rpcHttp: 'https://testnet.xrpl-labs.com/',
-    rpcHttpSources: Object.freeze([
-      'https://testnet.xrpl-labs.com/',
-      'https://testnet.honeycluster.io/',
-      'https://s.altnet.rippletest.net:51234/'
-    ]),
     explorerBase: 'https://testnet.xrpl.org/accounts/',
     explorerTxBase: 'https://testnet.xrpl.org/transactions/',
     xrplBrowserSources: Object.freeze([
