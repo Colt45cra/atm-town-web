@@ -12,8 +12,8 @@
   const BUILD = Object.freeze({
     number: 234,
     version: 'v234',
-    name: 'Embedded Wallet — Testnet Phase 1',
-    title: 'ATM Town v234 — Embedded Wallet · Testnet Phase 1'
+    name: 'Embedded Wallet — Testnet Phase 2',
+    title: 'ATM Town v234 — Embedded Wallet · Testnet Phase 2'
   });
 
   const MAPS = Object.freeze({
@@ -117,7 +117,9 @@
   const EMBEDDED_WALLET = Object.freeze({
     network: 'testnet',
     rpcHttp: 'https://s.altnet.rippletest.net:51234/',
+    rpcWs: 'wss://s.altnet.rippletest.net:51233/',
     explorerBase: 'https://testnet.xrpl.org/accounts/',
+    explorerTxBase: 'https://testnet.xrpl.org/transactions/',
     xrplBrowserSources: Object.freeze([
       'https://cdn.jsdelivr.net/npm/xrpl@5.0.0/build/xrpl-latest-min.js',
       'https://unpkg.com/xrpl@5.0.0/build/xrpl-latest-min.js'

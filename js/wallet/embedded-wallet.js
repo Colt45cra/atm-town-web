@@ -3,10 +3,15 @@
 
   const CONFIG = window.ATM_TOWN_CONFIG?.embeddedWallet || {};
   const NETWORK = 'testnet';
+  const TESTNET_WS = String(CONFIG.rpcWs || 'wss://s.altnet.rippletest.net:51233/');
   const AUTO_LOCK_MS = 5 * 60 * 1000;
+  const PAYMENT_PREVIEW_TTL_MS = 60 * 1000;
+  const MAX_TEST_PAYMENT_DROPS = 10_000_000n; // 10 Testnet XRP hard cap for Phase 2.
+  const MAX_TEST_FEE_DROPS = 10_000n; // 0.01 Testnet XRP safety ceiling.
+  const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
-  let state = { record:null, wallet:null, seed:null, recoveryKey:null, busy:false };
+  let state = { record:null, wallet:null, seed:null, recoveryKey:null, busy:false, preparedPayment:null, lastTransaction:null };
   let lockTimer = null;
   let xrplLoadPromise = null;
 
@@ -32,6 +37,25 @@
   }
   function escapeHtml(value){return String(value??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));}
   function shortAddress(value){value=String(value||'');return value.length>18?value.slice(0,9)+'…'+value.slice(-7):value;}
+  function dropsToXrpText(drops){
+    const value=BigInt(String(drops||'0')); const whole=value/1_000_000n; const fraction=(value%1_000_000n).toString().padStart(6,'0');
+    return `${whole}.${fraction}`;
+  }
+  function parseTestXrpAmount(value){
+    const text=String(value??'').trim();
+    if(!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(text))throw new Error('Enter a Testnet XRP amount with no more than 6 decimal places.');
+    const [wholeText,fractionText='']=text.split('.');
+    const drops=BigInt(wholeText)*1_000_000n+BigInt((fractionText+'000000').slice(0,6));
+    if(drops<=0n)throw new Error('Testnet payment amount must be greater than 0 XRP.');
+    if(drops>MAX_TEST_PAYMENT_DROPS)throw new Error('Phase 2 limits each test payment to 10 XRP.');
+    return {drops:drops.toString(),xrp:dropsToXrpText(drops)};
+  }
+  function paymentResultCode(result){
+    const meta=result?.meta;
+    if(meta&&typeof meta==='object'&&typeof meta.TransactionResult==='string')return meta.TransactionResult;
+    return String(result?.engine_result||result?.engineResult||'');
+  }
+  function transactionHash(result,fallback=''){return String(result?.hash||result?.tx_json?.hash||result?.tx_json?.Hash||fallback||'');}
   function walletApi(){
     if(typeof window.atmApiWithAuth!=='function')throw new Error('ATM Town account session is not ready. Sign in first.');
     return window.atmApiWithAuth;
@@ -133,7 +157,17 @@
     return xrplLoadPromise;
   }
 
+  async function withTestnetClient(callback){
+    if(!/^wss:\/\/s\.altnet\.rippletest\.net:51233\/?$/i.test(TESTNET_WS))throw new Error('Embedded wallet transaction endpoint is not the approved XRPL Testnet server.');
+    const xrpl=await loadXrpl();
+    if(typeof xrpl.Client!=='function')throw new Error('XRPL Testnet client is unavailable.');
+    const client=new xrpl.Client(TESTNET_WS);
+    try{await client.connect();return await callback(client,xrpl);}
+    finally{try{await client.disconnect();}catch(_error){}}
+  }
+
   function clearUnlocked(clearRecovery=false){
+    state.preparedPayment=null;
     if(state.seed)state.seed=null;
     state.wallet=null;
     if(clearRecovery&&state.recoveryKey){state.recoveryKey.fill?.(0);state.recoveryKey=null;}
@@ -169,7 +203,7 @@
     if(document.getElementById('atmEmbeddedWalletModal'))return;
     const style=document.createElement('style'); style.textContent=`
 #atmEmbeddedWalletModal{position:fixed;inset:0;z-index:10080;display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));background:rgba(0,7,12,.86);backdrop-filter:blur(10px)}
-#atmEmbeddedWalletModal.open{display:flex}.atmWalletCard{width:min(560px,100%);max-height:min(760px,92dvh);overflow:auto;background:linear-gradient(180deg,#0c1d29,#07131c);border:1px solid rgba(88,241,230,.25);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.55);color:#eafcff;padding:18px}.atmWalletHead{display:flex;gap:12px;align-items:flex-start}.atmWalletHead>div{min-width:0;flex:1}.atmWalletHead h3{margin:0;font-size:20px}.atmWalletHead small{display:block;color:#8fb1bf;line-height:1.4;margin-top:4px}.atmWalletClose{border:0;background:#182b37;color:#dffcff;border-radius:10px;width:38px;height:38px;font-size:21px}.atmWalletTestnet{display:inline-flex;margin-top:10px;padding:5px 9px;border-radius:999px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-weight:900;font-size:10px;letter-spacing:.08em}.atmWalletBody{display:grid;gap:12px;margin-top:14px}.atmWalletPanel{border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:13px;background:rgba(255,255,255,.035)}.atmWalletPanel strong{display:block;font-size:12px}.atmWalletPanel p{margin:6px 0 0;color:#9db9c5;font-size:11px;line-height:1.5}.atmWalletAddress{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;overflow-wrap:anywhere;color:#70f9c8;margin-top:7px}.atmWalletBalance{font-size:28px;font-weight:1000;margin-top:6px}.atmWalletActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWalletActions .wide{grid-column:1/-1}.atmWalletBtn{border:0;border-radius:12px;padding:11px 12px;font-weight:1000;font-size:10px;letter-spacing:.04em;text-transform:uppercase;background:#183142;color:#eafcff;border:1px solid rgba(88,241,230,.16)}.atmWalletBtn.primary{background:linear-gradient(90deg,#58f1e6,#70f9c8);color:#052029}.atmWalletBtn.gold{background:linear-gradient(90deg,#facd69,#f0a54e);color:#261600}.atmWalletBtn.danger{border-color:rgba(255,112,132,.3);color:#ffadb9}.atmWalletBtn:disabled{opacity:.45}.atmWalletInput{width:100%;margin-top:8px;background:#041018;border:1px solid rgba(88,241,230,.2);border-radius:11px;color:#fff;padding:11px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;box-sizing:border-box}.atmWalletRecovery{word-break:break-all;background:#031018;padding:10px;border-radius:10px;border:1px dashed rgba(255,209,102,.4);color:#ffe2a0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;margin-top:8px}.atmWalletWarning{color:#ffd166!important}.atmWalletMsg{min-height:18px;font-size:11px;line-height:1.45;color:#9fc3cc}.atmWalletMsg.ok{color:#70f9c8}.atmWalletMsg.error{color:#ff9eae}.atmWalletSpinner{opacity:.7}
+#atmEmbeddedWalletModal.open{display:flex}.atmWalletCard{width:min(560px,100%);max-height:min(760px,92dvh);overflow:auto;background:linear-gradient(180deg,#0c1d29,#07131c);border:1px solid rgba(88,241,230,.25);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.55);color:#eafcff;padding:18px}.atmWalletHead{display:flex;gap:12px;align-items:flex-start}.atmWalletHead>div{min-width:0;flex:1}.atmWalletHead h3{margin:0;font-size:20px}.atmWalletHead small{display:block;color:#8fb1bf;line-height:1.4;margin-top:4px}.atmWalletClose{border:0;background:#182b37;color:#dffcff;border-radius:10px;width:38px;height:38px;font-size:21px}.atmWalletTestnet{display:inline-flex;margin-top:10px;padding:5px 9px;border-radius:999px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-weight:900;font-size:10px;letter-spacing:.08em}.atmWalletBody{display:grid;gap:12px;margin-top:14px}.atmWalletPanel{border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:13px;background:rgba(255,255,255,.035)}.atmWalletPanel strong{display:block;font-size:12px}.atmWalletPanel p{margin:6px 0 0;color:#9db9c5;font-size:11px;line-height:1.5}.atmWalletAddress{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;overflow-wrap:anywhere;color:#70f9c8;margin-top:7px}.atmWalletBalance{font-size:28px;font-weight:1000;margin-top:6px}.atmWalletActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWalletActions .wide{grid-column:1/-1}.atmWalletBtn{border:0;border-radius:12px;padding:11px 12px;font-weight:1000;font-size:10px;letter-spacing:.04em;text-transform:uppercase;background:#183142;color:#eafcff;border:1px solid rgba(88,241,230,.16)}.atmWalletBtn.primary{background:linear-gradient(90deg,#58f1e6,#70f9c8);color:#052029}.atmWalletBtn.gold{background:linear-gradient(90deg,#facd69,#f0a54e);color:#261600}.atmWalletBtn.danger{border-color:rgba(255,112,132,.3);color:#ffadb9}.atmWalletBtn:disabled{opacity:.45}.atmWalletInput{width:100%;margin-top:8px;background:#041018;border:1px solid rgba(88,241,230,.2);border-radius:11px;color:#fff;padding:11px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;box-sizing:border-box}.atmWalletRecovery{word-break:break-all;background:#031018;padding:10px;border-radius:10px;border:1px dashed rgba(255,209,102,.4);color:#ffe2a0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;margin-top:8px}.atmWalletLabel{display:block;margin-top:10px;color:#8fb1bf;font-size:10px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.atmWalletTxGrid{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:7px 10px;margin-top:10px;font-size:11px}.atmWalletTxGrid span{color:#88a8b5}.atmWalletTxGrid b{overflow-wrap:anywhere;text-align:right}.atmWalletTxActions{margin-top:10px}.atmWalletTxStatus{font-size:16px;font-weight:1000;margin-top:7px}.atmWalletTxResult.ok{border-color:rgba(112,249,200,.32)}.atmWalletTxResult.error{border-color:rgba(255,112,132,.38)}.atmWalletTxResult.pending{border-color:rgba(255,209,102,.38)}.atmWalletLink{display:inline-flex;margin-top:9px;color:#70f9c8;font-size:11px;font-weight:900;text-decoration:none}.atmWalletWarning{color:#ffd166!important}.atmWalletMsg{min-height:18px;font-size:11px;line-height:1.45;color:#9fc3cc}.atmWalletMsg.ok{color:#70f9c8}.atmWalletMsg.error{color:#ff9eae}.atmWalletSpinner{opacity:.7}
 @media(max-width:560px){.atmWalletCard{padding:14px;border-radius:17px}.atmWalletActions{grid-template-columns:1fr}.atmWalletActions .wide{grid-column:auto}.atmWalletBalance{font-size:24px}}
 `;
     document.head.appendChild(style);
@@ -184,6 +218,26 @@
   }
   function setBusy(busy,message){state.busy=!!busy;document.querySelectorAll('#atmEmbeddedWalletModal button').forEach(btn=>{if(btn.id!=='atmWalletClose')btn.disabled=!!busy;});if(message)setMessage(message);}
 
+  function transactionResultHtml(){
+    const tx=state.lastTransaction; if(!tx?.hash)return '';
+    const explorerBase=String(CONFIG.explorerTxBase||'https://testnet.xrpl.org/transactions/');
+    const status=tx.result||'STATUS UNKNOWN'; const validated=tx.validated===true;
+    const detail=validated?(status==='tesSUCCESS'?'Validated successfully on XRPL Testnet.':`Validated with result ${status}.`):'Submission status is not confirmed. Check the Testnet explorer before trying another payment.';
+    return `<div class="atmWalletPanel atmWalletTxResult ${validated&&status==='tesSUCCESS'?'ok':validated?'error':'pending'}"><strong>Last locally signed transaction</strong><div class="atmWalletTxStatus">${escapeHtml(status)}${validated?' · VALIDATED':''}</div><p>${escapeHtml(detail)}</p><div class="atmWalletAddress">${escapeHtml(tx.hash)}</div><p>${escapeHtml(tx.amountXrp||'—')} XRP → ${escapeHtml(shortAddress(tx.destination||''))}${tx.ledgerIndex?` · ledger ${escapeHtml(tx.ledgerIndex)}`:''}</p><a class="atmWalletLink" href="${escapeHtml(explorerBase+encodeURIComponent(tx.hash))}" target="_blank" rel="noopener noreferrer">View Testnet transaction ↗</a></div>`;
+  }
+  function paymentPanelHtml(){
+    const prepared=state.preparedPayment;
+    if(prepared){
+      return `<div class="atmWalletPanel atmWalletTxPreview"><strong>Review Testnet payment before signing</strong><div class="atmWalletTxGrid"><span>Send</span><b>${escapeHtml(prepared.amountXrp)} XRP</b><span>To</span><b title="${escapeHtml(prepared.destination)}">${escapeHtml(shortAddress(prepared.destination))}</b><span>Network fee</span><b>${escapeHtml(prepared.feeXrp)} XRP</b><span>Sequence</span><b>${escapeHtml(prepared.sequence)}</b><span>Expires after ledger</span><b>${escapeHtml(prepared.lastLedgerSequence)}</b></div><p class="atmWalletWarning">Your XRPL seed stays in browser memory. Pressing Sign & Send signs locally, then sends only the signed transaction blob directly to XRPL Testnet over WebSocket.</p><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn primary" id="atmWalletSignPayment" type="button">Sign & Send Testnet</button><button class="atmWalletBtn" id="atmWalletCancelPayment" type="button">Cancel</button></div></div>`;
+    }
+    return `<div class="atmWalletPanel"><strong>Send Testnet XRP · Phase 2</strong><p>Prepare first so the exact amount, destination, network fee, sequence and expiration ledger are visible before anything is signed.</p><label class="atmWalletLabel" for="atmWalletPaymentDestination">Destination</label><input class="atmWalletInput" id="atmWalletPaymentDestination" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="r… Testnet classic address"><label class="atmWalletLabel" for="atmWalletPaymentAmount">Amount · max 10 Testnet XRP</label><input class="atmWalletInput" id="atmWalletPaymentAmount" type="text" inputmode="decimal" autocomplete="off" value="1.000000"><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn primary wide" id="atmWalletPreparePayment" type="button">Prepare Testnet Payment</button></div></div>`;
+  }
+  function bindPaymentUi(){
+    document.getElementById('atmWalletPreparePayment')?.addEventListener('click',prepareTestnetPayment);
+    document.getElementById('atmWalletSignPayment')?.addEventListener('click',signAndSubmitTestnetPayment);
+    document.getElementById('atmWalletCancelPayment')?.addEventListener('click',()=>{state.preparedPayment=null;render();setMessage('Prepared Testnet payment cancelled.');});
+  }
+
   function render(){
     ensureUi(); const body=document.getElementById('atmWalletBody'); if(!body)return;
     const record=state.record, unlocked=!!state.wallet;
@@ -196,7 +250,7 @@
     }
     const passkey=!!record.encrypted_backup?.passkey;
     if(state.recoveryKey){renderCreationSuccess(passkey);return;}
-    body.innerHTML=`<div class="atmWalletPanel"><strong>XRPL Testnet address</strong><div class="atmWalletAddress" title="${escapeHtml(record.address)}">${escapeHtml(record.address)}</div><div class="atmWalletBalance" id="atmWalletBalance">— XRP</div><p id="atmWalletFunded">Validated Testnet balance.</p></div>${unlocked?`<div class="atmWalletPanel"><strong>Wallet unlocked on this device</strong><p>The seed is held in memory only and will auto-lock after five minutes.</p></div><div class="atmWalletActions"><button class="atmWalletBtn" id="atmWalletRefreshBalance" type="button">Refresh balance</button>${passkey?'':'<button class="atmWalletBtn" id="atmWalletAddPasskey" type="button">Add wallet passkey</button>'}<button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download encrypted backup</button><button class="atmWalletBtn danger" id="atmWalletRevealSeed" type="button">Reveal Testnet seed</button><button class="atmWalletBtn wide" id="atmWalletLock" type="button">Lock wallet now</button></div>`:`<div class="atmWalletPanel"><strong>Unlock wallet</strong><p>${passkey?'Use the wallet passkey on this device, or use the recovery key on any compatible browser.':'This authenticator did not provide a wallet PRF when the backup was created. Use your recovery key to unlock.'}</p><input class="atmWalletInput" id="atmWalletRecoveryInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key"></div><div class="atmWalletActions">${passkey?'<button class="atmWalletBtn primary" id="atmWalletUnlockPasskey" type="button">Unlock with passkey</button>':''}<button class="atmWalletBtn ${passkey?'':'primary'}" id="atmWalletUnlockRecovery" type="button">Unlock with recovery key</button><button class="atmWalletBtn" id="atmWalletRefreshBalance" type="button">Refresh balance</button><button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download encrypted backup</button></div>`}`;
+    body.innerHTML=`<div class="atmWalletPanel"><strong>XRPL Testnet address</strong><div class="atmWalletAddress" title="${escapeHtml(record.address)}">${escapeHtml(record.address)}</div><div class="atmWalletBalance" id="atmWalletBalance">— XRP</div><p id="atmWalletFunded">Validated Testnet balance.</p></div>${transactionResultHtml()}${unlocked?paymentPanelHtml():''}${unlocked?`<div class="atmWalletPanel"><strong>Wallet unlocked on this device</strong><p>The seed is held in memory only and will auto-lock after five minutes.</p></div><div class="atmWalletActions"><button class="atmWalletBtn" id="atmWalletRefreshBalance" type="button">Refresh balance</button>${passkey?'':'<button class="atmWalletBtn" id="atmWalletAddPasskey" type="button">Add wallet passkey</button>'}<button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download encrypted backup</button><button class="atmWalletBtn danger" id="atmWalletRevealSeed" type="button">Reveal Testnet seed</button><button class="atmWalletBtn wide" id="atmWalletLock" type="button">Lock wallet now</button></div>`:`<div class="atmWalletPanel"><strong>Unlock wallet</strong><p>${passkey?'Use the wallet passkey on this device, or use the recovery key on any compatible browser.':'This authenticator did not provide a wallet PRF when the backup was created. Use your recovery key to unlock.'}</p><input class="atmWalletInput" id="atmWalletRecoveryInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key"></div><div class="atmWalletActions">${passkey?'<button class="atmWalletBtn primary" id="atmWalletUnlockPasskey" type="button">Unlock with passkey</button>':''}<button class="atmWalletBtn ${passkey?'':'primary'}" id="atmWalletUnlockRecovery" type="button">Unlock with recovery key</button><button class="atmWalletBtn" id="atmWalletRefreshBalance" type="button">Refresh balance</button><button class="atmWalletBtn gold" id="atmWalletExportBackup" type="button">Download encrypted backup</button></div>`}`;
     document.getElementById('atmWalletRefreshBalance')?.addEventListener('click',refreshBalance);
     document.getElementById('atmWalletExportBackup')?.addEventListener('click',downloadEncryptedBackup);
     document.getElementById('atmWalletUnlockPasskey')?.addEventListener('click',unlockWithPasskey);
@@ -204,6 +258,7 @@
     document.getElementById('atmWalletAddPasskey')?.addEventListener('click',addPasskeyWrapper);
     document.getElementById('atmWalletRevealSeed')?.addEventListener('click',revealSeed);
     document.getElementById('atmWalletLock')?.addEventListener('click',()=>{lock();setMessage('Wallet locked.');});
+    bindPaymentUi();
     refreshBalance({silent:true});
   }
 
@@ -293,6 +348,7 @@
       recovery=parseRecoveryKey(recoveryInput);
       vault=await unwrapVaultKey(backup.recovery,recovery,'recovery',backup.address);
       const candidate={network:NETWORK,address:backup.address,encrypted_backup:backup};
+      state.lastTransaction=null;
       state.record=candidate;
       await decryptPayload(candidate,vault);
       await saveBackup(backup);
@@ -301,6 +357,79 @@
       clearUnlocked(true); state.record=null; render();
       setMessage(error?.name==='OperationError'?'Recovery key did not unlock that backup.':(error.message||'Encrypted backup restore failed.'),'error');
     }finally{recovery?.fill(0);vault?.fill(0);setBusy(false);}
+  }
+
+  async function prepareTestnetPayment(){
+    if(!state.record||!state.wallet||!state.seed){setMessage('Unlock the ATM Testnet wallet before preparing a payment.','error');return;}
+    const destination=String(document.getElementById('atmWalletPaymentDestination')?.value||'').trim();
+    const amountInput=document.getElementById('atmWalletPaymentAmount')?.value||'';
+    try{
+      setBusy(true,'Preparing transaction from the validated XRPL Testnet ledger…');
+      const xrpl=await loadXrpl();
+      const validAddress=typeof xrpl.isValidClassicAddress==='function'?xrpl.isValidClassicAddress(destination):CLASSIC_ADDRESS_RE.test(destination);
+      if(!validAddress)throw new Error('Enter a valid XRPL classic destination address beginning with r.');
+      if(destination===state.record.address)throw new Error('XRPL direct XRP payments cannot use the same sending and destination address.');
+      const amount=parseTestXrpAmount(amountInput);
+      const prepared=await withTestnetClient(async(client)=>{
+        const tx=await client.autofill({TransactionType:'Payment',Account:state.record.address,Destination:destination,Amount:amount.drops});
+        const ledgerIndex=await client.getLedgerIndex();
+        return {tx,ledgerIndex};
+      });
+      const tx=prepared.tx||{};
+      if(tx.TransactionType!=='Payment'||tx.Account!==state.record.address||tx.Destination!==destination||String(tx.Amount||'')!==amount.drops){
+        throw new Error('Prepared XRPL transaction did not match the requested payment. Nothing was signed.');
+      }
+      const feeDrops=BigInt(String(tx.Fee||'0'));
+      if(feeDrops<=0n||feeDrops>MAX_TEST_FEE_DROPS)throw new Error(`XRPL Testnet fee safety check blocked ${dropsToXrpText(feeDrops)} XRP.`);
+      const sequence=Number(tx.Sequence),lastLedgerSequence=Number(tx.LastLedgerSequence),ledgerIndex=Number(prepared.ledgerIndex);
+      if(!Number.isSafeInteger(sequence)||sequence<=0)throw new Error('Prepared transaction is missing a valid XRPL account sequence.');
+      if(!Number.isSafeInteger(lastLedgerSequence)||lastLedgerSequence<=0)throw new Error('Prepared transaction is missing LastLedgerSequence.');
+      if(!Number.isSafeInteger(ledgerIndex)||lastLedgerSequence<=ledgerIndex)throw new Error('Prepared transaction expiration is already invalid.');
+      state.preparedPayment={tx,destination,amountDrops:amount.drops,amountXrp:amount.xrp,feeDrops:feeDrops.toString(),feeXrp:dropsToXrpText(feeDrops),sequence,lastLedgerSequence,ledgerIndex,preparedAt:Date.now()};
+      scheduleAutoLock(); render(); setMessage('Payment prepared from XRPL Testnet. Review every field before signing.','ok');
+    }catch(error){state.preparedPayment=null;setMessage(error.message||'Could not prepare the Testnet payment. Nothing was signed.','error');}
+    finally{setBusy(false);}
+  }
+
+  function assertPreparedPaymentStillSafe(prepared){
+    if(!prepared||!state.record||!state.wallet||!state.seed)throw new Error('Unlock and prepare the Testnet payment again.');
+    if(Date.now()-Number(prepared.preparedAt||0)>PAYMENT_PREVIEW_TTL_MS)throw new Error('That payment preview expired. Prepare it again with current ledger values.');
+    const tx=prepared.tx||{};
+    if(tx.TransactionType!=='Payment'||tx.Account!==state.record.address||tx.Destination!==prepared.destination||String(tx.Amount||'')!==prepared.amountDrops)throw new Error('Prepared payment changed before signing. Nothing was signed.');
+    if(Number(tx.Sequence)!==prepared.sequence||Number(tx.LastLedgerSequence)!==prepared.lastLedgerSequence)throw new Error('Prepared sequence or ledger expiration changed. Nothing was signed.');
+    const feeDrops=BigInt(String(tx.Fee||'0'));
+    if(feeDrops!==BigInt(prepared.feeDrops)||feeDrops<=0n||feeDrops>MAX_TEST_FEE_DROPS)throw new Error('Prepared network fee failed the signing safety check.');
+    if(BigInt(prepared.amountDrops)<=0n||BigInt(prepared.amountDrops)>MAX_TEST_PAYMENT_DROPS)throw new Error('Prepared amount failed the Phase 2 safety cap.');
+    return tx;
+  }
+
+  async function signAndSubmitTestnetPayment(){
+    const prepared=state.preparedPayment;
+    let signed=null;
+    try{
+      const tx=assertPreparedPaymentStillSafe(prepared);
+      const approved=window.confirm(`SIGN XRPL TESTNET PAYMENT?\n\nSend: ${prepared.amountXrp} XRP\nTo: ${prepared.destination}\nFee: ${prepared.feeXrp} XRP\n\nThis is Testnet only. The transaction will be signed locally on this device.`);
+      if(!approved){setMessage('Testnet signing cancelled. Nothing was submitted.');return;}
+      setBusy(true,'Signing locally on this device…');
+      signed=state.wallet.sign(tx);
+      if(!signed?.tx_blob||!signed?.hash||!/^[A-F0-9]{64}$/i.test(String(signed.hash)))throw new Error('Local XRPL signing did not return a valid signed transaction.');
+      state.lastTransaction={hash:String(signed.hash),destination:prepared.destination,amountXrp:prepared.amountXrp,result:'SUBMISSION PENDING',validated:false,ledgerIndex:null};
+      setMessage('Signed locally. Submitting only the signed blob directly to XRPL Testnet…');
+      const response=await withTestnetClient(async(client)=>client.submitAndWait(signed.tx_blob));
+      const result=response?.result||{}; const hash=transactionHash(result,signed.hash); const code=paymentResultCode(result)||'UNKNOWN';
+      if(hash&&hash.toUpperCase()!==String(signed.hash).toUpperCase())throw new Error('XRPL returned a different transaction hash than the locally signed transaction.');
+      const validated=result.validated===true;
+      state.lastTransaction={hash:String(signed.hash),destination:prepared.destination,amountXrp:prepared.amountXrp,result:code,validated,ledgerIndex:result.ledger_index||result.ledgerIndex||null};
+      state.preparedPayment=null;
+      clearUnlocked(false); render();
+      await refreshBalance({silent:true});
+      if(validated&&code==='tesSUCCESS')setMessage('Testnet payment signed locally and validated successfully. Wallet locked after signing.','ok');
+      else if(validated)setMessage(`Testnet transaction validated with ${code}. The fee may have been consumed. Wallet locked after signing.`,'error');
+      else setMessage('XRPL submission returned without validated finality. Check the transaction hash before sending anything else. Wallet locked.','error');
+    }catch(error){
+      if(signed?.hash){state.lastTransaction={...(state.lastTransaction||{}),hash:String(signed.hash),destination:prepared?.destination||'',amountXrp:prepared?.amountXrp||'',result:'STATUS UNKNOWN',validated:false};clearUnlocked(false);render();}
+      setMessage(error.message||'Testnet transaction failed. If signing occurred, check the displayed hash before trying again.','error');
+    }finally{setBusy(false);}
   }
 
   async function refreshBalance(options={}){
@@ -329,7 +458,7 @@
   }
   function refreshButton(){const button=document.getElementById('embeddedWalletBtn');if(button)button.innerHTML='<span class="identityBtnIcon">◇</span>ATM WALLET · TESTNET';}
 
-  window.ATMEmbeddedWallet={open,close,lock,resetForAuthChange:()=>{clearUnlocked(true);state.record=null;close();render();},refresh:async()=>{try{await fetchRecord();refreshButton();}catch(_error){}}};
+  window.ATMEmbeddedWallet={open,close,lock,resetForAuthChange:()=>{clearUnlocked(true);state.record=null;state.lastTransaction=null;close();render();},refresh:async()=>{try{await fetchRecord();refreshButton();}catch(_error){}}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();bindButton();refreshButton();});else{ensureUi();bindButton();refreshButton();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden)lock({clearRecovery:false});});
   window.addEventListener('pagehide',()=>lock({clearRecovery:true}));

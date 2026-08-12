@@ -74,6 +74,7 @@ const requiredFiles = [
   'docs/V233.1-SERVERLESS-ROUTER-HOTFIX.md',
   'docs/V233.2-SCORE-RELIABILITY.md',
   'docs/V234-EMBEDDED-WALLET-PHASE1.md',
+  'docs/V234-EMBEDDED-WALLET-PHASE2.md',
   'js/wallet/embedded-wallet.js',
   'api/embedded-wallet.js',
   'supabase/ATM-Town-v234.sql',
@@ -100,7 +101,7 @@ for (const script of expectedOrder) {
 }
 
 if (!html.includes("version:ATM_CONFIG?.build?.version||'v234'")) errors.push('Missing v234 display build marker.');
-if (!html.includes("name:ATM_CONFIG?.build?.name||'Embedded Wallet — Testnet Phase 1'")) errors.push('Missing v234 display build fallback.');
+if (!html.includes("name:ATM_CONFIG?.build?.name||'Embedded Wallet — Testnet Phase 2'")) errors.push('Missing v234 Phase 2 display build fallback.');
 if (!html.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!html.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!html.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -170,6 +171,8 @@ const config = registrySandbox.window.ATM_TOWN_CONFIG;
 
 if (config.embeddedWallet?.network !== 'testnet') errors.push('Embedded wallet must remain Testnet-only in v234.');
 if (!String(config.embeddedWallet?.rpcHttp || '').includes('altnet.rippletest.net')) errors.push('Embedded wallet config must use XRPL Testnet RPC.');
+if (!/^wss:\/\/s\.altnet\.rippletest\.net:51233\/?$/i.test(String(config.embeddedWallet?.rpcWs || ''))) errors.push('Embedded wallet signing client must use the approved XRPL Testnet WebSocket endpoint.');
+if (!String(config.embeddedWallet?.explorerTxBase || '').startsWith('https://testnet.xrpl.org/transactions/')) errors.push('Embedded wallet transaction explorer must remain on XRPL Testnet.');
 const embeddedWalletSource = await readFile(path.join(root, 'js', 'wallet', 'embedded-wallet.js'), 'utf8');
 const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
 const embeddedWalletSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v234.sql'), 'utf8');
@@ -178,6 +181,14 @@ if (!embeddedWalletSource.includes('Wallet.generate()')) errors.push('Embedded w
 if (!embeddedWalletSource.includes("crypto.subtle.encrypt")) errors.push('Embedded wallet client is missing local Web Crypto encryption.');
 if (!embeddedWalletSource.includes("extensions:{prf:")) errors.push('Embedded wallet client is missing WebAuthn PRF unlock support.');
 if (/localStorage|sessionStorage/.test(embeddedWalletSource) && /seed/i.test(embeddedWalletSource)) errors.push('Embedded wallet source may persist seed material in web storage.');
+if (!embeddedWalletSource.includes("client.autofill({TransactionType:'Payment'")) errors.push('Phase 2 must autofill the Testnet payment before preview/signing.');
+if (!embeddedWalletSource.includes('state.wallet.sign(tx)')) errors.push('Phase 2 must sign the prepared XRPL transaction locally in the browser.');
+if (!embeddedWalletSource.includes('client.submitAndWait(signed.tx_blob)')) errors.push('Phase 2 must submit the locally signed blob directly to XRPL Testnet.');
+if (!embeddedWalletSource.includes('MAX_TEST_PAYMENT_DROPS = 10_000_000n')) errors.push('Phase 2 small-payment hard cap is missing.');
+if (!embeddedWalletSource.includes('MAX_TEST_FEE_DROPS = 10_000n')) errors.push('Phase 2 fee safety ceiling is missing.');
+if (!embeddedWalletSource.includes('PAYMENT_PREVIEW_TTL_MS = 60 * 1000')) errors.push('Phase 2 prepared-payment expiry guard is missing.');
+if (!embeddedWalletSource.includes('wallet locked after signing') && !embeddedWalletSource.includes('Wallet locked after signing')) errors.push('Phase 2 should lock the wallet after signing/submission.');
+if (/walletApi\([^\n]*(?:tx_blob|signed)/i.test(embeddedWalletSource)) errors.push('Signed XRPL transaction data must not be relayed through the ATM Town authenticated API.');
 if (!embeddedWalletApiSource.includes("const NETWORK = 'testnet'")) errors.push('Embedded wallet API is not hard-gated to Testnet.');
 if (!embeddedWalletApiSource.includes('XRPL_TESTNET_RPC_URL')) errors.push('Embedded wallet API must use a dedicated XRPL_TESTNET_RPC_URL override.');
 if (/s1\.ripple\.com|xrplcluster\.com|force_network[^\n]*MAINNET/i.test(embeddedWalletApiSource)) errors.push('Embedded wallet API contains a Mainnet endpoint/marker.');
