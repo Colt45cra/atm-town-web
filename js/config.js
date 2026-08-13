@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.1: polishes Money Rain with organic seeded clusters, responsive pickups, rare-drop types, and sponsor attribution.
  * v235: adds the reusable World Event Engine foundation and Money Rain preview.
  * v234.4: adds the People Hub — online players, recent people, and ATM Pay in one sliding social panel.
  * v234.3: consumer ATM Pay UX — character avatars, recent people, request notifications, one-tap request prep, and nearby-player Pay.
@@ -18,10 +19,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235,
-    version: 'v235',
-    name: 'World Event Engine',
-    title: 'ATM Town v235 — World Event Engine'
+    number: 235.1,
+    version: 'v235.1',
+    name: 'Money Rain Polish',
+    title: 'ATM Town v235.1 — Money Rain Polish'
   });
 
   const MAPS = Object.freeze({

@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
+import { pathToFileURL } from 'node:url';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const errors = [];
@@ -91,8 +92,10 @@ const requiredFiles = [
   'docs/V234.3-ATM-PAY-CONSUMER-UX.md',
   'docs/V234.4-PEOPLE-HUB.md',
   'docs/V235-WORLD-EVENT-ENGINE.md',
+  'docs/V235.1-MONEY-RAIN-POLISH.md',
   'js/world-events.js',
   'lib/world-events.js',
+  'lib/world-event-money-rain-points.js',
   'supabase/ATM-Town-v235.sql',
   'scripts/generate-security-headers.mjs',
   'vercel.json',
@@ -143,8 +146,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235'")) errors.push('Missing v235 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'World Event Engine'")) errors.push('Missing v235 World Event Engine display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.1'")) errors.push('Missing v235.1 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Money Rain Polish'")) errors.push('Missing v235.1 Money Rain Polish display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -224,7 +227,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235'")) errors.push('js/config.js is not marked v235.');
+if (!configSource.includes("version: 'v235.1'")) errors.push('js/config.js is not marked v235.1.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -240,6 +243,7 @@ const embeddedWalletSource = await readFile(path.join(root, 'js', 'wallet', 'emb
 const peopleHubSource = await readFile(path.join(root, 'js', 'people-hub.js'), 'utf8');
 const worldEventsClientSource = await readFile(path.join(root, 'js', 'world-events.js'), 'utf8');
 const worldEventsServerSource = await readFile(path.join(root, 'lib', 'world-events.js'), 'utf8');
+const worldEventSafePointsSource = await readFile(path.join(root, 'lib', 'world-event-money-rain-points.js'), 'utf8');
 const worldTimeApiSource = await readFile(path.join(root, 'api', 'world-time.js'), 'utf8');
 const worldEventsSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.sql'), 'utf8');
 const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
@@ -274,9 +278,14 @@ if (!peopleHubSource.includes("document.getElementById('onlineBadge')")) errors.
 if (!peopleHubSource.includes("window.ATMPay?.openToRecipient")) errors.push('v234.4 People Hub cannot open address-free payments to selected people.');
 if (!peopleHubSource.includes("Met this session") || !peopleHubSource.includes("Recent payments")) errors.push('v234.4 People page does not surface recent contacts and session encounters.');
 if (!peopleHubSource.includes("Requests for you") || !peopleHubSource.includes("Find someone to pay")) errors.push('v234.4 Pay page is missing requests/search surfaces.');
-if (!worldEventsClientSource.includes('START MONEY RAIN PREVIEW') || !worldEventsClientSource.includes('updateGameplay') || !worldEventsClientSource.includes('drawGround') || !worldEventsClientSource.includes('drawAir')) errors.push('v235 Money Rain client/event rendering hooks are incomplete.');
-if (!worldEventsClientSource.includes('/api/world-time?action=start-money-rain') || !worldEventsClientSource.includes('/api/world-time?action=claim-money-rain')) errors.push('v235 Money Rain client is missing authenticated World Event API actions.');
-if (!worldEventsServerSource.includes("const EVENT_TYPE = 'money_rain'") || !worldEventsServerSource.includes('buildPickups(seed)') || !worldEventsServerSource.includes('MAX_CLAIM_DISTANCE')) errors.push('v235 server-authoritative Money Rain manifest/claim validation is incomplete.');
+if (!worldEventsClientSource.includes('START MONEY RAIN PREVIEW') || !worldEventsClientSource.includes('updateGameplay') || !worldEventsClientSource.includes('drawGround') || !worldEventsClientSource.includes('drawAir')) errors.push('v235.1 Money Rain client/event rendering hooks are incomplete.');
+if (!worldEventsClientSource.includes('/api/world-time?action=start-money-rain') || !worldEventsClientSource.includes('/api/world-time?action=claim-money-rain')) errors.push('v235.1 Money Rain client is missing authenticated World Event API actions.');
+if (!worldEventsServerSource.includes("const EVENT_TYPE = 'money_rain'") || !worldEventsServerSource.includes('buildMoneyRainManifest(seed)') || !worldEventsServerSource.includes('MAX_CLAIM_DISTANCE')) errors.push('v235.1 server-authoritative Money Rain manifest/claim validation is incomplete.');
+if (!worldEventsServerSource.includes("layout_strategy: 'organic_cluster_scatter_v2'") || !worldEventsServerSource.includes('chooseClusterCenters') || !worldEventsServerSource.includes('clustered_pickups')) errors.push('v235.1 organic seeded Money Rain cluster/scatter generation is missing.');
+if (!worldEventsServerSource.includes("kind: 'bag'") || !worldEventsServerSource.includes("kind: 'bundle'") || !worldEventsClientSource.includes("pickup.kind === 'bag'") || !worldEventsClientSource.includes("pickup.kind === 'bundle'")) errors.push('v235.1 rare-drop presentation framework is incomplete.');
+if (!worldEventsClientSource.includes('const CLAIM_SCAN_MS = 32') || !worldEventsClientSource.includes('const PICKUP_RADIUS = 54') || !worldEventsClientSource.includes('pickup_ids: ids') || !worldEventsClientSource.includes('state.claiming.has(id)')) errors.push('v235.1 responsive optimistic/batched pickup behavior is incomplete.');
+if (!worldEventsServerSource.includes('MAX_BATCH_CLAIMS = 8') || !worldEventsServerSource.includes('Array.isArray(body.pickup_ids)') || !worldEventsServerSource.includes('claimed_pickup_ids_now')) errors.push('v235.1 server batch-claim support is incomplete.');
+if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsServerSource.includes('sponsor_mode') || !worldEventsServerSource.includes('sponsor_label') || !worldEventsClientSource.includes('PROJECT / BRAND') || !worldEventsClientSource.includes('Money Rain provided by')) errors.push('v235.1 sponsor / project attribution is incomplete.');
 if (!worldEventsServerSource.includes("from('world_event_claims')") || !worldEventsServerSource.includes("from('world_events')")) errors.push('v235 World Event server persistence is missing.');
 if (!worldTimeApiSource.includes("action === 'event'") || !worldTimeApiSource.includes('startMoneyRain') || !worldTimeApiSource.includes('claimMoneyPickup')) errors.push('v235 must route World Event actions through the existing world-time serverless function.');
 if (!worldEventsSql.includes('alter table public.world_events enable row level security') || !worldEventsSql.includes('alter table public.world_event_claims enable row level security')) errors.push('v235 World Event tables must have RLS enabled.');
@@ -284,6 +293,10 @@ if (/create policy/i.test(worldEventsSql)) errors.push('v235 World Event tables 
 if (!worldEventsSql.includes('world_events_one_live_slot_idx')) errors.push('v235 World Event schema is missing the one-live-event uniqueness guard.');
 if (!gameRuntimeParts[0].includes("t.id==='hqCommandCore'" ) || !gameRuntimeParts[0].includes('ATMWorldEvents?.openControlPanel')) errors.push('v235 HQ ATM Command Core does not open World Event Control.');
 if (!gameRuntimeParts[0].includes('ATMWorldEvents?.updateGameplay') || !gameRuntimeParts[0].includes('ATMWorldEvents?.drawGround') || !gameRuntimeParts[0].includes('ATMWorldEvents?.drawAir')) errors.push('v235 game loop is missing World Event gameplay/render hooks.');
+
+const safePointMatches = [...worldEventSafePointsSource.matchAll(/\[(\d+),(\d+)\]/g)].map((match) => [Number(match[1]), Number(match[2])]);
+if (safePointMatches.length < 2000) errors.push(`v235.1 organic Money Rain safe-point pool is too small: ${safePointMatches.length}.`);
+if (new Set(safePointMatches.map(([x]) => x % 24)).size < 18 || new Set(safePointMatches.map(([, y]) => y % 24)).size < 18) errors.push('v235.1 Money Rain safe-point pool appears quantized to a visible grid.');
 
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-recheck')) errors.push('v234.2.5 wallet must recheck live XRPL sequence/ledger through the authenticated ATM Pay API before signing.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-relay-submit')) errors.push('v234.2.5 wallet must relay only the locally signed transaction blob through the authenticated ATM Pay API.');
@@ -445,11 +458,54 @@ try {
   errors.push(`World manifest could not be parsed: ${error.message}`);
 }
 
+// v235.1 event-layout validation: several deterministic seeds must produce
+// different collision-authored organic layouts, a fixed 1,000-point pool, and
+// dense local neighborhoods without repeated rows/columns.
+try {
+  const moduleUrl = `${pathToFileURL(path.join(root, 'lib', 'world-events.js')).href}?validate=${Date.now()}`;
+  const { buildMoneyRainManifest } = await import(moduleUrl);
+  const layouts = [1, 2, 3, 2351, 4294967295].map((seed) => buildMoneyRainManifest(seed));
+  const coordinateSets = [];
+  for (const manifest of layouts) {
+    const pickups = manifest?.pickups || [];
+    if (pickups.length !== 60) errors.push(`v235.1 Money Rain manifest expected 60 pickups, found ${pickups.length}.`);
+    if (pickups.reduce((sum, pickup) => sum + Number(pickup.points || 0), 0) !== 1000) errors.push('v235.1 Money Rain preview pool must total exactly 1,000 points.');
+    const coordinateSet = new Set(pickups.map((pickup) => `${pickup.x},${pickup.y}`));
+    coordinateSets.push(coordinateSet);
+    if (coordinateSet.size !== pickups.length) errors.push('v235.1 Money Rain manifest contains duplicate pickup coordinates.');
+    const sameX = new Map(), sameY = new Map();
+    for (const pickup of pickups) {
+      sameX.set(pickup.x, (sameX.get(pickup.x) || 0) + 1);
+      sameY.set(pickup.y, (sameY.get(pickup.y) || 0) + 1);
+    }
+    if (Math.max(...sameX.values()) > 3 || Math.max(...sameY.values()) > 3) errors.push('v235.1 Money Rain layout has suspicious repeated row/column alignment.');
+    let nearbyCount = 0;
+    for (let i = 0; i < pickups.length; i += 1) {
+      let nearest = Infinity;
+      for (let j = 0; j < pickups.length; j += 1) {
+        if (i === j) continue;
+        nearest = Math.min(nearest, Math.hypot(pickups[i].x - pickups[j].x, pickups[i].y - pickups[j].y));
+      }
+      if (nearest <= 180) nearbyCount += 1;
+    }
+    if (nearbyCount < 40) errors.push(`v235.1 Money Rain layout does not form enough organic hotspots (${nearbyCount}/60 pickups have a neighbor within 180px).`);
+    const kinds = new Set(pickups.map((pickup) => pickup.kind));
+    if (!kinds.has('bill') || !kinds.has('bundle') || !kinds.has('bag')) errors.push('v235.1 Money Rain manifest is missing bill/bundle/bag drop types.');
+  }
+  for (let i = 1; i < coordinateSets.length; i += 1) {
+    let overlap = 0;
+    for (const key of coordinateSets[0]) if (coordinateSets[i].has(key)) overlap += 1;
+    if (overlap > 15) errors.push(`v235.1 Money Rain layouts are not random enough across event seeds (${overlap} repeated positions).`);
+  }
+} catch (error) {
+  errors.push(`v235.1 Money Rain manifest validation could not run: ${error.message}`);
+}
+
 // Deployment root should not regress to loose runtime image/audio files.
 const apiEntries = await readdir(path.join(root, 'api'), { withFileTypes: true });
 const apiFunctionFiles = apiEntries.filter((entry) => entry.isFile() && entry.name.endsWith('.js'));
 if (apiFunctionFiles.length > 12) errors.push(`Vercel Hobby API function limit exceeded: ${apiFunctionFiles.length} api/*.js files (max 12).`);
-if (apiFunctionFiles.length !== 12) errors.push(`v235 expects 12 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
+if (apiFunctionFiles.length !== 12) errors.push(`v235.1 expects 12 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
 for (const obsolete of ['_auth.js','_xaman-vending.js','_xrpl-nft-trading.js','xaman-link-start.js','xaman-link-status.js','xrpl-nft-offer-start.js','xrpl-nft-offer-status.js','xrpl-nft-offers.js','xrpl-nft-offer-accept-start.js']) {
   if (apiFunctionFiles.some((entry) => entry.name === obsolete)) errors.push(`Obsolete API route/helper still present and would consume a Vercel function slot: api/${obsolete}`);
 }
@@ -484,7 +540,7 @@ try {
 
   const syntaxTargets = [
     'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/world-events.js',
-    'lib/auth.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js', 'lib/world-events.js',
+    'lib/auth.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js', 'lib/world-events.js', 'lib/world-event-money-rain-points.js',
     'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/leaderboards.js', 'api/xrpl-nft-trade.js',
     'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js', 'api/embedded-wallet.js', 'api/world-time.js',
     'server/xaman-link-start.js', 'server/xaman-link-status.js',
@@ -501,10 +557,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.1 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235 build validation passed.');
+console.log('ATM Town v235.1 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
