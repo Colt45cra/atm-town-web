@@ -299,8 +299,8 @@
     for (let i = 0; i < ATMOSPHERIC_RAIN_OBJECTS; i += 1) {
       // Each decorative bill repeats on its own irregular cycle. Roughly 65–75% are
       // airborne at once, so Money Rain reads as a continuous storm on every screen.
-      const cycleMs = 5300 + Math.floor(hash01(seed, i, 2) * 4200);
-      const activeFraction = .66 + hash01(seed, i, 3) * .1;
+      const cycleMs = 9200 + Math.floor(hash01(seed, i, 2) * 5000);
+      const activeFraction = .72 + hash01(seed, i, 3) * .08;
       const offset = Math.floor(hash01(seed, i, 4) * cycleMs);
       const cycleNumber = Math.floor((elapsed + offset) / cycleMs);
       const phase = ((elapsed + offset) % cycleMs) / cycleMs;
@@ -313,7 +313,7 @@
       const startY = viewY - topLift * (.62 + ySeed * .72);
       const endY = viewY + viewH + bottomPad;
       const eased = .08 * p + .92 * Math.pow(p, 1.12);
-      const sway = Math.sin((elapsed / (210 + hash01(seed, i, 8) * 260)) + i * 1.77) * (18 + 36 * hash01(seed, i, 9));
+      const sway = Math.sin((elapsed / (520 + hash01(seed, i, 8) * 480)) + i * 1.77) * (18 + 36 * hash01(seed, i, 9));
       const x = xBase + sway;
       const y = startY + (endY - startY) * eased;
       if (x < viewX - 100 || x > viewX + viewW + 100 || y < viewY - topLift - 80 || y > viewY + viewH + 120) continue;
@@ -322,7 +322,7 @@
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.translate(x, y);
-      ctx.rotate((hash01(seed, i, 10) - .5) * 1.05 + Math.sin(elapsed / 170 + i) * .11);
+      ctx.rotate((hash01(seed, i, 10) - .5) * 1.05 + Math.sin(elapsed / 520 + i) * .08);
       ctx.fillStyle = i % 13 === 0 ? '#8ff4c7' : '#d8f5e8';
       ctx.strokeStyle = 'rgba(255,255,255,.82)';
       ctx.lineWidth = Math.max(1, 1.2 * scale);

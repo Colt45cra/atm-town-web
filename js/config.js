@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.1.3: slows atmospheric Money Rain and preserves multiplayer/voice/location state through Locker and app resume.
  * v235.1.2: triples Money Rain's visual density with a continuous viewport-wide atmospheric money storm.
  * v235.1.1: hardens iPhone/mobile input and makes Money Rain more atmospheric with wider scatter and high-altitude falling drops.
  * v235.1: polishes Money Rain with organic seeded clusters, responsive pickups, rare-drop types, and sponsor attribution.
@@ -21,10 +22,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.11,
-    version: 'v235.1.2',
-    name: 'Money Storm Density',
-    title: 'ATM Town v235.1.2 — Money Storm Density'
+    number: 235.13,
+    version: 'v235.1.3',
+    name: 'Locker Presence & Interior Resume',
+    title: 'ATM Town v235.1.3 — Locker Presence & Interior Resume'
   });
 
   const MAPS = Object.freeze({

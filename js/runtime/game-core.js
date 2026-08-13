@@ -401,6 +401,7 @@ const remotePlayers=new Map();
 let currentOnlineCount=1;
 const atmPeopleEncounters=new Map();
 let currentPlayerActivity=null;
+let lockerPreviousActivity=null;
 
 // v204: one shared LiveKit voice room for the entire game.
 // Players stay connected while changing maps and opening minigames. Audio is
@@ -3519,13 +3520,17 @@ function drawWorldAliveUi(){
 }
 
 function drawPlayerNameplate(x,labelBottom,name,activity=null){
-  ctx.save();ctx.font='900 11px system-ui';const lines=canvasTextLines(name,156,2),tag=activity?.type==='arcade-game'?'IN-GAME · '+String(activity.label||'ARCADE GAME').replace(/\s+VOICE$/i,''):'';
+  ctx.save();ctx.font='900 11px system-ui';
+  const lines=canvasTextLines(name,156,2);
+  const arcadeTag=activity?.type==='arcade-game'?'IN-GAME · '+String(activity.label||'ARCADE GAME').replace(/\s+VOICE$/i,''):'';
+  const lockerTag=activity?.type==='locker'?'IN LOCKER':'';
+  const tag=lockerTag||arcadeTag;
   const widths=lines.map(line=>ctx.measureText(line).width);ctx.font='1000 8px system-ui';if(tag)widths.push(ctx.measureText(tag).width);
   const width=Math.min(176,Math.max(54,...widths)+16),lineH=13,tagH=tag?14:0,height=lines.length*lineH+tagH+8;
   const viewLeft=cam.x+5,viewRight=cam.x+W/zoom-5;let cx=x;if(Number.isFinite(viewLeft)&&Number.isFinite(viewRight)&&viewRight>viewLeft+width)cx=Math.max(viewLeft+width/2,Math.min(viewRight-width/2,x));
-  const top=Math.max(cam.y+5,labelBottom-height);roundedRectPath(cx-width/2,top,width,height,7);ctx.fillStyle='rgba(3,10,14,.9)';ctx.fill();ctx.strokeStyle=activity?.type==='arcade-game'?'rgba(255,209,102,.8)':'rgba(88,241,230,.34)';ctx.lineWidth=1;ctx.stroke();
+  const top=Math.max(cam.y+5,labelBottom-height);roundedRectPath(cx-width/2,top,width,height,7);ctx.fillStyle='rgba(3,10,14,.9)';ctx.fill();ctx.strokeStyle=activity?.type==='arcade-game'?'rgba(255,209,102,.8)':(activity?.type==='locker'?'rgba(112,249,200,.78)':'rgba(88,241,230,.34)');ctx.lineWidth=1;ctx.stroke();
   ctx.textAlign='center';ctx.textBaseline='top';ctx.font='900 11px system-ui';ctx.fillStyle='#eaffff';lines.forEach((line,index)=>ctx.fillText(line,cx,top+5+index*lineH));
-  if(tag){ctx.font='1000 8px system-ui';ctx.fillStyle='#ffd166';ctx.fillText(tag,cx,top+5+lines.length*lineH);}
+  if(tag){ctx.font='1000 8px system-ui';ctx.fillStyle=activity?.type==='locker'?'#70f9c8':'#ffd166';ctx.fillText(tag,cx,top+5+lines.length*lineH);}
   ctx.restore();
 }
 
@@ -4451,8 +4456,19 @@ let restoredAccountLocationUserId='';
 function accountLocationKey(){return authSession?.user?.id?ATM_ACCOUNT_LOCATION_PREFIX+authSession.user.id:'';}
 function saveAccountLocation(){
   const key=accountLocationKey();if(!key||!Number.isFinite(player.x)||!Number.isFinite(player.y))return;
-  const value={map:currentMap,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,dir:player.dir||'down',savedAt:Date.now()};
+  const returnPoint=ATM_MAPS.isInterior(currentMap)&&townReturnPoint&&Number.isFinite(townReturnPoint.x)&&Number.isFinite(townReturnPoint.y)
+    ?{x:Math.round(townReturnPoint.x*10)/10,y:Math.round(townReturnPoint.y*10)/10}
+    :null;
+  const value={map:currentMap,x:Math.round(player.x*10)/10,y:Math.round(player.y*10)/10,dir:player.dir||'down',townReturnPoint:returnPoint,savedAt:Date.now()};
   try{localStorage.setItem(key,JSON.stringify(value));}catch(_error){}
+}
+function fallbackTownReturnPointForInterior(mapId){
+  if(!ATM_MAPS.isInterior(mapId))return null;
+  const entranceId=ATM_CONFIG?.maps?.[mapId]?.entranceId;
+  const zone=entranceId?TOWN_ENTRY_ZONES.find(item=>item.id===entranceId):null;
+  if(!zone)return null;
+  const door=getBuildingInteractPoint(zone);
+  return ATM_MAPS.townReturnPoint(mapId,door);
 }
 function restoreAccountLocation(){
   const userId=authSession?.user?.id;if(!userId||restoredAccountLocationUserId===userId)return false;
@@ -4462,6 +4478,14 @@ function restoreAccountLocation(){
   if(!saved||!allowedMaps.has(saved.map)||!Number.isFinite(saved.x)||!Number.isFinite(saved.y))return false;
   const destination=ATM_MAPS.runtime(saved.map,townZoom),pad=24;
   currentMap=saved.map;zoom=destination.zoom;
+  if(ATM_MAPS.isInterior(currentMap)){
+    const savedReturn=saved.townReturnPoint;
+    townReturnPoint=savedReturn&&Number.isFinite(savedReturn.x)&&Number.isFinite(savedReturn.y)
+      ?{x:Number(savedReturn.x),y:Number(savedReturn.y)}
+      :fallbackTownReturnPointForInterior(currentMap);
+  }else{
+    townReturnPoint=null;
+  }
   if(currentMap==='town'){
     const applySavedTownPoint=()=>{
       const bounds=townWorldBounds();
@@ -4634,7 +4658,13 @@ function update(dt){
       updateJetpackHud();
     }
   }
-  if(dialogOpen) return;
+  if(dialogOpen){
+    // Modal UI (Locker, directory, dialogs) must not make the player vanish from
+    // multiplayer. Keep the same throttled state heartbeat used during normal play
+    // so remote clients retain position/activity and proximity voice stays audible.
+    broadcastState();
+    return;
+  }
   let dx=joy.x,dy=joy.y;
   if(keys['a']||keys['arrowleft'])dx-=1;
   if(keys['d']||keys['arrowright'])dx+=1;
@@ -5612,10 +5642,20 @@ function lockerRender(){
   document.querySelectorAll('.lockerDirection').forEach(node=>node.classList.toggle('active',node.dataset.lockerDirection===lockerState.direction));const dirLabel=document.getElementById('lockerPreviewDirectionLabel');if(dirLabel)dirLabel.textContent=({down:'FRONT',left:'LEFT',up:'BACK',right:'RIGHT'})[lockerState.direction]||lockerState.direction.toUpperCase();
 }
 function lockerOpen(){
-  if(lockerState.open||vendingOpen)return;lockerState.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';document.body.classList.add('locker-modal-open');const panel=document.getElementById('lockerPanel');panel.classList.add('open');panel.setAttribute('aria-hidden','false');lockerSetTab(lockerState.tab);lockerSetStatus(lockerWalletAddress()?'Locker open. Refresh XRPL to verify current NFT ownership.':'Locker open. Link Xaman to enable XRPL ownership verification.');if(lockerWalletAddress()&&lockerState.status==='idle')lockerRefreshXrpl(true);else lockerRender();
+  if(lockerState.open||vendingOpen)return;
+  lockerPreviousActivity=currentPlayerActivity;
+  currentPlayerActivity={type:'locker',label:'LOCKER',startedAt:Date.now()};
+  lockerState.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';document.body.classList.add('locker-modal-open');const panel=document.getElementById('lockerPanel');panel.classList.add('open');panel.setAttribute('aria-hidden','false');
+  broadcastState(true);updateVoiceProximityVolumes();
+  lockerSetTab(lockerState.tab);lockerSetStatus(lockerWalletAddress()?'Locker open. Refresh XRPL to verify current NFT ownership.':'Locker open. Link Xaman to enable XRPL ownership verification.');if(lockerWalletAddress()&&lockerState.status==='idle')lockerRefreshXrpl(true);else lockerRender();
 }
 function lockerClose(){
-  lockerState.open=false;dialogOpen=false;document.body.classList.remove('locker-modal-open');const panel=document.getElementById('lockerPanel');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');
+  if(!lockerState.open)return;
+  lockerState.open=false;dialogOpen=false;
+  if(currentPlayerActivity?.type==='locker')currentPlayerActivity=lockerPreviousActivity;
+  lockerPreviousActivity=null;
+  document.body.classList.remove('locker-modal-open');const panel=document.getElementById('lockerPanel');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');
+  broadcastState(true);updateVoiceProximityVolumes();
 }
 
 document.getElementById('lockerButton')?.addEventListener('click',lockerOpen);
