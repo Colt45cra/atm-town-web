@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v234.3',name:ATM_CONFIG?.build?.name||'ATM Pay'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v234.4',name:ATM_CONFIG?.build?.name||'People Hub'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -398,6 +398,8 @@ let playerId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).s
 let roomName='atm-town-alpha';
 let supabaseClient=null, realtimeChannel=null, onlineMode=false;
 const remotePlayers=new Map();
+let currentOnlineCount=1;
+const atmPeopleEncounters=new Map();
 let currentPlayerActivity=null;
 
 // v204: one shared LiveKit voice room for the entire game.
@@ -2735,12 +2737,15 @@ async function connectMultiplayer(){
     realtimeChannel=supabaseClient.channel('atm-town:'+roomName,{config:{presence:{key:playerId},broadcast:{self:false}}});
     realtimeChannel.on('presence',{event:'sync'},()=>{
       const state=realtimeChannel.presenceState();
-      document.getElementById('onlineBadge').textContent=(Object.keys(state).length||1)+' online';
+      currentOnlineCount=Object.keys(state).length||1;
+      if(window.ATMPeopleHub?.setOnlineCount)window.ATMPeopleHub.setOnlineCount(currentOnlineCount);
+      else document.getElementById('onlineBadge').textContent=currentOnlineCount+' online';
+      window.dispatchEvent(new CustomEvent('atm:online-players-changed'));
     });
     realtimeChannel.on('broadcast',{event:'player_state'},({payload})=>{
       if(payload.id===playerId)return;
       const old=remotePlayers.get(payload.id)||{};
-      remotePlayers.set(payload.id,{...old,...payload,lastSeen:Date.now(),drawX:old.drawX??payload.x,drawY:old.drawY??payload.y});updateVoiceProximityVolumes();updateVoiceCount();
+      remotePlayers.set(payload.id,{...old,...payload,lastSeen:Date.now(),drawX:old.drawX??payload.x,drawY:old.drawY??payload.y});updateVoiceProximityVolumes();updateVoiceCount();window.dispatchEvent(new CustomEvent('atm:online-players-changed'));
     });
     realtimeChannel.on('broadcast',{event:'chat'},({payload})=>{
       if(payload.id!==playerId)showBubble(payload.id,payload.name,payload.message,payload.x,payload.y,payload.map);
@@ -2750,7 +2755,7 @@ async function connectMultiplayer(){
       const amount=Number(payload.amountXrp||0);showXrplPaymentToast(`${payload.buyerName||'A player'} made a ${amount} XRP offer on your displayed NFT.`,'success',10000);
       lockerState.nftBuyOffers.delete(String(payload.tokenId||'').toUpperCase());
     });
-    realtimeChannel.on('broadcast',{event:'leave'},({payload})=>remotePlayers.delete(payload.id));
+    realtimeChannel.on('broadcast',{event:'leave'},({payload})=>{remotePlayers.delete(payload.id);window.dispatchEvent(new CustomEvent('atm:online-players-changed'));});
 
     await new Promise((resolve,reject)=>{
       let settled=false;
@@ -3886,6 +3891,31 @@ function normalizeRemoteAtmPayIdentity(value){
   if(!/^[0-9a-f-]{36}$/i.test(userId)||!/^[a-z0-9_]{3,20}$/.test(handle)||value.atm_pay_ready===false)return null;
   return {user_id:userId,handle,display_name:String(value.display_name||'ATM Player').slice(0,30),character_id:String(value.character_id||'classic').slice(0,40),atm_pay_ready:true};
 }
+function rememberAtmPeopleEncounter(remoteId,remotePlayer,identity,distance){
+  if(!identity||!Number.isFinite(distance)||distance>180)return;
+  const item={session_id:String(remoteId||''),name:String(remotePlayer?.name||identity.display_name||'ATM Player').slice(0,30),map:String(remotePlayer?.map||currentMap),character_id:String(remotePlayer?.character||identity.character_id||'classic').slice(0,40),atmPay:identity,seen_at:Date.now()};
+  atmPeopleEncounters.set(identity.user_id,item);
+  try{sessionStorage.setItem('atm_people_encounters_v1',JSON.stringify([...atmPeopleEncounters.values()].sort((a,b)=>b.seen_at-a.seen_at).slice(0,24)));}catch(_error){}
+}
+function restoreAtmPeopleEncounters(){
+  try{const items=JSON.parse(sessionStorage.getItem('atm_people_encounters_v1')||'[]');for(const item of Array.isArray(items)?items:[]){const identity=normalizeRemoteAtmPayIdentity(item?.atmPay);if(identity)atmPeopleEncounters.set(identity.user_id,{...item,atmPay:identity});}}catch(_error){}
+}
+restoreAtmPeopleEncounters();
+function atmPeopleOnlinePlayers(){
+  const now=Date.now();const out=[];
+  const selfIdentity=normalizeRemoteAtmPayIdentity(window.ATMPay?.getPublicIdentity?.());
+  out.push({session_id:playerId,name:playerName||'You',map:currentMap,character_id:selectedCharacter,is_self:true,distance:0,nearby:false,atmPay:selfIdentity});
+  for(const [id,p] of remotePlayers){
+    if(now-(p.lastSeen||0)>12000)continue;
+    const sameMap=p.map===currentMap;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);const distance=sameMap&&Number.isFinite(x)&&Number.isFinite(y)?Math.hypot(player.x-x,player.y-y):null;
+    const identity=normalizeRemoteAtmPayIdentity(p.atmPay);if(identity&&distance!==null)rememberAtmPeopleEncounter(id,p,identity,distance);
+    out.push({session_id:String(id),name:String(p.name||identity?.display_name||'Player').slice(0,30),map:String(p.map||''),character_id:String(p.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
+  }
+  out.sort((a,b)=>Number(b.nearby)-Number(a.nearby)||Number(b.map===currentMap)-Number(a.map===currentMap)||(a.distance??1e9)-(b.distance??1e9)||a.name.localeCompare(b.name));
+  return out;
+}
+function atmPeopleRecentEncounters(){return [...atmPeopleEncounters.values()].sort((a,b)=>(b.seen_at||0)-(a.seen_at||0)).slice(0,12).map(item=>({...item,atmPay:item.atmPay?{...item.atmPay}:null}));}
+window.ATMGamePeople={snapshot:()=>({onlineCount:currentOnlineCount,online:atmPeopleOnlinePlayers(),encounters:atmPeopleRecentEncounters(),currentMap})};
 function nearestAtmPayRemote(maxDistance=82){
   const now=Date.now();let best=null,bestDistance=maxDistance;
   for(const [id,p] of remotePlayers){
@@ -3899,7 +3929,6 @@ function nearestAtmPayRemote(maxDistance=82){
 }
 function nearestThing(){
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
-  const payTarget=nearestAtmPayRemote();if(payTarget)return payTarget;
   let best=null,dist=99999,bestRadius=175;
   if(currentMap==='hq'){
     const maskedInteraction=hqInteractionThing();
@@ -4359,7 +4388,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){if(thing?.type==='player-atm-pay')return 'Tap PAY to send money to @'+String(thing.atmPay?.handle||'player')+' with ATM Pay';if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
+function interactionHint(thing){if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -4452,7 +4481,6 @@ function interact(){
   if(vending&&!vendingOpen){openVending();return;}
   if(dialogOpen)return;
   const t=nearestThing();
-  if(t&&t.type==='player-atm-pay'){window.ATMPay?.openToRecipient?.(t.atmPay);return;}
   if(t&&t.type==='vending'){openVending();return;}
   if(currentMap==='town'&&t){
     const destinationMap=ATM_MAPS.fromEntrance(t.id);
@@ -4744,8 +4772,7 @@ function update(dt){
   hintEl.style.opacity=nearThing?1:0;
   const registeredEntrance=nearThing&&currentMap==='town'&&ATM_MAPS.fromEntrance(nearThing.id);
   let actionLabel='ACTION';
-  if(nearThing?.type==='player-atm-pay')actionLabel='PAY';
-  else if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';
+  if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';
   else if(nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(nearThing.type))actionLabel='PLAY';
   else if(nearThing?.type==='vending')actionLabel='USE';
   else if(nearThing?.type==='voice')actionLabel='JOIN';

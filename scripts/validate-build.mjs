@@ -89,10 +89,12 @@ const requiredFiles = [
   'docs/V234.2.5-ATM-PAY-SEAMLESS-RELAY.md',
   'docs/V234.2.6-ATM-PAY-LEDGER-CONTRACT-HOTFIX.md',
   'docs/V234.3-ATM-PAY-CONSUMER-UX.md',
+  'docs/V234.4-PEOPLE-HUB.md',
   'scripts/generate-security-headers.mjs',
   'vercel.json',
   'package.json',
   'js/wallet/embedded-wallet.js',
+  'js/people-hub.js',
   'js/runtime/game-core.js',
   'js/runtime/sky-run.js',
   'js/runtime/platform-panic.js',
@@ -127,7 +129,7 @@ const gameRuntimeParts = await Promise.all([
 ]);
 const gameRuntimeSource = gameRuntimeParts.join('\n');
 const runtimeSource = `${html}\n${gameRuntimeSource}`;
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -136,8 +138,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v234.3'")) errors.push('Missing v234.3 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'ATM Pay'")) errors.push('Missing v234.2 ATM Pay display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v234.4'")) errors.push('Missing v234.4 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'People Hub'")) errors.push('Missing v234.4 People Hub display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -191,12 +193,13 @@ for (const runtimeMarker of [
   if (!runtimeSource.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
 
-if (!gameRuntimeParts[0].includes('nearestAtmPayRemote') || !gameRuntimeParts[0].includes("type:'player-atm-pay'")) errors.push('v234.3 nearby-player PAY interaction is missing.');
-if (!gameRuntimeParts[0].includes("atmPay:window.ATMPay?.getPublicIdentity?.()||null")) errors.push('v234.3 multiplayer presence is missing public ATM Pay identity broadcast.');
-if (!gameRuntimeParts[0].includes("window.ATMPay?.openToRecipient?.(t.atmPay)")) errors.push('v234.3 nearby-player PAY action does not open ATM Pay with the selected player.');
+if (!gameRuntimeParts[0].includes("atmPay:window.ATMPay?.getPublicIdentity?.()||null")) errors.push('v234.4 multiplayer presence is missing public ATM Pay identity broadcast.');
 if (!gameRuntimeParts[0].includes("window.addEventListener('atm:pay-notification'")) errors.push('v234.3 in-game ATM Pay notification toast bridge is missing.');
-if (gameRuntimeParts[0].includes('atmPay:{address') || gameRuntimeParts[0].includes('atmPay:{wallet')) errors.push('v234.3 multiplayer ATM Pay presence must not broadcast wallet addresses.');
-if (!gameRuntimeParts[1]?.includes('const payTarget=nearestAtmPayRemote();if(payTarget)return payTarget;')) errors.push('v234.3 arcade nearestThing wrapper must preserve nearby-player PAY after Trade Beacon priority.');
+if (gameRuntimeParts[0].includes('atmPay:{address') || gameRuntimeParts[0].includes('atmPay:{wallet')) errors.push('v234.4 multiplayer ATM Pay presence must not broadcast wallet addresses.');
+if (gameRuntimeParts[0].includes("actionLabel='PAY'") || gameRuntimeParts[0].includes("openToRecipient?.(t.atmPay)")) errors.push('v234.4 must keep ATM Pay out of the world ACTION ring.');
+if (gameRuntimeParts[1]?.includes('const payTarget=nearestAtmPayRemote();if(payTarget)return payTarget;')) errors.push('v234.4 arcade ACTION ring must not inject ATM Pay proximity targets.');
+if (!gameRuntimeParts[0].includes('window.ATMGamePeople={snapshot:')) errors.push('v234.4 game runtime is missing People Hub online/encounter snapshot API.');
+if (!gameRuntimeParts[0].includes("sessionStorage.setItem('atm_people_encounters_v1'")) errors.push('v234.4 session-scoped recent encounter memory is missing.');
 
 for (const characterId of ['phnix','bear','xoge','flippy']) {
   if (!gameRuntimeParts[0].includes(`characterId:'${characterId}'`)) errors.push(`New playable character is missing from starter Locker catalog: ${characterId}`);
@@ -216,7 +219,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v234.3'")) errors.push('js/config.js is not marked v234.3.');
+if (!configSource.includes("version: 'v234.4'")) errors.push('js/config.js is not marked v234.4.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -229,6 +232,7 @@ if (config.embeddedWallet?.network !== 'testnet') errors.push('Embedded wallet m
 if ('rpcHttp' in (config.embeddedWallet || {}) || 'rpcHttpSources' in (config.embeddedWallet || {}) || 'rpcWs' in (config.embeddedWallet || {})) errors.push('v234.2.5 browser wallet config must not expose direct XRPL transport endpoints.');
 if (!String(config.embeddedWallet?.explorerTxBase || '').startsWith('https://testnet.xrpl.org/transactions/')) errors.push('Embedded wallet transaction explorer must remain on XRPL Testnet.');
 const embeddedWalletSource = await readFile(path.join(root, 'js', 'wallet', 'embedded-wallet.js'), 'utf8');
+const peopleHubSource = await readFile(path.join(root, 'js', 'people-hub.js'), 'utf8');
 const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
 const atmPaySource = await readFile(path.join(root, 'lib', 'atm-pay.js'), 'utf8');
 const testnetRpcSource = await readFile(path.join(root, 'lib', 'xrpl-testnet-rpc.js'), 'utf8');
@@ -254,6 +258,13 @@ if (!embeddedWalletSource.includes("new CustomEvent('atm:pay-notification'") || 
 if (!embeddedWalletSource.includes('async function openToRecipient') || !embeddedWalletSource.includes('function getPublicIdentity(){if(!state.record)return null;')) errors.push('v234.3 nearby-player ATM Pay entry point must broadcast only wallet-ready public identities.');
 if (!embeddedWalletSource.includes('async function payRequestedItem') || !embeddedWalletSource.includes('await prepareAtmPayPayment();')) errors.push('v234.3 one-tap payment-request preparation is missing.');
 if (!embeddedWalletSource.includes('atmPaySuccessCelebration') || !embeddedWalletSource.includes('atmPaySuccessMark')) errors.push('v234.3 ATM Pay success animation is missing.');
+if (!embeddedWalletSource.includes('function getConsumerSnapshot()') || !embeddedWalletSource.includes('searchPeople:searchPeopleForConsumer')) errors.push('v234.4 ATM Pay consumer snapshot/search API is missing.');
+if (!embeddedWalletSource.includes("new CustomEvent('atm:pay-state-changed'")) errors.push('v234.4 ATM Pay state-change bridge for People Hub is missing.');
+if (!peopleHubSource.includes("const PAGES=['online','people','pay']")) errors.push('v234.4 People Hub sliding Online/People/Pay pages are missing.');
+if (!peopleHubSource.includes("document.getElementById('onlineBadge')")) errors.push('v234.4 People Hub is not bound to the existing online-player count icon.');
+if (!peopleHubSource.includes("window.ATMPay?.openToRecipient")) errors.push('v234.4 People Hub cannot open address-free payments to selected people.');
+if (!peopleHubSource.includes("Met this session") || !peopleHubSource.includes("Recent payments")) errors.push('v234.4 People page does not surface recent contacts and session encounters.');
+if (!peopleHubSource.includes("Requests for you") || !peopleHubSource.includes("Find someone to pay")) errors.push('v234.4 Pay page is missing requests/search surfaces.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-recheck')) errors.push('v234.2.5 wallet must recheck live XRPL sequence/ledger through the authenticated ATM Pay API before signing.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-relay-submit')) errors.push('v234.2.5 wallet must relay only the locally signed transaction blob through the authenticated ATM Pay API.');
 if (/testnetRpc\(|prepareTestnetPaymentTx|submitSignedBlobAndWait|new xrpl\.Client|submitAndWait\(|client\.autofill\(/.test(embeddedWalletSource)) errors.push('v234.2.5 browser wallet must not depend on direct XRPL network transport.');
@@ -452,7 +463,7 @@ try {
   }
 
   const syntaxTargets = [
-    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js',
+    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js',
     'lib/auth.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js',
     'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/leaderboards.js', 'api/xrpl-nft-trade.js',
     'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js', 'api/embedded-wallet.js',
@@ -470,10 +481,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v234.3 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v234.4 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v234.3 build validation passed.');
+console.log('ATM Town v234.4 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

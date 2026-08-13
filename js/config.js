@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v234.4: adds the People Hub — online players, recent people, and ATM Pay in one sliding social panel.
  * v234.3: consumer ATM Pay UX — character avatars, recent people, request notifications, one-tap request prep, and nearby-player Pay.
  * v234.2.6: fixes the ATM Pay ledger-index response contract used by payment-expiration safety checks.
  * v234.2.5: routes ATM Pay XRPL network transport through the authenticated ATM Town API while keeping signing local.
@@ -16,10 +17,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 234.3,
-    version: 'v234.3',
-    name: 'ATM Pay',
-    title: 'ATM Town v234.3 — ATM Pay Consumer UX'
+    number: 234.4,
+    version: 'v234.4',
+    name: 'People Hub',
+    title: 'ATM Town v234.4 — People Hub'
   });
 
   const MAPS = Object.freeze({

@@ -245,6 +245,7 @@
     state.payProfile=data.profile||null;
     state.paySuggestedHandle=String(data.suggested_handle||'');
     state.payDisplayName=String(data.display_name||'ATM Player');
+    emitConsumerState();
     return data;
   }
   function activityKey(item){return `${String(item?.kind||'item')}:${String(item?.id||'')}`;}
@@ -266,7 +267,8 @@
     else if(item.kind==='request'&&item.direction==='request_received'&&item.status==='pending'&&Date.parse(item.expires_at||0)>Date.now()){message=`${person.display_name} requested ${item.amount_xrp} XRP · Open ATM Pay to respond.`;tone='waiting';}
     if(message)window.dispatchEvent(new CustomEvent('atm:pay-notification',{detail:{message,tone,item}}));
   }
-  function updatePendingRequestCount(){state.pendingRequestCount=pendingIncomingRequests().length;refreshButton();}
+  function emitConsumerState(){window.dispatchEvent(new CustomEvent('atm:pay-state-changed',{detail:getConsumerSnapshot()}));}
+  function updatePendingRequestCount(){state.pendingRequestCount=pendingIncomingRequests().length;refreshButton();emitConsumerState();}
   async function fetchPayActivity(options={}){
     if(!state.payProfile)return [];
     try{
@@ -765,6 +767,43 @@
     finally{vault?.fill(0);setBusy(false);}
   }
 
+  function sanitizeActivityForConsumer(item){
+    const other=normalizeRecipient(item?.other);
+    if(!other)return null;
+    return {
+      id:String(item?.id||''),kind:String(item?.kind||''),direction:String(item?.direction||''),status:String(item?.status||''),
+      amount_xrp:String(item?.amount_xrp||''),amount_drops:String(item?.amount_drops||''),note:String(item?.note||'').slice(0,80),
+      expires_at:item?.expires_at||null,created_at:item?.created_at||null,other
+    };
+  }
+  function getConsumerSnapshot(){
+    return {
+      ready:!!(state.record&&state.payProfile),
+      profile:normalizeRecipient(state.payProfile),
+      pendingRequestCount:state.pendingRequestCount,
+      recentPeople:recentRecipients().map(person=>({...person})),
+      incomingRequests:pendingIncomingRequests().map(sanitizeActivityForConsumer).filter(Boolean),
+      recentActivity:state.activity.slice(0,12).map(sanitizeActivityForConsumer).filter(Boolean)
+    };
+  }
+  async function refreshConsumerSnapshot(){
+    try{
+      await fetchRecord();await fetchPayStatus();
+      if(state.payProfile)await fetchPayActivity({silent:true});
+    }catch(_error){}
+    return getConsumerSnapshot();
+  }
+  async function searchPeopleForConsumer(query){
+    const q=String(query||'').trim();if(q.length<2)return [];
+    const data=await walletApi()(`/api/embedded-wallet?action=pay-search&q=${encodeURIComponent(q)}`,{method:'GET'});
+    return (Array.isArray(data.results)?data.results:[]).map(normalizeRecipient).filter(Boolean);
+  }
+  async function openRequestForConsumer(id){
+    await open();
+    const item=requestItemById(String(id||''));
+    if(item)await payRequestedItem(item.id);
+    else{state.payView='activity';render();setMessage('That request is no longer pending.');}
+  }
   function bindButton(){
     const button=document.getElementById('embeddedWalletBtn'); if(!button||button.dataset.atmWalletBound)return; button.dataset.atmWalletBound='1'; button.addEventListener('click',open);
   }
@@ -773,8 +812,8 @@
     try{
       await fetchRecord();await fetchPayStatus();
       if(state.payProfile){await fetchPayActivity({silent:true});startActivityPolling();}else{stopActivityPolling();state.activity=[];state.pendingRequestCount=0;}
-      refreshButton();return state.payProfile;
-    }catch(_error){stopActivityPolling();refreshButton();return null;}
+      refreshButton();emitConsumerState();return state.payProfile;
+    }catch(_error){stopActivityPolling();refreshButton();emitConsumerState();return null;}
   }
   async function openToRecipient(value){
     const recipient=normalizeRecipient(value);if(!recipient)return open();
@@ -785,7 +824,7 @@
   function getPublicIdentity(){if(!state.record)return null;const p=normalizeRecipient(state.payProfile);return p?{...p,atm_pay_ready:true}:null;}
 
   window.ATMEmbeddedWallet={open,close,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{stopActivityPolling();clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.activityInitialized=false;state.pendingRequestCount=0;state.selectedRecipient=null;state.pendingOpenRecipient=null;state.requestDraft=null;refreshButton();document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:refreshPublicState};
-  window.ATMPay={open,openToRecipient,refresh:refreshPublicState,getPublicIdentity};
+  window.ATMPay={open,openToRecipient,openRequest:openRequestForConsumer,refresh:refreshPublicState,getPublicIdentity,getConsumerSnapshot,refreshConsumerSnapshot,searchPeople:searchPeopleForConsumer};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();bindButton();refreshButton();});else{ensureUi();bindButton();refreshButton();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPreparedPayment();if(!state.recoveryKey)render();}else if(state.payProfile)fetchPayActivity({silent:true,notify:true});});
   window.addEventListener('focus',()=>{if(state.payProfile)fetchPayActivity({silent:true,notify:true});});
