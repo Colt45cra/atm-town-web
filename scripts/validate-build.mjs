@@ -87,6 +87,7 @@ const requiredFiles = [
   'docs/V234.2-ATM-PAY.md',
   'docs/V234.2.4-ATM-PAY-MOBILE-RPC.md',
   'docs/V234.2.5-ATM-PAY-SEAMLESS-RELAY.md',
+  'docs/V234.2.6-ATM-PAY-LEDGER-CONTRACT-HOTFIX.md',
   'scripts/generate-security-headers.mjs',
   'vercel.json',
   'package.json',
@@ -207,7 +208,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v234.2.5'")) errors.push('js/config.js is not marked v234.2.5.');
+if (!configSource.includes("version: 'v234.2.6'")) errors.push('js/config.js is not marked v234.2.6.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -236,6 +237,8 @@ if (/AUTO_LOCK_MS/.test(embeddedWalletSource)) errors.push('v234.1 should use op
 if (!embeddedWalletSource.includes('withDecryptedWallet(state.record,vault,async(wallet)=>wallet.sign(tx))')) errors.push('v234.1 must decrypt and sign inside the operation-scoped wallet callback.');
 if (!embeddedWalletSource.includes('FRESH AUTH PER PAYMENT')) errors.push('v234.2 fresh-authorization payment marker is missing.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-prepare')) errors.push('v234.2.5 wallet must prepare XRPL ledger fields through the authenticated ATM Pay API.');
+if (!embeddedWalletSource.includes('Number(preparedLedger.ledger_index)')) errors.push('v234.2.6 client must read the server payment-preparation ledger_index field.');
+if (embeddedWalletSource.includes('Number(preparedLedger.ledgerIndex)')) errors.push('v234.2.6 client must not use the obsolete ledgerIndex response field.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-recheck')) errors.push('v234.2.5 wallet must recheck live XRPL sequence/ledger through the authenticated ATM Pay API before signing.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-relay-submit')) errors.push('v234.2.5 wallet must relay only the locally signed transaction blob through the authenticated ATM Pay API.');
 if (/testnetRpc\(|prepareTestnetPaymentTx|submitSignedBlobAndWait|new xrpl\.Client|submitAndWait\(|client\.autofill\(/.test(embeddedWalletSource)) errors.push('v234.2.5 browser wallet must not depend on direct XRPL network transport.');
@@ -277,6 +280,7 @@ if (!atmPaySource.includes("route_type: 'embedded'") || !atmPaySource.includes("
 if (!atmPaySource.includes("rpc('tx', [{ transaction: txHash, binary: false }])")) errors.push('v234.2 server must independently look up the final XRPL transaction by hash.');
 if (!atmPaySource.includes('xrplTestnetRpc')) errors.push('v234.2.5 ATM Pay server transport must use resilient Testnet RPC fallback.');
 if (!atmPaySource.includes('async function prepareLedgerTransaction') || !atmPaySource.includes("'pay-ledger-prepare'")) errors.push('v234.2.5 server-side XRPL transaction preparation is missing.');
+if (!atmPaySource.includes('return { tx, ledger_index: ledgerIndex };')) errors.push('v234.2.6 server payment preparation must return ledger_index explicitly.');
 if (!atmPaySource.includes('async function recheckLedgerTransaction') || !atmPaySource.includes("'pay-ledger-recheck'")) errors.push('v234.2.5 server-side pre-sign ledger recheck is missing.');
 if (!atmPaySource.includes('async function relaySignedTransaction') || !atmPaySource.includes("'pay-relay-submit'") || !atmPaySource.includes("rpc('submit'")) errors.push('v234.2.5 signed-blob XRPL relay is missing.');
 if (!atmPaySource.includes('assertTxBlob') || !atmPaySource.includes('MAX_TX_BLOB_HEX')) errors.push('v234.2.5 signed transaction relay input validation is missing.');
@@ -450,10 +454,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v234.2.5 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v234.2.6 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v234.2.5 build validation passed.');
+console.log('ATM Town v234.2.6 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

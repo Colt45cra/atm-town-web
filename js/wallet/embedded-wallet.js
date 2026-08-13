@@ -568,7 +568,7 @@
       if(tx.Account!==state.record.address||tx.Destination!==destination||String(tx.Amount||'')!==amount.drops)throw new Error('Prepared XRPL transaction did not match the ATM Pay request. Nothing was signed.');
       const feeDrops=BigInt(String(tx.Fee||'0'));
       if(feeDrops<=0n||feeDrops>MAX_TEST_FEE_DROPS)throw new Error(`XRPL Testnet fee safety check blocked ${dropsToXrpText(feeDrops)} XRP.`);
-      const sequence=Number(tx.Sequence),lastLedgerSequence=Number(tx.LastLedgerSequence),ledgerIndex=Number(preparedLedger.ledgerIndex);
+      const sequence=Number(tx.Sequence),lastLedgerSequence=Number(tx.LastLedgerSequence),ledgerIndex=Number(preparedLedger.ledger_index);
       if(!Number.isSafeInteger(sequence)||sequence<=0)throw new Error('Prepared transaction is missing a valid XRPL account sequence.');
       if(!Number.isSafeInteger(lastLedgerSequence)||lastLedgerSequence<=0)throw new Error('Prepared transaction is missing its ledger expiration.');
       if(!Number.isSafeInteger(ledgerIndex)||lastLedgerSequence<=ledgerIndex+MIN_LEDGER_HEADROOM)throw new Error('Prepared payment does not have enough ledger-expiration headroom.');

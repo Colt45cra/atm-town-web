@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v234.2.6: fixes the ATM Pay ledger-index response contract used by payment-expiration safety checks.
  * v234.2.5: routes ATM Pay XRPL network transport through the authenticated ATM Town API while keeping signing local.
  * v234.2.4: makes ATM Pay mobile-friendly by using resilient HTTPS JSON-RPC Testnet transport.
  * v234.2: adds ATM Pay identity, request, activity, and server-bound Testnet payment intents.
@@ -14,10 +15,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 234.25,
-    version: 'v234.2.5',
+    number: 234.26,
+    version: 'v234.2.6',
     name: 'ATM Pay',
-    title: 'ATM Town v234.2.5 — ATM Pay Seamless Relay'
+    title: 'ATM Town v234.2.6 — ATM Pay Ledger Contract Hotfix'
   });
 
   const MAPS = Object.freeze({
