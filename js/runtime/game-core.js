@@ -3895,6 +3895,20 @@ document.addEventListener('focusin',e=>{if(!isTextEntryTarget(e.target))return;f
 // Safari fallback: long-press/drag on game chrome should never start page text selection or a callout.
 document.addEventListener('selectstart',e=>{if(!isTextEntryTarget(e.target)&&!e.target?.closest?.('code,pre,.walletValue,.selectable,[data-selectable="true"]'))e.preventDefault();});
 document.addEventListener('contextmenu',e=>{if(!isTextEntryTarget(e.target)&&!e.target?.closest?.('code,pre,.walletValue,.selectable,[data-selectable="true"]'))e.preventDefault();});
+// v235.1.4: iPhone Safari can interpret joystick + jump/action as a native page pinch.
+// Block Safari gesture events and multi-touch page gestures on gameplay chrome while leaving text entry usable.
+function blockNativeGameplayZoom(e){
+  if(isTextEntryTarget(e.target))return;
+  e.preventDefault();
+  if(joy.active)endJoy();
+}
+for(const eventName of ['gesturestart','gesturechange','gestureend']){
+  document.addEventListener(eventName,blockNativeGameplayZoom,{passive:false});
+}
+document.addEventListener('touchmove',e=>{
+  if((e.touches?.length||0)<2||isTextEntryTarget(e.target))return;
+  e.preventDefault();
+},{passive:false});
 
 
 function interiorExitThing(mapId=currentMap){
