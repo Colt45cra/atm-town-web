@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v234.4',name:ATM_CONFIG?.build?.name||'People Hub'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235',name:ATM_CONFIG?.build?.name||'World Event Engine'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -1768,7 +1768,7 @@ const hqInteractionReader=ATM_INTERACTIONS.createMaskReader({
 const hqForegroundPieces=[];
 const HQ_INTERACTION_ZONES=[
   {id:'hqDashboard',interactionType:'html',type:'html',x1:629,y1:81,x2:912,y2:214,radius:170,name:'ATM DASHBOARD WINDOW',text:'A large HTML display window for future dashboards and web experiences.'},
-  {id:'hqCommandCore',interactionType:'atm',type:'atm',x1:726,y1:381,x2:816,y2:430,radius:110,name:'ATM COMMAND CORE',text:'The central ATM machine anchors the command core of ATM HQ.'},
+  {id:'hqCommandCore',interactionType:'atm',type:'atm',x1:726,y1:381,x2:816,y2:430,radius:110,name:'ATM COMMAND CORE',text:'Launch synchronized ATM Town world events from the central HQ machine.'},
   {id:'hqTreasury',interactionType:'misc',type:'misc',x1:1333,y1:656,x2:1468,y2:688,radius:95,name:'TREASURY TERMINAL',text:'A future treasury and analytics station.'},
   {id:'hqMinted',interactionType:'misc',type:'misc',x1:114,y1:1074,x2:226,y2:1122,radius:95,name:'MINTED TERMINAL',text:'This room connects to the Minted creator experience.'},
   {id:'hqXgen',interactionType:'misc',type:'misc',x1:1378,y1:1146,x2:1474,y2:1201,radius:95,name:'XGEN TERMINAL',text:'This workstation will open XGen collection tools.'},
@@ -4388,7 +4388,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
+function interactionHint(thing){if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='hq'&&thing?.id==='hqCommandCore')return 'Tap ACTION to open the World Event Control';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -4488,6 +4488,7 @@ function interact(){
   }
   if(ATM_MAPS.isInterior(currentMap)&&t&&t.targetMap){switchMap(t.targetMap);return;}
   if(currentMap==='town'&&t&&t.id==='townInfoHub'){openDirectory('town');return;}
+  if(currentMap==='hq'&&t&&t.id==='hqCommandCore'){window.ATMWorldEvents?.openControlPanel?.({map:currentMap,x:player.x,y:player.y});return;}
   if(t&&t.type==='voice'){joinHQVoice();return;}
   if(t&&t.id==='loungeDarts'){window.openATMDarts?.();return;}
   if(t)showDialog(t.name,t.text||'ATM Town location');else showDialog('ATM Town','Walk around the district, collect coins, and interact with landmarks.');
@@ -4748,6 +4749,7 @@ function update(dt){
       if(coins===COIN_TOTAL)showDialog('Quest Complete','You collected all 6 coins. This tiled cyberpunk district can be expanded next with interiors and quests.');
     }
   }
+  window.ATMWorldEvents?.updateGameplay?.({map:currentMap,x:player.x,y:player.y});
   const cameraLift=jetpackState.active?jetpackState.lift*.68:0;
   const targetX=player.x-W/(2*zoom),targetY=player.y-cameraLift-H/(2*zoom);
   cam.x+=(targetX-cam.x)*Math.min(1,dt*6);
@@ -4886,8 +4888,10 @@ function loop(t){
   ctx.save();ctx.scale(zoom,zoom);ctx.translate(-snappedCamX,-snappedCamY);
   if(currentMap==='hq')ctx.drawImage(hq,0,0);else if(currentMap==='gallery')ctx.drawImage(gallery,0,0);else if(currentMap==='arcade')ctx.drawImage(arcade,0,0);else if(currentMap==='lounge')ctx.drawImage(lounge,0,0);else drawVisibleTownChunks();
   if(currentMap==='town')drawCoins(t);
+  window.ATMWorldEvents?.drawGround?.(ctx,{map:currentMap,now:t});
   drawWorldAliveGroundEffects();
   drawDepthScene(t);
+  window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t});
   drawWorldAliveOverlay(t);
   // Illumination is intentionally rendered above the player and all outdoor foreground objects.
   if(currentMap==='town')drawTownLightOverlay(ctx);

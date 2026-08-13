@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235: adds the reusable World Event Engine foundation and Money Rain preview.
  * v234.4: adds the People Hub — online players, recent people, and ATM Pay in one sliding social panel.
  * v234.3: consumer ATM Pay UX — character avatars, recent people, request notifications, one-tap request prep, and nearby-player Pay.
  * v234.2.6: fixes the ATM Pay ledger-index response contract used by payment-expiration safety checks.
@@ -17,10 +18,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 234.4,
-    version: 'v234.4',
-    name: 'People Hub',
-    title: 'ATM Town v234.4 — People Hub'
+    number: 235,
+    version: 'v235',
+    name: 'World Event Engine',
+    title: 'ATM Town v235 — World Event Engine'
   });
 
   const MAPS = Object.freeze({

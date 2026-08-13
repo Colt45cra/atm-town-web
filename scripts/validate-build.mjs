@@ -90,6 +90,10 @@ const requiredFiles = [
   'docs/V234.2.6-ATM-PAY-LEDGER-CONTRACT-HOTFIX.md',
   'docs/V234.3-ATM-PAY-CONSUMER-UX.md',
   'docs/V234.4-PEOPLE-HUB.md',
+  'docs/V235-WORLD-EVENT-ENGINE.md',
+  'js/world-events.js',
+  'lib/world-events.js',
+  'supabase/ATM-Town-v235.sql',
   'scripts/generate-security-headers.mjs',
   'vercel.json',
   'package.json',
@@ -102,6 +106,7 @@ const requiredFiles = [
   'js/runtime/flappy-jetpack.js',
   'js/runtime/darts.js',
   'api/embedded-wallet.js',
+  'api/world-time.js',
   'lib/atm-pay.js',
   'lib/xrpl-testnet-rpc.js',
   'supabase/ATM-Town-v234.sql',
@@ -129,7 +134,7 @@ const gameRuntimeParts = await Promise.all([
 ]);
 const gameRuntimeSource = gameRuntimeParts.join('\n');
 const runtimeSource = `${html}\n${gameRuntimeSource}`;
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/world-events.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -138,8 +143,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v234.4'")) errors.push('Missing v234.4 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'People Hub'")) errors.push('Missing v234.4 People Hub display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235'")) errors.push('Missing v235 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'World Event Engine'")) errors.push('Missing v235 World Event Engine display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -219,7 +224,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v234.4'")) errors.push('js/config.js is not marked v234.4.');
+if (!configSource.includes("version: 'v235'")) errors.push('js/config.js is not marked v235.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -233,6 +238,10 @@ if ('rpcHttp' in (config.embeddedWallet || {}) || 'rpcHttpSources' in (config.em
 if (!String(config.embeddedWallet?.explorerTxBase || '').startsWith('https://testnet.xrpl.org/transactions/')) errors.push('Embedded wallet transaction explorer must remain on XRPL Testnet.');
 const embeddedWalletSource = await readFile(path.join(root, 'js', 'wallet', 'embedded-wallet.js'), 'utf8');
 const peopleHubSource = await readFile(path.join(root, 'js', 'people-hub.js'), 'utf8');
+const worldEventsClientSource = await readFile(path.join(root, 'js', 'world-events.js'), 'utf8');
+const worldEventsServerSource = await readFile(path.join(root, 'lib', 'world-events.js'), 'utf8');
+const worldTimeApiSource = await readFile(path.join(root, 'api', 'world-time.js'), 'utf8');
+const worldEventsSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.sql'), 'utf8');
 const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
 const atmPaySource = await readFile(path.join(root, 'lib', 'atm-pay.js'), 'utf8');
 const testnetRpcSource = await readFile(path.join(root, 'lib', 'xrpl-testnet-rpc.js'), 'utf8');
@@ -265,6 +274,17 @@ if (!peopleHubSource.includes("document.getElementById('onlineBadge')")) errors.
 if (!peopleHubSource.includes("window.ATMPay?.openToRecipient")) errors.push('v234.4 People Hub cannot open address-free payments to selected people.');
 if (!peopleHubSource.includes("Met this session") || !peopleHubSource.includes("Recent payments")) errors.push('v234.4 People page does not surface recent contacts and session encounters.');
 if (!peopleHubSource.includes("Requests for you") || !peopleHubSource.includes("Find someone to pay")) errors.push('v234.4 Pay page is missing requests/search surfaces.');
+if (!worldEventsClientSource.includes('START MONEY RAIN PREVIEW') || !worldEventsClientSource.includes('updateGameplay') || !worldEventsClientSource.includes('drawGround') || !worldEventsClientSource.includes('drawAir')) errors.push('v235 Money Rain client/event rendering hooks are incomplete.');
+if (!worldEventsClientSource.includes('/api/world-time?action=start-money-rain') || !worldEventsClientSource.includes('/api/world-time?action=claim-money-rain')) errors.push('v235 Money Rain client is missing authenticated World Event API actions.');
+if (!worldEventsServerSource.includes("const EVENT_TYPE = 'money_rain'") || !worldEventsServerSource.includes('buildPickups(seed)') || !worldEventsServerSource.includes('MAX_CLAIM_DISTANCE')) errors.push('v235 server-authoritative Money Rain manifest/claim validation is incomplete.');
+if (!worldEventsServerSource.includes("from('world_event_claims')") || !worldEventsServerSource.includes("from('world_events')")) errors.push('v235 World Event server persistence is missing.');
+if (!worldTimeApiSource.includes("action === 'event'") || !worldTimeApiSource.includes('startMoneyRain') || !worldTimeApiSource.includes('claimMoneyPickup')) errors.push('v235 must route World Event actions through the existing world-time serverless function.');
+if (!worldEventsSql.includes('alter table public.world_events enable row level security') || !worldEventsSql.includes('alter table public.world_event_claims enable row level security')) errors.push('v235 World Event tables must have RLS enabled.');
+if (/create policy/i.test(worldEventsSql)) errors.push('v235 World Event tables should expose no direct browser RLS policies.');
+if (!worldEventsSql.includes('world_events_one_live_slot_idx')) errors.push('v235 World Event schema is missing the one-live-event uniqueness guard.');
+if (!gameRuntimeParts[0].includes("t.id==='hqCommandCore'" ) || !gameRuntimeParts[0].includes('ATMWorldEvents?.openControlPanel')) errors.push('v235 HQ ATM Command Core does not open World Event Control.');
+if (!gameRuntimeParts[0].includes('ATMWorldEvents?.updateGameplay') || !gameRuntimeParts[0].includes('ATMWorldEvents?.drawGround') || !gameRuntimeParts[0].includes('ATMWorldEvents?.drawAir')) errors.push('v235 game loop is missing World Event gameplay/render hooks.');
+
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-recheck')) errors.push('v234.2.5 wallet must recheck live XRPL sequence/ledger through the authenticated ATM Pay API before signing.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-relay-submit')) errors.push('v234.2.5 wallet must relay only the locally signed transaction blob through the authenticated ATM Pay API.');
 if (/testnetRpc\(|prepareTestnetPaymentTx|submitSignedBlobAndWait|new xrpl\.Client|submitAndWait\(|client\.autofill\(/.test(embeddedWalletSource)) errors.push('v234.2.5 browser wallet must not depend on direct XRPL network transport.');
@@ -429,7 +449,7 @@ try {
 const apiEntries = await readdir(path.join(root, 'api'), { withFileTypes: true });
 const apiFunctionFiles = apiEntries.filter((entry) => entry.isFile() && entry.name.endsWith('.js'));
 if (apiFunctionFiles.length > 12) errors.push(`Vercel Hobby API function limit exceeded: ${apiFunctionFiles.length} api/*.js files (max 12).`);
-if (apiFunctionFiles.length !== 12) errors.push(`v234 expects 12 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
+if (apiFunctionFiles.length !== 12) errors.push(`v235 expects 12 api/*.js serverless functions, found ${apiFunctionFiles.length}.`);
 for (const obsolete of ['_auth.js','_xaman-vending.js','_xrpl-nft-trading.js','xaman-link-start.js','xaman-link-status.js','xrpl-nft-offer-start.js','xrpl-nft-offer-status.js','xrpl-nft-offers.js','xrpl-nft-offer-accept-start.js']) {
   if (apiFunctionFiles.some((entry) => entry.name === obsolete)) errors.push(`Obsolete API route/helper still present and would consume a Vercel function slot: api/${obsolete}`);
 }
@@ -463,10 +483,10 @@ try {
   }
 
   const syntaxTargets = [
-    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js',
-    'lib/auth.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js',
+    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/world-events.js',
+    'lib/auth.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js', 'lib/world-events.js',
     'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/leaderboards.js', 'api/xrpl-nft-trade.js',
-    'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js', 'api/embedded-wallet.js',
+    'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js', 'api/embedded-wallet.js', 'api/world-time.js',
     'server/xaman-link-start.js', 'server/xaman-link-status.js',
     'server/xrpl-nft-offer-start.js', 'server/xrpl-nft-offer-accept-start.js', 'server/xrpl-nft-offer-status.js', 'server/xrpl-nft-offers.js',
     'scripts/generate-security-headers.mjs'
@@ -481,10 +501,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v234.4 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v234.4 build validation passed.');
+console.log('ATM Town v235 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
