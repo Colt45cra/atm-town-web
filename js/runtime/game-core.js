@@ -4913,7 +4913,7 @@ function loop(t){
   window.ATMWorldEvents?.drawGround?.(ctx,{map:currentMap,now:t});
   drawWorldAliveGroundEffects();
   drawDepthScene(t);
-  window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t});
+  window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
   drawWorldAliveOverlay(t);
   // Illumination is intentionally rendered above the player and all outdoor foreground objects.
   if(currentMap==='town')drawTownLightOverlay(ctx);

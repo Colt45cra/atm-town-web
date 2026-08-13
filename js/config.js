@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.1.2: triples Money Rain's visual density with a continuous viewport-wide atmospheric money storm.
  * v235.1.1: hardens iPhone/mobile input and makes Money Rain more atmospheric with wider scatter and high-altitude falling drops.
  * v235.1: polishes Money Rain with organic seeded clusters, responsive pickups, rare-drop types, and sponsor attribution.
  * v235: adds the reusable World Event Engine foundation and Money Rain preview.
@@ -21,9 +22,9 @@
 
   const BUILD = Object.freeze({
     number: 235.11,
-    version: 'v235.1.1',
-    name: 'Mobile + Money Rain Hotfix',
-    title: 'ATM Town v235.1.1 — Mobile Input + Money Rain Hotfix'
+    version: 'v235.1.2',
+    name: 'Money Storm Density',
+    title: 'ATM Town v235.1.2 — Money Storm Density'
   });
 
   const MAPS = Object.freeze({

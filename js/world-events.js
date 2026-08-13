@@ -7,6 +7,9 @@
   const PICKUP_RADIUS = 54;
   const MAX_PICKUPS_PER_CLAIM = 8;
   const PICKUP_FX_MS = 620;
+  // v235.1.2: decorative sky-rain is intentionally separate from the 84 server-authoritative collectibles.
+  // This triples the apparent Money Rain volume without increasing reward claims or the 1,000-point pool.
+  const ATMOSPHERIC_RAIN_OBJECTS = 168;
   const state = {
     event: null,
     serverOffsetMs: 0,
@@ -179,7 +182,7 @@
     }
     const sponsorDisabled = event && phase !== 'completed';
     const brandActive = state.sponsorMode === 'brand';
-    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch a synchronized event across the live multiplayer world. v235.1.1 keeps organic money clumps, adds wider town-wide scatter, makes the rain visibly fall from high overhead, and preserves instant-feeling pickups and sponsor attribution.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>💸 MONEY RAIN · PREVIEW</strong><div>Random hotspots stay dense, while more loose bills are spread across the wider map. Drops now begin high overhead so players can actually watch the money rain through the air. Rare bundles and a jackpot bag are mixed into each event.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>84 drops</b><span>clumps + wide scatter</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>preview pool</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div></div><div style="font-size:12px;color:#ffd978;font-weight:800">REAL ATM / XRP REWARD SETTLEMENT IS STILL OFF IN v235.1.</div></div><button class="atmWorldEventBtn" id="atmWorldEventStart" type="button" ${sponsorDisabled ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START MONEY RAIN PREVIEW'}</button><div class="atmWorldEventStatus" id="atmWorldEventStatus"></div>`;
+    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch a synchronized event across the live multiplayer world. v235.1.2 turns Money Rain into a full money storm: organic collectible clumps stay intact while a much denser layer of bills continuously falls across every player’s sky.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>💸 MONEY RAIN · PREVIEW</strong><div>Dense collectible clumps stay organic, while 168 additional atmospheric bills continuously recycle high above the active player view. The result is 250+ money objects in the event presentation, with cash visibly falling all around town instead of only near landing clusters. Rare bundles and a jackpot bag remain mixed into the collectible layer.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>250+ bills</b><span>full sky + collectibles</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>preview pool unchanged</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div></div><div style="font-size:12px;color:#ffd978;font-weight:800">REAL ATM / XRP REWARD SETTLEMENT IS STILL OFF IN v235.1.</div></div><button class="atmWorldEventBtn" id="atmWorldEventStart" type="button" ${sponsorDisabled ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START MONEY RAIN PREVIEW'}</button><div class="atmWorldEventStatus" id="atmWorldEventStatus"></div>`;
     body.querySelector('#atmWorldEventStart')?.addEventListener('click', startMoneyRain);
     const playerButton = body.querySelector('#atmWorldEventSponsorPlayer');
     const brandButton = body.querySelector('#atmWorldEventSponsorBrand');
@@ -281,6 +284,59 @@
       ctx.restore();
     }
   }
+  function hash01(seed, a, b = 0) {
+    let x = ((Number(seed) >>> 0) ^ Math.imul((a + 1) >>> 0, 0x9e3779b1) ^ Math.imul((b + 11) >>> 0, 0x85ebca6b)) >>> 0;
+    x ^= x >>> 16; x = Math.imul(x, 0x7feb352d); x ^= x >>> 15; x = Math.imul(x, 0x846ca68b); x ^= x >>> 16;
+    return (x >>> 0) / 4294967296;
+  }
+  function drawAtmosphericMoneyRain(ctx, args = {}) {
+    if (!state.event || eventPhase() !== 'active' || args.map !== 'town') return;
+    const viewX = Number(args.cameraX), viewY = Number(args.cameraY), viewW = Number(args.viewportWidth), viewH = Number(args.viewportHeight);
+    if (![viewX, viewY, viewW, viewH].every(Number.isFinite) || viewW <= 0 || viewH <= 0) return;
+    const now = nowMs(), start = Date.parse(state.event.starts_at), elapsed = Math.max(0, now - start), seed = Number(state.event.seed || 1) >>> 0;
+    const marginX = Math.max(70, viewW * .12), topLift = Math.max(360, viewH * .82), bottomPad = Math.max(100, viewH * .16);
+    ctx.save();
+    for (let i = 0; i < ATMOSPHERIC_RAIN_OBJECTS; i += 1) {
+      // Each decorative bill repeats on its own irregular cycle. Roughly 65–75% are
+      // airborne at once, so Money Rain reads as a continuous storm on every screen.
+      const cycleMs = 5300 + Math.floor(hash01(seed, i, 2) * 4200);
+      const activeFraction = .66 + hash01(seed, i, 3) * .1;
+      const offset = Math.floor(hash01(seed, i, 4) * cycleMs);
+      const cycleNumber = Math.floor((elapsed + offset) / cycleMs);
+      const phase = ((elapsed + offset) % cycleMs) / cycleMs;
+      if (phase > activeFraction) continue;
+      const p = phase / activeFraction;
+      const xSeed = hash01(seed ^ cycleNumber, i, 5);
+      const ySeed = hash01(seed ^ cycleNumber, i, 6);
+      const scale = .48 + hash01(seed, i, 7) * .48;
+      const xBase = viewX - marginX + xSeed * (viewW + marginX * 2);
+      const startY = viewY - topLift * (.62 + ySeed * .72);
+      const endY = viewY + viewH + bottomPad;
+      const eased = .08 * p + .92 * Math.pow(p, 1.12);
+      const sway = Math.sin((elapsed / (210 + hash01(seed, i, 8) * 260)) + i * 1.77) * (18 + 36 * hash01(seed, i, 9));
+      const x = xBase + sway;
+      const y = startY + (endY - startY) * eased;
+      if (x < viewX - 100 || x > viewX + viewW + 100 || y < viewY - topLift - 80 || y > viewY + viewH + 120) continue;
+      const alpha = .42 + .42 * Math.sin(Math.min(1, p) * Math.PI);
+      const w = 27 * scale, h = 14 * scale;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(x, y);
+      ctx.rotate((hash01(seed, i, 10) - .5) * 1.05 + Math.sin(elapsed / 170 + i) * .11);
+      ctx.fillStyle = i % 13 === 0 ? '#8ff4c7' : '#d8f5e8';
+      ctx.strokeStyle = 'rgba(255,255,255,.82)';
+      ctx.lineWidth = Math.max(1, 1.2 * scale);
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      if (scale > .7) {
+        ctx.fillStyle = '#174236';
+        ctx.font = `900 ${Math.max(7, Math.round(8 * scale))}px system-ui`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', 0, 0);
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
   function drawGround(ctx, args = {}) {
     if (args.map !== 'town' || !state.event || eventPhase() !== 'active') return;
     for (const pickup of state.event.pickups || []) {
@@ -294,6 +350,7 @@
   }
   function drawAir(ctx, args = {}) {
     if (args.map !== 'town' || !state.event || eventPhase() !== 'active') return;
+    drawAtmosphericMoneyRain(ctx, args);
     for (const pickup of state.event.pickups || []) {
       const id = Number(pickup.id);
       if (state.claimed.has(id) || state.claiming.has(id)) continue;
