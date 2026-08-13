@@ -12,11 +12,24 @@
   const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
   const PAYMENT_TX_FIELDS = new Set(['TransactionType','Account','Destination','Amount','Fee','Sequence','LastLedgerSequence','Memos']);
   const ATM_PAY_MEMO_TYPE = 'ATM-PAY-INTENT';
+  const ATM_PAY_ACTIVITY_POLL_MS = 30_000;
+  const ATM_PAY_CHARACTER_THUMBNAILS = Object.freeze({
+    classic:'assets/characters/thumbnails/character-atm.webp',
+    fuzzy:'assets/characters/thumbnails/character-fuzzy.webp',
+    miracle:'assets/characters/thumbnails/character-miracle.webp',
+    luci:'assets/characters/thumbnails/character-luci.webp',
+    triskeleton:'assets/characters/thumbnails/character-triskeleton.webp',
+    phnix:'assets/characters/thumbnails/character-phnix.webp',
+    bear:'assets/characters/thumbnails/character-bear.webp',
+    xoge:'assets/characters/thumbnails/character-xoge.webp',
+    flippy:'assets/characters/thumbnails/character-flippy.webp'
+  });
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
-  let state = { record:null, recoveryKey:null, busy:false, preparedPayment:null, lastTransaction:null, payProfile:null, paySuggestedHandle:'', payDisplayName:'ATM Player', payView:'send', selectedRecipient:null, recipientSearchResults:[], paySearchQuery:'', activity:[], requestDraft:null, xrplDetailsVisible:false };
+  let state = { record:null, recoveryKey:null, busy:false, preparedPayment:null, lastTransaction:null, payProfile:null, paySuggestedHandle:'', payDisplayName:'ATM Player', payView:'send', selectedRecipient:null, pendingOpenRecipient:null, recipientSearchResults:[], paySearchQuery:'', activity:[], activityInitialized:false, pendingRequestCount:0, requestDraft:null, xrplDetailsVisible:false };
   let xrplLoadPromise = null;
   let paySearchTimer = null;
+  let payActivityPollTimer = null;
 
   function randomBytes(length){ const out=new Uint8Array(length); crypto.getRandomValues(out); return out; }
   function bytesToB64u(bytes){
@@ -234,17 +247,53 @@
     state.payDisplayName=String(data.display_name||'ATM Player');
     return data;
   }
+  function activityKey(item){return `${String(item?.kind||'item')}:${String(item?.id||'')}`;}
+  function pendingIncomingRequests(){return state.activity.filter(item=>item?.kind==='request'&&item.direction==='request_received'&&item.status==='pending'&&Date.parse(item.expires_at||0)>Date.now());}
+  function recentRecipients(){
+    const out=[],seen=new Set();
+    for(const item of state.activity){
+      if(item?.direction!=='sent'&&item?.direction!=='requested')continue;
+      const person=normalizeRecipient(item.other); if(!person||seen.has(person.user_id))continue;
+      if(item.kind==='payment'&&item.status!=='validated')continue;
+      seen.add(person.user_id);out.push(person);if(out.length>=4)break;
+    }
+    return out;
+  }
+  function emitActivityNotification(item){
+    const person=normalizeRecipient(item?.other); if(!person)return;
+    let message='',tone='waiting';
+    if(item.kind==='payment'&&item.direction==='received'&&item.status==='validated'){message=`${person.display_name} paid you ${item.amount_xrp} XRP ✓`;tone='success';}
+    else if(item.kind==='request'&&item.direction==='request_received'&&item.status==='pending'&&Date.parse(item.expires_at||0)>Date.now()){message=`${person.display_name} requested ${item.amount_xrp} XRP · Open ATM Pay to respond.`;tone='waiting';}
+    if(message)window.dispatchEvent(new CustomEvent('atm:pay-notification',{detail:{message,tone,item}}));
+  }
+  function updatePendingRequestCount(){state.pendingRequestCount=pendingIncomingRequests().length;refreshButton();}
   async function fetchPayActivity(options={}){
     if(!state.payProfile)return [];
     try{
+      const previous=new Map(state.activity.map(item=>[activityKey(item),String(item?.status||'')]));
       const data=await walletApi()('/api/embedded-wallet?action=pay-activity',{method:'GET'});
-      state.activity=Array.isArray(data.items)?data.items:[];
-      if(state.payView==='activity')render();
+      const next=Array.isArray(data.items)?data.items:[];
+      if(options.notify&&state.activityInitialized){
+        for(const item of next){
+          const oldStatus=previous.get(activityKey(item));
+          if(oldStatus===undefined||oldStatus!==String(item?.status||''))emitActivityNotification(item);
+        }
+      }
+      state.activity=next; state.activityInitialized=true; updatePendingRequestCount();
+      if(state.payView==='activity'&&document.getElementById('atmEmbeddedWalletModal')?.classList.contains('open'))render();
       if(!options.silent)setMessage('ATM Pay activity refreshed.','ok');
       return state.activity;
     }catch(error){if(!options.silent)setMessage(error.message||'Could not load ATM Pay activity.','error');return state.activity;}
   }
+  function stopActivityPolling(){if(payActivityPollTimer){clearInterval(payActivityPollTimer);payActivityPollTimer=null;}}
+  function startActivityPolling(){
+    stopActivityPolling();
+    if(!state.payProfile)return;
+    payActivityPollTimer=setInterval(()=>{if(!document.hidden&&state.payProfile)fetchPayActivity({silent:true,notify:true});},ATM_PAY_ACTIVITY_POLL_MS);
+  }
   function personInitial(person){return String(person?.display_name||person?.handle||'A').trim().charAt(0).toUpperCase()||'A';}
+  function characterThumbnail(person){const id=String(person?.character_id||'classic');return ATM_PAY_CHARACTER_THUMBNAILS[id]||ATM_PAY_CHARACTER_THUMBNAILS.classic;}
+  function avatarHtml(person,extraClass=''){return `<span class="atmPayAvatar${extraClass?' '+escapeHtml(extraClass):''}"><img src="${escapeHtml(characterThumbnail(person))}" alt=""></span>`;}
   function normalizeRecipient(value){
     if(!value||typeof value!=='object')return null;
     const userId=String(value.user_id||''); const handle=String(value.handle||'');
@@ -256,8 +305,8 @@
     if(document.getElementById('atmEmbeddedWalletModal'))return;
     const style=document.createElement('style'); style.textContent=`
 #atmEmbeddedWalletModal{position:fixed;inset:0;z-index:10080;display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));background:rgba(0,7,12,.86);backdrop-filter:blur(10px)}
-#atmEmbeddedWalletModal.open{display:flex}.atmWalletCard{width:min(590px,100%);max-height:min(800px,92dvh);overflow:auto;background:linear-gradient(180deg,#0c1d29,#07131c);border:1px solid rgba(88,241,230,.25);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.55);color:#eafcff;padding:18px}.atmWalletHead{display:flex;gap:12px;align-items:flex-start}.atmWalletHead>div{min-width:0;flex:1}.atmWalletHead h3{margin:0;font-size:22px}.atmWalletHead small{display:block;color:#8fb1bf;line-height:1.4;margin-top:4px}.atmWalletClose{border:0;background:#182b37;color:#dffcff;border-radius:10px;width:38px;height:38px;font-size:21px}.atmWalletTestnet{display:inline-flex;margin-top:10px;padding:5px 9px;border-radius:999px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-weight:900;font-size:10px;letter-spacing:.08em}.atmWalletSecurityBadge{display:inline-flex;margin:8px 0 0 6px;padding:5px 9px;border-radius:999px;background:rgba(112,249,200,.08);border:1px solid rgba(112,249,200,.25);color:#70f9c8;font-weight:900;font-size:9px;letter-spacing:.06em}.atmWalletBody{display:grid;gap:12px;margin-top:14px}.atmWalletPanel{border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:13px;background:rgba(255,255,255,.035)}.atmWalletPanel strong{display:block;font-size:12px}.atmWalletPanel p{margin:6px 0 0;color:#9db9c5;font-size:11px;line-height:1.5}.atmWalletAddress{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;overflow-wrap:anywhere;color:#70f9c8;margin-top:7px}.atmWalletBalance{font-size:28px;font-weight:1000;margin-top:3px}.atmWalletActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWalletActions .wide{grid-column:1/-1}.atmWalletBtn{border:0;border-radius:12px;padding:11px 12px;font-weight:1000;font-size:10px;letter-spacing:.04em;text-transform:uppercase;background:#183142;color:#eafcff;border:1px solid rgba(88,241,230,.16)}.atmWalletBtn.primary{background:linear-gradient(90deg,#58f1e6,#70f9c8);color:#052029}.atmWalletBtn.gold{background:linear-gradient(90deg,#facd69,#f0a54e);color:#261600}.atmWalletBtn.danger{border-color:rgba(255,112,132,.3);color:#ffadb9}.atmWalletBtn:disabled{opacity:.45}.atmWalletInput{width:100%;margin-top:8px;background:#041018;border:1px solid rgba(88,241,230,.2);border-radius:11px;color:#fff;padding:12px 12px;font-family:inherit;font-size:13px;box-sizing:border-box}.atmWalletRecovery{word-break:break-all;background:#031018;padding:10px;border-radius:10px;border:1px dashed rgba(255,209,102,.4);color:#ffe2a0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;margin-top:8px}.atmWalletLabel{display:block;margin-top:10px;color:#8fb1bf;font-size:10px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.atmWalletTxGrid{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:7px 10px;margin-top:10px;font-size:11px}.atmWalletTxGrid span{color:#88a8b5}.atmWalletTxGrid b{overflow-wrap:anywhere;text-align:right}.atmWalletTxActions{margin-top:10px}.atmWalletTxStatus{font-size:16px;font-weight:1000;margin-top:7px}.atmWalletTxResult.ok{border-color:rgba(112,249,200,.32)}.atmWalletTxResult.error{border-color:rgba(255,112,132,.38)}.atmWalletTxResult.pending{border-color:rgba(255,209,102,.38)}.atmWalletLink{display:inline-flex;margin-top:9px;color:#70f9c8;font-size:11px;font-weight:900;text-decoration:none}.atmWalletWarning{color:#ffd166!important}.atmWalletSecurity{color:#70f9c8!important}.atmWalletMsg{min-height:18px;font-size:11px;line-height:1.45;color:#9fc3cc}.atmWalletMsg.ok{color:#70f9c8}.atmWalletMsg.error{color:#ff9eae}.atmPayHero{display:flex;align-items:center;gap:12px}.atmPayAvatar{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#173d4c,#102631);border:1px solid rgba(88,241,230,.25);font-size:18px;font-weight:1000;color:#70f9c8;flex:0 0 auto}.atmPayHeroText{min-width:0;flex:1}.atmPayHeroText b{display:block;font-size:15px}.atmPayHandle{color:#70f9c8;font-size:12px;font-weight:900;margin-top:2px}.atmPayTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.atmPayTab{border:1px solid rgba(88,241,230,.12);background:#102431;color:#a8c4ce;border-radius:11px;padding:9px 6px;font-size:9px;font-weight:1000;text-transform:uppercase}.atmPayTab.active{background:rgba(88,241,230,.12);color:#70f9c8;border-color:rgba(88,241,230,.3)}.atmPayPerson{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid rgba(255,255,255,.08);background:#0a1922;color:#eafcff;border-radius:13px;padding:10px;margin-top:7px}.atmPayPerson .atmPayAvatar{width:36px;height:36px;border-radius:12px;font-size:15px}.atmPayPersonText{min-width:0;flex:1}.atmPayPersonText b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.atmPayPersonText span{display:block;color:#70f9c8;font-size:10px;margin-top:2px}.atmPayPersonAction{font-size:9px;color:#8fb1bf;font-weight:900}.atmPaySelected{display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px;border-radius:13px;background:rgba(112,249,200,.06);border:1px solid rgba(112,249,200,.16)}.atmPayAmountWrap{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0}.atmPayAmountInput{width:170px;max-width:65%;background:transparent;border:0;border-bottom:1px solid rgba(88,241,230,.25);color:#fff;text-align:center;font-size:34px;font-weight:1000;outline:none}.atmPayAmountUnit{font-size:14px;font-weight:1000;color:#70f9c8}.atmPayReview{text-align:center;padding:8px 0}.atmPayReview .atmPayAvatar{margin:0 auto 8px;width:56px;height:56px;border-radius:18px;font-size:22px}.atmPayReviewAmount{font-size:34px;font-weight:1000;margin:8px 0}.atmPayReviewName{font-size:16px;font-weight:1000}.atmPayMeta{font-size:10px;color:#8fb1bf;margin-top:6px;line-height:1.5}.atmPaySearchResults{margin-top:8px}.atmPayEmpty{padding:14px;text-align:center;color:#7f9aa6;font-size:11px}.atmPayActivityItem{border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:11px;margin-top:8px;background:rgba(255,255,255,.025)}.atmPayActivityTop{display:flex;gap:10px;align-items:center}.atmPayActivityTop .atmPayAvatar{width:34px;height:34px;border-radius:11px;font-size:14px}.atmPayActivityMain{min-width:0;flex:1}.atmPayActivityMain b{display:block;font-size:11px}.atmPayActivityMain span{display:block;color:#8fb1bf;font-size:9px;margin-top:2px}.atmPayActivityAmount{font-size:13px;font-weight:1000}.atmPayActivityActions{display:flex;gap:6px;margin-top:9px}.atmPayActivityActions .atmWalletBtn{flex:1;padding:8px}.atmPayStatusPill{display:inline-flex;margin-top:7px;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:1000;text-transform:uppercase;background:rgba(255,255,255,.06);color:#9db9c5}.atmPayStatusPill.ok{background:rgba(112,249,200,.08);color:#70f9c8}.atmPaySetupHandle{display:flex;align-items:center;gap:0;margin-top:9px}.atmPaySetupHandle span{padding:12px 0 12px 12px;background:#041018;border:1px solid rgba(88,241,230,.2);border-right:0;border-radius:11px 0 0 11px;color:#70f9c8;font-weight:1000}.atmPaySetupHandle input{margin-top:0;border-radius:0 11px 11px 0;border-left:0;padding-left:3px}.atmPayDetails{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
-@media(max-width:560px){.atmWalletCard{padding:14px;border-radius:17px}.atmWalletActions{grid-template-columns:1fr}.atmWalletActions .wide{grid-column:auto}.atmWalletBalance{font-size:24px}.atmPayTabs{gap:4px}.atmPayTab{font-size:8px;padding:9px 3px}.atmPayAmountInput{font-size:30px}}
+#atmEmbeddedWalletModal.open{display:flex}.atmWalletCard{width:min(590px,100%);max-height:min(800px,92dvh);overflow:auto;background:linear-gradient(180deg,#0c1d29,#07131c);border:1px solid rgba(88,241,230,.25);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.55);color:#eafcff;padding:18px}.atmWalletHead{display:flex;gap:12px;align-items:flex-start}.atmWalletHead>div{min-width:0;flex:1}.atmWalletHead h3{margin:0;font-size:22px}.atmWalletHead small{display:block;color:#8fb1bf;line-height:1.4;margin-top:4px}.atmWalletClose{border:0;background:#182b37;color:#dffcff;border-radius:10px;width:38px;height:38px;font-size:21px}.atmWalletTestnet{display:inline-flex;margin-top:10px;padding:5px 9px;border-radius:999px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-weight:900;font-size:10px;letter-spacing:.08em}.atmWalletSecurityBadge{display:inline-flex;margin:8px 0 0 6px;padding:5px 9px;border-radius:999px;background:rgba(112,249,200,.08);border:1px solid rgba(112,249,200,.25);color:#70f9c8;font-weight:900;font-size:9px;letter-spacing:.06em}.atmWalletBody{display:grid;gap:12px;margin-top:14px}.atmWalletPanel{border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:13px;background:rgba(255,255,255,.035)}.atmWalletPanel strong{display:block;font-size:12px}.atmWalletPanel p{margin:6px 0 0;color:#9db9c5;font-size:11px;line-height:1.5}.atmWalletAddress{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;overflow-wrap:anywhere;color:#70f9c8;margin-top:7px}.atmWalletBalance{font-size:28px;font-weight:1000;margin-top:3px}.atmWalletActions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWalletActions .wide{grid-column:1/-1}.atmWalletBtn{border:0;border-radius:12px;padding:11px 12px;font-weight:1000;font-size:10px;letter-spacing:.04em;text-transform:uppercase;background:#183142;color:#eafcff;border:1px solid rgba(88,241,230,.16)}.atmWalletBtn.primary{background:linear-gradient(90deg,#58f1e6,#70f9c8);color:#052029}.atmWalletBtn.gold{background:linear-gradient(90deg,#facd69,#f0a54e);color:#261600}.atmWalletBtn.danger{border-color:rgba(255,112,132,.3);color:#ffadb9}.atmWalletBtn:disabled{opacity:.45}.atmWalletInput{width:100%;margin-top:8px;background:#041018;border:1px solid rgba(88,241,230,.2);border-radius:11px;color:#fff;padding:12px 12px;font-family:inherit;font-size:13px;box-sizing:border-box}.atmWalletRecovery{word-break:break-all;background:#031018;padding:10px;border-radius:10px;border:1px dashed rgba(255,209,102,.4);color:#ffe2a0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;margin-top:8px}.atmWalletLabel{display:block;margin-top:10px;color:#8fb1bf;font-size:10px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.atmWalletTxGrid{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:7px 10px;margin-top:10px;font-size:11px}.atmWalletTxGrid span{color:#88a8b5}.atmWalletTxGrid b{overflow-wrap:anywhere;text-align:right}.atmWalletTxActions{margin-top:10px}.atmWalletTxStatus{font-size:16px;font-weight:1000;margin-top:7px}.atmWalletTxResult.ok{border-color:rgba(112,249,200,.32)}.atmWalletTxResult.error{border-color:rgba(255,112,132,.38)}.atmWalletTxResult.pending{border-color:rgba(255,209,102,.38)}.atmWalletLink{display:inline-flex;margin-top:9px;color:#70f9c8;font-size:11px;font-weight:900;text-decoration:none}.atmWalletWarning{color:#ffd166!important}.atmWalletSecurity{color:#70f9c8!important}.atmWalletMsg{min-height:18px;font-size:11px;line-height:1.45;color:#9fc3cc}.atmWalletMsg.ok{color:#70f9c8}.atmWalletMsg.error{color:#ff9eae}.atmPayHero{display:flex;align-items:center;gap:12px}.atmPayAvatar{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;overflow:hidden;background:linear-gradient(145deg,#173d4c,#102631);border:1px solid rgba(88,241,230,.25);font-size:18px;font-weight:1000;color:#70f9c8;flex:0 0 auto}.atmPayAvatar img{width:100%;height:100%;object-fit:cover;image-rendering:auto}.atmPayHeroText{min-width:0;flex:1}.atmPayHeroText b{display:block;font-size:15px}.atmPayHandle{color:#70f9c8;font-size:12px;font-weight:900;margin-top:2px}.atmPayTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.atmPayTab{border:1px solid rgba(88,241,230,.12);background:#102431;color:#a8c4ce;border-radius:11px;padding:9px 6px;font-size:9px;font-weight:1000;text-transform:uppercase}.atmPayTab.active{background:rgba(88,241,230,.12);color:#70f9c8;border-color:rgba(88,241,230,.3)}.atmPayPerson{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid rgba(255,255,255,.08);background:#0a1922;color:#eafcff;border-radius:13px;padding:10px;margin-top:7px}.atmPayPerson .atmPayAvatar{width:36px;height:36px;border-radius:12px;font-size:15px}.atmPayPersonText{min-width:0;flex:1}.atmPayPersonText b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.atmPayPersonText span{display:block;color:#70f9c8;font-size:10px;margin-top:2px}.atmPayPersonAction{font-size:9px;color:#8fb1bf;font-weight:900}.atmPaySelected{display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px;border-radius:13px;background:rgba(112,249,200,.06);border:1px solid rgba(112,249,200,.16)}.atmPayAmountWrap{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0}.atmPayAmountInput{width:170px;max-width:65%;background:transparent;border:0;border-bottom:1px solid rgba(88,241,230,.25);color:#fff;text-align:center;font-size:34px;font-weight:1000;outline:none}.atmPayAmountUnit{font-size:14px;font-weight:1000;color:#70f9c8}.atmPayReview{text-align:center;padding:8px 0}.atmPayReview .atmPayAvatar{margin:0 auto 8px;width:56px;height:56px;border-radius:18px;font-size:22px}.atmPayReviewAmount{font-size:34px;font-weight:1000;margin:8px 0}.atmPayReviewName{font-size:16px;font-weight:1000}.atmPayMeta{font-size:10px;color:#8fb1bf;margin-top:6px;line-height:1.5}.atmPaySearchResults{margin-top:8px}.atmPayEmpty{padding:14px;text-align:center;color:#7f9aa6;font-size:11px}.atmPayActivityItem{border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:11px;margin-top:8px;background:rgba(255,255,255,.025)}.atmPayActivityTop{display:flex;gap:10px;align-items:center}.atmPayActivityTop .atmPayAvatar{width:34px;height:34px;border-radius:11px;font-size:14px}.atmPayActivityMain{min-width:0;flex:1}.atmPayActivityMain b{display:block;font-size:11px}.atmPayActivityMain span{display:block;color:#8fb1bf;font-size:9px;margin-top:2px}.atmPayActivityAmount{font-size:13px;font-weight:1000}.atmPayActivityActions{display:flex;gap:6px;margin-top:9px}.atmPayActivityActions .atmWalletBtn{flex:1;padding:8px}.atmPayStatusPill{display:inline-flex;margin-top:7px;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:1000;text-transform:uppercase;background:rgba(255,255,255,.06);color:#9db9c5}.atmPayStatusPill.ok{background:rgba(112,249,200,.08);color:#70f9c8}.atmPaySetupHandle{display:flex;align-items:center;gap:0;margin-top:9px}.atmPaySetupHandle span{padding:12px 0 12px 12px;background:#041018;border:1px solid rgba(88,241,230,.2);border-right:0;border-radius:11px 0 0 11px;color:#70f9c8;font-weight:1000}.atmPaySetupHandle input{margin-top:0;border-radius:0 11px 11px 0;border-left:0;padding-left:3px}.atmPayDetails{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}.atmPaySectionTitle{display:flex;align-items:center;justify-content:space-between;gap:8px}.atmPaySectionTitle span{font-size:9px;color:#70f9c8;font-weight:1000}.atmPayRecent{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:9px}.atmPayRecentPerson{border:1px solid rgba(88,241,230,.12);background:#0a1922;color:#eafcff;border-radius:13px;padding:9px 5px;display:grid;justify-items:center;gap:5px;min-width:0}.atmPayRecentPerson .atmPayAvatar{width:38px;height:38px;border-radius:13px}.atmPayRecentPerson b{font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.atmPayRecentPerson small{font-size:8px;color:#70f9c8;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.atmPayIncoming{border-color:rgba(255,209,102,.28);background:rgba(255,209,102,.045)}.atmPaySuccessCelebration{position:relative;overflow:hidden;animation:atmPaySuccessPop .45s cubic-bezier(.2,.9,.2,1)}.atmPaySuccessMark{width:54px;height:54px;border-radius:50%;margin:2px auto 8px;display:grid;place-items:center;background:rgba(112,249,200,.14);border:1px solid rgba(112,249,200,.38);color:#70f9c8;font-size:30px;font-weight:1000;animation:atmPayCheck .65s cubic-bezier(.2,.9,.2,1)}.atmPaySuccessSparkles{font-size:18px;letter-spacing:8px;text-align:center;height:18px;animation:atmPaySparkles 1.5s ease-out both}.atmPayButtonBadge{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;margin-left:6px;border-radius:999px;background:#ffd166;color:#251900;font-size:9px;font-weight:1000}@keyframes atmPaySuccessPop{0%{transform:scale(.96);opacity:.35}100%{transform:scale(1);opacity:1}}@keyframes atmPayCheck{0%{transform:scale(.35) rotate(-16deg);opacity:0}70%{transform:scale(1.12) rotate(3deg)}100%{transform:scale(1);opacity:1}}@keyframes atmPaySparkles{0%{transform:translateY(8px);opacity:0}35%{opacity:1}100%{transform:translateY(-10px);opacity:0}}
+@media(max-width:560px){.atmWalletCard{padding:14px;border-radius:17px}.atmWalletActions{grid-template-columns:1fr}.atmWalletActions .wide{grid-column:auto}.atmWalletBalance{font-size:24px}.atmPayTabs{gap:4px}.atmPayTab{font-size:8px;padding:9px 3px}.atmPayAmountInput{font-size:30px}.atmPayRecent{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.atmPayRecentPerson{padding:8px 3px}.atmPayRecentPerson .atmPayAvatar{width:34px;height:34px}}
 `;
     document.head.appendChild(style);
     const modal=document.createElement('div'); modal.id='atmEmbeddedWalletModal'; modal.setAttribute('role','dialog'); modal.setAttribute('aria-modal','true'); modal.setAttribute('aria-labelledby','atmWalletTitle');
@@ -273,7 +322,7 @@
 
   function personHtml(person,actionText='SELECT'){
     const p=normalizeRecipient(person); if(!p)return '';
-    return `<button class="atmPayPerson" type="button" data-recipient-id="${escapeHtml(p.user_id)}"><span class="atmPayAvatar">${escapeHtml(personInitial(p))}</span><span class="atmPayPersonText"><b>${escapeHtml(p.display_name)}</b><span>@${escapeHtml(p.handle)}</span></span><span class="atmPayPersonAction">${escapeHtml(actionText)}</span></button>`;
+    return `<button class="atmPayPerson" type="button" data-recipient-id="${escapeHtml(p.user_id)}">${avatarHtml(p)}<span class="atmPayPersonText"><b>${escapeHtml(p.display_name)}</b><span>@${escapeHtml(p.handle)}</span></span><span class="atmPayPersonAction">${escapeHtml(actionText)}</span></button>`;
   }
   function recipientResultsHtml(){
     if(!state.paySearchQuery)return '<div class="atmPayEmpty">Search by ATM Pay @handle or player name.</div>';
@@ -282,22 +331,31 @@
   }
   function selectedRecipientHtml(person){
     const p=normalizeRecipient(person); if(!p)return '';
-    return `<div class="atmPaySelected"><span class="atmPayAvatar">${escapeHtml(personInitial(p))}</span><span class="atmPayPersonText"><b>${escapeHtml(p.display_name)}</b><span>@${escapeHtml(p.handle)}</span></span><button class="atmWalletBtn" id="atmPayChangeRecipient" type="button">Change</button></div>`;
+    return `<div class="atmPaySelected">${avatarHtml(p)}<span class="atmPayPersonText"><b>${escapeHtml(p.display_name)}</b><span>@${escapeHtml(p.handle)}</span></span><button class="atmWalletBtn" id="atmPayChangeRecipient" type="button">Change</button></div>`;
+  }
+  function recentRecipientsHtml(){
+    const people=recentRecipients(); if(!people.length)return '';
+    return `<div class="atmWalletPanel"><div class="atmPaySectionTitle"><strong>Recent</strong><span>QUICK PAY</span></div><div class="atmPayRecent">${people.map(p=>`<button class="atmPayRecentPerson" type="button" data-recipient-id="${escapeHtml(p.user_id)}">${avatarHtml(p)}<b>${escapeHtml(p.display_name)}</b><small>@${escapeHtml(p.handle)}</small></button>`).join('')}</div></div>`;
+  }
+  function pendingRequestsHtml(){
+    const requests=pendingIncomingRequests(); if(!requests.length)return '';
+    return `<div class="atmWalletPanel atmPayIncoming"><div class="atmPaySectionTitle"><strong>Requests for you</strong><span>${requests.length} PENDING</span></div>${requests.slice(0,3).map(item=>{const p=normalizeRecipient(item.other);return `<div class="atmPayActivityItem"><div class="atmPayActivityTop">${avatarHtml(p)}<span class="atmPayActivityMain"><b>${escapeHtml(p?.display_name||'ATM Player')} requested</b><span>@${escapeHtml(p?.handle||'player')}${item.note?` · ${escapeHtml(item.note)}`:''}</span></span><span class="atmPayActivityAmount">${escapeHtml(item.amount_xrp)} XRP</span></div><div class="atmPayActivityActions"><button class="atmWalletBtn primary" data-pay-request="${escapeHtml(item.id)}" type="button">Pay</button><button class="atmWalletBtn" data-decline-request="${escapeHtml(item.id)}" type="button">Decline</button></div></div>`;}).join('')}</div>`;
   }
   function transactionResultHtml(){
     const tx=state.lastTransaction; if(!tx?.hash)return '';
     const explorerBase=String(CONFIG.explorerTxBase||'https://testnet.xrpl.org/transactions/');
-    const status=tx.result||'STATUS UNKNOWN'; const validated=tx.validated===true; const recipient=normalizeRecipient(tx.recipient)||{display_name:'ATM Player',handle:'player'};
-    const detail=validated?(status==='tesSUCCESS'?`${tx.amountXrp} XRP sent to ${recipient.display_name}.`:`Transaction validated with result ${status}.`):'Payment status is not confirmed yet.';
-    return `<div class="atmWalletPanel atmWalletTxResult ${validated&&status==='tesSUCCESS'?'ok':validated?'error':'pending'}"><strong>${validated&&status==='tesSUCCESS'?'Payment complete':'Last payment'}</strong><div class="atmWalletTxStatus">${validated&&status==='tesSUCCESS'?'✓ SENT':escapeHtml(status)}</div><p>${escapeHtml(detail)}</p><p class="atmWalletSecurity">@${escapeHtml(recipient.handle)}</p><a class="atmWalletLink" href="${escapeHtml(explorerBase+encodeURIComponent(tx.hash))}" target="_blank" rel="noopener noreferrer">Transaction details ↗</a></div>`;
+    const status=tx.result||'STATUS UNKNOWN'; const validated=tx.validated===true; const success=validated&&status==='tesSUCCESS'; const recipient=normalizeRecipient(tx.recipient)||{display_name:'ATM Player',handle:'player',character_id:'classic'};
+    const detail=validated?(success?`${tx.amountXrp} XRP sent to ${recipient.display_name}.`:`Transaction validated with result ${status}.`):'Payment status is not confirmed yet.';
+    return `<div class="atmWalletPanel atmWalletTxResult ${success?'ok atmPaySuccessCelebration':validated?'error':'pending'}">${success?'<div class="atmPaySuccessSparkles">✦ ✧ ✦</div><div class="atmPaySuccessMark">✓</div>':''}<strong>${success?'Payment complete':'Last payment'}</strong><div class="atmWalletTxStatus">${success?'SENT':escapeHtml(status)}</div><p>${escapeHtml(detail)}</p><div class="atmPayHero" style="margin-top:9px">${avatarHtml(recipient)}<span class="atmPayHeroText"><b>${escapeHtml(recipient.display_name)}</b><span class="atmPayHandle">@${escapeHtml(recipient.handle)}</span></span></div><a class="atmWalletLink" href="${escapeHtml(explorerBase+encodeURIComponent(tx.hash))}" target="_blank" rel="noopener noreferrer">Transaction details ↗</a></div>`;
   }
   function paySearchHtml(mode){
-    return `<div class="atmWalletPanel"><strong>${mode==='request'?'Who do you want to request from?':'Who do you want to pay?'}</strong><label class="atmWalletLabel" for="atmPaySearch">Search ATM Town</label><input class="atmWalletInput" id="atmPaySearch" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" value="${escapeHtml(state.paySearchQuery)}" placeholder="@handle or player name"><div class="atmPaySearchResults" id="atmPaySearchResults">${recipientResultsHtml()}</div></div>`;
+    const quick=mode==='send'&&!state.paySearchQuery?pendingRequestsHtml()+recentRecipientsHtml():'';
+    return `${quick}<div class="atmWalletPanel"><strong>${mode==='request'?'Who do you want to request from?':'Who do you want to pay?'}</strong><label class="atmWalletLabel" for="atmPaySearch">Search ATM Town</label><input class="atmWalletInput" id="atmPaySearch" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" value="${escapeHtml(state.paySearchQuery)}" placeholder="@handle or player name"><div class="atmPaySearchResults" id="atmPaySearchResults">${recipientResultsHtml()}</div></div>`;
   }
   function paymentReviewHtml(){
     const prepared=state.preparedPayment; if(!prepared)return '';
     const passkey=!!state.record?.encrypted_backup?.passkey; const recipient=normalizeRecipient(prepared.recipient);
-    return `<div class="atmWalletPanel atmWalletTxPreview"><div class="atmPayReview"><span class="atmPayAvatar">${escapeHtml(personInitial(recipient))}</span><div class="atmPayReviewName">${escapeHtml(recipient.display_name)}</div><div class="atmPayHandle">@${escapeHtml(recipient.handle)}</div><div class="atmPayReviewAmount">${escapeHtml(prepared.amountXrp)} XRP</div>${prepared.note?`<p>“${escapeHtml(prepared.note)}”</p>`:''}<div class="atmPayMeta">XRPL Testnet · network fee ${escapeHtml(prepared.feeXrp)} XRP<br>Your authorization is bound to this exact recipient, amount, fee, sequence and expiration.</div></div>${passkey?'':`<label class="atmWalletLabel" for="atmWalletSignRecoveryInput">ATM1 recovery key</label><input class="atmWalletInput" id="atmWalletSignRecoveryInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key">`}<div class="atmWalletActions atmWalletTxActions">${passkey?`<button class="atmWalletBtn primary wide" id="atmWalletSignPaymentPasskey" type="button">Pay ${escapeHtml(prepared.amountXrp)} XRP</button>`:`<button class="atmWalletBtn primary wide" id="atmWalletSignPaymentRecovery" type="button">Authorize & Pay ${escapeHtml(prepared.amountXrp)} XRP</button>`}${passkey?'<button class="atmWalletBtn" id="atmWalletShowRecoverySign" type="button">Use Recovery Key</button>':''}<button class="atmWalletBtn" id="atmWalletCancelPayment" type="button">Cancel</button></div><div id="atmWalletRecoverySignFallback"></div></div>`;
+    return `<div class="atmWalletPanel atmWalletTxPreview"><div class="atmPayReview">${avatarHtml(recipient)}<div class="atmPayReviewName">${escapeHtml(recipient.display_name)}</div><div class="atmPayHandle">@${escapeHtml(recipient.handle)}</div><div class="atmPayReviewAmount">${escapeHtml(prepared.amountXrp)} XRP</div>${prepared.note?`<p>“${escapeHtml(prepared.note)}”</p>`:''}<div class="atmPayMeta">XRPL Testnet · network fee ${escapeHtml(prepared.feeXrp)} XRP<br>Your authorization is bound to this exact recipient, amount, fee, sequence and expiration.</div></div>${passkey?'':`<label class="atmWalletLabel" for="atmWalletSignRecoveryInput">ATM1 recovery key</label><input class="atmWalletInput" id="atmWalletSignRecoveryInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ATM1-… recovery key">`}<div class="atmWalletActions atmWalletTxActions">${passkey?`<button class="atmWalletBtn primary wide" id="atmWalletSignPaymentPasskey" type="button">Pay ${escapeHtml(prepared.amountXrp)} XRP</button>`:`<button class="atmWalletBtn primary wide" id="atmWalletSignPaymentRecovery" type="button">Authorize & Pay ${escapeHtml(prepared.amountXrp)} XRP</button>`}${passkey?'<button class="atmWalletBtn" id="atmWalletShowRecoverySign" type="button">Use Recovery Key</button>':''}<button class="atmWalletBtn" id="atmWalletCancelPayment" type="button">Cancel</button></div><div id="atmWalletRecoverySignFallback"></div></div>`;
   }
   function sendViewHtml(){
     if(state.preparedPayment)return paymentReviewHtml();
@@ -318,7 +376,7 @@
     const status=String(item.status||'pending'); const ok=status==='validated'||status==='paid';
     const canPay=item.kind==='request'&&item.direction==='request_received'&&status==='pending'&&Date.parse(item.expires_at||0)>Date.now();
     const canDecline=canPay; const canCancel=item.kind==='request'&&item.direction==='requested'&&status==='pending';
-    return `<div class="atmPayActivityItem"><div class="atmPayActivityTop"><span class="atmPayAvatar">${escapeHtml(personInitial(person))}</span><span class="atmPayActivityMain"><b>${escapeHtml(verb)}</b><span>@${escapeHtml(person.handle)}${item.note?` · ${escapeHtml(item.note)}`:''}</span></span><span class="atmPayActivityAmount">${escapeHtml(item.amount_xrp)} XRP</span></div><span class="atmPayStatusPill ${ok?'ok':''}">${escapeHtml(status)}</span>${isPayment&&item.tx_hash?` <a class="atmWalletLink" href="${escapeHtml(String(CONFIG.explorerTxBase||'https://testnet.xrpl.org/transactions/')+encodeURIComponent(item.tx_hash))}" target="_blank" rel="noopener noreferrer">Details ↗</a>`:''}${canPay||canDecline||canCancel?`<div class="atmPayActivityActions">${canPay?`<button class="atmWalletBtn primary" data-pay-request="${escapeHtml(item.id)}" type="button">Pay</button>`:''}${canDecline?`<button class="atmWalletBtn" data-decline-request="${escapeHtml(item.id)}" type="button">Decline</button>`:''}${canCancel?`<button class="atmWalletBtn" data-cancel-request="${escapeHtml(item.id)}" type="button">Cancel Request</button>`:''}</div>`:''}</div>`;
+    return `<div class="atmPayActivityItem"><div class="atmPayActivityTop">${avatarHtml(person)}<span class="atmPayActivityMain"><b>${escapeHtml(verb)}</b><span>@${escapeHtml(person.handle)}${item.note?` · ${escapeHtml(item.note)}`:''}</span></span><span class="atmPayActivityAmount">${escapeHtml(item.amount_xrp)} XRP</span></div><span class="atmPayStatusPill ${ok?'ok':''}">${escapeHtml(status)}</span>${isPayment&&item.tx_hash?` <a class="atmWalletLink" href="${escapeHtml(String(CONFIG.explorerTxBase||'https://testnet.xrpl.org/transactions/')+encodeURIComponent(item.tx_hash))}" target="_blank" rel="noopener noreferrer">Details ↗</a>`:''}${canPay||canDecline||canCancel?`<div class="atmPayActivityActions">${canPay?`<button class="atmWalletBtn primary" data-pay-request="${escapeHtml(item.id)}" type="button">Pay</button>`:''}${canDecline?`<button class="atmWalletBtn" data-decline-request="${escapeHtml(item.id)}" type="button">Decline</button>`:''}${canCancel?`<button class="atmWalletBtn" data-cancel-request="${escapeHtml(item.id)}" type="button">Cancel Request</button>`:''}</div>`:''}</div>`;
   }
   function activityViewHtml(){
     return `<div class="atmWalletPanel"><strong>Activity</strong><p>Payments and requests use ATM Town identities. XRPL addresses stay out of the normal flow.</p><div id="atmPayActivityList">${state.activity.length?state.activity.map(activityItemHtml).join(''):'<div class="atmPayEmpty">No ATM Pay activity yet.</div>'}</div><div class="atmWalletActions atmWalletTxActions"><button class="atmWalletBtn wide" id="atmPayRefreshActivity" type="button">Refresh Activity</button></div></div>`;
@@ -351,13 +409,13 @@
       document.getElementById('atmPayClaimHandle')?.addEventListener('click',claimPayHandle);
       return;
     }
-    body.innerHTML=`<div class="atmWalletPanel atmPayHero"><span class="atmPayAvatar">${escapeHtml(personInitial(state.payProfile))}</span><span class="atmPayHeroText"><b>${escapeHtml(state.payProfile.display_name||state.payDisplayName)}</b><span class="atmPayHandle">@${escapeHtml(state.payProfile.handle)}</span></span><span><div class="atmWalletBalance" id="atmWalletBalance">—</div><small>XRP</small></span></div>${transactionResultHtml()}<div class="atmPayTabs"><button class="atmPayTab ${state.payView==='send'?'active':''}" data-pay-view="send" type="button">Send</button><button class="atmPayTab ${state.payView==='request'?'active':''}" data-pay-view="request" type="button">Request</button><button class="atmPayTab ${state.payView==='activity'?'active':''}" data-pay-view="activity" type="button">Activity</button><button class="atmPayTab ${state.payView==='settings'?'active':''}" data-pay-view="settings" type="button">Security</button></div>${dashboardViewHtml()}`;
+    body.innerHTML=`<div class="atmWalletPanel atmPayHero">${avatarHtml(state.payProfile)}<span class="atmPayHeroText"><b>${escapeHtml(state.payProfile.display_name||state.payDisplayName)}</b><span class="atmPayHandle">@${escapeHtml(state.payProfile.handle)}</span></span><span><div class="atmWalletBalance" id="atmWalletBalance">—</div><small>XRP</small></span></div>${transactionResultHtml()}<div class="atmPayTabs"><button class="atmPayTab ${state.payView==='send'?'active':''}" data-pay-view="send" type="button">Send</button><button class="atmPayTab ${state.payView==='request'?'active':''}" data-pay-view="request" type="button">Request</button><button class="atmPayTab ${state.payView==='activity'?'active':''}" data-pay-view="activity" type="button">Activity${state.pendingRequestCount?` · ${state.pendingRequestCount}`:''}</button><button class="atmPayTab ${state.payView==='settings'?'active':''}" data-pay-view="settings" type="button">Security</button></div>${dashboardViewHtml()}`;
     bindDashboardUi(); refreshBalance({silent:true});
   }
 
   function bindRecipientButtons(){
     document.querySelectorAll('#atmEmbeddedWalletModal [data-recipient-id]').forEach(button=>button.addEventListener('click',()=>{
-      const id=String(button.dataset.recipientId||''); const person=state.recipientSearchResults.find(item=>item.user_id===id); if(!person)return;
+      const id=String(button.dataset.recipientId||''); const person=[...state.recipientSearchResults,...recentRecipients()].find(item=>item.user_id===id); if(!person)return;
       state.selectedRecipient=person; state.paySearchQuery=''; state.recipientSearchResults=[]; clearPreparedPayment(); render(); setMessage(`${state.payView==='request'?'Request from':'Pay'} @${person.handle}.`);
     }));
   }
@@ -375,7 +433,9 @@
     try{
       setBusy(true,'Creating your ATM Pay name…');
       const data=await walletApi()('/api/embedded-wallet?action=pay-claim-handle',{method:'POST',body:JSON.stringify({handle})});
-      state.payProfile=normalizeRecipient(data.profile); state.payView='send'; render(); await fetchPayActivity({silent:true}); setMessage(`ATM Pay is ready. People can now find you as @${state.payProfile.handle}.`,'ok');
+      state.payProfile=normalizeRecipient(data.profile); state.payView='send'; await fetchPayActivity({silent:true}); startActivityPolling();
+      if(state.pendingOpenRecipient){state.selectedRecipient=state.pendingOpenRecipient;state.pendingOpenRecipient=null;}
+      render(); setMessage(state.selectedRecipient?`ATM Pay is ready. Pay @${state.selectedRecipient.handle} without using a wallet address.`:`ATM Pay is ready. People can now find you as @${state.payProfile.handle}.`,'ok');
     }catch(error){setMessage(error.message||'Could not create that ATM Pay name.','error');}
     finally{setBusy(false);}
   }
@@ -395,10 +455,11 @@
     try{setBusy(true,requestAction==='decline'?'Declining request…':'Cancelling request…');await walletApi()('/api/embedded-wallet?action=pay-request-action',{method:'POST',body:JSON.stringify({request_id:id,request_action:requestAction})});await fetchPayActivity({silent:true});render();setMessage(requestAction==='decline'?'Request declined.':'Request cancelled.','ok');}
     catch(error){setMessage(error.message||'Could not update request.','error');}finally{setBusy(false);}
   }
-  function payRequestedItem(id){
+  async function payRequestedItem(id){
     const item=requestItemById(id); if(!item||item.status!=='pending')return;
     const recipient=normalizeRecipient(item.other); if(!recipient)return;
-    state.payView='send';state.selectedRecipient=recipient;state.requestDraft={id:item.id,amount_drops:item.amount_drops,amount_xrp:item.amount_xrp,note:item.note||''};state.preparedPayment=null;render();setMessage(`Review @${recipient.handle}'s request before paying.`);
+    state.payView='send';state.selectedRecipient=recipient;state.requestDraft={id:item.id,amount_drops:item.amount_drops,amount_xrp:item.amount_xrp,note:item.note||''};state.preparedPayment=null;render();setMessage(`Preparing ${item.amount_xrp} XRP for @${recipient.handle}…`);
+    await prepareAtmPayPayment();
   }
   function bindDashboardUi(){
     document.querySelectorAll('#atmEmbeddedWalletModal [data-pay-view]').forEach(button=>button.addEventListener('click',()=>{
@@ -436,9 +497,10 @@
       setBusy(true,'Opening ATM Pay…');
       await fetchRecord();
       await fetchPayStatus();
-      if(state.payProfile)await fetchPayActivity({silent:true});
+      if(state.payProfile){await fetchPayActivity({silent:true});startActivityPolling();}
+      if(state.pendingOpenRecipient&&state.payProfile){state.payView='send';state.selectedRecipient=state.pendingOpenRecipient;state.pendingOpenRecipient=null;}
       render();
-      setMessage(state.payProfile?`ATM Pay ready as @${state.payProfile.handle}.`:state.record?'Choose your ATM Pay @name to finish setup.':'Set up ATM Pay to send and receive by name.');
+      setMessage(state.selectedRecipient?`Pay @${state.selectedRecipient.handle} without using a wallet address.`:state.payProfile?`ATM Pay ready as @${state.payProfile.handle}.`:state.record?'Choose your ATM Pay @name to finish setup.':'Set up ATM Pay to send and receive by name.');
     }catch(error){render();setMessage(error.message||'Could not open ATM Pay.','error');}
     finally{setBusy(false);}
   }
@@ -655,7 +717,7 @@
       const serverVerified=await waitForAtmPayValidation(prepared,signed);
       const validated=serverVerified?.validated===true;
       const code=String(serverVerified?.result||relay?.engine_result||'UNKNOWN');
-      state.lastTransaction={hash:String(signed.hash),recipient:prepared.recipient,amountXrp:prepared.amountXrp,result:code,validated,ledgerIndex:serverVerified?.ledger_index||null};
+      state.lastTransaction={hash:String(signed.hash),recipient:prepared.recipient,amountXrp:prepared.amountXrp,result:code,validated,ledgerIndex:serverVerified?.ledger_index||null,completedAt:Date.now()};
       clearPreparedPayment();state.selectedRecipient=null;state.requestDraft=null;render();await refreshBalance({silent:true});await fetchPayActivity({silent:true});
       if(state.lastTransaction.validated&&state.lastTransaction.result==='tesSUCCESS')setMessage(`Paid @${prepared.recipient.handle} ${prepared.amountXrp} XRP. ✓`,'ok');
       else if(validated)setMessage(`Payment validated with ${state.lastTransaction.result}. Check Activity before trying again.`,'error');
@@ -706,11 +768,26 @@
   function bindButton(){
     const button=document.getElementById('embeddedWalletBtn'); if(!button||button.dataset.atmWalletBound)return; button.dataset.atmWalletBound='1'; button.addEventListener('click',open);
   }
-  function refreshButton(){const button=document.getElementById('embeddedWalletBtn');if(button)button.innerHTML='<span class="identityBtnIcon">◇</span>ATM PAY · TESTNET';}
+  function refreshButton(){const button=document.getElementById('embeddedWalletBtn');if(button)button.innerHTML='<span class="identityBtnIcon">◇</span>ATM PAY · TESTNET'+(state.pendingRequestCount?`<span class="atmPayButtonBadge">${state.pendingRequestCount}</span>`:'');}
+  async function refreshPublicState(){
+    try{
+      await fetchRecord();await fetchPayStatus();
+      if(state.payProfile){await fetchPayActivity({silent:true});startActivityPolling();}else{stopActivityPolling();state.activity=[];state.pendingRequestCount=0;}
+      refreshButton();return state.payProfile;
+    }catch(_error){stopActivityPolling();refreshButton();return null;}
+  }
+  async function openToRecipient(value){
+    const recipient=normalizeRecipient(value);if(!recipient)return open();
+    state.pendingOpenRecipient=recipient;
+    await open();
+    if(state.payProfile&&state.record){state.payView='send';state.selectedRecipient=recipient;state.pendingOpenRecipient=null;state.requestDraft=null;clearPreparedPayment();render();setMessage(`Pay @${recipient.handle} without using a wallet address.`);}
+  }
+  function getPublicIdentity(){if(!state.record)return null;const p=normalizeRecipient(state.payProfile);return p?{...p,atm_pay_ready:true}:null;}
 
-  window.ATMEmbeddedWallet={open,close,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.selectedRecipient=null;state.requestDraft=null;document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:async()=>{try{await fetchRecord();await fetchPayStatus();refreshButton();}catch(_error){}}};
-  window.ATMPay={open,refresh:window.ATMEmbeddedWallet.refresh};
+  window.ATMEmbeddedWallet={open,close,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{stopActivityPolling();clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.activityInitialized=false;state.pendingRequestCount=0;state.selectedRecipient=null;state.pendingOpenRecipient=null;state.requestDraft=null;refreshButton();document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:refreshPublicState};
+  window.ATMPay={open,openToRecipient,refresh:refreshPublicState,getPublicIdentity};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();bindButton();refreshButton();});else{ensureUi();bindButton();refreshButton();}
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPreparedPayment();if(!state.recoveryKey)render();}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPreparedPayment();if(!state.recoveryKey)render();}else if(state.payProfile)fetchPayActivity({silent:true,notify:true});});
+  window.addEventListener('focus',()=>{if(state.payProfile)fetchPayActivity({silent:true,notify:true});});
   window.addEventListener('pagehide',()=>clearEphemeral(true));
 })();

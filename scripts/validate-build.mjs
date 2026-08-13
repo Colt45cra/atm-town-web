@@ -88,6 +88,7 @@ const requiredFiles = [
   'docs/V234.2.4-ATM-PAY-MOBILE-RPC.md',
   'docs/V234.2.5-ATM-PAY-SEAMLESS-RELAY.md',
   'docs/V234.2.6-ATM-PAY-LEDGER-CONTRACT-HOTFIX.md',
+  'docs/V234.3-ATM-PAY-CONSUMER-UX.md',
   'scripts/generate-security-headers.mjs',
   'vercel.json',
   'package.json',
@@ -135,7 +136,7 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v234.2'")) errors.push('Missing v234.2 display build marker.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v234.3'")) errors.push('Missing v234.3 display build marker.');
 if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'ATM Pay'")) errors.push('Missing v234.2 ATM Pay display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
@@ -190,6 +191,13 @@ for (const runtimeMarker of [
   if (!runtimeSource.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
 }
 
+if (!gameRuntimeParts[0].includes('nearestAtmPayRemote') || !gameRuntimeParts[0].includes("type:'player-atm-pay'")) errors.push('v234.3 nearby-player PAY interaction is missing.');
+if (!gameRuntimeParts[0].includes("atmPay:window.ATMPay?.getPublicIdentity?.()||null")) errors.push('v234.3 multiplayer presence is missing public ATM Pay identity broadcast.');
+if (!gameRuntimeParts[0].includes("window.ATMPay?.openToRecipient?.(t.atmPay)")) errors.push('v234.3 nearby-player PAY action does not open ATM Pay with the selected player.');
+if (!gameRuntimeParts[0].includes("window.addEventListener('atm:pay-notification'")) errors.push('v234.3 in-game ATM Pay notification toast bridge is missing.');
+if (gameRuntimeParts[0].includes('atmPay:{address') || gameRuntimeParts[0].includes('atmPay:{wallet')) errors.push('v234.3 multiplayer ATM Pay presence must not broadcast wallet addresses.');
+if (!gameRuntimeParts[1]?.includes('const payTarget=nearestAtmPayRemote();if(payTarget)return payTarget;')) errors.push('v234.3 arcade nearestThing wrapper must preserve nearby-player PAY after Trade Beacon priority.');
+
 for (const characterId of ['phnix','bear','xoge','flippy']) {
   if (!gameRuntimeParts[0].includes(`characterId:'${characterId}'`)) errors.push(`New playable character is missing from starter Locker catalog: ${characterId}`);
   if (!gameRuntimeParts[0].includes(`'${characterId}'`)) errors.push(`New playable character is missing from game runtime registry: ${characterId}`);
@@ -208,7 +216,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v234.2.6'")) errors.push('js/config.js is not marked v234.2.6.');
+if (!configSource.includes("version: 'v234.3'")) errors.push('js/config.js is not marked v234.3.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -239,6 +247,13 @@ if (!embeddedWalletSource.includes('FRESH AUTH PER PAYMENT')) errors.push('v234.
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-prepare')) errors.push('v234.2.5 wallet must prepare XRPL ledger fields through the authenticated ATM Pay API.');
 if (!embeddedWalletSource.includes('Number(preparedLedger.ledger_index)')) errors.push('v234.2.6 client must read the server payment-preparation ledger_index field.');
 if (embeddedWalletSource.includes('Number(preparedLedger.ledgerIndex)')) errors.push('v234.2.6 client must not use the obsolete ledgerIndex response field.');
+if (!embeddedWalletSource.includes('ATM_PAY_CHARACTER_THUMBNAILS') || !embeddedWalletSource.includes('function avatarHtml')) errors.push('v234.3 ATM Pay character-avatar UX is missing.');
+if (!embeddedWalletSource.includes('function recentRecipients()') || !embeddedWalletSource.includes('QUICK PAY')) errors.push('v234.3 ATM Pay recent-recipient quick pay is missing.');
+if (!embeddedWalletSource.includes('function pendingIncomingRequests()') || !embeddedWalletSource.includes('Requests for you')) errors.push('v234.3 incoming request surface is missing.');
+if (!embeddedWalletSource.includes("new CustomEvent('atm:pay-notification'") || !embeddedWalletSource.includes('ATM_PAY_ACTIVITY_POLL_MS')) errors.push('v234.3 ATM Pay background activity notifications are missing.');
+if (!embeddedWalletSource.includes('async function openToRecipient') || !embeddedWalletSource.includes('function getPublicIdentity(){if(!state.record)return null;')) errors.push('v234.3 nearby-player ATM Pay entry point must broadcast only wallet-ready public identities.');
+if (!embeddedWalletSource.includes('async function payRequestedItem') || !embeddedWalletSource.includes('await prepareAtmPayPayment();')) errors.push('v234.3 one-tap payment-request preparation is missing.');
+if (!embeddedWalletSource.includes('atmPaySuccessCelebration') || !embeddedWalletSource.includes('atmPaySuccessMark')) errors.push('v234.3 ATM Pay success animation is missing.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-recheck')) errors.push('v234.2.5 wallet must recheck live XRPL sequence/ledger through the authenticated ATM Pay API before signing.');
 if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-relay-submit')) errors.push('v234.2.5 wallet must relay only the locally signed transaction blob through the authenticated ATM Pay API.');
 if (/testnetRpc\(|prepareTestnetPaymentTx|submitSignedBlobAndWait|new xrpl\.Client|submitAndWait\(|client\.autofill\(/.test(embeddedWalletSource)) errors.push('v234.2.5 browser wallet must not depend on direct XRPL network transport.');
@@ -286,6 +301,7 @@ if (!atmPaySource.includes('async function relaySignedTransaction') || !atmPaySo
 if (!atmPaySource.includes('assertTxBlob') || !atmPaySource.includes('MAX_TX_BLOB_HEX')) errors.push('v234.2.5 signed transaction relay input validation is missing.');
 if (!atmPaySource.includes("txResult?.validated === true") || !atmPaySource.includes("tx?.Account !== senderWallet.address") || !atmPaySource.includes("tx?.Destination !== intent.destination_address") || !atmPaySource.includes("String(tx?.Amount || '') !== String(intent.amount_drops)") || !atmPaySource.includes('intentMemoMatches(tx, intent.id)')) errors.push('v234.2 server-side validated-ledger payment matching is incomplete.');
 if (!atmPaySource.includes('async function markSubmitted') || !atmPaySource.includes("'pay-submitted'")) errors.push('v234.2 server must persist a submitted transaction hash before broadcast for retry-safe UX.');
+if (!atmPaySource.includes('async function activityIdentityMap') || !atmPaySource.includes("selected_character")) errors.push('v234.3 activity identities must include current character avatars without changing payment routing.');
 if (/body\?\.(?:seed|secret|private[_-]?key)|req\.body\?\.(?:seed|secret|private[_-]?key)/i.test(atmPaySource)) errors.push('ATM Pay server helper must never accept plaintext wallet secret fields.');
 for (const table of ['atm_pay_profiles','atm_pay_intents','atm_pay_requests']) {
   if (!atmPaySql.includes(`alter table public.${table} enable row level security`)) errors.push(`v234.2 ${table} must have RLS enabled.`);
@@ -454,10 +470,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v234.2.6 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v234.3 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v234.2.6 build validation passed.');
+console.log('ATM Town v234.3 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

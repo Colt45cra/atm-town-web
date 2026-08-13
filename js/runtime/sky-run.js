@@ -283,6 +283,7 @@
   nearestThing=function(){
     if(currentMap==='arcade'){
       const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
+      const payTarget=nearestAtmPayRemote();if(payTarget)return payTarget;
       const exit=interiorExitThing();if(exit)return exit;
       return arcadeInteractionThing();
     }

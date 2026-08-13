@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v234.3: consumer ATM Pay UX — character avatars, recent people, request notifications, one-tap request prep, and nearby-player Pay.
  * v234.2.6: fixes the ATM Pay ledger-index response contract used by payment-expiration safety checks.
  * v234.2.5: routes ATM Pay XRPL network transport through the authenticated ATM Town API while keeping signing local.
  * v234.2.4: makes ATM Pay mobile-friendly by using resilient HTTPS JSON-RPC Testnet transport.
@@ -15,10 +16,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 234.26,
-    version: 'v234.2.6',
+    number: 234.3,
+    version: 'v234.3',
     name: 'ATM Pay',
-    title: 'ATM Town v234.2.6 — ATM Pay Ledger Contract Hotfix'
+    title: 'ATM Town v234.3 — ATM Pay Consumer UX'
   });
 
   const MAPS = Object.freeze({

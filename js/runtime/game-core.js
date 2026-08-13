@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v234.2',name:ATM_CONFIG?.build?.name||'ATM Pay'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v234.3',name:ATM_CONFIG?.build?.name||'ATM Pay'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2530,9 +2530,10 @@ async function initializeIdentity(){
     const client=await getSupabaseClient();
     const {data}=await client.auth.getSession(); authSession=data.session||null;
     await loadPlayerAccount();
+    await window.ATMPay?.refresh?.();
     resumePendingXamanLink();
     resumePendingMagnetPayment();
-    client.auth.onAuthStateChange(async(_event,session)=>{window.ATMEmbeddedWallet?.resetForAuthChange?.();authSession=session||null;await loadPlayerAccount();resumePendingXamanLink();resumePendingMagnetPayment();});
+    client.auth.onAuthStateChange(async(_event,session)=>{window.ATMEmbeddedWallet?.resetForAuthChange?.();authSession=session||null;await loadPlayerAccount();if(authSession?.user)await window.ATMPay?.refresh?.();resumePendingXamanLink();resumePendingMagnetPayment();});
   }catch(error){
     document.getElementById('identityLoading').style.display='none';document.getElementById('identityGuest').style.display='block';
     setIdentityStatus('Account service unavailable. Guest play still works.','error');
@@ -2557,6 +2558,7 @@ async function signInWithPasskey(){
     const client=await getSupabaseClient();const {data,error}=await client.auth.signInWithPasskey();if(error)throw error;
     authSession=data?.session||authSession||(await client.auth.getSession()).data.session||null;
     await loadPlayerAccount();
+    await window.ATMPay?.refresh?.();
     setIdentityStatus('Passkey sign-in complete.','ok');
     await openKnownAccountProfile();
     return true;
@@ -2792,7 +2794,7 @@ async function connectMultiplayer(){
 }
 function broadcastState(force=false){
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},tradeBeacon:tradeBeaconBroadcastPayload()}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
 
 const ARCADE_GAME_PRESENCE_CONFIG=Object.freeze({
@@ -3878,8 +3880,26 @@ function interiorExitThing(mapId=currentMap){
   };
   return Math.hypot(player.x-exit.x,player.y-exit.y)<exit.radius?exit:null;
 }
+function normalizeRemoteAtmPayIdentity(value){
+  if(!value||typeof value!=='object')return null;
+  const userId=String(value.user_id||''),handle=String(value.handle||'').toLowerCase();
+  if(!/^[0-9a-f-]{36}$/i.test(userId)||!/^[a-z0-9_]{3,20}$/.test(handle)||value.atm_pay_ready===false)return null;
+  return {user_id:userId,handle,display_name:String(value.display_name||'ATM Player').slice(0,30),character_id:String(value.character_id||'classic').slice(0,40),atm_pay_ready:true};
+}
+function nearestAtmPayRemote(maxDistance=82){
+  const now=Date.now();let best=null,bestDistance=maxDistance;
+  for(const [id,p] of remotePlayers){
+    if(p.map!==currentMap||now-(p.lastSeen||0)>9000)continue;
+    const identity=normalizeRemoteAtmPayIdentity(p.atmPay);if(!identity)continue;
+    const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+    const distance=Math.hypot(player.x-x,player.y-y);
+    if(distance<bestDistance){bestDistance=distance;best={id:'atm-pay-player:'+id,type:'player-atm-pay',name:p.name||identity.display_name,text:`Pay @${identity.handle} with ATM Pay.`,remoteId:id,remotePlayer:p,atmPay:identity,x,y,radius:maxDistance};}
+  }
+  return best;
+}
 function nearestThing(){
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
+  const payTarget=nearestAtmPayRemote();if(payTarget)return payTarget;
   let best=null,dist=99999,bestRadius=175;
   if(currentMap==='hq'){
     const maskedInteraction=hqInteractionThing();
@@ -3981,6 +4001,9 @@ function showXrplPaymentToast(message,state='waiting',duration=0){
   clearTimeout(xrplPaymentToastTimer);toast.textContent=message;toast.className='visible '+state;
   if(duration>0)xrplPaymentToastTimer=setTimeout(()=>{toast.className='';toast.textContent='';},duration);
 }
+window.addEventListener('atm:pay-notification',event=>{
+  const detail=event?.detail||{};showXrplPaymentToast(String(detail.message||'ATM Pay activity updated.'),detail.tone==='success'?'success':'waiting',9000);
+});
 function currentMagnetUserId(){return String(authSession?.user?.id||'');}
 function savePendingMagnetPayment(value){try{localStorage.setItem(ATM_MAGNET_PENDING_KEY,JSON.stringify(value));}catch(_error){}}
 function readPendingMagnetPayment(){try{return JSON.parse(localStorage.getItem(ATM_MAGNET_PENDING_KEY)||'null');}catch(_error){return null;}}
@@ -4336,7 +4359,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
+function interactionHint(thing){if(thing?.type==='player-atm-pay')return 'Tap PAY to send money to @'+String(thing.atmPay?.handle||'player')+' with ATM Pay';if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -4429,6 +4452,7 @@ function interact(){
   if(vending&&!vendingOpen){openVending();return;}
   if(dialogOpen)return;
   const t=nearestThing();
+  if(t&&t.type==='player-atm-pay'){window.ATMPay?.openToRecipient?.(t.atmPay);return;}
   if(t&&t.type==='vending'){openVending();return;}
   if(currentMap==='town'&&t){
     const destinationMap=ATM_MAPS.fromEntrance(t.id);
@@ -4719,7 +4743,15 @@ function update(dt){
   hintEl.textContent=interactionHint(nearThing);
   hintEl.style.opacity=nearThing?1:0;
   const registeredEntrance=nearThing&&currentMap==='town'&&ATM_MAPS.fromEntrance(nearThing.id);
-  actionButton.textContent=nearThing?.type==='player-nft-beacon'?'VIEW NFT':(nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(nearThing.type)?'PLAY':(nearThing&&nearThing.type==='vending'?'USE':(nearThing&&nearThing.type==='voice'?'JOIN':(registeredEntrance?'ENTER':(nearThing&&currentMap==='town'&&nearThing.id==='townInfoHub'?'MAP':'ACTION')))));
+  let actionLabel='ACTION';
+  if(nearThing?.type==='player-atm-pay')actionLabel='PAY';
+  else if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';
+  else if(nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(nearThing.type))actionLabel='PLAY';
+  else if(nearThing?.type==='vending')actionLabel='USE';
+  else if(nearThing?.type==='voice')actionLabel='JOIN';
+  else if(registeredEntrance)actionLabel='ENTER';
+  else if(nearThing&&currentMap==='town'&&nearThing.id==='townInfoHub')actionLabel='MAP';
+  actionButton.textContent=actionLabel;
   actionButton.classList.toggle('available',!!nearThing);
   actionButton.setAttribute('aria-hidden',nearThing?'false':'true');
   actionButton.tabIndex=nearThing?0:-1;
