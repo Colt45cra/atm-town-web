@@ -3,12 +3,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" name="viewport"/>
+<meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" name="viewport"/>
 <title>ATM Town v216 — XRPL Payment Credit Recovery</title>
 <style>
 :root{--bg:#061018;--ink:#eafcff;--cyan:#58f1e6;--pink:#ff4fa3;--gold:#ffd166;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:Inter,system-ui,Arial,sans-serif;color:var(--ink)}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:Inter,system-ui,Arial,sans-serif;color:var(--ink);overscroll-behavior:none;-webkit-text-size-adjust:100%}
+/* v235.1.1: game chrome should never become selectable/callout text during iPhone play. Text entry and explicit copy surfaces opt back in. */
+body,body *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select,[contenteditable="true"],code,pre,.walletValue,.selectable,[data-selectable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+button,[role="button"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media (hover:none) and (pointer:coarse){input,textarea,select{font-size:16px!important}}
 #game{display:block;width:100vw;height:100vh;touch-action:none;image-rendering:auto}
 #loungeTvEmbed{position:fixed;display:none;overflow:hidden;z-index:2;background:#000;border-radius:3px;box-shadow:inset 0 0 0 2px rgba(255,178,67,.32);transform-origin:0 0}
 #loungeTvEmbed iframe{display:block;width:100%;height:100%;border:0;background:#000}

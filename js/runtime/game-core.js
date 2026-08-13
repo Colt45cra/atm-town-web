@@ -594,6 +594,9 @@ function setGameZoom(value,showBadge=true){
 
 const canvasPointers=new Map();
 const canvasTapCandidates=new Map();
+const coarsePrimaryPointer=!!window.matchMedia?.('(hover:none) and (pointer:coarse)')?.matches;
+// v235.1.1: mobile gameplay uses multi-touch for controls; disable canvas pinch zoom on coarse/touch devices to prevent accidental camera zoom.
+const canvasPinchZoomEnabled=!coarsePrimaryPointer;
 let pinchStartDistance=0;
 let pinchStartZoom=zoom;
 function pointerDistance(){
@@ -603,6 +606,7 @@ function pointerDistance(){
 }
 canvas.addEventListener('pointerdown',e=>{
   if(e.pointerType!=='touch')return;
+  e.preventDefault();
   const alreadyTouching=canvasPointers.size>0;
   canvasPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const candidate={x:e.clientX,y:e.clientY,moved:false,multi:alreadyTouching,jetpackControl:false};
@@ -614,11 +618,11 @@ canvas.addEventListener('pointerdown',e=>{
     if(candidate.jetpackControl)e.preventDefault();
   }
   try{canvas.setPointerCapture(e.pointerId);}catch(_e){}
-  if(canvasPointers.size===2){
+  if(canvasPinchZoomEnabled&&canvasPointers.size===2){
     pinchStartDistance=Math.max(1,pointerDistance());
     pinchStartZoom=zoom;
   }
-});
+},{passive:false});
 canvas.addEventListener('pointermove',e=>{
   if(!canvasPointers.has(e.pointerId))return;
   canvasPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -626,8 +630,10 @@ canvas.addEventListener('pointermove',e=>{
   if(candidate&&Math.hypot(e.clientX-candidate.x,e.clientY-candidate.y)>12)candidate.moved=true;
   if(canvasPointers.size>=2){
     e.preventDefault();
-    const distance=pointerDistance();
-    setGameZoom(pinchStartZoom*(distance/pinchStartDistance));
+    if(canvasPinchZoomEnabled&&pinchStartDistance>0){
+      const distance=pointerDistance();
+      setGameZoom(pinchStartZoom*(distance/pinchStartDistance));
+    }
   }
 },{passive:false});
 function finishCanvasPointer(e){
@@ -3867,7 +3873,23 @@ document.querySelectorAll('input,textarea,select,[contenteditable="true"]').forE
 });
 let joy={x:0,y:0,active:false,id:null}; const stick=document.getElementById('stick'), knob=document.getElementById('knob');
 function setJoy(cx,cy){ const r=stick.getBoundingClientRect(), sx=r.left+r.width/2, sy=r.top+r.height/2; let dx=cx-sx, dy=cy-sy, mag=Math.hypot(dx,dy), max=29; if(mag>max){ dx=dx/mag*max; dy=dy/mag*max; } joy.x=dx/max; joy.y=dy/max; knob.style.transform=`translate(${dx}px,${dy}px)`; }
-stick.addEventListener('pointerdown',e=>{ joy.active=true; joy.id=e.pointerId; stick.setPointerCapture(e.pointerId); setJoy(e.clientX,e.clientY); }); stick.addEventListener('pointermove',e=>{ if(joy.active&&e.pointerId===joy.id) setJoy(e.clientX,e.clientY); }); function endJoy(){ joy.active=false; joy.x=joy.y=0; knob.style.transform='translate(0,0)'; } stick.addEventListener('pointerup',endJoy); stick.addEventListener('pointercancel',endJoy);
+function endJoy(e){
+  if(e&&joy.id!==null&&Number.isFinite(Number(e.pointerId))&&e.pointerId!==joy.id)return;
+  const oldId=joy.id;joy.active=false;joy.id=null;joy.x=joy.y=0;knob.style.transform='translate(0,0)';
+  if(oldId!==null){try{if(stick.hasPointerCapture?.(oldId))stick.releasePointerCapture(oldId);}catch(_e){}}
+}
+stick.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();endJoy();joy.active=true;joy.id=e.pointerId;try{stick.setPointerCapture(e.pointerId);}catch(_e){}setJoy(e.clientX,e.clientY);},{passive:false});
+stick.addEventListener('pointermove',e=>{if(joy.active&&e.pointerId===joy.id){e.preventDefault();setJoy(e.clientX,e.clientY);}},{passive:false});
+stick.addEventListener('pointerup',endJoy);stick.addEventListener('pointercancel',endJoy);stick.addEventListener('lostpointercapture',endJoy);
+window.addEventListener('pointerup',e=>{if(joy.active&&e.pointerId===joy.id)endJoy(e);},{passive:true});
+window.addEventListener('pointercancel',e=>{if(joy.active&&e.pointerId===joy.id)endJoy(e);},{passive:true});
+window.addEventListener('blur',()=>endJoy());
+document.addEventListener('visibilitychange',()=>{if(document.hidden)endJoy();});
+// Dynamic forms (World Events, ATM Pay, etc.) also release movement immediately when text entry starts.
+document.addEventListener('focusin',e=>{if(!isTextEntryTarget(e.target))return;for(const key of Object.keys(keys))keys[key]=false;releaseJetpackThrust(null);endJoy();});
+// Safari fallback: long-press/drag on game chrome should never start page text selection or a callout.
+document.addEventListener('selectstart',e=>{if(!isTextEntryTarget(e.target)&&!e.target?.closest?.('code,pre,.walletValue,.selectable,[data-selectable="true"]'))e.preventDefault();});
+document.addEventListener('contextmenu',e=>{if(!isTextEntryTarget(e.target)&&!e.target?.closest?.('code,pre,.walletValue,.selectable,[data-selectable="true"]'))e.preventDefault();});
 
 
 function interiorExitThing(mapId=currentMap){

@@ -93,6 +93,7 @@ const requiredFiles = [
   'docs/V234.4-PEOPLE-HUB.md',
   'docs/V235-WORLD-EVENT-ENGINE.md',
   'docs/V235.1-MONEY-RAIN-POLISH.md',
+  'docs/V235.1.1-MOBILE-INPUT-HOTFIX.md',
   'js/world-events.js',
   'lib/world-events.js',
   'lib/world-event-money-rain-points.js',
@@ -227,7 +228,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.1'")) errors.push('js/config.js is not marked v235.1.');
+if (!configSource.includes("version: 'v235.1.1'")) errors.push('js/config.js is not marked v235.1.1.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -281,11 +282,15 @@ if (!peopleHubSource.includes("Requests for you") || !peopleHubSource.includes("
 if (!worldEventsClientSource.includes('START MONEY RAIN PREVIEW') || !worldEventsClientSource.includes('updateGameplay') || !worldEventsClientSource.includes('drawGround') || !worldEventsClientSource.includes('drawAir')) errors.push('v235.1 Money Rain client/event rendering hooks are incomplete.');
 if (!worldEventsClientSource.includes('/api/world-time?action=start-money-rain') || !worldEventsClientSource.includes('/api/world-time?action=claim-money-rain')) errors.push('v235.1 Money Rain client is missing authenticated World Event API actions.');
 if (!worldEventsServerSource.includes("const EVENT_TYPE = 'money_rain'") || !worldEventsServerSource.includes('buildMoneyRainManifest(seed)') || !worldEventsServerSource.includes('MAX_CLAIM_DISTANCE')) errors.push('v235.1 server-authoritative Money Rain manifest/claim validation is incomplete.');
-if (!worldEventsServerSource.includes("layout_strategy: 'organic_cluster_scatter_v2'") || !worldEventsServerSource.includes('chooseClusterCenters') || !worldEventsServerSource.includes('clustered_pickups')) errors.push('v235.1 organic seeded Money Rain cluster/scatter generation is missing.');
+if (!worldEventsServerSource.includes("layout_strategy: 'organic_cluster_scatter_v3'") || !worldEventsServerSource.includes('chooseClusterCenters') || !worldEventsServerSource.includes('clustered_pickups') || !worldEventsServerSource.includes('scatter_pickups')) errors.push('v235.1.1 organic seeded Money Rain cluster/wide-scatter generation is missing.');
 if (!worldEventsServerSource.includes("kind: 'bag'") || !worldEventsServerSource.includes("kind: 'bundle'") || !worldEventsClientSource.includes("pickup.kind === 'bag'") || !worldEventsClientSource.includes("pickup.kind === 'bundle'")) errors.push('v235.1 rare-drop presentation framework is incomplete.');
 if (!worldEventsClientSource.includes('const CLAIM_SCAN_MS = 32') || !worldEventsClientSource.includes('const PICKUP_RADIUS = 54') || !worldEventsClientSource.includes('pickup_ids: ids') || !worldEventsClientSource.includes('state.claiming.has(id)')) errors.push('v235.1 responsive optimistic/batched pickup behavior is incomplete.');
+if (!worldEventsServerSource.includes('const PICKUP_COUNT = 84') || !worldEventsServerSource.includes('fall_height: 900 +') || !worldEventsServerSource.includes('fall_ms: 2800 +') || !worldEventsClientSource.includes('fall_height || 1100') || !worldEventsClientSource.includes('visibly flutter through the air')) errors.push('v235.1.1 high-altitude / wider Money Rain presentation is incomplete.');
 if (!worldEventsServerSource.includes('MAX_BATCH_CLAIMS = 8') || !worldEventsServerSource.includes('Array.isArray(body.pickup_ids)') || !worldEventsServerSource.includes('claimed_pickup_ids_now')) errors.push('v235.1 server batch-claim support is incomplete.');
 if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsServerSource.includes('sponsor_mode') || !worldEventsServerSource.includes('sponsor_label') || !worldEventsClientSource.includes('PROJECT / BRAND') || !worldEventsClientSource.includes('Money Rain provided by')) errors.push('v235.1 sponsor / project attribution is incomplete.');
+if (!worldEventsClientSource.includes('background event polling must never replace a focused iOS input') || !worldEventsClientSource.includes('document.activeElement === currentSponsorInput')) errors.push('v235.1.1 iOS World Event text-focus protection is missing.');
+if (!gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=!coarsePrimaryPointer') || !gameRuntimeParts[0].includes("stick.addEventListener('lostpointercapture',endJoy)") || !gameRuntimeParts[0].includes("document.addEventListener('focusin'")) errors.push('v235.1.1 mobile control-release / accidental-zoom guards are incomplete.');
+if (!html.includes('viewport-fit=cover') || !html.includes('body,body *{-webkit-user-select:none') || !html.includes('@media (hover:none) and (pointer:coarse){input,textarea,select{font-size:16px!important}}')) errors.push('v235.1.1 iPhone selection / input auto-zoom CSS guards are missing.');
 if (!worldEventsServerSource.includes("from('world_event_claims')") || !worldEventsServerSource.includes("from('world_events')")) errors.push('v235 World Event server persistence is missing.');
 if (!worldTimeApiSource.includes("action === 'event'") || !worldTimeApiSource.includes('startMoneyRain') || !worldTimeApiSource.includes('claimMoneyPickup')) errors.push('v235 must route World Event actions through the existing world-time serverless function.');
 if (!worldEventsSql.includes('alter table public.world_events enable row level security') || !worldEventsSql.includes('alter table public.world_event_claims enable row level security')) errors.push('v235 World Event tables must have RLS enabled.');
@@ -458,9 +463,9 @@ try {
   errors.push(`World manifest could not be parsed: ${error.message}`);
 }
 
-// v235.1 event-layout validation: several deterministic seeds must produce
-// different collision-authored organic layouts, a fixed 1,000-point pool, and
-// dense local neighborhoods without repeated rows/columns.
+// v235.1.1 event-layout validation: several deterministic seeds must produce
+// different collision-authored organic layouts, a fixed 1,000-point pool,
+// preserved dense hotspots, substantial wide scatter, and sky-high falling drops.
 try {
   const moduleUrl = `${pathToFileURL(path.join(root, 'lib', 'world-events.js')).href}?validate=${Date.now()}`;
   const { buildMoneyRainManifest } = await import(moduleUrl);
@@ -468,7 +473,7 @@ try {
   const coordinateSets = [];
   for (const manifest of layouts) {
     const pickups = manifest?.pickups || [];
-    if (pickups.length !== 60) errors.push(`v235.1 Money Rain manifest expected 60 pickups, found ${pickups.length}.`);
+    if (pickups.length !== 84) errors.push(`v235.1.1 Money Rain manifest expected 84 pickups, found ${pickups.length}.`);
     if (pickups.reduce((sum, pickup) => sum + Number(pickup.points || 0), 0) !== 1000) errors.push('v235.1 Money Rain preview pool must total exactly 1,000 points.');
     const coordinateSet = new Set(pickups.map((pickup) => `${pickup.x},${pickup.y}`));
     coordinateSets.push(coordinateSet);
@@ -488,14 +493,23 @@ try {
       }
       if (nearest <= 180) nearbyCount += 1;
     }
-    if (nearbyCount < 40) errors.push(`v235.1 Money Rain layout does not form enough organic hotspots (${nearbyCount}/60 pickups have a neighbor within 180px).`);
+    if (nearbyCount < 46) errors.push(`v235.1.1 Money Rain layout does not preserve enough organic hotspot density (${nearbyCount}/84 pickups have a neighbor within 180px).`);
+    const scatter = pickups.filter((pickup) => pickup.placement === 'scatter');
+    if (scatter.length < 26) errors.push(`v235.1.1 Money Rain needs at least 26 wide-scatter pickups, found ${scatter.length}.`);
+    if (scatter.length) {
+      const minX = Math.min(...scatter.map((pickup) => pickup.x)), maxX = Math.max(...scatter.map((pickup) => pickup.x));
+      const minY = Math.min(...scatter.map((pickup) => pickup.y)), maxY = Math.max(...scatter.map((pickup) => pickup.y));
+      if (maxX - minX < 1800 || maxY - minY < 2600) errors.push('v235.1.1 loose Money Rain scatter does not span enough of the town map.');
+    }
+    if (Math.min(...pickups.map((pickup) => Number(pickup.fall_height || 0))) < 900 || Math.max(...pickups.map((pickup) => Number(pickup.fall_height || 0))) < 1450) errors.push('v235.1.1 Money Rain drops are not starting high enough above the world.');
+    if (Math.min(...pickups.map((pickup) => Number(pickup.fall_ms || 0))) < 2800) errors.push('v235.1.1 Money Rain fall duration is too short to read as visible rain.');
     const kinds = new Set(pickups.map((pickup) => pickup.kind));
     if (!kinds.has('bill') || !kinds.has('bundle') || !kinds.has('bag')) errors.push('v235.1 Money Rain manifest is missing bill/bundle/bag drop types.');
   }
   for (let i = 1; i < coordinateSets.length; i += 1) {
     let overlap = 0;
     for (const key of coordinateSets[0]) if (coordinateSets[i].has(key)) overlap += 1;
-    if (overlap > 15) errors.push(`v235.1 Money Rain layouts are not random enough across event seeds (${overlap} repeated positions).`);
+    if (overlap > 18) errors.push(`v235.1.1 Money Rain layouts are not random enough across event seeds (${overlap} repeated positions).`);
   }
 } catch (error) {
   errors.push(`v235.1 Money Rain manifest validation could not run: ${error.message}`);
@@ -562,5 +576,5 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('ATM Town v235.1 build validation passed.');
+console.log('ATM Town v235.1.1 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.1.1: hardens iPhone/mobile input and makes Money Rain more atmospheric with wider scatter and high-altitude falling drops.
  * v235.1: polishes Money Rain with organic seeded clusters, responsive pickups, rare-drop types, and sponsor attribution.
  * v235: adds the reusable World Event Engine foundation and Money Rain preview.
  * v234.4: adds the People Hub — online players, recent people, and ATM Pay in one sliding social panel.
@@ -19,10 +20,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.1,
-    version: 'v235.1',
-    name: 'Money Rain Polish',
-    title: 'ATM Town v235.1 — Money Rain Polish'
+    number: 235.11,
+    version: 'v235.1.1',
+    name: 'Mobile + Money Rain Hotfix',
+    title: 'ATM Town v235.1.1 — Mobile Input + Money Rain Hotfix'
   });
 
   const MAPS = Object.freeze({
