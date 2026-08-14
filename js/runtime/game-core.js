@@ -398,6 +398,7 @@ let playerId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).s
 let roomName='atm-town-alpha';
 let supabaseClient=null, realtimeChannel=null, onlineMode=false;
 const remotePlayers=new Map();
+const presencePlayers=new Map();
 let currentOnlineCount=1;
 const atmPeopleEncounters=new Map();
 let currentPlayerActivity=null;
@@ -2744,7 +2745,22 @@ async function connectMultiplayer(){
     realtimeChannel=supabaseClient.channel('atm-town:'+roomName,{config:{presence:{key:playerId},broadcast:{self:false}}});
     realtimeChannel.on('presence',{event:'sync'},()=>{
       const state=realtimeChannel.presenceState();
-      currentOnlineCount=Object.keys(state).length||1;
+      presencePlayers.clear();
+      for(const [presenceKey,rawMetas] of Object.entries(state||{})){
+        const metas=Array.isArray(rawMetas)?rawMetas:[rawMetas];
+        const meta=metas[metas.length-1]||{};
+        const id=String(meta.id||presenceKey||'');
+        if(!id)continue;
+        presencePlayers.set(id,{
+          id,
+          name:String(meta.name||'Player').slice(0,30),
+          map:String(meta.map||''),
+          character:String(meta.character||'classic').slice(0,40),
+          online_at:String(meta.online_at||''),
+          atmPay:meta.atmPay&&typeof meta.atmPay==='object'?meta.atmPay:null
+        });
+      }
+      currentOnlineCount=Math.max(1,presencePlayers.size);
       if(window.ATMPeopleHub?.setOnlineCount)window.ATMPeopleHub.setOnlineCount(currentOnlineCount);
       else document.getElementById('onlineBadge').textContent=currentOnlineCount+' online';
       window.dispatchEvent(new CustomEvent('atm:online-players-changed'));
@@ -2779,7 +2795,7 @@ async function connectMultiplayer(){
           clearTimeout(timer);
           try{
             onlineMode=true;
-            await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString()});
+            await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
             broadcastState(true);
             if(authSession?.user){supabaseClient.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id).then(()=>{});}
             resolve();
@@ -2895,7 +2911,7 @@ async function resumeMultiplayerConnection(){
     const channelReady=onlineMode&&realtimeChannel&&(realtimeChannel.state==='joined'||realtimeChannel.state==='subscribed');
     if(channelReady){
       try{
-        await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString()});
+        await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
         broadcastState(true);
         setTimeout(()=>broadcastState(true),300);
         return;
@@ -3945,20 +3961,43 @@ function restoreAtmPeopleEncounters(){
 }
 restoreAtmPeopleEncounters();
 function atmPeopleOnlinePlayers(){
-  const now=Date.now();const out=[];
+  const now=Date.now();const out=[];const seen=new Set();
   const selfIdentity=normalizeRemoteAtmPayIdentity(window.ATMPay?.getPublicIdentity?.());
   out.push({session_id:playerId,name:playerName||'You',map:currentMap,character_id:selectedCharacter,is_self:true,distance:0,nearby:false,atmPay:selfIdentity});
+  seen.add(String(playerId));
+
+  // Supabase Presence is the authoritative online roster. player_state broadcasts
+  // enrich each presence entry with live map/position/activity/ATM Pay data, but a
+  // missed or stale broadcast must never make an actually-online player disappear
+  // from the People Hub while the HUD still counts them.
+  for(const [id,presence] of presencePlayers){
+    const sessionId=String(id||'');if(!sessionId||sessionId===String(playerId))continue;
+    const remote=remotePlayers.get(id)||remotePlayers.get(sessionId)||null;
+    const liveRemote=remote&&now-(remote.lastSeen||0)<=12000?remote:null;
+    const source=liveRemote||presence||{};
+    const map=String(source.map||presence?.map||'');
+    const sameMap=map===currentMap;
+    const x=Number(liveRemote?.drawX??liveRemote?.x),y=Number(liveRemote?.drawY??liveRemote?.y);
+    const distance=liveRemote&&sameMap&&Number.isFinite(x)&&Number.isFinite(y)?Math.hypot(player.x-x,player.y-y):null;
+    const identity=normalizeRemoteAtmPayIdentity(liveRemote?.atmPay||presence?.atmPay);
+    if(identity&&distance!==null)rememberAtmPeopleEncounter(sessionId,liveRemote||presence,identity,distance);
+    out.push({session_id:sessionId,name:String(liveRemote?.name||presence?.name||identity?.display_name||'Player').slice(0,30),map,character_id:String(liveRemote?.character||presence?.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
+    seen.add(sessionId);
+  }
+
+  // A fresh player_state can arrive just before Presence sync. Keep that short race
+  // visible, then Presence becomes authoritative on the next sync.
   for(const [id,p] of remotePlayers){
-    if(now-(p.lastSeen||0)>12000)continue;
+    const sessionId=String(id||'');if(!sessionId||seen.has(sessionId)||now-(p.lastSeen||0)>12000)continue;
     const sameMap=p.map===currentMap;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);const distance=sameMap&&Number.isFinite(x)&&Number.isFinite(y)?Math.hypot(player.x-x,player.y-y):null;
-    const identity=normalizeRemoteAtmPayIdentity(p.atmPay);if(identity&&distance!==null)rememberAtmPeopleEncounter(id,p,identity,distance);
-    out.push({session_id:String(id),name:String(p.name||identity?.display_name||'Player').slice(0,30),map:String(p.map||''),character_id:String(p.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
+    const identity=normalizeRemoteAtmPayIdentity(p.atmPay);if(identity&&distance!==null)rememberAtmPeopleEncounter(sessionId,p,identity,distance);
+    out.push({session_id:sessionId,name:String(p.name||identity?.display_name||'Player').slice(0,30),map:String(p.map||''),character_id:String(p.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
   }
   out.sort((a,b)=>Number(b.nearby)-Number(a.nearby)||Number(b.map===currentMap)-Number(a.map===currentMap)||(a.distance??1e9)-(b.distance??1e9)||a.name.localeCompare(b.name));
   return out;
 }
 function atmPeopleRecentEncounters(){return [...atmPeopleEncounters.values()].sort((a,b)=>(b.seen_at||0)-(a.seen_at||0)).slice(0,12).map(item=>({...item,atmPay:item.atmPay?{...item.atmPay}:null}));}
-window.ATMGamePeople={snapshot:()=>({onlineCount:currentOnlineCount,online:atmPeopleOnlinePlayers(),encounters:atmPeopleRecentEncounters(),currentMap})};
+window.ATMGamePeople={snapshot:()=>{const online=atmPeopleOnlinePlayers();return {onlineCount:Math.max(1,online.length),online,encounters:atmPeopleRecentEncounters(),currentMap};}};
 function nearestAtmPayRemote(maxDistance=82){
   const now=Date.now();let best=null,bestDistance=maxDistance;
   for(const [id,p] of remotePlayers){

@@ -94,6 +94,7 @@ const requiredFiles = [
   'docs/V235-WORLD-EVENT-ENGINE.md',
   'docs/V235.1-MONEY-RAIN-POLISH.md',
   'docs/V235.1.1-MOBILE-INPUT-HOTFIX.md',
+  'docs/V235.1.6-PEOPLE-HUB-PRESENCE-HOTFIX.md',
   'js/world-events.js',
   'lib/world-events.js',
   'lib/world-event-money-rain-points.js',
@@ -209,6 +210,11 @@ if (gameRuntimeParts[0].includes("actionLabel='PAY'") || gameRuntimeParts[0].inc
 if (gameRuntimeParts[1]?.includes('const payTarget=nearestAtmPayRemote();if(payTarget)return payTarget;')) errors.push('v234.4 arcade ACTION ring must not inject ATM Pay proximity targets.');
 if (!gameRuntimeParts[0].includes('window.ATMGamePeople={snapshot:')) errors.push('v234.4 game runtime is missing People Hub online/encounter snapshot API.');
 if (!gameRuntimeParts[0].includes("sessionStorage.setItem('atm_people_encounters_v1'")) errors.push('v234.4 session-scoped recent encounter memory is missing.');
+if (!gameRuntimeParts[0].includes('const presencePlayers=new Map();')) errors.push('v235.1.6 People Hub is missing its authoritative Presence roster cache.');
+if (!gameRuntimeParts[0].includes('presencePlayers.set(id,{')) errors.push('v235.1.6 Presence sync does not populate the People Hub roster cache.');
+if (!gameRuntimeParts[0].includes('for(const [id,presence] of presencePlayers)')) errors.push('v235.1.6 People Hub Online roster is not driven by Supabase Presence.');
+if (!gameRuntimeParts[0].includes('atmPay:window.ATMPay?.getPublicIdentity?.()||null')) errors.push('v235.1.6 Presence tracking is missing public ATM Pay identity metadata.');
+if (!gameRuntimeParts[0].includes('onlineCount:Math.max(1,online.length)')) errors.push('v235.1.6 People Hub snapshot count is not bound to the rendered online roster.');
 
 for (const characterId of ['phnix','bear','xoge','flippy']) {
   if (!gameRuntimeParts[0].includes(`characterId:'${characterId}'`)) errors.push(`New playable character is missing from starter Locker catalog: ${characterId}`);
@@ -228,7 +234,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.1.5'")) errors.push('js/config.js is not marked v235.1.5.');
+if (!configSource.includes("version: 'v235.1.6'")) errors.push('js/config.js is not marked v235.1.6.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -579,10 +585,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.1.5 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.1.6 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.1.5 build validation passed.');
+console.log('ATM Town v235.1.6 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
