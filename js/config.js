@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.2: preserves every Money Rain participant's collected score for reward settlement and adds Salute, Brad, David, and Kaj.
  * v235.1.6: makes Supabase Presence the authoritative People Hub online roster so HUD count and player list stay consistent.
  * v235.1.5: keeps joystick pointer ownership during two-thumb jump while still blocking native iPhone Safari page zoom.
  * v235.1.4: prevents native iPhone Safari gameplay zoom while preserving mobile form input and game controls.
@@ -25,9 +26,9 @@
 
   const BUILD = Object.freeze({
     number: 235.16,
-    version: 'v235.1.6',
+    version: 'v235.2',
     name: 'People Hub Presence Consistency',
-    title: 'ATM Town v235.1.6 — People Hub Presence Consistency'
+    title: 'ATM Town v235.2 — Money Rain Participant Results + New Characters'
   });
 
   const MAPS = Object.freeze({

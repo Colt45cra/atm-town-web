@@ -114,20 +114,27 @@
     if (!incoming) {
       state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = ''; state.lastPhase = 'none'; renderHud(); renderControlPanel(); return;
     }
+    const hasPersonalScore = incoming.personal_score_available !== false;
     if (incoming.id !== oldId) {
-      state.claimed = new Set((incoming.claimed_pickup_ids || []).map(Number)); state.claiming.clear(); state.myScore = Number(incoming.my_score || 0); state.myPickups = Number(incoming.my_pickups || 0); state.lastEventId = incoming.id;
+      state.claimed = new Set((incoming.claimed_pickup_ids || []).map(Number)); state.claiming.clear();
+      if (hasPersonalScore) { state.myScore = Number(incoming.my_score || 0); state.myPickups = Number(incoming.my_pickups || 0); }
+      else if (!oldId) { state.myScore = 0; state.myPickups = 0; }
+      state.lastEventId = incoming.id;
       toast(`💸 Money Rain provided by ${sponsorLabel(incoming)}!`);
     } else {
       state.claimed = new Set((incoming.claimed_pickup_ids || []).map(Number));
-      if (Number.isFinite(Number(incoming.my_score))) state.myScore = Number(incoming.my_score);
-      if (Number.isFinite(Number(incoming.my_pickups))) state.myPickups = Number(incoming.my_pickups);
+      // Public fallback state can keep the event synchronized, but it must never wipe
+      // an authenticated player's already-earned total back to zero.
+      if (hasPersonalScore && Number.isFinite(Number(incoming.my_score))) state.myScore = Number(incoming.my_score);
+      if (hasPersonalScore && Number.isFinite(Number(incoming.my_pickups))) state.myPickups = Number(incoming.my_pickups);
     }
     const phase = eventPhase(incoming);
     if (phase !== oldPhase && incoming.id === oldId) {
       if (phase === 'active') toast(`💸 MONEY RAIN provided by ${sponsorLabel(incoming)}!`, 4200);
       if (phase === 'completed') {
         const winner = incoming.leaders?.[0];
-        toast(winner ? `🏆 Money Rain complete · ${winner.display_name} won with ${winner.points} points` : 'Money Rain complete!', 5200);
+        const mine = incoming.personal_score_available !== false ? Number(incoming.my_score || state.myScore || 0) : state.myScore;
+        toast(winner ? `💸 Money Rain complete · You collected ${mine} · #1 ${winner.display_name} ${winner.points}` : `💸 Money Rain complete · You collected ${mine}`, 5200);
       }
     }
     state.lastPhase = phase;
@@ -161,8 +168,9 @@
     } else {
       const winner = event.leaders?.[0];
       title.textContent = '💸 MONEY RAIN COMPLETE';
-      meta.textContent = winner ? `Provided by ${providedBy} · ${winner.display_name} won with ${winner.points}` : `Provided by ${providedBy} · results final`;
-      score.textContent = `YOU ${state.myScore}`;
+      meta.textContent = `${Number(event.participant_count || event.leaders?.length || 0)} participant${Number(event.participant_count || event.leaders?.length || 0) === 1 ? '' : 's'} · ${Number(event.unclaimed_points || 0)} unclaimed · provided by ${providedBy}`;
+      const rank = Number(event.my_rank || 0);
+      score.textContent = `YOU${rank ? ` #${rank}` : ''} · ${state.myScore} COLLECTED`;
     }
     hud.classList.add('show');
   }
@@ -178,11 +186,11 @@
     if (event && phase !== 'completed') {
       activeBlock = `<div class="atmWorldEventPreview"><strong>💸 Money Rain is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Money Rain provided by <b>${escapeHtml(sponsorLabel(event))}</b>.</div><div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until drops begin.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining.`}</div></div>`;
     } else if (event && phase === 'completed' && event.leaders?.length) {
-      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))}</div>${event.leaders.slice(0,3).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${leader.points}</b></div>`).join('')}</div>`;
+      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))} · every participant keeps the amount they collected</div>${event.leaders.slice(0,12).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${leader.points} collected</b></div>`).join('')}<div style="margin-top:8px;color:#9fc3cc;font-size:11px">${Number(event.unclaimed_points || 0)} of ${Number(event.pool_points || 1000)} preview points were not collected and remain with the sponsor/reward pool.</div></div>`;
     }
     const sponsorDisabled = event && phase !== 'completed';
     const brandActive = state.sponsorMode === 'brand';
-    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch a synchronized event across the live multiplayer world. v235.1.2 turns Money Rain into a full money storm: organic collectible clumps stay intact while a much denser layer of bills continuously falls across every player’s sky.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>💸 MONEY RAIN · PREVIEW</strong><div>Dense collectible clumps stay organic, while 168 additional atmospheric bills continuously recycle high above the active player view. The result is 250+ money objects in the event presentation, with cash visibly falling all around town instead of only near landing clusters. Rare bundles and a jackpot bag remain mixed into the collectible layer.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>250+ bills</b><span>full sky + collectibles</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>preview pool unchanged</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div></div><div style="font-size:12px;color:#ffd978;font-weight:800">REAL ATM / XRP REWARD SETTLEMENT IS STILL OFF IN v235.1.</div></div><button class="atmWorldEventBtn" id="atmWorldEventStart" type="button" ${sponsorDisabled ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START MONEY RAIN PREVIEW'}</button><div class="atmWorldEventStatus" id="atmWorldEventStatus"></div>`;
+    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch a synchronized event across the live multiplayer world. v235.2 keeps Money Rain as a full money storm and makes participant results reward-ready: organic collectible clumps stay intact while a much denser layer of bills continuously falls across every player’s sky.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>💸 MONEY RAIN · PREVIEW</strong><div>Dense collectible clumps stay organic, while 168 additional atmospheric bills continuously recycle high above the active player view. The result is 250+ money objects in the event presentation, with cash visibly falling all around town instead of only near landing clusters. Rare bundles and a jackpot bag remain mixed into the collectible layer.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>250+ bills</b><span>full sky + collectibles</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>preview pool unchanged</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div></div><div style="font-size:12px;color:#ffd978;font-weight:800">REAL XRPL REWARD SETTLEMENT IS STILL OFF UNTIL PAYLOAD INTEGRATION. EVERY PARTICIPANT RESULT IS NOW PRESERVED FOR PAY-WHAT-YOU-COLLECT SETTLEMENT.</div></div><button class="atmWorldEventBtn" id="atmWorldEventStart" type="button" ${sponsorDisabled ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START MONEY RAIN PREVIEW'}</button><div class="atmWorldEventStatus" id="atmWorldEventStatus"></div>`;
     body.querySelector('#atmWorldEventStart')?.addEventListener('click', startMoneyRain);
     const playerButton = body.querySelector('#atmWorldEventSponsorPlayer');
     const brandButton = body.querySelector('#atmWorldEventSponsorBrand');

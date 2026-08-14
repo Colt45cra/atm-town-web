@@ -9,8 +9,10 @@ function noStore(res) {
 async function optionalUser(req) {
   const header = String(req.headers.authorization || '');
   if (!header.startsWith('Bearer ')) return { admin: adminClient(), user: null };
-  try { return await requireUser(req); }
-  catch { return { admin: adminClient(), user: null }; }
+  // If the browser supplied an Authorization header, do not silently downgrade
+  // an expired/invalid session to public state. Personal Money Rain totals must never
+  // be replaced with a misleading zero. Let requireUser return an auth error instead.
+  return requireUser(req);
 }
 
 export default async function handler(req, res) {

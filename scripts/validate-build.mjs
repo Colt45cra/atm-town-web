@@ -69,10 +69,18 @@ const requiredFiles = [
   'assets/characters/playable/bear.webp',
   'assets/characters/playable/xoge.webp',
   'assets/characters/playable/flippy.webp',
+  'assets/characters/playable/salute.webp',
+  'assets/characters/playable/brad.webp',
+  'assets/characters/playable/david.webp',
+  'assets/characters/playable/kaj.webp',
   'assets/characters/thumbnails/character-phnix.webp',
   'assets/characters/thumbnails/character-bear.webp',
   'assets/characters/thumbnails/character-xoge.webp',
   'assets/characters/thumbnails/character-flippy.webp',
+  'assets/characters/thumbnails/character-salute.webp',
+  'assets/characters/thumbnails/character-brad.webp',
+  'assets/characters/thumbnails/character-david.webp',
+  'assets/characters/thumbnails/character-kaj.webp',
   'assets/characters/equipment/jetpack.webp',
   'assets/audio/jetpack-boost.wav',
   'assets/audio/quest-drift.mp3',
@@ -95,6 +103,7 @@ const requiredFiles = [
   'docs/V235.1-MONEY-RAIN-POLISH.md',
   'docs/V235.1.1-MOBILE-INPUT-HOTFIX.md',
   'docs/V235.1.6-PEOPLE-HUB-PRESENCE-HOTFIX.md',
+  'docs/V235.2-MONEY-RAIN-PARTICIPANT-RESULTS-NEW-CHARACTERS.md',
   'js/world-events.js',
   'lib/world-events.js',
   'lib/world-event-money-rain-points.js',
@@ -216,7 +225,20 @@ if (!gameRuntimeParts[0].includes('for(const [id,presence] of presencePlayers)')
 if (!gameRuntimeParts[0].includes('atmPay:window.ATMPay?.getPublicIdentity?.()||null')) errors.push('v235.1.6 Presence tracking is missing public ATM Pay identity metadata.');
 if (!gameRuntimeParts[0].includes('onlineCount:Math.max(1,online.length)')) errors.push('v235.1.6 People Hub snapshot count is not bound to the rendered online roster.');
 
-for (const characterId of ['phnix','bear','xoge','flippy']) {
+const worldEventApiSource = await readFile(path.join(root, 'api', 'world-time.js'), 'utf8');
+const worldEventServerSource = await readFile(path.join(root, 'lib', 'world-events.js'), 'utf8');
+const worldEventClientSource = await readFile(path.join(root, 'js', 'world-events.js'), 'utf8');
+if (worldEventServerSource.includes('.slice(0, 5)')) errors.push('v235.2 Money Rain results must not truncate participants to only the top five.');
+if (!worldEventServerSource.includes("settlement_basis: 'collected_points'")) errors.push("v235.2 Money Rain settlement basis must preserve each player's collected amount.");
+if (!worldEventServerSource.includes("unclaimed_policy: 'sponsor_remainder'")) errors.push('v235.2 Money Rain must preserve unclaimed value for the sponsor/reward pool.');
+if (!worldEventServerSource.includes('personal_score_available: Boolean(userId)')) errors.push('v235.2 Money Rain state is missing personal-score availability signaling.');
+if (!worldEventServerSource.includes('my_rank: myResult?.rank || null')) errors.push("v235.2 Money Rain state is missing each participant's final rank.");
+if (!worldEventServerSource.includes('leaders: publicLeaders')) errors.push('v235.2 public Money Rain results must strip internal user IDs.');
+if (worldEventApiSource.includes('catch { return { admin: adminClient(), user: null }; }')) errors.push('v235.2 authenticated World Event state must not silently downgrade an invalid bearer token to anonymous state.');
+if (!worldEventClientSource.includes('if (hasPersonalScore && Number.isFinite(Number(incoming.my_score)))')) errors.push('v235.2 client must preserve earned score during public-state fallback.');
+if (!worldEventClientSource.includes('every participant keeps the amount they collected')) errors.push('v235.2 completed Money Rain UI must explain pay-what-you-collect results.');
+
+for (const characterId of ['phnix','bear','xoge','flippy','salute','brad','david','kaj']) {
   if (!gameRuntimeParts[0].includes(`characterId:'${characterId}'`)) errors.push(`New playable character is missing from starter Locker catalog: ${characterId}`);
   if (!gameRuntimeParts[0].includes(`'${characterId}'`)) errors.push(`New playable character is missing from game runtime registry: ${characterId}`);
   if (!html.includes(`data-character="${characterId}"`)) errors.push(`New playable character is missing from signup character rail: ${characterId}`);
@@ -234,7 +256,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.1.6'")) errors.push('js/config.js is not marked v235.1.6.');
+if (!configSource.includes("version: 'v235.2'")) errors.push('js/config.js is not marked v235.2.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -585,10 +607,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.1.6 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.2 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.1.6 build validation passed.');
+console.log('ATM Town v235.2 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
