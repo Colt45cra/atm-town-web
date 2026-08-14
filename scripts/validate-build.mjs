@@ -104,6 +104,7 @@ const requiredFiles = [
   'docs/V235.1.1-MOBILE-INPUT-HOTFIX.md',
   'docs/V235.1.6-PEOPLE-HUB-PRESENCE-HOTFIX.md',
   'docs/V235.2-MONEY-RAIN-PARTICIPANT-RESULTS-NEW-CHARACTERS.md',
+  'docs/V235.2.1-ANDROID-CAMERA-ZOOM-RESTORE.md',
   'js/world-events.js',
   'lib/world-events.js',
   'lib/world-event-money-rain-points.js',
@@ -245,6 +246,10 @@ for (const characterId of ['phnix','bear','xoge','flippy','salute','brad','david
   if (!html.includes(`data-profile-character="${characterId}"`)) errors.push(`New playable character is missing from profile picker: ${characterId}`);
 }
 
+
+if (!gameRuntimeParts[0].includes("const isIOSFamily=/iPad|iPhone|iPod/i.test(navigatorUserAgent)||(navigatorPlatform==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1);")) errors.push('v235.2.1 runtime is missing iOS/iPadOS-specific camera-pinch detection.');
+if (!gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=!isIOSFamily;')) errors.push('v235.2.1 must restore intentional canvas pinch zoom on Android/non-iOS touch devices.');
+if (gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=!coarsePrimaryPointer;')) errors.push('v235.2.1 must not disable camera pinch zoom on every coarse touchscreen.');
 if (!gameRuntimeParts[0].includes('function nearestThing(){')) errors.push('Game core runtime is missing nearestThing definition.');
 if (!gameRuntimeParts[1].includes('const originalNearestThing=nearestThing;')) errors.push('Sky Run runtime is missing the arcade nearestThing extension.');
 if (!html.includes('<script src="js/runtime/game-core.js"></script>\n<script src="js/runtime/sky-run.js"></script>')) errors.push('Game core must load immediately before the Sky Run arcade extension.');
@@ -256,7 +261,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.2'")) errors.push('js/config.js is not marked v235.2.');
+if (!configSource.includes("version: 'v235.2.1'")) errors.push('js/config.js is not marked v235.2.1.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -325,7 +330,7 @@ if (!gameRuntimeParts[0].includes("Never release the\n  // joystick here") || /f
 if (!worldEventsServerSource.includes('MAX_BATCH_CLAIMS = 8') || !worldEventsServerSource.includes('Array.isArray(body.pickup_ids)') || !worldEventsServerSource.includes('claimed_pickup_ids_now')) errors.push('v235.1 server batch-claim support is incomplete.');
 if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsServerSource.includes('sponsor_mode') || !worldEventsServerSource.includes('sponsor_label') || !worldEventsClientSource.includes('PROJECT / BRAND') || !worldEventsClientSource.includes('Money Rain provided by')) errors.push('v235.1 sponsor / project attribution is incomplete.');
 if (!worldEventsClientSource.includes('background event polling must never replace a focused iOS input') || !worldEventsClientSource.includes('document.activeElement === currentSponsorInput')) errors.push('v235.1.1 iOS World Event text-focus protection is missing.');
-if (!gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=!coarsePrimaryPointer') || !gameRuntimeParts[0].includes("stick.addEventListener('lostpointercapture',endJoy)") || !gameRuntimeParts[0].includes("document.addEventListener('focusin'")) errors.push('v235.1.1 mobile control-release / accidental-zoom guards are incomplete.');
+if (!gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=') || !gameRuntimeParts[0].includes("stick.addEventListener('lostpointercapture',endJoy)") || !gameRuntimeParts[0].includes("document.addEventListener('focusin'")) errors.push('v235.1.1 mobile control-release / accidental-zoom guards are incomplete.');
 if (!html.includes('viewport-fit=cover') || !html.includes('body,body *{-webkit-user-select:none') || !html.includes('@media (hover:none) and (pointer:coarse){input,textarea,select{font-size:16px!important}}')) errors.push('v235.1.1 iPhone selection / input auto-zoom CSS guards are missing.');
 if (!worldEventsServerSource.includes("from('world_event_claims')") || !worldEventsServerSource.includes("from('world_events')")) errors.push('v235 World Event server persistence is missing.');
 if (!worldTimeApiSource.includes("action === 'event'") || !worldTimeApiSource.includes('startMoneyRain') || !worldTimeApiSource.includes('claimMoneyPickup')) errors.push('v235 must route World Event actions through the existing world-time serverless function.');
@@ -607,10 +612,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.2 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.2.1 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.2 build validation passed.');
+console.log('ATM Town v235.2.1 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

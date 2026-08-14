@@ -597,8 +597,13 @@ function setGameZoom(value,showBadge=true){
 const canvasPointers=new Map();
 const canvasTapCandidates=new Map();
 const coarsePrimaryPointer=!!window.matchMedia?.('(hover:none) and (pointer:coarse)')?.matches;
-// v235.1.1: mobile gameplay uses multi-touch for controls; disable canvas pinch zoom on coarse/touch devices to prevent accidental camera zoom.
-const canvasPinchZoomEnabled=!coarsePrimaryPointer;
+// v235.2.1: Android touch devices keep intentional ATM Town camera pinch zoom.
+// Only the iOS/iPadOS family keeps canvas pinch disabled because Safari can confuse
+// gameplay multi-touch (joystick + jump/action) with a browser/native pinch gesture.
+const navigatorPlatform=String(navigator.platform||'');
+const navigatorUserAgent=String(navigator.userAgent||'');
+const isIOSFamily=/iPad|iPhone|iPod/i.test(navigatorUserAgent)||(navigatorPlatform==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1);
+const canvasPinchZoomEnabled=!isIOSFamily;
 let pinchStartDistance=0;
 let pinchStartZoom=zoom;
 function pointerDistance(){
