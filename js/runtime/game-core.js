@@ -3899,8 +3899,10 @@ document.addEventListener('contextmenu',e=>{if(!isTextEntryTarget(e.target)&&!e.
 // Block Safari gesture events and multi-touch page gestures on gameplay chrome while leaving text entry usable.
 function blockNativeGameplayZoom(e){
   if(isTextEntryTarget(e.target))return;
+  // v235.1.5: cancel Safari's native page gesture only. Never release the
+  // joystick here: a normal two-thumb joystick + jump press can emit a
+  // gesturestart on iPhone even though both game controls must remain active.
   e.preventDefault();
-  if(joy.active)endJoy();
 }
 for(const eventName of ['gesturestart','gesturechange','gestureend']){
   document.addEventListener(eventName,blockNativeGameplayZoom,{passive:false});

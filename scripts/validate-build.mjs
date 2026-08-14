@@ -228,7 +228,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.1.4'")) errors.push('js/config.js is not marked v235.1.4.');
+if (!configSource.includes("version: 'v235.1.5'")) errors.push('js/config.js is not marked v235.1.5.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -293,6 +293,7 @@ if (!gameRuntimeParts[0].includes('townReturnPoint:returnPoint') || !gameRuntime
 if (!html.includes('@supports (-webkit-touch-callout:none){input,textarea,select,[contenteditable="true"]{font-size:16px!important}}')) errors.push('v235.1.4 iPhone form controls are not protected from Safari focus zoom.');
 if (!html.includes('#controls{') || !html.includes('opacity:1!important;touch-action:none}') || !html.includes('#action{') || !html.includes('pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent')) errors.push('v235.1.4 gameplay controls are not marked as non-zoomable touch surfaces.');
 if (!gameRuntimeParts[0].includes("for(const eventName of ['gesturestart','gesturechange','gestureend'])") || !gameRuntimeParts[0].includes("document.addEventListener('touchmove',e=>{") || !gameRuntimeParts[0].includes("if((e.touches?.length||0)<2||isTextEntryTarget(e.target))return;")) errors.push('v235.1.4 Safari native pinch/multi-touch zoom guard is incomplete.');
+if (!gameRuntimeParts[0].includes("Never release the\n  // joystick here") || /function blockNativeGameplayZoom\(e\)\{[\s\S]{0,260}?endJoy\(/.test(gameRuntimeParts[0])) errors.push('v235.1.5 Safari zoom guard must preserve joystick pointer ownership during two-thumb jump.');
 if (!worldEventsServerSource.includes('MAX_BATCH_CLAIMS = 8') || !worldEventsServerSource.includes('Array.isArray(body.pickup_ids)') || !worldEventsServerSource.includes('claimed_pickup_ids_now')) errors.push('v235.1 server batch-claim support is incomplete.');
 if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsServerSource.includes('sponsor_mode') || !worldEventsServerSource.includes('sponsor_label') || !worldEventsClientSource.includes('PROJECT / BRAND') || !worldEventsClientSource.includes('Money Rain provided by')) errors.push('v235.1 sponsor / project attribution is incomplete.');
 if (!worldEventsClientSource.includes('background event polling must never replace a focused iOS input') || !worldEventsClientSource.includes('document.activeElement === currentSponsorInput')) errors.push('v235.1.1 iOS World Event text-focus protection is missing.');
@@ -578,10 +579,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.1.4 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.1.5 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.1.4 build validation passed.');
+console.log('ATM Town v235.1.5 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
