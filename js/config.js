@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.4: adds desktop Xbox-style controller support with analog movement, controller UI navigation, camera look, jetpack controls, and arcade keyboard bridging.
  * v235.3.2: confirms Money Rain payouts in-game, exposes quick XRP balances, and tracks delayed Payload campaign-wallet reserve recovery.
  * v235.3.1: connects reward-enabled Testnet XRP Money Rain to Project Payload with one local funding signature and exact pay-what-you-collect settlement.
  * v235.2.1: restores intentional two-finger ATM Town camera zoom on Android while retaining the iPhone Safari viewport/multitouch protections.
@@ -28,10 +29,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.3,
-    version: 'v235.3.2',
-    name: 'Payload Settlement Recovery',
-    title: 'ATM Town v235.3.2 — Payload Settlement Recovery'
+    number: 235.4,
+    version: 'v235.4',
+    name: 'Xbox Controller Support',
+    title: 'ATM Town v235.4 — Xbox Controller Support'
   });
 
   const MAPS = Object.freeze({

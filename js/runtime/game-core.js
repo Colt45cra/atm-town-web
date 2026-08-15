@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.1',name:ATM_CONFIG?.build?.name||'Money Rain Polish'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.4',name:ATM_CONFIG?.build?.name||'Xbox Controller Support'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -3065,7 +3065,7 @@ function startJump(){
   jumpState.lastSafeY=player.y;
   // Seed every jump with the player's current movement direction so releasing
   // the joystick produces a brief, natural airborne coast instead of a hard stop.
-  let launchX=joy.x,launchY=joy.y;
+  let launchX=joy.x+gamepadState.moveX,launchY=joy.y+gamepadState.moveY;
   if(keys['a']||keys['arrowleft'])launchX-=1;
   if(keys['d']||keys['arrowright'])launchX+=1;
   if(keys['w']||keys['arrowup'])launchY-=1;
@@ -3885,6 +3885,7 @@ function isTextEntryTarget(target){
 }
 addEventListener('keydown',e=>{
   if(isTextEntryTarget(e.target))return;
+  if(!e.atmGamepadSynthetic)gamepadMarkNonControllerInput('keyboard');
   const k=e.key.toLowerCase();keys[k]=true;
   if((e.code==='Space'||k==='j')&&!e.repeat){e.preventDefault();startJump();}
 });
@@ -3911,6 +3912,7 @@ window.addEventListener('pointerup',e=>{if(joy.active&&e.pointerId===joy.id)endJ
 window.addEventListener('pointercancel',e=>{if(joy.active&&e.pointerId===joy.id)endJoy(e);},{passive:true});
 window.addEventListener('blur',()=>endJoy());
 document.addEventListener('visibilitychange',()=>{if(document.hidden)endJoy();});
+document.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button===0)gamepadMarkNonControllerInput(e.pointerType==='touch'?'touch':'pointer');},{capture:true,passive:true});
 // Dynamic forms (World Events, ATM Pay, etc.) also release movement immediately when text entry starts.
 document.addEventListener('focusin',e=>{if(!isTextEntryTarget(e.target))return;for(const key of Object.keys(keys))keys[key]=false;releaseJetpackThrust(null);endJoy();});
 // Safari fallback: long-press/drag on game chrome should never start page text selection or a callout.
@@ -3932,6 +3934,262 @@ document.addEventListener('touchmove',e=>{
   if((e.touches?.length||0)<2||isTextEntryTarget(e.target))return;
   e.preventDefault();
 },{passive:false});
+
+// v235.4: desktop Xbox-style controller support through the browser Gamepad API.
+// Standard mapping follows the common Xbox layout: A jump/confirm, B back,
+// X world action, Y map, LB People Hub, RB Locker, left stick/D-pad movement,
+// right stick camera look, and RT as an alternate airborne jetpack thrust control.
+const ATM_GAMEPAD_DEADZONE=0.18;
+const ATM_GAMEPAD_UI_AXIS_THRESHOLD=0.72;
+const ATM_GAMEPAD_ARCADE_AXIS_THRESHOLD=0.34;
+const ATM_GAMEPAD_BUTTON=Object.freeze({A:0,B:1,X:2,Y:3,LB:4,RB:5,LT:6,RT:7,VIEW:8,MENU:9,LS:10,RS:11,UP:12,DOWN:13,LEFT:14,RIGHT:15});
+const gamepadState={
+  index:null,
+  id:'',
+  connected:false,
+  moveX:0,
+  moveY:0,
+  lookX:0,
+  lookY:0,
+  previousButtons:[],
+  lastActivityAt:0,
+  lastInputDevice:'pointer',
+  nextUiNavAt:0,
+  uiAxisLatched:false,
+  arcadeKeys:new Set()
+};
+const ATM_GAMEPAD_JETPACK_TOUCH='TAP TO JUMP · PRESS & HOLD IN AIR TO RISE · RELEASE TO FALL';
+const ATM_GAMEPAD_JETPACK_CONTROLLER='A TO JUMP · PRESS A AGAIN OR HOLD RT IN AIR TO RISE · RELEASE TO FALL';
+function gamepadSetJetpackTip(controller=false){
+  const tip=document.querySelector('#jetpackTip span');
+  if(tip)tip.textContent=controller?ATM_GAMEPAD_JETPACK_CONTROLLER:ATM_GAMEPAD_JETPACK_TOUCH;
+}
+function gamepadEnsureUi(){
+  if(document.getElementById('atmGamepadStatus'))return;
+  const style=document.createElement('style');
+  style.textContent=`
+#atmGamepadStatus{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translate(-50%,-14px);z-index:12050;opacity:0;pointer-events:none;padding:8px 12px;border-radius:999px;border:1px solid rgba(112,249,200,.34);background:rgba(4,20,27,.94);color:#dffcff;font:900 10px/1 system-ui;letter-spacing:.045em;box-shadow:0 10px 30px rgba(0,0,0,.38);transition:opacity .18s ease,transform .18s ease;white-space:nowrap}
+#atmGamepadStatus.show{opacity:1;transform:translate(-50%,0)}
+body.atm-gamepad-active button:focus,body.atm-gamepad-active [role="button"]:focus,body.atm-gamepad-active input:focus,body.atm-gamepad-active select:focus,body.atm-gamepad-active textarea:focus{outline:3px solid #70f9c8!important;outline-offset:3px!important;box-shadow:0 0 0 3px rgba(112,249,200,.18)!important}
+`;
+  document.head.appendChild(style);
+  const badge=document.createElement('div');badge.id='atmGamepadStatus';badge.setAttribute('aria-live','polite');document.body.appendChild(badge);
+}
+let gamepadStatusTimer=0;
+function gamepadStatus(message,duration=2500){
+  gamepadEnsureUi();
+  const badge=document.getElementById('atmGamepadStatus');if(!badge)return;
+  badge.textContent=message;badge.classList.add('show');clearTimeout(gamepadStatusTimer);gamepadStatusTimer=setTimeout(()=>badge.classList.remove('show'),duration);
+}
+function gamepadMarkActivity(){
+  gamepadState.lastActivityAt=performance.now();
+  gamepadState.lastInputDevice='gamepad';
+  document.body.classList.add('atm-gamepad-active');
+  gamepadSetJetpackTip(true);
+}
+function gamepadMarkNonControllerInput(device='pointer'){
+  gamepadState.lastInputDevice=device;
+  document.body.classList.remove('atm-gamepad-active');
+  gamepadSetJetpackTip(false);
+}
+function gamepadPromptActive(){return gamepadState.connected&&gamepadState.lastInputDevice==='gamepad';}
+function gamepadApplyDeadzone(x=0,y=0,deadzone=ATM_GAMEPAD_DEADZONE){
+  const mag=Math.hypot(x,y);if(mag<=deadzone)return{x:0,y:0};
+  const scaled=Math.min(1,(mag-deadzone)/(1-deadzone));
+  return{x:x/mag*scaled,y:y/mag*scaled};
+}
+function gamepadElementVisible(el){
+  if(!el||el.hidden||el.disabled||el.getAttribute('aria-hidden')==='true')return false;
+  const rect=el.getBoundingClientRect();if(rect.width<=0||rect.height<=0)return false;
+  const style=getComputedStyle(el);return style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity||1)>0;
+}
+function gamepadActiveUiRoot(){
+  const selectors=[
+    '#atmWorldEventOverlay.open','#atmEmbeddedWalletModal.open','#atmPeopleHubModal.open',
+    '#lockerPanel.open','#tradeNftPanel.open','#arcadeLeaderboardPanel.open','#directoryPanel.open',
+    '#atmDartsPanel.open','#skyRunPanel.open','#platformPanicPanel.open','#ringRumblePanel.open','#flappyJetpackPanel.open'
+  ];
+  for(const selector of selectors){const el=document.querySelector(selector);if(gamepadElementVisible(el))return el;}
+  if(vendingOpen){const el=document.getElementById('vendingPanel');if(gamepadElementVisible(el))return el;}
+  const dialog=document.getElementById('dialog');if(gamepadElementVisible(dialog))return dialog;
+  const landing=document.getElementById('landingOverlay');if(document.body.classList.contains('access-flow-open')&&gamepadElementVisible(landing))return landing;
+  return null;
+}
+function gamepadFocusable(root){
+  if(!root)return[];
+  return [...root.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(gamepadElementVisible);
+}
+function gamepadPreferredUiTarget(root,items=gamepadFocusable(root)){
+  const preferred=root?.querySelector('.peopleHubTab.active,.lockerTab.active,.atmPayTab.active,.atmWorldEventBtn:not([disabled]),.flowPrimary:not([disabled]),button.primary:not([disabled]),.atmWalletBtn.primary:not([disabled])');
+  if(gamepadElementVisible(preferred))return preferred;
+  return items.find(el=>!/(close|back|cancel)/i.test(`${el.id||''} ${el.className||''} ${el.getAttribute?.('aria-label')||''}`))||items[0]||null;
+}
+function gamepadMoveUiFocus(step=1){
+  const root=gamepadActiveUiRoot();if(!root)return false;
+  const items=gamepadFocusable(root);if(!items.length)return false;
+  const active=document.activeElement;let index=items.indexOf(active);
+  if(index<0){const preferred=gamepadPreferredUiTarget(root,items);index=items.indexOf(preferred);if(index<0)index=0;}
+  else index=(index+step+items.length)%items.length;
+  items[index].focus({preventScroll:false});
+  try{items[index].scrollIntoView({block:'nearest',inline:'nearest'});}catch(_error){}
+  return true;
+}
+function gamepadActivateUi(){
+  const root=gamepadActiveUiRoot();if(!root)return false;
+  let target=document.activeElement;
+  if(!target||!root.contains(target)||!gamepadElementVisible(target))target=gamepadPreferredUiTarget(root);
+  if(!target)return false;
+  if(['INPUT','TEXTAREA','SELECT'].includes(target.tagName)){target.focus();return true;}
+  target.click();return true;
+}
+function gamepadDispatchKey(key,code,down){
+  const event=new KeyboardEvent(down?'keydown':'keyup',{key,code,bubbles:true,cancelable:true});
+  try{Object.defineProperty(event,'atmGamepadSynthetic',{value:true});}catch(_error){}
+  window.dispatchEvent(event);
+}
+const ATM_GAMEPAD_KEY_META=Object.freeze({
+  ArrowLeft:{key:'ArrowLeft',code:'ArrowLeft'},ArrowRight:{key:'ArrowRight',code:'ArrowRight'},
+  ArrowUp:{key:'ArrowUp',code:'ArrowUp'},ArrowDown:{key:'ArrowDown',code:'ArrowDown'},
+  Space:{key:' ',code:'Space'},Escape:{key:'Escape',code:'Escape'}
+});
+function gamepadSetArcadeKey(name,down){
+  const held=gamepadState.arcadeKeys.has(name);if(held===down)return;
+  const meta=ATM_GAMEPAD_KEY_META[name];if(!meta)return;
+  if(down)gamepadState.arcadeKeys.add(name);else gamepadState.arcadeKeys.delete(name);
+  gamepadDispatchKey(meta.key,meta.code,down);
+}
+function gamepadReleaseArcadeKeys(){for(const name of [...gamepadState.arcadeKeys])gamepadSetArcadeKey(name,false);}
+function gamepadArcadeMode(){
+  if(document.body.classList.contains('sky-run-open'))return'sky-run';
+  if(document.body.classList.contains('platform-panic-open'))return'platform-panic';
+  if(document.body.classList.contains('ring-rumble-open'))return'ring-rumble';
+  if(document.body.classList.contains('flappy-jetpack-open'))return'flappy-jetpack';
+  if(document.body.classList.contains('atm-darts-open'))return'darts';
+  return'';
+}
+function gamepadUpdateArcadeAxes(mode,x,y){
+  if(!mode||mode==='flappy-jetpack'||mode==='darts'){gamepadReleaseArcadeKeys();return;}
+  gamepadSetArcadeKey('ArrowLeft',x<-ATM_GAMEPAD_ARCADE_AXIS_THRESHOLD);
+  gamepadSetArcadeKey('ArrowRight',x>ATM_GAMEPAD_ARCADE_AXIS_THRESHOLD);
+  if(mode==='ring-rumble'){
+    gamepadSetArcadeKey('ArrowUp',y<-ATM_GAMEPAD_ARCADE_AXIS_THRESHOLD);
+    gamepadSetArcadeKey('ArrowDown',y>ATM_GAMEPAD_ARCADE_AXIS_THRESHOLD);
+  }else{
+    gamepadSetArcadeKey('ArrowUp',false);gamepadSetArcadeKey('ArrowDown',false);
+  }
+}
+function gamepadArcadeStartButton(mode){
+  const ids={'sky-run':'skyRunStart','platform-panic':'platformPanicStart','ring-rumble':'ringRumbleStart','flappy-jetpack':'flappyJetpackStart'};
+  const button=document.getElementById(ids[mode]||'');return gamepadElementVisible(button)?button:null;
+}
+function gamepadBack(){
+  const closeSelectors=[
+    '#atmWorldEventOverlay.open .atmWorldEventClose','#atmEmbeddedWalletModal.open #atmWalletClose','#atmPeopleHubModal.open #atmPeopleHubClose',
+    '#lockerPanel.open #lockerNftDetailClose','#lockerPanel.open #lockerCloseButton','#tradeNftPanel.open #tradeNftClose',
+    '#arcadeLeaderboardPanel.open #arcadeLeaderboardClose','#directoryPanel.open #directoryClose',
+    '#atmDartsPanel.open #atmDartsClose','#skyRunPanel.open #skyRunClose','#platformPanicPanel.open #platformPanicClose',
+    '#ringRumblePanel.open #ringRumbleClose','#flappyJetpackPanel.open #flappyJetpackClose'
+  ];
+  for(const selector of closeSelectors){const button=document.querySelector(selector);if(gamepadElementVisible(button)){button.click();return true;}}
+  if(vendingOpen){document.getElementById('closeVending')?.click();return true;}
+  const dialog=document.getElementById('dialog');if(gamepadElementVisible(dialog)){document.getElementById('closeDialog')?.click();return true;}
+  const root=gamepadActiveUiRoot();const back=root?.querySelector('.flowBack,#magnetCheckoutBack,[data-back]');if(gamepadElementVisible(back)){back.click();return true;}
+  return false;
+}
+function gamepadButtonDown(gamepad,index,threshold=.5){const button=gamepad?.buttons?.[index];return !!button&&(button.pressed||Number(button.value||0)>=threshold);}
+function gamepadPressed(index,current){return !!current[index]&&!gamepadState.previousButtons[index];}
+function gamepadReleased(index,current){return !current[index]&&!!gamepadState.previousButtons[index];}
+function gamepadFindActive(){
+  if(!navigator.getGamepads)return null;
+  const pads=[...navigator.getGamepads()].filter(Boolean);
+  if(gamepadState.index!==null){const preferred=pads.find(p=>p.index===gamepadState.index);if(preferred)return preferred;}
+  return pads.find(p=>p.mapping==='standard')||pads[0]||null;
+}
+function gamepadHandleButtonEdges(gamepad,current,arcadeMode,uiRoot){
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.B,current)){
+    gamepadMarkActivity();
+    if(!gamepadBack()&&arcadeMode){gamepadDispatchKey('Escape','Escape',true);gamepadDispatchKey('Escape','Escape',false);}
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.A,current)){
+    gamepadMarkActivity();
+    const startButton=gamepadArcadeStartButton(arcadeMode);
+    if(startButton){startButton.click();}
+    else if(arcadeMode==='sky-run'||arcadeMode==='platform-panic'||arcadeMode==='flappy-jetpack'){gamepadSetArcadeKey('Space',true);}
+    else if(uiRoot){gamepadActivateUi();}
+    else{startJump();}
+  }
+  if(gamepadReleased(ATM_GAMEPAD_BUTTON.A,current)){
+    if(gamepadState.arcadeKeys.has('Space'))gamepadSetArcadeKey('Space',false);
+    else if(!arcadeMode&&!current[ATM_GAMEPAD_BUTTON.RT])releaseJetpackThrust(null);
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.X,current)){
+    gamepadMarkActivity();
+    if(uiRoot)gamepadActivateUi();
+    else if(!arcadeMode&&(nearestTradeBeaconRemote()||nearestVendingMachine()||nearestThing()))triggerActionPress();
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.Y,current)){
+    gamepadMarkActivity();
+    if(uiRoot)gamepadActivateUi();else if(!arcadeMode&&!dialogOpen)openDirectory(currentMap);
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.LB,current)){
+    gamepadMarkActivity();
+    if(uiRoot)gamepadMoveUiFocus(-1);else if(!arcadeMode)window.ATMPeopleHub?.open?.('online');
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.RB,current)){
+    gamepadMarkActivity();
+    if(uiRoot)gamepadMoveUiFocus(1);else if(!arcadeMode)lockerOpen();
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.VIEW,current)){
+    gamepadMarkActivity();if(!uiRoot&&!arcadeMode&&!dialogOpen)openDirectory(currentMap);
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.MENU,current)){
+    gamepadMarkActivity();if(!uiRoot&&!arcadeMode)window.ATMPeopleHub?.open?.('online');
+  }
+  if(gamepadPressed(ATM_GAMEPAD_BUTTON.RT,current)&&!uiRoot&&!arcadeMode&&canUseJetpack()&&(jumpState.active||jetpackState.active)){
+    gamepadMarkActivity();beginJetpackThrust(null);
+  }
+  if(gamepadReleased(ATM_GAMEPAD_BUTTON.RT,current)&&!arcadeMode&&!current[ATM_GAMEPAD_BUTTON.A])releaseJetpackThrust(null);
+}
+function pollGamepad(now=performance.now()){
+  const gamepad=gamepadFindActive();
+  if(!gamepad){
+    if(gamepadState.connected){gamepadState.connected=false;gamepadState.index=null;gamepadState.id='';gamepadState.moveX=gamepadState.moveY=gamepadState.lookX=gamepadState.lookY=0;gamepadReleaseArcadeKeys();gamepadStatus('🎮 CONTROLLER DISCONNECTED');document.body.classList.remove('atm-gamepad-active');gamepadSetJetpackTip(false);}
+    return;
+  }
+  if(!gamepadState.connected||gamepadState.index!==gamepad.index){
+    gamepadState.connected=true;gamepadState.index=gamepad.index;gamepadState.id=String(gamepad.id||'Controller');gamepadState.previousButtons=[];
+    gamepadStatus('🎮 CONTROLLER CONNECTED · A JUMP · X ACTION · Y MAP',3400);
+  }
+  const left=gamepadApplyDeadzone(Number(gamepad.axes?.[0]||0),Number(gamepad.axes?.[1]||0));
+  const right=gamepadApplyDeadzone(Number(gamepad.axes?.[2]||0),Number(gamepad.axes?.[3]||0));
+  const current=gamepad.buttons.map((_,index)=>gamepadButtonDown(gamepad,index,(index===ATM_GAMEPAD_BUTTON.LT||index===ATM_GAMEPAD_BUTTON.RT) ? 0.35 : 0.5));
+  // Safari/Chromium both expose D-pad as standard buttons for Xbox controllers.
+  let moveX=left.x,moveY=left.y;
+  if(Math.hypot(moveX,moveY)<.08){moveX=(current[ATM_GAMEPAD_BUTTON.RIGHT]?1:0)-(current[ATM_GAMEPAD_BUTTON.LEFT]?1:0);moveY=(current[ATM_GAMEPAD_BUTTON.DOWN]?1:0)-(current[ATM_GAMEPAD_BUTTON.UP]?1:0);}
+  const arcadeMode=gamepadArcadeMode();
+  const uiRoot=gamepadActiveUiRoot();
+  const meaningful=Math.hypot(left.x,left.y)>.08||Math.hypot(right.x,right.y)>.12||current.some(Boolean);
+  if(meaningful)gamepadMarkActivity();
+  if(arcadeMode)gamepadUpdateArcadeAxes(arcadeMode,moveX,moveY);else gamepadReleaseArcadeKeys();
+  if(uiRoot&&!arcadeMode){
+    gamepadState.moveX=0;gamepadState.moveY=0;gamepadState.lookX=0;gamepadState.lookY=0;
+    const navX=Math.abs(left.x)>.55?left.x:((current[ATM_GAMEPAD_BUTTON.RIGHT]?1:0)-(current[ATM_GAMEPAD_BUTTON.LEFT]?1:0));
+    const navY=Math.abs(left.y)>.55?left.y:((current[ATM_GAMEPAD_BUTTON.DOWN]?1:0)-(current[ATM_GAMEPAD_BUTTON.UP]?1:0));
+    const navValue=Math.abs(navY)>=Math.abs(navX)?navY:navX;
+    if(Math.abs(navValue)>=ATM_GAMEPAD_UI_AXIS_THRESHOLD){
+      if(!gamepadState.uiAxisLatched||now>=gamepadState.nextUiNavAt){gamepadMoveUiFocus(navValue>0?1:-1);gamepadState.uiAxisLatched=true;gamepadState.nextUiNavAt=now+170;}
+    }else if(Math.abs(navValue)<.4){gamepadState.uiAxisLatched=false;gamepadState.nextUiNavAt=0;}
+  }else if(!arcadeMode){
+    gamepadState.moveX=moveX;gamepadState.moveY=moveY;gamepadState.lookX=right.x;gamepadState.lookY=right.y;
+  }else{
+    gamepadState.moveX=gamepadState.moveY=gamepadState.lookX=gamepadState.lookY=0;
+  }
+  gamepadHandleButtonEdges(gamepad,current,arcadeMode,uiRoot);
+  gamepadState.previousButtons=current;
+}
+window.addEventListener('gamepadconnected',event=>{gamepadState.index=event.gamepad.index;gamepadState.connected=true;gamepadState.id=String(event.gamepad.id||'Controller');gamepadState.previousButtons=[];gamepadStatus('🎮 CONTROLLER CONNECTED · A JUMP · X ACTION · Y MAP',3400);});
+window.addEventListener('gamepaddisconnected',event=>{if(gamepadState.index!==event.gamepad.index)return;gamepadState.connected=false;gamepadState.index=null;gamepadState.id='';gamepadState.moveX=gamepadState.moveY=gamepadState.lookX=gamepadState.lookY=0;gamepadReleaseArcadeKeys();document.body.classList.remove('atm-gamepad-active');gamepadSetJetpackTip(false);gamepadStatus('🎮 CONTROLLER DISCONNECTED');});
+window.ATMGamepad=Object.freeze({snapshot:()=>({connected:gamepadState.connected,index:gamepadState.index,id:gamepadState.id,lastInputDevice:gamepadState.lastInputDevice,moveX:gamepadState.moveX,moveY:gamepadState.moveY,lookX:gamepadState.lookX,lookY:gamepadState.lookY})});
 
 
 function interiorExitThing(mapId=currentMap){
@@ -4475,7 +4733,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){if(thing?.type==='player-nft-beacon')return 'Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))return 'Tap PLAY to launch '+thing.name;if(currentMap==='lounge'&&thing?.id==='loungeDarts')return 'Tap ACTION to play ATM DARTS 301';if(currentMap==='hq'&&thing?.id==='hqCommandCore')return 'Tap ACTION to open the World Event Control';if(currentMap==='town'&&thing?.id==='townInfoHub')return 'Tap MAP to open the ATM Town directory';return ATM_INTERACTIONS.hintFor(thing,currentMap);}
+function interactionHint(thing){let hint='';if(thing?.type==='player-nft-beacon')hint='Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -4725,7 +4983,7 @@ function update(dt){
     broadcastState();
     return;
   }
-  let dx=joy.x,dy=joy.y;
+  let dx=joy.x+gamepadState.moveX,dy=joy.y+gamepadState.moveY;
   if(keys['a']||keys['arrowleft'])dx-=1;
   if(keys['d']||keys['arrowright'])dx+=1;
   if(keys['w']||keys['arrowup'])dy-=1;
@@ -4863,7 +5121,8 @@ function update(dt){
   }
   window.ATMWorldEvents?.updateGameplay?.({map:currentMap,x:player.x,y:player.y});
   const cameraLift=jetpackState.active?jetpackState.lift*.68:0;
-  const targetX=player.x-W/(2*zoom),targetY=player.y-cameraLift-H/(2*zoom);
+  const controllerLookX=gamepadState.lookX*220,controllerLookY=gamepadState.lookY*150;
+  const targetX=player.x+controllerLookX-W/(2*zoom),targetY=player.y-cameraLift+controllerLookY-H/(2*zoom);
   cam.x+=(targetX-cam.x)*Math.min(1,dt*6);
   cam.y+=(targetY-cam.y)*Math.min(1,dt*6);
   const activeSize=ATM_MAPS.pixelSize(currentMap);
@@ -4892,7 +5151,7 @@ function update(dt){
   else if(nearThing?.type==='voice')actionLabel='JOIN';
   else if(registeredEntrance)actionLabel='ENTER';
   else if(nearThing&&currentMap==='town'&&nearThing.id==='townInfoHub')actionLabel='MAP';
-  actionButton.textContent=actionLabel;
+  actionButton.textContent=(gamepadPromptActive()?'X · ':'')+actionLabel;
   actionButton.classList.toggle('available',!!nearThing);
   actionButton.setAttribute('aria-hidden',nearThing?'false':'true');
   actionButton.tabIndex=nearThing?0:-1;
@@ -4991,6 +5250,7 @@ function drawMini(){
 }
 
 function loop(t){
+  pollGamepad(t);
   const dt=Math.min((t-last)/1000,.033);last=t;update(dt);
   currentTownNightAlpha=getTownNightAlpha(getSharedTownTimeMs());
   ctx.clearRect(0,0,W,H);

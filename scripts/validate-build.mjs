@@ -106,6 +106,7 @@ const requiredFiles = [
   'docs/V235.2-MONEY-RAIN-PARTICIPANT-RESULTS-NEW-CHARACTERS.md',
   'docs/V235.2.1-ANDROID-CAMERA-ZOOM-RESTORE.md',
   'docs/V235.3-PAYLOAD-MONEY-RAIN.md',
+  'docs/V235.4-XBOX-CONTROLLER.md',
   'lib/payload-integration.js',
   'lib/payload-money-rain.js',
   'js/world-events.js',
@@ -161,8 +162,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.1'")) errors.push('Missing v235.1 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Money Rain Polish'")) errors.push('Missing v235.1 Money Rain Polish display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.4'")) errors.push('Missing v235.4 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Xbox Controller Support'")) errors.push('Missing v235.4 Xbox Controller Support display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -256,6 +257,13 @@ if (gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=!coarsePrimaryPoi
 if (!gameRuntimeParts[0].includes('function nearestThing(){')) errors.push('Game core runtime is missing nearestThing definition.');
 if (!gameRuntimeParts[1].includes('const originalNearestThing=nearestThing;')) errors.push('Sky Run runtime is missing the arcade nearestThing extension.');
 if (!html.includes('<script src="js/runtime/game-core.js"></script>\n<script src="js/runtime/sky-run.js"></script>')) errors.push('Game core must load immediately before the Sky Run arcade extension.');
+if (!gameRuntimeParts[0].includes('navigator.getGamepads')) errors.push('v235.4 Xbox controller support is missing Gamepad API polling.');
+if (!gameRuntimeParts[0].includes("window.addEventListener('gamepadconnected'")) errors.push('v235.4 controller connection detection is missing.');
+if (!gameRuntimeParts[0].includes("const ATM_GAMEPAD_BUTTON=Object.freeze({A:0,B:1,X:2,Y:3")) errors.push('v235.4 standard Xbox button mapping is missing.');
+if (!gameRuntimeParts[0].includes('let dx=joy.x+gamepadState.moveX,dy=joy.y+gamepadState.moveY;')) errors.push('v235.4 analog controller movement is not merged into world movement.');
+if (!gameRuntimeParts[0].includes('const controllerLookX=gamepadState.lookX*220')) errors.push('v235.4 right-stick camera look is missing.');
+if (!gameRuntimeParts[0].includes("gamepadStatus('🎮 CONTROLLER CONNECTED · A JUMP · X ACTION · Y MAP'")) errors.push('v235.4 controller connection/mapping status is missing.');
+if (!gameRuntimeParts[0].includes("gamepadSetArcadeKey('ArrowLeft'")) errors.push('v235.4 controller-to-arcade keyboard bridge is missing.');
 
 const leaderboardApiSource = await readFile(path.join(root, 'api', 'leaderboards.js'), 'utf8');
 if (!leaderboardApiSource.includes('idempotent: true')) errors.push('Leaderboard API is missing idempotent score recovery.');
@@ -264,7 +272,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.3.2'")) errors.push('js/config.js is not marked v235.3.2.');
+if (!configSource.includes("version: 'v235.4'")) errors.push('js/config.js is not marked v235.4.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -646,5 +654,5 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('ATM Town v235.3.2 build validation passed.');
+console.log('ATM Town v235.4 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
