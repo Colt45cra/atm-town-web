@@ -264,7 +264,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.3'")) errors.push('js/config.js is not marked v235.3.');
+if (!configSource.includes("version: 'v235.3.1'")) errors.push('js/config.js is not marked v235.3.1.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -317,7 +317,7 @@ if (!peopleHubSource.includes("document.getElementById('onlineBadge')")) errors.
 if (!peopleHubSource.includes("window.ATMPay?.openToRecipient")) errors.push('v234.4 People Hub cannot open address-free payments to selected people.');
 if (!peopleHubSource.includes("Met this session") || !peopleHubSource.includes("Recent payments")) errors.push('v234.4 People page does not surface recent contacts and session encounters.');
 if (!peopleHubSource.includes("Requests for you") || !peopleHubSource.includes("Find someone to pay")) errors.push('v234.4 Pay page is missing requests/search surfaces.');
-if (!worldEventsClientSource.includes('START PREVIEW · NO XRP') || !worldEventsClientSource.includes('updateGameplay') || !worldEventsClientSource.includes('drawGround') || !worldEventsClientSource.includes('drawAir')) errors.push('v235.3 must preserve the no-XRP preview plus Money Rain client/rendering hooks.');
+if (!worldEventsClientSource.includes('START PREVIEW · NO XRP') || !worldEventsClientSource.includes('updateGameplay') || !worldEventsClientSource.includes('drawGround') || !worldEventsClientSource.includes('drawAir')) errors.push('v235.3.1 must preserve the no-XRP preview plus Money Rain client/rendering hooks.');
 if (!worldEventsClientSource.includes('/api/world-time?action=start-money-rain') || !worldEventsClientSource.includes('/api/world-time?action=claim-money-rain')) errors.push('v235.1 Money Rain client is missing authenticated World Event API actions.');
 if (!worldEventsServerSource.includes("const EVENT_TYPE = 'money_rain'") || !worldEventsServerSource.includes('buildMoneyRainManifest(seed)') || !worldEventsServerSource.includes('MAX_CLAIM_DISTANCE')) errors.push('v235.1 server-authoritative Money Rain manifest/claim validation is incomplete.');
 if (!worldEventsServerSource.includes("layout_strategy: 'organic_cluster_scatter_v3'") || !worldEventsServerSource.includes('chooseClusterCenters') || !worldEventsServerSource.includes('clustered_pickups') || !worldEventsServerSource.includes('scatter_pickups')) errors.push('v235.1.1 organic seeded Money Rain cluster/wide-scatter generation is missing.');
@@ -334,7 +334,7 @@ if (!gameRuntimeParts[0].includes("for(const eventName of ['gesturestart','gestu
 if (!gameRuntimeParts[0].includes("Never release the\n  // joystick here") || /function blockNativeGameplayZoom\(e\)\{[\s\S]{0,260}?endJoy\(/.test(gameRuntimeParts[0])) errors.push('v235.1.5 Safari zoom guard must preserve joystick pointer ownership during two-thumb jump.');
 if (!worldEventsServerSource.includes('MAX_BATCH_CLAIMS = 8') || !worldEventsServerSource.includes('Array.isArray(body.pickup_ids)') || !worldEventsServerSource.includes('claimed_pickup_ids_now')) errors.push('v235.1 server batch-claim support is incomplete.');
 if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsServerSource.includes('sponsor_mode') || !worldEventsServerSource.includes('sponsor_label') || !worldEventsClientSource.includes('PROJECT / BRAND') || !worldEventsClientSource.includes('Money Rain provided by')) errors.push('v235.1 sponsor / project attribution is incomplete.');
-if (!worldEventsClientSource.includes('background event polling must never replace a focused iOS input') || !worldEventsClientSource.includes('document.activeElement === currentSponsorInput') || !worldEventsClientSource.includes('document.activeElement === currentPoolInput')) errors.push('v235.3 iOS World Event sponsor/pool text-focus protection is missing.');
+if (!worldEventsClientSource.includes('background event polling must never replace a focused iOS input') || !worldEventsClientSource.includes('document.activeElement === currentSponsorInput') || !worldEventsClientSource.includes('document.activeElement === currentPoolInput')) errors.push('v235.3.1 iOS World Event sponsor/pool text-focus protection is missing.');
 if (!gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=') || !gameRuntimeParts[0].includes("stick.addEventListener('lostpointercapture',endJoy)") || !gameRuntimeParts[0].includes("document.addEventListener('focusin'")) errors.push('v235.1.1 mobile control-release / accidental-zoom guards are incomplete.');
 if (!html.includes('viewport-fit=cover') || !html.includes('body,body *{-webkit-user-select:none') || !html.includes('@media (hover:none) and (pointer:coarse){input,textarea,select{font-size:16px!important}}')) errors.push('v235.1.1 iPhone selection / input auto-zoom CSS guards are missing.');
 if (!worldEventsServerSource.includes("from('world_event_claims')") || !worldEventsServerSource.includes("from('world_events')")) errors.push('v235 World Event server persistence is missing.');
@@ -346,22 +346,23 @@ if (!gameRuntimeParts[0].includes("t.id==='hqCommandCore'" ) || !gameRuntimePart
 if (!gameRuntimeParts[0].includes('ATMWorldEvents?.updateGameplay') || !gameRuntimeParts[0].includes('ATMWorldEvents?.drawGround') || !gameRuntimeParts[0].includes('ATMWorldEvents?.drawAir')) errors.push('v235 game loop is missing World Event gameplay/render hooks.');
 
 
-// v235.3 Payload Money Rain: generic signed Payload integration + one local sponsor funding signature.
-if (!payloadIntegrationSource.includes("const INTEGRATION_ID = 'atm_town'") || !payloadIntegrationSource.includes("const SIGNATURE_VERSION = 'PAYLOAD-INTEGRATION-V1'")) errors.push('v235.3 Payload integration identity/signature version is missing.');
-if (!payloadIntegrationSource.includes('PAYLOAD_API_BASE_URL') || !payloadIntegrationSource.includes('PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64')) errors.push('v235.3 Payload server environment configuration is incomplete.');
-if (!payloadIntegrationSource.includes("'x-payload-integration-id'") || !payloadIntegrationSource.includes("'x-payload-timestamp'") || !payloadIntegrationSource.includes("'x-payload-nonce'") || !payloadIntegrationSource.includes("'x-payload-signature'")) errors.push('v235.3 signed Payload request headers are incomplete.');
-if (!payloadIntegrationSource.includes('crypto.sign(null') || !payloadIntegrationSource.includes("type: 'pkcs8'")) errors.push('v235.3 ATM Town is not signing Payload requests with its server-only Ed25519 identity.');
-if (!payloadMoneyRainSource.includes("asset: { type: 'xrp' }") || !payloadMoneyRainSource.includes('DEFAULT_MAX_RECIPIENTS = 100') || !payloadMoneyRainSource.includes('MAX_FUNDING_DROPS = 25_000_000n')) errors.push('v235.3 Testnet XRP Payload campaign safety limits are incomplete.');
-if (!payloadMoneyRainSource.includes('Money Rain prize pool must be in 0.001 XRP increments') || !payloadMoneyRainSource.includes('const POINT_POOL = 1000n')) errors.push('v235.3 exact 1,000-point-to-XRP reward mapping is missing.');
-if (!payloadMoneyRainSource.includes("MemoType: memoHex('PAYLOAD-MONEY-RAIN')") || !payloadMoneyRainSource.includes("xrplTestnetRpc('submit'") || !payloadMoneyRainSource.includes("xrplTestnetRpc('tx'")) errors.push('v235.3 exact Money Rain funding memo/relay/verification flow is incomplete.');
-if (!embeddedWalletSource.includes('async function signPayloadMoneyRainFunding') || !embeddedWalletSource.includes('authorizePayloadFundingVault') || !embeddedWalletSource.includes('payload-funding-recheck')) errors.push('v235.3 browser wallet is missing fresh local authorization/recheck for Payload funding.');
-if (!embeddedWalletSource.includes('wallet.sign(prepared.tx)') || !embeddedWalletSource.includes('vault.fill(0);vault=null')) errors.push('v235.3 Payload funding must sign locally and immediately discard decrypted key material.');
-if (/PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64/.test(embeddedWalletSource) || /PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64/.test(worldEventsClientSource)) errors.push('v235.3 server integration private key marker must never appear in browser modules.');
-if (!worldTimeApiSource.includes("'payload-create-money-rain'") || !worldTimeApiSource.includes("'payload-funding-prepare'") || !worldTimeApiSource.includes("'payload-funding-recheck'") || !worldTimeApiSource.includes("'payload-funding-relay'") || !worldTimeApiSource.includes("'payload-funding-status'") || !worldTimeApiSource.includes("'start-funded-money-rain'")) errors.push('v235.3 Payload Money Rain actions are not routed through the existing world-time serverless function.');
-if (!worldEventsClientSource.includes('PREPARE PAYLOAD MONEY RAIN') || !worldEventsClientSource.includes('CHECK FUNDING & START') || !worldEventsClientSource.includes('signed_tx_blob') || !worldEventsClientSource.includes('Do NOT authorize another payment')) errors.push('v235.3 retry-safe sponsor funding UX is incomplete.');
-if (!worldEventsServerSource.includes('reward_settlement') || !worldEventsServerSource.includes('reward_point_drops') || !worldEventsServerSource.includes('startFundedMoneyRain') || !worldEventsServerSource.includes('settleCompletedMoneyRain')) errors.push('v235.3 reward-enabled server event/settlement wiring is incomplete.');
-if (!payloadMoneyRainSource.includes("kind: 'atm_town_money_rain'") || !payloadMoneyRainSource.includes('externalResultsHash: resultsHash') || !payloadMoneyRainSource.includes("/results`") || !payloadMoneyRainSource.includes("/execute`")) errors.push('v235.3 immutable explicit-distribution finalization/execution handoff is incomplete.');
-if (!worldEventsServerSource.includes('settlementPending') || !worldEventsServerSource.includes('slow XRPL settlement can never')) errors.push('v235.3 pending Payload settlement must remain pollable after the normal result HUD window.');
+// v235.3.1 Payload Money Rain: generic signed Payload integration + one local sponsor funding signature.
+if (!payloadIntegrationSource.includes("const INTEGRATION_ID = 'atm_town'") || !payloadIntegrationSource.includes("const SIGNATURE_VERSION = 'PAYLOAD-INTEGRATION-V1'")) errors.push('v235.3.1 Payload integration identity/signature version is missing.');
+if (!payloadIntegrationSource.includes('PAYLOAD_API_BASE_URL') || !payloadIntegrationSource.includes('PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64')) errors.push('v235.3.1 Payload server environment configuration is incomplete.');
+if (!payloadIntegrationSource.includes('PAYLOAD_VERCEL_BYPASS_SECRET') || !payloadIntegrationSource.includes("'x-vercel-protection-bypass'")) errors.push('v235.3.1 Payload Vercel automation bypass support is missing.');
+if (!payloadIntegrationSource.includes("'x-payload-integration-id'") || !payloadIntegrationSource.includes("'x-payload-timestamp'") || !payloadIntegrationSource.includes("'x-payload-nonce'") || !payloadIntegrationSource.includes("'x-payload-signature'")) errors.push('v235.3.1 signed Payload request headers are incomplete.');
+if (!payloadIntegrationSource.includes('crypto.sign(null') || !payloadIntegrationSource.includes("type: 'pkcs8'")) errors.push('v235.3.1 ATM Town is not signing Payload requests with its server-only Ed25519 identity.');
+if (!payloadMoneyRainSource.includes("asset: { type: 'xrp' }") || !payloadMoneyRainSource.includes('DEFAULT_MAX_RECIPIENTS = 100') || !payloadMoneyRainSource.includes('MAX_FUNDING_DROPS = 25_000_000n')) errors.push('v235.3.1 Testnet XRP Payload campaign safety limits are incomplete.');
+if (!payloadMoneyRainSource.includes('Money Rain prize pool must be in 0.001 XRP increments') || !payloadMoneyRainSource.includes('const POINT_POOL = 1000n')) errors.push('v235.3.1 exact 1,000-point-to-XRP reward mapping is missing.');
+if (!payloadMoneyRainSource.includes("MemoType: memoHex('PAYLOAD-MONEY-RAIN')") || !payloadMoneyRainSource.includes("xrplTestnetRpc('submit'") || !payloadMoneyRainSource.includes("xrplTestnetRpc('tx'")) errors.push('v235.3.1 exact Money Rain funding memo/relay/verification flow is incomplete.');
+if (!embeddedWalletSource.includes('async function signPayloadMoneyRainFunding') || !embeddedWalletSource.includes('authorizePayloadFundingVault') || !embeddedWalletSource.includes('payload-funding-recheck')) errors.push('v235.3.1 browser wallet is missing fresh local authorization/recheck for Payload funding.');
+if (!embeddedWalletSource.includes('wallet.sign(prepared.tx)') || !embeddedWalletSource.includes('vault.fill(0);vault=null')) errors.push('v235.3.1 Payload funding must sign locally and immediately discard decrypted key material.');
+if (/PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64/.test(embeddedWalletSource) || /PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64/.test(worldEventsClientSource)) errors.push('v235.3.1 server integration private key marker must never appear in browser modules.');
+if (!worldTimeApiSource.includes("'payload-create-money-rain'") || !worldTimeApiSource.includes("'payload-funding-prepare'") || !worldTimeApiSource.includes("'payload-funding-recheck'") || !worldTimeApiSource.includes("'payload-funding-relay'") || !worldTimeApiSource.includes("'payload-funding-status'") || !worldTimeApiSource.includes("'start-funded-money-rain'")) errors.push('v235.3.1 Payload Money Rain actions are not routed through the existing world-time serverless function.');
+if (!worldEventsClientSource.includes('PREPARE PAYLOAD MONEY RAIN') || !worldEventsClientSource.includes('CHECK FUNDING & START') || !worldEventsClientSource.includes('signed_tx_blob') || !worldEventsClientSource.includes('Do NOT authorize another payment')) errors.push('v235.3.1 retry-safe sponsor funding UX is incomplete.');
+if (!worldEventsServerSource.includes('reward_settlement') || !worldEventsServerSource.includes('reward_point_drops') || !worldEventsServerSource.includes('startFundedMoneyRain') || !worldEventsServerSource.includes('settleCompletedMoneyRain')) errors.push('v235.3.1 reward-enabled server event/settlement wiring is incomplete.');
+if (!payloadMoneyRainSource.includes("kind: 'atm_town_money_rain'") || !payloadMoneyRainSource.includes('externalResultsHash: resultsHash') || !payloadMoneyRainSource.includes("/results`") || !payloadMoneyRainSource.includes("/execute`")) errors.push('v235.3.1 immutable explicit-distribution finalization/execution handoff is incomplete.');
+if (!worldEventsServerSource.includes('settlementPending') || !worldEventsServerSource.includes('slow XRPL settlement can never')) errors.push('v235.3.1 pending Payload settlement must remain pollable after the normal result HUD window.');
 
 const safePointMatches = [...worldEventSafePointsSource.matchAll(/\[(\d+),(\d+)\]/g)].map((match) => [Number(match[1]), Number(match[2])]);
 if (safePointMatches.length < 2000) errors.push(`v235.1 organic Money Rain safe-point pool is too small: ${safePointMatches.length}.`);
@@ -635,10 +636,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.3 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.3.1 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.3 build validation passed.');
+console.log('ATM Town v235.3.1 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v235.3: connects reward-enabled Testnet XRP Money Rain to Project Payload with one local funding signature and exact pay-what-you-collect settlement.
+ * v235.3.1: connects reward-enabled Testnet XRP Money Rain to Project Payload with one local funding signature and exact pay-what-you-collect settlement.
  * v235.2.1: restores intentional two-finger ATM Town camera zoom on Android while retaining the iPhone Safari viewport/multitouch protections.
  * v235.2: preserves every Money Rain participant's collected score for reward settlement and adds Salute, Brad, David, and Kaj.
  * v235.1.6: makes Supabase Presence the authoritative People Hub online roster so HUD count and player list stay consistent.
@@ -28,9 +28,9 @@
 
   const BUILD = Object.freeze({
     number: 235.3,
-    version: 'v235.3',
+    version: 'v235.3.1',
     name: 'Payload Money Rain',
-    title: 'ATM Town v235.3 — Payload Money Rain'
+    title: 'ATM Town v235.3.1 — Payload Money Rain'
   });
 
   const MAPS = Object.freeze({
