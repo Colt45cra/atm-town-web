@@ -8,8 +8,11 @@
   const MAX_PICKUPS_PER_CLAIM = 8;
   const PICKUP_FX_MS = 620;
   // v235.1.2: decorative sky-rain is intentionally separate from the 84 server-authoritative collectibles.
-  // This triples the apparent Money Rain volume without increasing reward claims or the 1,000-point pool.
+  // This triples the apparent Money Rain volume to 250+ bills without increasing reward claims or the 1,000-point pool.
   const ATMOSPHERIC_RAIN_OBJECTS = 168;
+  const PAYLOAD_DRAFT_STORAGE_KEY = 'atm_payload_money_rain_draft_v1';
+  const FUNDING_STATUS_POLL_MS = 1600;
+  const FUNDING_STATUS_WAIT_MS = 45_000;
   const state = {
     event: null,
     serverOffsetMs: 0,
@@ -26,6 +29,11 @@
     controlContext: null,
     sponsorMode: 'player',
     sponsorLabel: '',
+    poolXrp: '0.100',
+    fundingDraft: null,
+    fundingBusy: false,
+    panelStatus: '',
+    panelStatusColor: '#9fc3cc',
     pickupFx: [],
   };
 
@@ -44,6 +52,27 @@
     const seconds = Math.max(0, Math.ceil(ms / 1000));
     const minutes = Math.floor(seconds / 60);
     return minutes ? `${minutes}:${String(seconds % 60).padStart(2, '0')}` : `${seconds}s`;
+  }
+  function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+  function loadFundingDraft() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PAYLOAD_DRAFT_STORAGE_KEY) || 'null');
+      if (parsed && typeof parsed === 'object' && parsed.draft_token && parsed.integration_campaign_id) state.fundingDraft = parsed;
+    } catch (_error) { state.fundingDraft = null; }
+  }
+  function saveFundingDraft() {
+    if (state.fundingDraft) localStorage.setItem(PAYLOAD_DRAFT_STORAGE_KEY, JSON.stringify(state.fundingDraft));
+    else localStorage.removeItem(PAYLOAD_DRAFT_STORAGE_KEY);
+  }
+  function clearFundingDraft() { state.fundingDraft = null; saveFundingDraft(); }
+  function rewardForPoints(points, event = state.event) {
+    if (!event?.reward_settlement || !event.reward_point_value_xrp) return '';
+    const text = String(event.reward_point_value_xrp || '0');
+    const match = /^(\d+)(?:\.(\d{1,6}))?$/.exec(text); if (!match) return '';
+    const drops = BigInt(match[1]) * 1_000_000n + BigInt(((match[2] || '') + '000000').slice(0, 6));
+    const total = drops * BigInt(Math.max(0, Number(points || 0)));
+    const whole = total / 1_000_000n, fraction = (total % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '');
+    return fraction ? `${whole}.${fraction}` : `${whole}`;
   }
   function sponsorLabel(event) {
     const configured = String(event?.sponsor?.label || '').trim();
@@ -69,7 +98,7 @@
       .atmWorldEventHudIcon{font-size:27px;line-height:1}.atmWorldEventHudMain{min-width:0;flex:1}.atmWorldEventHudTitle{font-weight:950;letter-spacing:.05em;font-size:14px}.atmWorldEventHudMeta{font-size:12px;color:#a9c8d0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.atmWorldEventHudScore{font-weight:950;color:#66f7bd;font-size:13px;text-align:right;white-space:nowrap}
       .atmWorldEventOverlay{position:fixed;inset:0;z-index:220;background:rgba(1,10,15,.78);display:none;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(8px);font-family:system-ui,-apple-system,sans-serif;overscroll-behavior:none}.atmWorldEventOverlay.open{display:flex}
       .atmWorldEventPanel{width:min(620px,100%);max-height:min(760px,calc(var(--vv-height,100dvh) - 36px));overflow:auto;overscroll-behavior:contain;background:#08202b;border:1px solid rgba(88,241,230,.65);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.55);color:#effcff;padding:22px;position:relative}
-      .atmWorldEventClose{position:absolute;right:14px;top:14px;width:44px;height:44px;border:0;border-radius:13px;background:#102f3d;color:#fff;font-size:25px;font-weight:900}.atmWorldEventEyebrow{color:#66f7bd;font-size:12px;font-weight:900;letter-spacing:.12em}.atmWorldEventPanel h2{margin:5px 52px 8px 0;font-size:27px}.atmWorldEventPanel p{color:#afcbd2;line-height:1.5}.atmWorldEventPreview{border:1px solid rgba(255,214,102,.36);background:rgba(255,214,102,.07);border-radius:16px;padding:15px;margin:16px 0}.atmWorldEventPreview strong{display:block;color:#ffd978;font-size:18px;margin-bottom:6px}.atmWorldEventFacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.atmWorldEventFact{background:#0d2a36;border:1px solid rgba(151,203,214,.14);border-radius:12px;padding:11px}.atmWorldEventFact b{display:block;color:#fff;font-size:14px}.atmWorldEventFact span{font-size:11px;color:#91b8c2}.atmWorldEventBtn{width:100%;border:0;border-radius:14px;padding:15px 16px;font-weight:950;font-size:14px;background:linear-gradient(90deg,#4ce7dd,#69f6bd);color:#062029}.atmWorldEventBtn:disabled{opacity:.45}.atmWorldEventStatus{margin-top:12px;min-height:20px;color:#ff9fb1;font-size:13px}.atmWorldEventLeader{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.07)}.atmWorldEventSponsorBox{margin:14px 0;padding:13px;border-radius:14px;background:#0d2a36;border:1px solid rgba(151,203,214,.16)}.atmWorldEventSponsorBox label{display:block;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2;margin-bottom:7px}.atmWorldEventSponsorRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWorldEventSponsorChoice{border:1px solid rgba(151,203,214,.2);border-radius:11px;padding:10px;background:#08202b;color:#dff7fb;font-weight:850;font-size:12px;text-align:center}.atmWorldEventSponsorChoice.active{border-color:#66f7bd;color:#66f7bd;background:rgba(102,247,189,.08)}.atmWorldEventSponsorInput{width:100%;margin-top:9px;border:1px solid rgba(151,203,214,.22);border-radius:11px;padding:11px 12px;background:#041820;color:#fff;font:750 16px system-ui;touch-action:manipulation;-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}.atmWorldEventSponsorHint{margin-top:8px;color:#91b8c2;font-size:11px;line-height:1.4}
+      .atmWorldEventClose{position:absolute;right:14px;top:14px;width:44px;height:44px;border:0;border-radius:13px;background:#102f3d;color:#fff;font-size:25px;font-weight:900}.atmWorldEventEyebrow{color:#66f7bd;font-size:12px;font-weight:900;letter-spacing:.12em}.atmWorldEventPanel h2{margin:5px 52px 8px 0;font-size:27px}.atmWorldEventPanel p{color:#afcbd2;line-height:1.5}.atmWorldEventPreview{border:1px solid rgba(255,214,102,.36);background:rgba(255,214,102,.07);border-radius:16px;padding:15px;margin:16px 0}.atmWorldEventPreview strong{display:block;color:#ffd978;font-size:18px;margin-bottom:6px}.atmWorldEventFacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.atmWorldEventFact{background:#0d2a36;border:1px solid rgba(151,203,214,.14);border-radius:12px;padding:11px}.atmWorldEventFact b{display:block;color:#fff;font-size:14px}.atmWorldEventFact span{font-size:11px;color:#91b8c2}.atmWorldEventBtn{width:100%;border:0;border-radius:14px;padding:15px 16px;font-weight:950;font-size:14px;background:linear-gradient(90deg,#4ce7dd,#69f6bd);color:#062029}.atmWorldEventBtn:disabled{opacity:.45}.atmWorldEventStatus{margin-top:12px;min-height:20px;color:#ff9fb1;font-size:13px}.atmWorldEventLeader{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.07)}.atmWorldEventSponsorBox{margin:14px 0;padding:13px;border-radius:14px;background:#0d2a36;border:1px solid rgba(151,203,214,.16)}.atmWorldEventSponsorBox label{display:block;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2;margin-bottom:7px}.atmWorldEventSponsorRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.atmWorldEventSponsorChoice{border:1px solid rgba(151,203,214,.2);border-radius:11px;padding:10px;background:#08202b;color:#dff7fb;font-weight:850;font-size:12px;text-align:center}.atmWorldEventSponsorChoice.active{border-color:#66f7bd;color:#66f7bd;background:rgba(102,247,189,.08)}.atmWorldEventSponsorInput,.atmWorldEventPoolInput{width:100%;margin-top:9px;border:1px solid rgba(151,203,214,.22);border-radius:11px;padding:11px 12px;background:#041820;color:#fff;font:750 16px system-ui;touch-action:manipulation;-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}.atmWorldEventSponsorHint{margin-top:8px;color:#91b8c2;font-size:11px;line-height:1.4}.atmWorldEventFunding{border:1px solid rgba(102,247,189,.35);background:rgba(102,247,189,.06);border-radius:15px;padding:14px;margin:14px 0}.atmWorldEventFundingRow{display:flex;justify-content:space-between;gap:14px;padding:5px 0;font-size:12px;color:#a9c8d0}.atmWorldEventFundingRow b{color:#fff}.atmWorldEventFundingNote{font-size:11px;color:#91b8c2;line-height:1.45;margin-top:8px}
       .atmWorldEventToast{position:fixed;z-index:230;left:50%;bottom:max(92px,calc(env(safe-area-inset-bottom,0px) + 74px));transform:translate(-50%,12px);background:rgba(4,24,32,.96);border:1px solid rgba(88,241,230,.65);border-radius:999px;color:#fff;padding:10px 16px;font:850 13px system-ui,-apple-system,sans-serif;opacity:0;pointer-events:none;transition:.2s ease;box-shadow:0 12px 30px rgba(0,0,0,.4)}.atmWorldEventToast.show{opacity:1;transform:translate(-50%,0)}
       @media(max-width:520px){.atmWorldEventPanel{padding:18px}.atmWorldEventFacts{grid-template-columns:1fr 1fr}.atmWorldEventHudCard{padding:9px 11px}.atmWorldEventHudMeta{font-size:11px}}
     `;
@@ -134,7 +163,10 @@
       if (phase === 'completed') {
         const winner = incoming.leaders?.[0];
         const mine = incoming.personal_score_available !== false ? Number(incoming.my_score || state.myScore || 0) : state.myScore;
-        toast(winner ? `💸 Money Rain complete · You collected ${mine} · #1 ${winner.display_name} ${winner.points}` : `💸 Money Rain complete · You collected ${mine}`, 5200);
+        const myReward = incoming.reward_settlement ? (incoming.my_reward_xrp || rewardForPoints(mine, incoming)) : '';
+        const winnerValue = incoming.reward_settlement ? `${winner?.reward_amount_xrp || rewardForPoints(winner?.points || 0, incoming)} XRP` : `${winner?.points || 0}`;
+        const mineValue = incoming.reward_settlement ? `${myReward || '0'} XRP` : `${mine}`;
+        toast(winner ? `💸 Money Rain complete · You collected ${mineValue} · #1 ${winner.display_name} ${winnerValue}` : `💸 Money Rain complete · You collected ${mineValue}`, 5200);
       }
     }
     state.lastPhase = phase;
@@ -159,64 +191,235 @@
     const providedBy = sponsorLabel(event);
     if (phase === 'announced') {
       title.textContent = `💸 MONEY RAIN IN ${secondsLabel(starts - now)}`;
-      meta.textContent = `Provided by ${providedBy} · town-wide preview event`;
+      meta.textContent = event.reward_settlement
+        ? `Provided by ${providedBy} · ${event.reward_pool_xrp} Testnet XRP prize pool`
+        : `Provided by ${providedBy} · preview event`;
       score.textContent = 'GET READY';
     } else if (phase === 'active') {
       title.textContent = `💸 MONEY RAIN · ${secondsLabel(ends - now)} LEFT`;
-      meta.textContent = `Provided by ${providedBy} · ${Number(event.claimed_points || 0).toLocaleString()} / ${Number(event.pool_points || 1000).toLocaleString()} points`;
-      score.textContent = `YOU ${state.myScore + optimisticPoints()}`;
+      meta.textContent = `Provided by ${providedBy} · ${Number(event.claimed_points || 0).toLocaleString()} / ${Number(event.pool_points || 1000).toLocaleString()} points claimed`;
+      const optimistic = state.myScore + optimisticPoints();
+      score.textContent = event.reward_settlement ? `YOU ${rewardForPoints(optimistic, event) || '0'} XRP` : `YOU ${optimistic}`;
     } else {
-      const winner = event.leaders?.[0];
       title.textContent = '💸 MONEY RAIN COMPLETE';
-      meta.textContent = `${Number(event.participant_count || event.leaders?.length || 0)} participant${Number(event.participant_count || event.leaders?.length || 0) === 1 ? '' : 's'} · ${Number(event.unclaimed_points || 0)} unclaimed · provided by ${providedBy}`;
+      const count = Number(event.participant_count || event.leaders?.length || 0);
+      const settlement = String(event.settlement_status || '');
+      const settlementText = event.reward_settlement
+        ? (settlement === 'completed' ? 'Payload payout complete' : settlement === 'cancelled' ? 'unused pool refunded' : settlement === 'blocked' ? 'payout needs attention' : 'Payload settlement processing')
+        : 'preview complete';
+      meta.textContent = `${count} participant${count === 1 ? '' : 's'} · ${settlementText} · provided by ${providedBy}`;
       const rank = Number(event.my_rank || 0);
-      score.textContent = `YOU${rank ? ` #${rank}` : ''} · ${state.myScore} COLLECTED`;
+      const mine = event.reward_settlement ? `${event.my_reward_xrp || rewardForPoints(state.myScore, event) || '0'} XRP` : `${state.myScore} COLLECTED`;
+      score.textContent = `YOU${rank ? ` #${rank}` : ''} · ${mine}`;
     }
     hud.classList.add('show');
   }
   setInterval(renderHud, 250);
 
+  function setPanelStatus(message, color = '#9fc3cc') {
+    state.panelStatus = String(message || '');
+    state.panelStatusColor = color;
+    const status = document.getElementById('atmWorldEventStatus');
+    if (!status) return;
+    status.textContent = state.panelStatus;
+    status.style.color = color;
+  }
+
+  function currentLaunchPayload() {
+    if (!state.controlContext) throw new Error('Open the ATM Command Core again before starting Money Rain.');
+    const sponsorLabelValue = String(state.sponsorLabel || '').trim();
+    if (state.sponsorMode === 'brand' && sponsorLabelValue.length < 2) throw new Error('Enter the project or brand name to display.');
+    return { ...state.controlContext, sponsor_mode: state.sponsorMode, sponsor_label: sponsorLabelValue };
+  }
+
   function renderControlPanel() {
     const currentSponsorInput = document.getElementById('atmWorldEventSponsorInput');
-    // v235.1.1: background event polling must never replace a focused iOS input; replacing it dismisses the software keyboard.
-    if (currentSponsorInput && document.activeElement === currentSponsorInput) return;
+    const currentPoolInput = document.getElementById('atmWorldEventPoolInput');
+    // v235.1.1: background event polling must never replace a focused iOS input; v235.3 protects the XRP pool field too.
+    if ((currentSponsorInput && document.activeElement === currentSponsorInput) || (currentPoolInput && document.activeElement === currentPoolInput)) return;
     const body = document.getElementById('atmWorldEventPanelBody'); if (!body) return;
     const event = state.event, phase = eventPhase(event);
     let activeBlock = '';
     if (event && phase !== 'completed') {
-      activeBlock = `<div class="atmWorldEventPreview"><strong>💸 Money Rain is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Money Rain provided by <b>${escapeHtml(sponsorLabel(event))}</b>.</div><div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until drops begin.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining.`}</div></div>`;
+      const reward = event.reward_settlement ? `<div style="margin-top:7px;color:#66f7bd;font-weight:850">Prize pool: ${escapeHtml(event.reward_pool_xrp)} Testnet XRP · you keep exactly what you collect.</div>` : '';
+      activeBlock = `<div class="atmWorldEventPreview"><strong>💸 Money Rain is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Money Rain provided by <b>${escapeHtml(sponsorLabel(event))}</b>.</div>${reward}<div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until drops begin.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining.`}</div></div>`;
     } else if (event && phase === 'completed' && event.leaders?.length) {
-      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))} · every participant keeps the amount they collected</div>${event.leaders.slice(0,12).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${leader.points} collected</b></div>`).join('')}<div style="margin-top:8px;color:#9fc3cc;font-size:11px">${Number(event.unclaimed_points || 0)} of ${Number(event.pool_points || 1000)} preview points were not collected and remain with the sponsor/reward pool.</div></div>`;
+      const rewardEvent = Boolean(event.reward_settlement);
+      const settlement = String(event.settlement_status || '');
+      const settlementLine = rewardEvent
+        ? `<div style="color:${settlement === 'completed' ? '#66f7bd' : settlement === 'blocked' ? '#ff9fb1' : '#ffd978'};font-weight:850;margin:8px 0">${settlement === 'completed' ? '✓ Payload payout complete' : settlement === 'cancelled' ? '✓ Unused pool refunded' : settlement === 'blocked' ? `Payload payout needs attention${event.settlement_error ? `: ${escapeHtml(event.settlement_error)}` : ''}` : 'Payload settlement is processing automatically…'}</div>`
+        : '';
+      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))} · every participant keeps the amount they collected</div>${settlementLine}${event.leaders.slice(0,12).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${rewardEvent ? `${escapeHtml(leader.reward_amount_xrp || rewardForPoints(leader.points, event) || '0')} XRP` : `${leader.points} collected`}</b></div>`).join('')}<div style="margin-top:8px;color:#9fc3cc;font-size:11px">${Number(event.unclaimed_points || 0)} of ${Number(event.pool_points || 1000)} points were not collected${rewardEvent ? ' and remain refundable to the sponsor through Payload.' : '.'}</div></div>`;
     }
-    const sponsorDisabled = event && phase !== 'completed';
+    const sponsorDisabled = Boolean(event && phase !== 'completed');
     const brandActive = state.sponsorMode === 'brand';
-    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch a synchronized event across the live multiplayer world. v235.2 keeps Money Rain as a full money storm and makes participant results reward-ready: organic collectible clumps stay intact while a much denser layer of bills continuously falls across every player’s sky.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>💸 MONEY RAIN · PREVIEW</strong><div>Dense collectible clumps stay organic, while 168 additional atmospheric bills continuously recycle high above the active player view. The result is 250+ money objects in the event presentation, with cash visibly falling all around town instead of only near landing clusters. Rare bundles and a jackpot bag remain mixed into the collectible layer.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>250+ bills</b><span>full sky + collectibles</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>preview pool unchanged</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div></div><div style="font-size:12px;color:#ffd978;font-weight:800">REAL XRPL REWARD SETTLEMENT IS STILL OFF UNTIL PAYLOAD INTEGRATION. EVERY PARTICIPANT RESULT IS NOW PRESERVED FOR PAY-WHAT-YOU-COLLECT SETTLEMENT.</div></div><button class="atmWorldEventBtn" id="atmWorldEventStart" type="button" ${sponsorDisabled ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START MONEY RAIN PREVIEW'}</button><div class="atmWorldEventStatus" id="atmWorldEventStatus"></div>`;
-    body.querySelector('#atmWorldEventStart')?.addEventListener('click', startMoneyRain);
+    const draft = state.fundingDraft;
+    const pendingFunding = draft ? `<div class="atmWorldEventFunding"><div class="atmWorldEventEyebrow">PAYLOAD · TESTNET FUNDING</div><div class="atmWorldEventFundingRow"><span>Prize pool</span><b>${escapeHtml(draft.pool_xrp)} XRP</b></div><div class="atmWorldEventFundingRow"><span>Total funding required</span><b>${escapeHtml(draft.funding_required_xrp)} XRP</b></div><div class="atmWorldEventFundingRow"><span>Status</span><b>${draft.tx_hash ? 'SIGNED / CHECKING XRPL' : 'AWAITING AUTHORIZATION'}</b></div><div class="atmWorldEventFundingNote">The extra funding above the prize pool covers the campaign wallet reserve, worst-case payout fees and safety buffer. Payload automatically returns unused campaign XRP to your ATM Town Testnet wallet after settlement. The campaign address stays hidden from the normal game flow.</div></div>` : '';
+    const primaryText = draft ? (draft.tx_hash ? 'CHECK FUNDING & START' : `AUTHORIZE & FUND ${escapeHtml(draft.funding_required_xrp)} XRP`) : 'PREPARE PAYLOAD MONEY RAIN';
+    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Fund a Testnet XRP Money Rain through Payload, then let ATM Town lock the exact amount each player collected for automatic settlement.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>💸 PAYLOAD MONEY RAIN · TESTNET</strong><div>Choose the prize pool before the event. The 1,000 game points divide that pool exactly, so every collectible has a deterministic XRP value. First place is only a rank — every collector receives what they actually picked up.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>exact reward basis</span></div><div class="atmWorldEventFact"><b>Testnet XRP</b><span>Payload v0.2.1</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled && !draft ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div><label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">TESTNET XRP PRIZE POOL</label><input class="atmWorldEventPoolInput" id="atmWorldEventPoolInput" type="text" inputmode="decimal" maxlength="10" placeholder="0.100" value="${escapeHtml(state.poolXrp)}" ${sponsorDisabled || draft ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">0.001–5 XRP in 0.001 XRP increments. For the first live test, 0.100 XRP is plenty.</div></div>${pendingFunding}<div style="font-size:12px;color:#66f7bd;font-weight:850">ONE PASSKEY / RECOVERY AUTHORIZATION FUNDS THE CAMPAIGN. ATM TOWN NEVER SENDS YOUR WALLET SEED TO PAYLOAD.</div></div><button class="atmWorldEventBtn" id="atmWorldEventPayloadAction" type="button" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : primaryText}</button>${!draft ? `<button class="atmWorldEventBtn" id="atmWorldEventPreviewStart" type="button" style="margin-top:9px;background:#173746;color:#dff7fb" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>START PREVIEW · NO XRP</button>` : ''}<div class="atmWorldEventStatus" id="atmWorldEventStatus" style="color:${escapeHtml(state.panelStatusColor)}">${escapeHtml(state.panelStatus)}</div>`;
+
+    body.querySelector('#atmWorldEventPayloadAction')?.addEventListener('click', () => {
+      if (!state.fundingDraft) preparePayloadMoneyRain();
+      else if (state.fundingDraft.tx_hash) checkPayloadFundingAndStart({ wait: true });
+      else fundPayloadMoneyRain();
+    });
+    body.querySelector('#atmWorldEventPreviewStart')?.addEventListener('click', startMoneyRainPreview);
     const playerButton = body.querySelector('#atmWorldEventSponsorPlayer');
     const brandButton = body.querySelector('#atmWorldEventSponsorBrand');
     const sponsorInput = body.querySelector('#atmWorldEventSponsorInput');
+    const poolInput = body.querySelector('#atmWorldEventPoolInput');
     playerButton?.addEventListener('click', () => { state.sponsorMode = 'player'; renderControlPanel(); });
     brandButton?.addEventListener('click', () => { state.sponsorMode = 'brand'; renderControlPanel(); setTimeout(() => document.getElementById('atmWorldEventSponsorInput')?.focus(), 0); });
     sponsorInput?.addEventListener('input', (event) => { state.sponsorLabel = String(event.target.value || '').slice(0, 32); });
+    poolInput?.addEventListener('input', (event) => { state.poolXrp = String(event.target.value || '').replace(/[^0-9.]/g, '').slice(0, 10); });
   }
+
   function openControlPanel(context = {}) {
-    installUi(); state.controlContext = { map: String(context.map || ''), x: Number(context.x), y: Number(context.y) };
-    renderControlPanel(); document.getElementById('atmWorldEventOverlay').classList.add('open');
+    installUi();
+    loadFundingDraft();
+    state.controlContext = { map: String(context.map || ''), x: Number(context.x), y: Number(context.y) };
+    renderControlPanel();
+    document.getElementById('atmWorldEventOverlay').classList.add('open');
   }
   function closeControlPanel() { document.getElementById('atmWorldEventOverlay')?.classList.remove('open'); }
-  async function startMoneyRain() {
-    const status = document.getElementById('atmWorldEventStatus'), button = document.getElementById('atmWorldEventStart');
-    if (!state.controlContext) return;
+
+  async function preparePayloadMoneyRain() {
+    if (state.fundingBusy) return;
     try {
-      if (button) button.disabled = true; if (status) { status.textContent = 'Starting synchronized event…'; status.style.color = '#9fc3cc'; }
-      if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to start a World Event.');
-      const sponsorLabelValue = String(state.sponsorLabel || '').trim();
-      if (state.sponsorMode === 'brand' && sponsorLabelValue.length < 2) throw new Error('Enter the project or brand name to display.');
-      const payload = { ...state.controlContext, sponsor_mode: state.sponsorMode, sponsor_label: sponsorLabelValue };
-      const data = await global.atmApiWithAuth('/api/world-time?action=start-money-rain', { method: 'POST', body: JSON.stringify(payload) });
-      applyState(data); closeControlPanel(); toast(`💸 Money Rain provided by ${sponsorLabel(data.event)}!`, 4200);
+      state.fundingBusy = true; renderControlPanel(); setPanelStatus('Creating a Payload Testnet campaign…');
+      if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to prepare a Payload Money Rain.');
+      const launch = currentLaunchPayload();
+      const pool = String(state.poolXrp || '').trim();
+      if (!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(pool)) throw new Error('Enter a valid Testnet XRP prize pool.');
+      const data = await global.atmApiWithAuth('/api/world-time?action=payload-create-money-rain', {
+        method: 'POST',
+        body: JSON.stringify({ ...launch, pool_xrp: pool }),
+      });
+      state.fundingDraft = {
+        ...data,
+        sponsor_mode: launch.sponsor_mode,
+        sponsor_label: launch.sponsor_label,
+        tx_hash: null,
+        signed_tx_blob: null,
+        created_at: Date.now(),
+      };
+      state.poolXrp = String(data.pool_xrp || pool);
+      saveFundingDraft();
+      renderControlPanel();
+      setPanelStatus(`Payload campaign ready. Review the ${data.funding_required_xrp} XRP total funding requirement, then authorize once.`, '#66f7bd');
     } catch (error) {
-      if (status) { status.textContent = error?.message || 'Money Rain could not start.'; status.style.color = '#ff9fb1'; }
+      setPanelStatus(error?.message || 'Payload Money Rain could not be prepared.', '#ff9fb1');
+    } finally {
+      state.fundingBusy = false; renderControlPanel();
+    }
+  }
+
+  async function fundPayloadMoneyRain() {
+    if (state.fundingBusy || !state.fundingDraft) return;
+    const draft = state.fundingDraft;
+    // Never generate a second signature once an exact funding transaction exists.
+    if (draft.tx_hash) return checkPayloadFundingAndStart({ wait: true });
+    try {
+      state.fundingBusy = true; renderControlPanel(); setPanelStatus('Preparing the exact XRPL Testnet funding transaction…');
+      if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to fund Money Rain.');
+      if (typeof global.ATMEmbeddedWallet?.signPayloadMoneyRainFunding !== 'function') throw new Error('ATM Pay wallet signing is unavailable. Refresh ATM Town and try again.');
+      const prepared = await global.atmApiWithAuth('/api/world-time?action=payload-funding-prepare', {
+        method: 'POST', body: JSON.stringify({ draft_token: draft.draft_token }),
+      });
+      if (prepared?.funded) return checkPayloadFundingAndStart({ wait: false });
+      const approved = global.confirm(`PAYLOAD MONEY RAIN · XRPL TESTNET\n\nPrize pool: ${draft.pool_xrp} XRP\nTotal funding: ${draft.funding_required_xrp} XRP\n\nThe difference covers the temporary campaign wallet reserve, payout fees and safety buffer. Unused XRP is returned to your ATM Town Testnet wallet after settlement.\n\nAuthorize this one funding transaction?`);
+      if (!approved) throw new Error('Money Rain funding authorization was cancelled.');
+      setPanelStatus('Waiting for your ATM wallet authorization…');
+      const signed = await global.ATMEmbeddedWallet.signPayloadMoneyRainFunding(prepared, draft.draft_token);
+      // Persist the immutable signed transaction BEFORE network relay. If the browser/network
+      // drops afterward, Check Funding can re-submit this exact blob without another signature.
+      state.fundingDraft = { ...draft, tx_hash: signed.hash, signed_tx_blob: signed.tx_blob, signed_at: Date.now() };
+      saveFundingDraft();
+      renderControlPanel();
+      setPanelStatus('Funding signed locally. Relaying the exact signed transaction to XRPL Testnet…');
+      try {
+        await global.atmApiWithAuth('/api/world-time?action=payload-funding-relay', {
+          method: 'POST',
+          body: JSON.stringify({ draft_token: draft.draft_token, tx_hash: signed.hash, tx_blob: signed.tx_blob }),
+        });
+      } catch (relayError) {
+        console.warn('Money Rain funding relay was uncertain; the signed transaction is preserved for safe retry.', relayError);
+      }
+      await checkPayloadFundingAndStart({ wait: true, alreadyBusy: true });
+    } catch (error) {
+      setPanelStatus(error?.message || 'Money Rain funding could not be completed.', '#ff9fb1');
+    } finally {
+      state.fundingBusy = false; renderControlPanel();
+    }
+  }
+
+  async function checkPayloadFundingAndStart({ wait = true, alreadyBusy = false } = {}) {
+    if (!state.fundingDraft || (state.fundingBusy && !alreadyBusy)) return;
+    const ownBusy = !alreadyBusy;
+    if (ownBusy) { state.fundingBusy = true; renderControlPanel(); }
+    const draft = state.fundingDraft;
+    try {
+      if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to check Money Rain funding.');
+      // Re-submit only the SAME signed blob. This can never authorize a different destination/amount.
+      if (draft.tx_hash && draft.signed_tx_blob) {
+        try {
+          await global.atmApiWithAuth('/api/world-time?action=payload-funding-relay', {
+            method: 'POST',
+            body: JSON.stringify({ draft_token: draft.draft_token, tx_hash: draft.tx_hash, tx_blob: draft.signed_tx_blob }),
+          });
+        } catch (_error) {}
+      }
+      if (draft.tx_hash) {
+        try {
+          const verification = await global.atmApiWithAuth('/api/world-time?action=payload-funding-verify', {
+            method: 'POST', body: JSON.stringify({ draft_token: draft.draft_token, tx_hash: draft.tx_hash }),
+          });
+          if (verification?.validated && verification?.success === false) throw new Error(`XRPL rejected the funding transaction (${verification.result || 'unknown result'}).`);
+        } catch (error) {
+          if (/rejected/i.test(String(error?.message || ''))) throw error;
+        }
+      }
+      const deadline = Date.now() + (wait ? FUNDING_STATUS_WAIT_MS : 1);
+      let last = null;
+      do {
+        setPanelStatus('Waiting for Payload to confirm the full Testnet funding amount…');
+        last = await global.atmApiWithAuth('/api/world-time?action=payload-funding-status', {
+          method: 'POST', body: JSON.stringify({ draft_token: draft.draft_token }),
+        });
+        if (last?.funded) {
+          setPanelStatus('Funding confirmed. Starting synchronized Money Rain…', '#66f7bd');
+          const data = await global.atmApiWithAuth('/api/world-time?action=start-funded-money-rain', {
+            method: 'POST',
+            body: JSON.stringify({ ...currentLaunchPayload(), draft_token: draft.draft_token, tx_hash: draft.tx_hash || null }),
+          });
+          applyState(data);
+          clearFundingDraft();
+          closeControlPanel();
+          toast(`💸 ${draft.pool_xrp} Testnet XRP Money Rain provided by ${sponsorLabel(data.event)}!`, 4800);
+          return;
+        }
+        if (!wait || Date.now() >= deadline) break;
+        await sleep(FUNDING_STATUS_POLL_MS);
+      } while (Date.now() < deadline);
+      setPanelStatus(draft.tx_hash
+        ? 'Funding is still confirming. Do NOT authorize another payment. Use CHECK FUNDING & START again.'
+        : 'Payload has not received the required funding yet.', '#ffd978');
+    } catch (error) {
+      setPanelStatus(error?.message || 'Payload funding status could not be confirmed.', '#ff9fb1');
+    } finally {
+      if (ownBusy) { state.fundingBusy = false; renderControlPanel(); }
+    }
+  }
+
+  async function startMoneyRainPreview() {
+    const button = document.getElementById('atmWorldEventPreviewStart');
+    try {
+      if (button) button.disabled = true; setPanelStatus('Starting synchronized preview event…');
+      if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to start a World Event.');
+      const data = await global.atmApiWithAuth('/api/world-time?action=start-money-rain', { method: 'POST', body: JSON.stringify(currentLaunchPayload()) });
+      applyState(data); closeControlPanel(); toast(`💸 Preview Money Rain provided by ${sponsorLabel(data.event)}!`, 4200);
+    } catch (error) {
+      setPanelStatus(error?.message || 'Money Rain preview could not start.', '#ff9fb1');
       if (button) button.disabled = false;
     }
   }
@@ -393,7 +596,8 @@
       for (const id of accepted) state.claimed.add(id);
       const awarded = Number(data.points || 0);
       if (accepted.size && awarded > 0) {
-        toast(`+${awarded} Money Rain point${awarded === 1 ? '' : 's'}`, 1250);
+        const reward = state.event?.reward_settlement ? rewardForPoints(awarded, state.event) : '';
+        toast(reward ? `+${reward} Testnet XRP` : `+${awarded} Money Rain point${awarded === 1 ? '' : 's'}`, 1250);
       }
     } catch (error) {
       const message = String(error?.message || '');
@@ -418,6 +622,7 @@
     if (nearby.length) claimPickups(nearby, { map: 'town', x: px, y: py });
   }
 
+  loadFundingDraft();
   installUi();
   document.addEventListener('visibilitychange', () => { clearTimeout(state.pollTimer); state.pollTimer = setTimeout(poll, 150); });
   setTimeout(poll, 250);

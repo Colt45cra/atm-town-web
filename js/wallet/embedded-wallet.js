@@ -8,10 +8,12 @@
   const PAYMENT_PREVIEW_TTL_MS = 60 * 1000;
   const MIN_LEDGER_HEADROOM = 2;
   const MAX_TEST_PAYMENT_DROPS = 10_000_000n; // 10 Testnet XRP hard cap.
+  const MAX_PAYLOAD_FUNDING_DROPS = 25_000_000n; // 25 Testnet XRP hard cap for pre-funded Money Rain campaigns.
   const MAX_TEST_FEE_DROPS = 10_000n; // 0.01 Testnet XRP safety ceiling.
   const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
   const PAYMENT_TX_FIELDS = new Set(['TransactionType','Account','Destination','Amount','Fee','Sequence','LastLedgerSequence','Memos']);
   const ATM_PAY_MEMO_TYPE = 'ATM-PAY-INTENT';
+  const PAYLOAD_MONEY_RAIN_MEMO_TYPE = 'PAYLOAD-MONEY-RAIN';
   const ATM_PAY_ACTIVITY_POLL_MS = 30_000;
   const ATM_PAY_CHARACTER_THUMBNAILS = Object.freeze({
     classic:'assets/characters/thumbnails/character-atm.webp',
@@ -30,6 +32,7 @@
   let xrplLoadPromise = null;
   let paySearchTimer = null;
   let payActivityPollTimer = null;
+  let payloadFundingBusy = false;
 
   function randomBytes(length){ const out=new Uint8Array(length); crypto.getRandomValues(out); return out; }
   function bytesToB64u(bytes){
@@ -54,6 +57,7 @@
   function shortAddress(value){value=String(value||'');return value.length>18?value.slice(0,9)+'…'+value.slice(-7):value;}
   function utf8ToHex(value){return Array.from(textEncoder.encode(String(value||'')),byte=>byte.toString(16).padStart(2,'0')).join('').toUpperCase();}
   function expectedIntentMemos(intentId){return [{Memo:{MemoType:utf8ToHex(ATM_PAY_MEMO_TYPE),MemoData:utf8ToHex(String(intentId||''))}}];}
+  function payloadMoneyRainMemoTypeHex(){return utf8ToHex(PAYLOAD_MONEY_RAIN_MEMO_TYPE);}
   function dropsToXrpText(drops){
     const value=BigInt(String(drops||'0')); const whole=value/1_000_000n; const fraction=(value%1_000_000n).toString().padStart(6,'0');
     return `${whole}.${fraction}`;
@@ -737,6 +741,86 @@
     }finally{vault?.fill(0);setBusy(false);}
   }
 
+  function assertPayloadMoneyRainFundingPrepared(prepared){
+    if(!prepared||prepared.network!==NETWORK)throw new Error('Money Rain funding is not a Testnet transaction.');
+    if(!state.record)throw new Error('Create or restore your ATM Pay Testnet wallet first.');
+    const tx=prepared.tx;
+    if(!tx||typeof tx!=='object')throw new Error('Money Rain funding transaction is missing.');
+    const keys=Object.keys(tx);
+    const extra=keys.filter(key=>!PAYMENT_TX_FIELDS.has(key));
+    if(extra.length)throw new Error(`Money Rain funding contains unexpected field${extra.length===1?'':'s'}: ${extra.join(', ')}.`);
+    if(tx.TransactionType!=='Payment')throw new Error('Money Rain funding must be a direct XRP Payment.');
+    if(tx.Account!==state.record.address)throw new Error('Money Rain funding account does not match your ATM Pay wallet.');
+    if(!CLASSIC_ADDRESS_RE.test(String(tx.Destination||'')))throw new Error('Money Rain funding destination is invalid.');
+    if(typeof tx.Amount!=='string'||!/^[0-9]+$/.test(tx.Amount))throw new Error('Money Rain funding amount is invalid.');
+    const amountDrops=BigInt(tx.Amount);
+    if(amountDrops<=0n||amountDrops>MAX_PAYLOAD_FUNDING_DROPS)throw new Error('Money Rain funding exceeds the Testnet safety limit.');
+    if(String(prepared.amount_drops||'')!==tx.Amount)throw new Error('Money Rain funding amount changed after review.');
+    const feeDrops=BigInt(String(tx.Fee||'0'));
+    if(feeDrops<=0n||feeDrops>MAX_TEST_FEE_DROPS||String(prepared.fee_drops||'')!==String(tx.Fee||''))throw new Error('Money Rain funding fee failed the safety check.');
+    if(!Number.isSafeInteger(Number(tx.Sequence))||Number(tx.Sequence)<=0||!Number.isSafeInteger(Number(tx.LastLedgerSequence))||Number(tx.LastLedgerSequence)<=0)throw new Error('Money Rain funding ledger bounds are invalid.');
+    if('DestinationTag' in tx||'SendMax' in tx||'Paths' in tx||'Signers' in tx)throw new Error('Money Rain funding contains an unsupported XRPL field.');
+    const memos=tx.Memos;
+    if(!Array.isArray(memos)||memos.length!==1||!memos[0]?.Memo||Object.keys(memos[0]).length!==1)throw new Error('Money Rain funding memo binding is missing.');
+    const memo=memos[0].Memo;
+    const memoKeys=Object.keys(memo).sort();
+    if(memoKeys.length!==2||memoKeys[0]!=='MemoData'||memoKeys[1]!=='MemoType'||String(memo.MemoType||'').toUpperCase()!==payloadMoneyRainMemoTypeHex())throw new Error('Money Rain funding memo binding changed.');
+    return tx;
+  }
+
+  async function payloadFundingDigest(prepared,tx){
+    return sha256Text(JSON.stringify({
+      purpose:'payload_money_rain_funding',
+      integrationCampaignId:String(prepared.integration_campaign_id||''),
+      externalEventId:String(prepared.external_event_id||''),
+      poolXrp:String(prepared.pool_xrp||''),
+      fundingRequiredXrp:String(prepared.funding_required_xrp||''),
+      network:NETWORK,
+      tx,
+    }));
+  }
+
+  async function assertPayloadFundingDigest(prepared){
+    const tx=assertPayloadMoneyRainFundingPrepared(prepared);
+    const digest=await payloadFundingDigest(prepared,tx);
+    if(!prepared.intent_digest||digest!==String(prepared.intent_digest))throw new Error('Money Rain funding intent integrity check failed. Nothing was signed.');
+    return tx;
+  }
+
+  async function authorizePayloadFundingVault(){
+    if(state.record?.encrypted_backup?.passkey)return unlockVaultWithPasskey(state.record);
+    const recoveryText=window.prompt('Enter your ATM1 recovery key to authorize this Testnet Money Rain funding payment.');
+    if(!recoveryText)throw new Error('Money Rain funding authorization was cancelled.');
+    return unlockVaultWithRecovery(state.record,recoveryText);
+  }
+
+  async function signPayloadMoneyRainFunding(prepared,draftToken){
+    if(payloadFundingBusy)throw new Error('A Money Rain funding authorization is already in progress.');
+    let vault=null,signed=null;
+    try{
+      payloadFundingBusy=true;
+      if(!state.record)await fetchRecord();
+      if(!state.record)throw new Error('Create or restore your ATM Pay Testnet wallet before funding Money Rain.');
+      await assertPayloadFundingDigest(prepared);
+      const recheck=await walletApi()('/api/world-time?action=payload-funding-recheck',{method:'POST',body:JSON.stringify({draft_token:String(draftToken||''),prepared})});
+      if(recheck?.funded===true)throw new Error('This Payload Money Rain campaign is already funded.');
+      if(Number(recheck?.sequence)!==Number(prepared.tx.Sequence))throw new Error('Your Testnet wallet changed since review. Review Money Rain funding again.');
+      if(Number(prepared.tx.LastLedgerSequence)<=Number(recheck?.ledger_index||0)+MIN_LEDGER_HEADROOM)throw new Error('Money Rain funding review is too close to expiration. Review it again.');
+      vault=await authorizePayloadFundingVault();
+      await assertPayloadFundingDigest(prepared);
+      const finalCheck=await walletApi()('/api/world-time?action=payload-funding-recheck',{method:'POST',body:JSON.stringify({draft_token:String(draftToken||''),prepared})});
+      if(finalCheck?.funded===true)throw new Error('This Payload Money Rain campaign became funded before signing. Nothing new was signed.');
+      if(Number(finalCheck?.sequence)!==Number(prepared.tx.Sequence))throw new Error('Your Testnet wallet changed during authorization. Review Money Rain funding again.');
+      signed=await withDecryptedWallet(state.record,vault,async(wallet)=>wallet.sign(prepared.tx));
+      vault.fill(0);vault=null;
+      if(!signed?.tx_blob||!signed?.hash||!/^[A-F0-9]{64}$/i.test(String(signed.hash)))throw new Error('Local XRPL signing did not return a valid Money Rain funding transaction.');
+      return {tx_blob:String(signed.tx_blob),hash:String(signed.hash).toUpperCase()};
+    }finally{
+      vault?.fill(0);
+      payloadFundingBusy=false;
+    }
+  }
+
   async function refreshBalance(options={}){
     if(!state.record)return;
     const el=document.getElementById('atmWalletBalance'),note=document.getElementById('atmWalletFunded'); if(el&&!options.silent)el.textContent='… XRP';
@@ -823,7 +907,7 @@
   }
   function getPublicIdentity(){if(!state.record)return null;const p=normalizeRecipient(state.payProfile);return p?{...p,atm_pay_ready:true}:null;}
 
-  window.ATMEmbeddedWallet={open,close,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{stopActivityPolling();clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.activityInitialized=false;state.pendingRequestCount=0;state.selectedRecipient=null;state.pendingOpenRecipient=null;state.requestDraft=null;refreshButton();document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:refreshPublicState};
+  window.ATMEmbeddedWallet={open,close,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{stopActivityPolling();clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.activityInitialized=false;state.pendingRequestCount=0;state.selectedRecipient=null;state.pendingOpenRecipient=null;state.requestDraft=null;refreshButton();document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:refreshPublicState,signPayloadMoneyRainFunding};
   window.ATMPay={open,openToRecipient,openRequest:openRequestForConsumer,refresh:refreshPublicState,getPublicIdentity,getConsumerSnapshot,refreshConsumerSnapshot,searchPeople:searchPeopleForConsumer};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();bindButton();refreshButton();});else{ensureUi();bindButton();refreshButton();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPreparedPayment();if(!state.recoveryKey)render();}else if(state.payProfile)fetchPayActivity({silent:true,notify:true});});
