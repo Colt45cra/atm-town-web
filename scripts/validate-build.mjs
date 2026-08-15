@@ -264,7 +264,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.3.1'")) errors.push('js/config.js is not marked v235.3.1.');
+if (!configSource.includes("version: 'v235.3.2'")) errors.push('js/config.js is not marked v235.3.2.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -362,7 +362,12 @@ if (!worldTimeApiSource.includes("'payload-create-money-rain'") || !worldTimeApi
 if (!worldEventsClientSource.includes('PREPARE PAYLOAD MONEY RAIN') || !worldEventsClientSource.includes('CHECK FUNDING & START') || !worldEventsClientSource.includes('signed_tx_blob') || !worldEventsClientSource.includes('Do NOT authorize another payment')) errors.push('v235.3.1 retry-safe sponsor funding UX is incomplete.');
 if (!worldEventsServerSource.includes('reward_settlement') || !worldEventsServerSource.includes('reward_point_drops') || !worldEventsServerSource.includes('startFundedMoneyRain') || !worldEventsServerSource.includes('settleCompletedMoneyRain')) errors.push('v235.3.1 reward-enabled server event/settlement wiring is incomplete.');
 if (!payloadMoneyRainSource.includes("kind: 'atm_town_money_rain'") || !payloadMoneyRainSource.includes('externalResultsHash: resultsHash') || !payloadMoneyRainSource.includes("/results`") || !payloadMoneyRainSource.includes("/execute`")) errors.push('v235.3.1 immutable explicit-distribution finalization/execution handoff is incomplete.');
-if (!worldEventsServerSource.includes('settlementPending') || !worldEventsServerSource.includes('slow XRPL settlement can never')) errors.push('v235.3.1 pending Payload settlement must remain pollable after the normal result HUD window.');
+if (!payloadMoneyRainSource.includes('/retirement`') || !payloadMoneyRainSource.includes('cleanupSettlementPatch') || !payloadMoneyRainSource.includes("{ method: 'GET', timeoutMs: 12_000 }")) errors.push('v235.3.2 ATM Town must reconcile Payload campaign state and advance delayed execution-wallet retirement.');
+if (!worldEventsServerSource.includes('backgroundPending') || !worldEventsServerSource.includes('retirementFinal') || !worldEventsServerSource.includes('reserve_recovery_status')) errors.push('v235.3.2 Payload payout/reserve recovery must remain server-pollable after the visible result HUD window.');
+if (!worldEventsClientSource.includes("kind: 'money_rain_payout'") || !worldEventsClientSource.includes("String(event.settlement_status || '') !== 'completed'") || !worldEventsClientSource.includes('ATMEmbeddedWallet?.refreshBalance')) errors.push('v235.3.2 Money Rain payout notification must wait for confirmed Payload completion and refresh the Testnet balance.');
+if (!embeddedWalletSource.includes('balanceXrp:state.balanceXrp') || !embeddedWalletSource.includes('window.ATMEmbeddedWallet={open,close,refreshBalance')) errors.push('v235.3.2 embedded wallet consumer state must expose and refresh the validated XRP balance.');
+if (!peopleHubSource.includes('atmPeopleHubBalance') || !peopleHubSource.includes('state.pay.balanceXrp')) errors.push('v235.3.2 People Hub is missing the quick XRP balance surface.');
+if (!worldEventsClientSource.includes('SPONSOR SETTLEMENT') || !worldEventsServerSource.includes('immediate_refund_xrp') || !worldEventsServerSource.includes('reserve_recovery_xrp')) errors.push('v235.3.2 sponsor settlement UI must distinguish immediate refunds from delayed campaign reserve recovery.');
 
 const safePointMatches = [...worldEventSafePointsSource.matchAll(/\[(\d+),(\d+)\]/g)].map((match) => [Number(match[1]), Number(match[2])]);
 if (safePointMatches.length < 2000) errors.push(`v235.1 organic Money Rain safe-point pool is too small: ${safePointMatches.length}.`);
@@ -636,10 +641,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.3.1 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.3.2 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.3.1 build validation passed.');
+console.log('ATM Town v235.3.2 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

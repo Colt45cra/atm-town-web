@@ -13,6 +13,8 @@
   const PAYLOAD_DRAFT_STORAGE_KEY = 'atm_payload_money_rain_draft_v1';
   const FUNDING_STATUS_POLL_MS = 1600;
   const FUNDING_STATUS_WAIT_MS = 45_000;
+  const RESULTS_WINDOW_MS = 25_000;
+  const PAYOUT_NOTICE_PREFIX = 'atm_money_rain_payout_notified_v1:';
   const state = {
     event: null,
     serverOffsetMs: 0,
@@ -134,6 +136,22 @@
     }
     return fetchPublicState();
   }
+  function positiveXrp(value) {
+    const match = /^(\d+)(?:\.(\d{1,6}))?$/.exec(String(value || '').trim());
+    if (!match) return false;
+    return BigInt(match[1]) * 1_000_000n + BigInt(((match[2] || '') + '000000').slice(0, 6)) > 0n;
+  }
+  function maybeNotifyConfirmedPayout(event) {
+    if (!event?.reward_settlement || event.personal_score_available === false || String(event.settlement_status || '') !== 'completed') return;
+    const amount = String(event.my_reward_xrp || rewardForPoints(event.my_score || state.myScore, event) || '0');
+    if (!positiveXrp(amount)) return;
+    const key = `${PAYOUT_NOTICE_PREFIX}${event.id}`;
+    try { if (localStorage.getItem(key) === '1') return; } catch (_error) {}
+    try { localStorage.setItem(key, '1'); } catch (_error) {}
+    const detail = { kind: 'money_rain_payout', tone: 'success', message: `Money Rain payout received · +${amount} XRP ✓`, amount_xrp: amount, event_id: String(event.id) };
+    global.dispatchEvent(new CustomEvent('atm:pay-notification', { detail }));
+    Promise.resolve(global.ATMEmbeddedWallet?.refreshBalance?.({ silent: true })).catch(() => {});
+  }
   function applyState(data) {
     if (Number.isFinite(Number(data?.server_time_ms))) state.serverOffsetMs = Number(data.server_time_ms) - Date.now();
     const incoming = data?.event || null;
@@ -166,9 +184,11 @@
         const myReward = incoming.reward_settlement ? (incoming.my_reward_xrp || rewardForPoints(mine, incoming)) : '';
         const winnerValue = incoming.reward_settlement ? `${winner?.reward_amount_xrp || rewardForPoints(winner?.points || 0, incoming)} XRP` : `${winner?.points || 0}`;
         const mineValue = incoming.reward_settlement ? `${myReward || '0'} XRP` : `${mine}`;
-        toast(winner ? `💸 Money Rain complete · You collected ${mineValue} · #1 ${winner.display_name} ${winnerValue}` : `💸 Money Rain complete · You collected ${mineValue}`, 5200);
+        const payoutSuffix = incoming.reward_settlement ? ' · payout pending XRPL confirmation' : '';
+        toast(winner ? `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix} · #1 ${winner.display_name} ${winnerValue}` : `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix}`, 5200);
       }
     }
+    maybeNotifyConfirmedPayout(incoming);
     state.lastPhase = phase;
     renderHud(); renderControlPanel();
   }
@@ -187,6 +207,7 @@
     const hud = document.getElementById('atmWorldEventHud'); const event = state.event;
     if (!event) { hud.classList.remove('show'); return; }
     const phase = eventPhase(event), now = nowMs(), starts = Date.parse(event.starts_at), ends = Date.parse(event.ends_at);
+    if (phase === 'completed' && Number.isFinite(ends) && now > ends + RESULTS_WINDOW_MS) { hud.classList.remove('show'); return; }
     const title = hud.querySelector('.atmWorldEventHudTitle'), meta = hud.querySelector('.atmWorldEventHudMeta'), score = hud.querySelector('.atmWorldEventHudScore');
     const providedBy = sponsorLabel(event);
     if (phase === 'announced') {
@@ -204,8 +225,11 @@
       title.textContent = '💸 MONEY RAIN COMPLETE';
       const count = Number(event.participant_count || event.leaders?.length || 0);
       const settlement = String(event.settlement_status || '');
+      const recovery = String(event.reserve_recovery_status || '');
       const settlementText = event.reward_settlement
-        ? (settlement === 'completed' ? 'Payload payout complete' : settlement === 'cancelled' ? 'unused pool refunded' : settlement === 'blocked' ? 'payout needs attention' : 'Payload settlement processing')
+        ? (settlement === 'completed'
+          ? (event.is_sponsor && recovery && !['retired','blocked'].includes(recovery) ? 'payout complete · reserve recovery pending' : 'Payload payout complete')
+          : settlement === 'cancelled' ? 'unused pool refund processing' : settlement === 'blocked' ? 'payout needs attention' : 'Payload settlement processing')
         : 'preview complete';
       meta.textContent = `${count} participant${count === 1 ? '' : 's'} · ${settlementText} · provided by ${providedBy}`;
       const rank = Number(event.my_rank || 0);
@@ -246,10 +270,14 @@
     } else if (event && phase === 'completed' && event.leaders?.length) {
       const rewardEvent = Boolean(event.reward_settlement);
       const settlement = String(event.settlement_status || '');
+      const recovery = String(event.reserve_recovery_status || '');
       const settlementLine = rewardEvent
-        ? `<div style="color:${settlement === 'completed' ? '#66f7bd' : settlement === 'blocked' ? '#ff9fb1' : '#ffd978'};font-weight:850;margin:8px 0">${settlement === 'completed' ? '✓ Payload payout complete' : settlement === 'cancelled' ? '✓ Unused pool refunded' : settlement === 'blocked' ? `Payload payout needs attention${event.settlement_error ? `: ${escapeHtml(event.settlement_error)}` : ''}` : 'Payload settlement is processing automatically…'}</div>`
+        ? `<div style="color:${settlement === 'completed' ? '#66f7bd' : settlement === 'blocked' ? '#ff9fb1' : '#ffd978'};font-weight:850;margin:8px 0">${settlement === 'completed' ? '✓ Player payouts confirmed on XRPL' : settlement === 'cancelled' ? '✓ No player payout required' : settlement === 'blocked' ? `Payload payout needs attention${event.settlement_error ? `: ${escapeHtml(event.settlement_error)}` : ''}` : 'Payload settlement is processing automatically…'}</div>`
         : '';
-      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))} · every participant keeps the amount they collected</div>${settlementLine}${event.leaders.slice(0,12).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${rewardEvent ? `${escapeHtml(leader.reward_amount_xrp || rewardForPoints(leader.points, event) || '0')} XRP` : `${leader.points} collected`}</b></div>`).join('')}<div style="margin-top:8px;color:#9fc3cc;font-size:11px">${Number(event.unclaimed_points || 0)} of ${Number(event.pool_points || 1000)} points were not collected${rewardEvent ? ' and remain refundable to the sponsor through Payload.' : '.'}</div></div>`;
+      const sponsorSettlement = rewardEvent && event.is_sponsor
+        ? `<div class="atmWorldEventFunding" style="margin-top:10px"><div class="atmWorldEventEyebrow">SPONSOR SETTLEMENT</div><div class="atmWorldEventFundingRow"><span>Immediate unused-fund refund</span><b>${event.immediate_refund_xrp ? `${escapeHtml(event.immediate_refund_xrp)} XRP` : (settlement === 'completed' || settlement === 'cancelled' ? '0 XRP / none spendable' : 'pending')}</b></div><div class="atmWorldEventFundingRow"><span>Campaign reserve recovery</span><b>${recovery === 'retired' ? `retired${event.reserve_recovery_xrp ? ` · ${escapeHtml(event.reserve_recovery_xrp)} XRP recovered` : ''}` : recovery === 'blocked' ? 'needs review' : recovery ? 'pending' : 'waiting'}</b></div>${event.reserve_recovery_error ? `<div class="atmWorldEventFundingNote" style="color:#ff9fb1">${escapeHtml(event.reserve_recovery_error)}</div>` : '<div class="atmWorldEventFundingNote">Player rewards are final. Payload retires the temporary campaign wallet separately when XRPL allows AccountDelete.</div>'}</div>`
+        : '';
+      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))} · every participant keeps the amount they collected</div>${settlementLine}${event.leaders.slice(0,12).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${rewardEvent ? `${escapeHtml(leader.reward_amount_xrp || rewardForPoints(leader.points, event) || '0')} XRP` : `${leader.points} collected`}</b></div>`).join('')}<div style="margin-top:8px;color:#9fc3cc;font-size:11px">${Number(event.unclaimed_points || 0)} of ${Number(event.pool_points || 1000)} points were not collected${rewardEvent ? ' and are handled by Payload settlement.' : '.'}</div>${sponsorSettlement}</div>`;
     }
     const sponsorDisabled = Boolean(event && phase !== 'completed');
     const brandActive = state.sponsorMode === 'brand';
@@ -327,7 +355,7 @@
         method: 'POST', body: JSON.stringify({ draft_token: draft.draft_token }),
       });
       if (prepared?.funded) return checkPayloadFundingAndStart({ wait: false });
-      const approved = global.confirm(`PAYLOAD MONEY RAIN · XRPL TESTNET\n\nPrize pool: ${draft.pool_xrp} XRP\nTotal funding: ${draft.funding_required_xrp} XRP\n\nThe difference covers the temporary campaign wallet reserve, payout fees and safety buffer. Unused XRP is returned to your ATM Town Testnet wallet after settlement.\n\nAuthorize this one funding transaction?`);
+      const approved = global.confirm(`PAYLOAD MONEY RAIN · XRPL TESTNET\n\nPrize pool: ${draft.pool_xrp} XRP\nTotal funding: ${draft.funding_required_xrp} XRP\n\nThe difference covers the temporary campaign wallet reserve, payout fees and safety buffer. Unused spendable XRP is refunded after settlement. The temporary wallet reserve is recovered separately when XRPL allows account retirement, minus the AccountDelete transaction cost.\n\nAuthorize this one funding transaction?`);
       if (!approved) throw new Error('Money Rain funding authorization was cancelled.');
       setPanelStatus('Waiting for your ATM wallet authorization…');
       const signed = await global.ATMEmbeddedWallet.signPayloadMoneyRainFunding(prepared, draft.draft_token);

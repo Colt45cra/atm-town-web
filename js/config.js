@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.3.2: confirms Money Rain payouts in-game, exposes quick XRP balances, and tracks delayed Payload campaign-wallet reserve recovery.
  * v235.3.1: connects reward-enabled Testnet XRP Money Rain to Project Payload with one local funding signature and exact pay-what-you-collect settlement.
  * v235.2.1: restores intentional two-finger ATM Town camera zoom on Android while retaining the iPhone Safari viewport/multitouch protections.
  * v235.2: preserves every Money Rain participant's collected score for reward settlement and adds Salute, Brad, David, and Kaj.
@@ -28,9 +29,9 @@
 
   const BUILD = Object.freeze({
     number: 235.3,
-    version: 'v235.3.1',
-    name: 'Payload Money Rain',
-    title: 'ATM Town v235.3.1 — Payload Money Rain'
+    version: 'v235.3.2',
+    name: 'Payload Settlement Recovery',
+    title: 'ATM Town v235.3.2 — Payload Settlement Recovery'
   });
 
   const MAPS = Object.freeze({

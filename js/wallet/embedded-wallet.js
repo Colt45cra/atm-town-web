@@ -28,7 +28,7 @@
   });
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
-  let state = { record:null, recoveryKey:null, busy:false, preparedPayment:null, lastTransaction:null, payProfile:null, paySuggestedHandle:'', payDisplayName:'ATM Player', payView:'send', selectedRecipient:null, pendingOpenRecipient:null, recipientSearchResults:[], paySearchQuery:'', activity:[], activityInitialized:false, pendingRequestCount:0, requestDraft:null, xrplDetailsVisible:false };
+  let state = { record:null, recoveryKey:null, busy:false, preparedPayment:null, lastTransaction:null, payProfile:null, paySuggestedHandle:'', payDisplayName:'ATM Player', payView:'send', selectedRecipient:null, pendingOpenRecipient:null, recipientSearchResults:[], paySearchQuery:'', activity:[], activityInitialized:false, pendingRequestCount:0, requestDraft:null, xrplDetailsVisible:false, balanceXrp:null, balanceFunded:false, balanceAvailable:false };
   let xrplLoadPromise = null;
   let paySearchTimer = null;
   let payActivityPollTimer = null;
@@ -822,13 +822,16 @@
   }
 
   async function refreshBalance(options={}){
-    if(!state.record)return;
+    if(!state.record){state.balanceXrp=null;state.balanceFunded=false;state.balanceAvailable=false;emitConsumerState();return null;}
     const el=document.getElementById('atmWalletBalance'),note=document.getElementById('atmWalletFunded'); if(el&&!options.silent)el.textContent='… XRP';
     try{
       const data=await walletApi()('/api/embedded-wallet?action=balance',{method:'GET'});
-      if(el)el.textContent=`${data.balance_xrp}`; if(note)note.textContent=data.funded?'Validated XRPL Testnet balance.':'Account is not funded on Testnet yet.';
+      state.balanceXrp=String(data.balance_xrp??'0');state.balanceFunded=!!data.funded;state.balanceAvailable=true;
+      if(el)el.textContent=`${state.balanceXrp}`; if(note)note.textContent=state.balanceFunded?'Validated XRPL Testnet balance.':'Account is not funded on Testnet yet.';
+      emitConsumerState();
       if(!options.silent)setMessage('Testnet balance refreshed.','ok');
-    }catch(error){if(el)el.textContent='— XRP';if(note)note.textContent='Balance unavailable.';if(!options.silent)setMessage(error.message||'Could not read Testnet balance.','error');}
+      return data;
+    }catch(error){state.balanceXrp=null;state.balanceFunded=false;state.balanceAvailable=false;if(el)el.textContent='— XRP';if(note)note.textContent='Balance unavailable.';emitConsumerState();if(!options.silent)setMessage(error.message||'Could not read Testnet balance.','error');return null;}
   }
   function downloadEncryptedBackup(){
     if(!state.record?.encrypted_backup)return;
@@ -865,6 +868,9 @@
       ready:!!(state.record&&state.payProfile),
       profile:normalizeRecipient(state.payProfile),
       pendingRequestCount:state.pendingRequestCount,
+      balanceXrp:state.balanceXrp,
+      balanceFunded:state.balanceFunded,
+      balanceAvailable:state.balanceAvailable,
       recentPeople:recentRecipients().map(person=>({...person})),
       incomingRequests:pendingIncomingRequests().map(sanitizeActivityForConsumer).filter(Boolean),
       recentActivity:state.activity.slice(0,12).map(sanitizeActivityForConsumer).filter(Boolean)
@@ -873,6 +879,7 @@
   async function refreshConsumerSnapshot(){
     try{
       await fetchRecord();await fetchPayStatus();
+      if(state.record)await refreshBalance({silent:true});
       if(state.payProfile)await fetchPayActivity({silent:true});
     }catch(_error){}
     return getConsumerSnapshot();
@@ -907,7 +914,7 @@
   }
   function getPublicIdentity(){if(!state.record)return null;const p=normalizeRecipient(state.payProfile);return p?{...p,atm_pay_ready:true}:null;}
 
-  window.ATMEmbeddedWallet={open,close,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{stopActivityPolling();clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.activityInitialized=false;state.pendingRequestCount=0;state.selectedRecipient=null;state.pendingOpenRecipient=null;state.requestDraft=null;refreshButton();document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:refreshPublicState,signPayloadMoneyRainFunding};
+  window.ATMEmbeddedWallet={open,close,refreshBalance,lock:()=>{clearPreparedPayment();render();},resetForAuthChange:()=>{stopActivityPolling();clearEphemeral(true);state.record=null;state.lastTransaction=null;state.payProfile=null;state.activity=[];state.activityInitialized=false;state.pendingRequestCount=0;state.selectedRecipient=null;state.pendingOpenRecipient=null;state.requestDraft=null;state.balanceXrp=null;state.balanceFunded=false;state.balanceAvailable=false;refreshButton();document.getElementById('atmEmbeddedWalletModal')?.classList.remove('open');},refresh:refreshPublicState,signPayloadMoneyRainFunding};
   window.ATMPay={open,openToRecipient,openRequest:openRequestForConsumer,refresh:refreshPublicState,getPublicIdentity,getConsumerSnapshot,refreshConsumerSnapshot,searchPeople:searchPeopleForConsumer};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();bindButton();refreshButton();});else{ensureUi();bindButton();refreshButton();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden){clearPreparedPayment();if(!state.recoveryKey)render();}else if(state.payProfile)fetchPayActivity({silent:true,notify:true});});
