@@ -4,6 +4,7 @@ import { xrplTestnetRpc } from '../lib/xrpl-testnet-rpc.js';
 const NETWORK = 'testnet';
 const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const MAX_BACKUP_BYTES = 24 * 1024;
+const TESTNET_RESET_CONFIRMATION = 'RESET TESTNET WALLET';
 
 function noStore(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -117,6 +118,85 @@ async function readBalance(address) {
   }
 }
 
+async function cancelPendingIntentsForReset(admin, userId, previousAddress) {
+  // A reset changes the user's routing address. Any unsigned payment intent that
+  // still references the old route must not survive the replacement. Submitted
+  // transactions are immutable ledger history and are deliberately left alone.
+  const updates = [
+    admin.from('atm_pay_intents')
+      .update({ status: 'cancelled' })
+      .eq('sender_user_id', userId)
+      .eq('status', 'pending')
+      .select('id'),
+    admin.from('atm_pay_intents')
+      .update({ status: 'cancelled' })
+      .eq('recipient_user_id', userId)
+      .eq('destination_address', previousAddress)
+      .eq('status', 'pending')
+      .select('id'),
+  ];
+  const settled = await Promise.allSettled(updates);
+  let cancelled = 0;
+  for (const result of settled) {
+    if (result.status !== 'fulfilled') continue;
+    if (result.value?.error) continue;
+    cancelled += Array.isArray(result.value?.data) ? result.value.data.length : 0;
+  }
+  return cancelled;
+}
+
+async function replaceTestnetWallet(admin, userId, body = {}) {
+  if (String(body?.confirmation || '').trim() !== TESTNET_RESET_CONFIRMATION) {
+    throw badRequest(`Type ${TESTNET_RESET_CONFIRMATION} exactly to replace this Testnet wallet.`);
+  }
+  if (body?.acknowledge_old_wallet !== true) {
+    throw badRequest('Confirm that the old Testnet wallet will not be deleted from XRPL and its funds are not moved automatically.');
+  }
+
+  const currentAddress = String(body?.current_address || '').trim();
+  if (!CLASSIC_ADDRESS_RE.test(currentAddress)) throw badRequest('Current Testnet wallet address is invalid.');
+  const backup = assertWalletBackup(body?.encrypted_backup || body?.backup);
+  const nextAddress = String(body?.address || backup.address || '').trim();
+  if (nextAddress !== backup.address || !CLASSIC_ADDRESS_RE.test(nextAddress)) throw badRequest('Replacement wallet address does not match the encrypted backup.');
+  if (nextAddress === currentAddress) throw badRequest('The replacement Testnet wallet must use a new XRPL address.');
+
+  const existing = await readWallet(admin, userId);
+  if (!existing) throw Object.assign(new Error('No ATM Pay Testnet wallet exists for this account.'), { status: 404 });
+  if (existing.network !== NETWORK || existing.address !== currentAddress) {
+    throw Object.assign(new Error('ATM Pay wallet changed before reset. Reopen ATM Pay and review the reset again.'), { status: 409 });
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from('embedded_wallets')
+    .update({
+      network: NETWORK,
+      address: nextAddress,
+      encrypted_backup: backup,
+      updated_at: now,
+    })
+    .eq('user_id', userId)
+    .eq('address', currentAddress)
+    .select('network,address,created_at,updated_at')
+    .maybeSingle();
+  if (error) {
+    if (String(error.code || '') === '23505') {
+      throw Object.assign(new Error('That replacement Testnet wallet is already attached to another ATM Town account.'), { status: 409 });
+    }
+    throw error;
+  }
+  if (!data) throw Object.assign(new Error('ATM Pay wallet changed before reset. Reopen ATM Pay and try again.'), { status: 409 });
+
+  const cancelledPendingIntents = await cancelPendingIntentsForReset(admin, userId, currentAddress);
+  return {
+    wallet: data,
+    previous_address: currentAddress,
+    cancelled_pending_intents: cancelledPendingIntents,
+    handle_preserved: true,
+    network: NETWORK,
+  };
+}
+
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
   noStore(res);
@@ -147,6 +227,10 @@ export default async function handler(req, res) {
       }
       const balance = await readBalance(row.address);
       return res.status(200).json({ network: NETWORK, address: row.address, ...balance });
+    }
+
+    if (req.method === 'POST' && action === 'reset-testnet-wallet') {
+      return res.status(200).json(await replaceTestnetWallet(admin, user.id, req.body || {}));
     }
 
     if (req.method === 'POST' && action === 'save') {

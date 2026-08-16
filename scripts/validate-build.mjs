@@ -107,6 +107,7 @@ const requiredFiles = [
   'docs/V235.2.1-ANDROID-CAMERA-ZOOM-RESTORE.md',
   'docs/V235.3-PAYLOAD-MONEY-RAIN.md',
   'docs/V235.4-XBOX-CONTROLLER.md',
+  'docs/V235.5-ATM-PAY-TESTNET-WALLET-RESET.md',
   'lib/payload-integration.js',
   'lib/payload-money-rain.js',
   'js/world-events.js',
@@ -162,8 +163,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.4'")) errors.push('Missing v235.4 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Xbox Controller Support'")) errors.push('Missing v235.4 Xbox Controller Support display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.5'")) errors.push('Missing v235.5 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'ATM Pay Testnet Wallet Reset'")) errors.push('Missing v235.5 ATM Pay Testnet Wallet Reset display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -272,7 +273,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.4'")) errors.push('js/config.js is not marked v235.4.');
+if (!configSource.includes("version: 'v235.5'")) errors.push('js/config.js is not marked v235.5.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -399,6 +400,9 @@ if (!embeddedWalletSource.includes('atmPayIntentId') || !embeddedWalletSource.in
 if (!embeddedWalletSource.includes("ATM_PAY_MEMO_TYPE = 'ATM-PAY-INTENT'") || !embeddedWalletSource.includes('expectedIntentMemos(intentId)') || !atmPaySource.includes('intentMemos(intent.id)')) errors.push('v234.2 must bind the unique ATM Pay intent ID into the signed XRPL Payment memo.');
 if (/escapeHtml\(prepared\.destination\)|\$\{prepared\.destination\}/.test(embeddedWalletSource)) errors.push('v234.2 must not render the settlement address in the normal payment review.');
 if (!embeddedWalletSource.includes('copyEmergencySeed')) errors.push('v234.1 emergency seed export path is missing.');
+if (!embeddedWalletSource.includes("TESTNET_RESET_CONFIRMATION = 'RESET TESTNET WALLET'")) errors.push('v235.5 Testnet wallet reset confirmation phrase is missing.');
+if (!embeddedWalletSource.includes("action=reset-testnet-wallet") || !embeddedWalletSource.includes('async function resetTestnetWallet()')) errors.push('v235.5 client Testnet wallet replacement flow is missing.');
+if (!embeddedWalletSource.includes('The old address remains on XRPL') || !embeddedWalletSource.includes('Your ATM Town account and @handle stay the same')) errors.push('v235.5 reset UI is missing destructive-action warnings.');
 if (/\$\{\s*(?:escapeHtml\(\s*)?seed\b|textContent\s*=\s*seed/i.test(embeddedWalletSource)) errors.push('Emergency seed material must never be rendered into page HTML.');
 if (!/pay-relay-submit[^\n]*tx_blob/i.test(embeddedWalletSource)) errors.push('v234.2.5 signed XRPL blob relay is missing from the local-signing flow.');
 if (/walletApi\([^\n]*(?:seed|private[_-]?key)/i.test(embeddedWalletSource)) errors.push('Plaintext wallet secrets must never be sent through the ATM Town API.');
@@ -409,6 +413,10 @@ if (!testnetRpcSource.includes('AbortSignal.timeout')) errors.push('Shared Testn
 for (const host of ['testnet.xrpl-labs.com','testnet.honeycluster.io','s.altnet.rippletest.net:51234']) { if (!testnetRpcSource.includes(host)) errors.push(`Shared Testnet RPC helper missing endpoint: ${host}`); }
 if (!embeddedWalletApiSource.includes('assertExactKeys')) errors.push('v234.1 encrypted-backup exact-schema validation is missing.');
 if (!embeddedWalletApiSource.includes('existing.address !== address')) errors.push('v234.1 must block silent replacement of an account embedded-wallet address.');
+if (!embeddedWalletApiSource.includes("action === 'reset-testnet-wallet'") || !embeddedWalletApiSource.includes('replaceTestnetWallet')) errors.push('v235.5 dedicated Testnet wallet replacement API is missing.');
+if (!embeddedWalletApiSource.includes("TESTNET_RESET_CONFIRMATION = 'RESET TESTNET WALLET'")) errors.push('v235.5 server reset confirmation phrase is missing.');
+if (!embeddedWalletApiSource.includes(".eq('address', currentAddress)")) errors.push('v235.5 wallet reset must compare the currently attached address before replacement.');
+if (!embeddedWalletApiSource.includes('cancelPendingIntentsForReset')) errors.push('v235.5 wallet reset must invalidate pending ATM Pay routes tied to the old wallet.');
 if (/s1\.ripple\.com|xrplcluster\.com|force_network[^\n]*MAINNET/i.test(embeddedWalletApiSource)) errors.push('Embedded wallet API contains a Mainnet endpoint/marker.');
 if (!embeddedWalletApiSource.includes("from('embedded_wallets')")) errors.push('Embedded wallet API is not isolated to embedded_wallets.');
 if (/from\('player_accounts'\)/.test(embeddedWalletApiSource)) errors.push('Embedded wallet API must not overwrite player_accounts.wallet_address.');
@@ -654,5 +662,5 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('ATM Town v235.4 build validation passed.');
+console.log('ATM Town v235.5 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

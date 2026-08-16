@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.5: adds an explicit Testnet ATM Pay wallet reset/replacement flow while preserving the user's ATM Pay identity.
  * v235.4: adds desktop Xbox-style controller support with analog movement, controller UI navigation, camera look, jetpack controls, and arcade keyboard bridging.
  * v235.3.2: confirms Money Rain payouts in-game, exposes quick XRP balances, and tracks delayed Payload campaign-wallet reserve recovery.
  * v235.3.1: connects reward-enabled Testnet XRP Money Rain to Project Payload with one local funding signature and exact pay-what-you-collect settlement.
@@ -29,10 +30,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.4,
-    version: 'v235.4',
-    name: 'Xbox Controller Support',
-    title: 'ATM Town v235.4 — Xbox Controller Support'
+    number: 235.5,
+    version: 'v235.5',
+    name: 'ATM Pay Testnet Wallet Reset',
+    title: 'ATM Town v235.5 — ATM Pay Testnet Wallet Reset'
   });
 
   const MAPS = Object.freeze({
