@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.5',name:ATM_CONFIG?.build?.name||'ATM Pay Testnet Wallet Reset'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.6',name:ATM_CONFIG?.build?.name||'PWA + Player Pings'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2546,9 +2546,10 @@ async function initializeIdentity(){
     const {data}=await client.auth.getSession(); authSession=data.session||null;
     await loadPlayerAccount();
     await window.ATMPay?.refresh?.();
+    await window.ATMPWA?.onAuthChanged?.(Boolean(authSession?.user));
     resumePendingXamanLink();
     resumePendingMagnetPayment();
-    client.auth.onAuthStateChange(async(_event,session)=>{window.ATMEmbeddedWallet?.resetForAuthChange?.();authSession=session||null;await loadPlayerAccount();if(authSession?.user)await window.ATMPay?.refresh?.();resumePendingXamanLink();resumePendingMagnetPayment();});
+    client.auth.onAuthStateChange(async(_event,session)=>{window.ATMEmbeddedWallet?.resetForAuthChange?.();authSession=session||null;await loadPlayerAccount();if(authSession?.user)await window.ATMPay?.refresh?.();await window.ATMPWA?.onAuthChanged?.(Boolean(authSession?.user));resumePendingXamanLink();resumePendingMagnetPayment();});
   }catch(error){
     document.getElementById('identityLoading').style.display='none';document.getElementById('identityGuest').style.display='block';
     setIdentityStatus('Account service unavailable. Guest play still works.','error');
@@ -2777,6 +2778,11 @@ async function connectMultiplayer(){
     });
     realtimeChannel.on('broadcast',{event:'chat'},({payload})=>{
       if(payload.id!==playerId)showBubble(payload.id,payload.name,payload.message,payload.x,payload.y,payload.map);
+    });
+    realtimeChannel.on('broadcast',{event:'player_ping'},({payload})=>{
+      const myUserId=String(window.ATMPay?.getPublicIdentity?.()?.user_id||'');
+      if(!payload||!myUserId||String(payload.target_user_id||'')!==myUserId)return;
+      window.ATMPWA?.receivePing?.(payload);
     });
     realtimeChannel.on('broadcast',{event:'nft_trade_offer'},({payload})=>{
       if(!payload||String(payload.sellerWallet||'')!==lockerWalletAddress())return;
@@ -4260,7 +4266,11 @@ function atmPeopleOnlinePlayers(){
   return out;
 }
 function atmPeopleRecentEncounters(){return [...atmPeopleEncounters.values()].sort((a,b)=>(b.seen_at||0)-(a.seen_at||0)).slice(0,12).map(item=>({...item,atmPay:item.atmPay?{...item.atmPay}:null}));}
-window.ATMGamePeople={snapshot:()=>{const online=atmPeopleOnlinePlayers();return {onlineCount:Math.max(1,online.length),online,encounters:atmPeopleRecentEncounters(),currentMap};}};
+function sendAtmPlayerPing(payload){
+  if(!onlineMode||!realtimeChannel||!payload||payload.type!=='player_ping')return false;
+  try{realtimeChannel.send({type:'broadcast',event:'player_ping',payload});return true;}catch(_error){return false;}
+}
+window.ATMGamePeople={snapshot:()=>{const online=atmPeopleOnlinePlayers();return {onlineCount:Math.max(1,online.length),online,encounters:atmPeopleRecentEncounters(),currentMap};},sendPing:sendAtmPlayerPing};
 function nearestAtmPayRemote(maxDistance=82){
   const now=Date.now();let best=null,bestDistance=maxDistance;
   for(const [id,p] of remotePlayers){

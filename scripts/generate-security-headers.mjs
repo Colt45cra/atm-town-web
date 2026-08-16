@@ -39,6 +39,20 @@ const csp = [
 const vercel = {
   headers: [
     {
+      source: '/service-worker.js',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        { key: 'Service-Worker-Allowed', value: '/' },
+      ],
+    },
+    {
+      source: '/manifest.webmanifest',
+      headers: [
+        { key: 'Content-Type', value: 'application/manifest+json; charset=utf-8' },
+        { key: 'Cache-Control', value: 'public, max-age=3600' },
+      ],
+    },
+    {
       source: '/(.*)',
       headers: [
         { key: 'Content-Security-Policy', value: csp },
@@ -55,4 +69,4 @@ const vercel = {
 };
 
 await writeFile(outputPath, `${JSON.stringify(vercel, null, 2)}\n`, 'utf8');
-console.log('Generated vercel.json with zero executable inline scripts; same-origin runtime scripts are authorized by CSP self.');
+console.log('Generated vercel.json with PWA/service-worker headers, zero executable inline scripts, and same-origin runtime scripts authorized by CSP self.');

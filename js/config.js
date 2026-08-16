@@ -30,10 +30,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.5,
-    version: 'v235.5',
-    name: 'ATM Pay Testnet Wallet Reset',
-    title: 'ATM Town v235.5 — ATM Pay Testnet Wallet Reset'
+    number: 235.6,
+    version: 'v235.6',
+    name: 'PWA + Player Pings',
+    title: 'ATM Town v235.6 — PWA + Player Pings'
   });
 
   const MAPS = Object.freeze({

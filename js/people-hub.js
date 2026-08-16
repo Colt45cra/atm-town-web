@@ -19,6 +19,15 @@
   function avatar(person){return `<span class="peopleHubAvatar"><img src="${esc(thumb(person))}" alt=""></span>`;}
   function requestCount(){return Number(state.pay?.pendingRequestCount||0);}
   function nearbyCount(){return (state.game?.online||[]).filter(item=>!item.is_self&&item.nearby).length;}
+  function ensureExtendedStyles(){
+    if(document.getElementById('atmPeopleHubV2356Styles'))return;
+    const style=document.createElement('style');style.id='atmPeopleHubV2356Styles';style.textContent=`
+.peopleHubPersonActions{display:flex;flex:0 0 auto;gap:5px;align-items:center}.peopleHubPingBtn{border:1px solid rgba(255,209,102,.3);background:rgba(255,209,102,.08);color:#ffd166;border-radius:10px;padding:8px 9px;font-size:8px;font-weight:1000;text-transform:uppercase}.peopleHubPwaActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}.peopleHubPwaActions button{border:1px solid rgba(88,241,230,.16);border-radius:10px;background:#102431;color:#dffcff;padding:9px 7px;font:1000 8px system-ui;text-transform:uppercase}.peopleHubPwaActions button.primary{background:rgba(112,249,200,.1);border-color:rgba(112,249,200,.3);color:#70f9c8}.peopleHubPwaStatus{margin-top:7px;color:#8fb1bf;font-size:9px;line-height:1.35}.peopleHubPwaStatus.ok{color:#70f9c8}.peopleHubPwaStatus.warn{color:#ffd166}
+#atmPeoplePingComposer{position:fixed;inset:0;z-index:12100;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(0,7,12,.86);backdrop-filter:blur(10px)}#atmPeoplePingComposer.open{display:flex}.atmPingComposerCard{width:min(440px,100%);border:1px solid rgba(255,209,102,.28);border-radius:18px;background:linear-gradient(180deg,#102431,#07131c);box-shadow:0 24px 70px rgba(0,0,0,.58);padding:15px;color:#eaffff}.atmPingComposerCard h3{margin:0;color:#ffd166;font-size:18px}.atmPingComposerCard p{margin:5px 0 10px;color:#91b2bd;font-size:10px;line-height:1.4}.atmPingPresets{display:grid;grid-template-columns:1fr 1fr;gap:7px}.atmPingPresets button,.atmPingComposerActions button{border:1px solid rgba(255,255,255,.1);border-radius:11px;background:#142b37;color:#eaffff;padding:10px;font:900 9px system-ui;text-align:left}.atmPingPresets button{min-height:42px}.atmPingComposerInput{width:100%;margin-top:9px;border:1px solid rgba(88,241,230,.18);border-radius:11px;background:#041018;color:#fff;padding:11px;font-size:12px;outline:none}.atmPingComposerActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.atmPingComposerActions button{text-align:center}.atmPingComposerActions .send{background:linear-gradient(90deg,#58f1e6,#70f9c8);color:#052029;border:0}.atmPingComposerStatus{min-height:16px;margin-top:7px;color:#8fb1bf;font-size:9px}.atmPingComposerStatus.error{color:#ff8fa8}.atmPingComposerStatus.ok{color:#70f9c8}
+@media(max-width:560px){.peopleHubPerson{gap:7px}.peopleHubPersonActions{flex-direction:column;gap:4px}.peopleHubPayBtn,.peopleHubPingBtn{padding:7px 8px}.peopleHubPwaActions{grid-template-columns:1fr}.atmPingComposerCard{padding:13px}.atmPingPresets{grid-template-columns:1fr}}
+`;
+    document.head.appendChild(style);
+  }
   function ensureTrigger(){
     const el=document.getElementById('onlineBadge');if(!el)return null;
     el.classList.add('peopleHubTrigger');el.setAttribute('role','button');el.setAttribute('tabindex','0');el.setAttribute('aria-label','Open people, online players, and ATM Pay');
@@ -33,6 +42,7 @@
     el.innerHTML=`<span class="peopleHubTriggerText">${Math.max(1,Number(state.onlineCount||1))} online</span>${near?'<span class="peopleHubNearbyDot" title="Players nearby"></span>':''}${requests?`<span class="peopleHubRequestBadge">${Math.min(99,requests)}</span>`:''}`;
   }
   function ensureUi(){
+    ensureExtendedStyles();
     if(document.getElementById('atmPeopleHubModal')){ensureTrigger();return;}
     const style=document.createElement('style');style.textContent=`
 #onlineBadge.peopleHubTrigger{cursor:pointer;display:flex;align-items:center;gap:5px;user-select:none;pointer-events:auto}.peopleHubTrigger:focus-visible{outline:2px solid #70f9c8;outline-offset:2px}.peopleHubNearbyDot{width:7px;height:7px;border-radius:50%;background:#70f9c8;box-shadow:0 0 9px rgba(112,249,200,.9)}.peopleHubRequestBadge{display:grid;place-items:center;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:#ffd166;color:#201500;font-size:8px;font-weight:1000}
@@ -64,19 +74,59 @@
     const all=[...(state.game.online||[]),...(state.game.encounters||[]),...(state.pay.recentPeople||[]),...(state.searchResults||[])].map(normalizePerson).filter(Boolean);
     return all.find(p=>p.user_id===id)||null;
   }
-  function payPerson(person){if(!person?.atm_pay_ready)return;close();window.ATMPay?.openToRecipient?.({user_id:person.user_id,handle:person.handle,display_name:person.display_name,character_id:person.character_id,atm_pay_ready:true});}
-  function personRow(person,{showStatus=true,pay=true}={}){
-    const p=normalizePerson(person);if(!p)return '';
-    const payReady=pay&&p.atm_pay_ready&&!p.is_self;
-    return `<div class="peopleHubPerson">${avatar(p)}<span class="peopleHubPersonMain"><b>${esc(p.display_name)}${p.is_self?' · You':''}</b>${p.handle?`<span class="peopleHubHandle">@${esc(p.handle)}</span>`:''}${showStatus?`<span>${esc(statusText(p))}</span>`:''}<span class="peopleHubBadges">${p.nearby&&!p.is_self?'<span class="peopleHubPill near">Nearby</span>':''}${p.atm_pay_ready?'<span class="peopleHubPill">ATM Pay</span>':''}</span></span>${payReady?`<button class="peopleHubPayBtn" type="button" data-people-pay="${esc(p.user_id)}">Pay</button>`:''}</div>`;
+  function ensurePingComposer(){
+    ensureExtendedStyles();let modal=document.getElementById('atmPeoplePingComposer');if(modal)return modal;
+    modal=document.createElement('div');modal.id='atmPeoplePingComposer';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
+    modal.innerHTML=`<div class="atmPingComposerCard"><h3 id="atmPingComposerTitle">Ping player</h3><p id="atmPingComposerTarget">Send a quick ATM Town notification.</p><div class="atmPingPresets"><button type="button" data-ping-kind="hello">👋 Hey!</button><button type="button" data-ping-kind="join">🎮 Get on ATM Town</button><button type="button" data-ping-kind="find_me">📍 Come find me</button><button type="button" data-ping-kind="money_rain">💸 Money Rain starting</button></div><input class="atmPingComposerInput" id="atmPingComposerInput" maxlength="120" placeholder="Or type a custom ping"><div class="atmPingComposerActions"><button type="button" id="atmPingComposerCancel">Cancel</button><button class="send" type="button" id="atmPingComposerSend">Send custom</button></div><div class="atmPingComposerStatus" id="atmPingComposerStatus"></div></div>`;
+    document.body.appendChild(modal);modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.remove('open');});document.getElementById('atmPingComposerCancel')?.addEventListener('click',()=>modal.classList.remove('open'));
+    return modal;
   }
-  function bindPayButtons(host){host?.querySelectorAll('[data-people-pay]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePay||''));if(person)payPerson(person);}));}
+  function setPingComposerStatus(message,tone=''){const el=document.getElementById('atmPingComposerStatus');if(!el)return;el.textContent=message||'';el.className='atmPingComposerStatus'+(tone?' '+tone:'');}
+  async function sendPing(person,kind,message=''){
+    if(!person?.user_id)return;setPingComposerStatus('Sending ping…');
+    try{
+      const result=await window.ATMPWA?.sendPing?.(person.user_id,kind,message);if(!result)throw new Error('ATM Town ping service is not ready yet.');
+      const delivered=Number(result?.push?.delivered||0);setPingComposerStatus(delivered?`Sent · ${delivered} push device${delivered===1?'':'s'} notified`:'Sent · they will see it in-game if online','ok');
+      window.dispatchEvent(new CustomEvent('atm:pay-notification',{detail:{message:`Ping sent to @${person.handle||person.display_name}.`,tone:'success'}}));
+      setTimeout(()=>document.getElementById('atmPeoplePingComposer')?.classList.remove('open'),650);
+    }catch(error){setPingComposerStatus(error?.message||'Ping could not be sent.','error');}
+  }
+  function openPingComposer(person){
+    const p=normalizePerson(person);if(!p?.user_id||p.is_self)return;const modal=ensurePingComposer();modal.dataset.targetUserId=p.user_id;modal.__person=p;
+    const target=document.getElementById('atmPingComposerTarget');if(target)target.textContent=`Ping ${p.handle?'@'+p.handle:p.display_name}. They can receive it in-game or as a push notification if enabled.`;
+    const input=document.getElementById('atmPingComposerInput');if(input)input.value='';setPingComposerStatus('');modal.classList.add('open');
+    modal.querySelectorAll('[data-ping-kind]').forEach(button=>{button.onclick=()=>sendPing(p,String(button.dataset.pingKind||'hello'));});
+    const send=document.getElementById('atmPingComposerSend');if(send)send.onclick=()=>{const value=String(document.getElementById('atmPingComposerInput')?.value||'').trim();if(!value){setPingComposerStatus('Type a custom message first.','error');return;}sendPing(p,'custom',value);};
+  }
+  function pwaSection(){
+    const pwa=window.ATMPWA?.getState?.();if(!pwa)return '';
+    const installed=!!pwa.installed,subscribed=!!pwa.subscribed,permission=String(pwa.notificationPermission||'default');const download=pwa.download||{};
+    const installLabel=installed?'Installed':(pwa.ios?'Add to Home Screen':'Install ATM Town');
+    const notifyLabel=subscribed?'Notifications On':(permission==='denied'?'Notifications Blocked':'Enable Notifications');
+    const downloadLabel=download.active?(download.total?`Caching ${download.completed}/${download.total}`:'Preparing Cache'):(download.status==='complete'?'Game Data Cached':'Cache Game Data');
+    const status=installed?'ATM Town is installed as an app.':(pwa.ios?'On iPhone/iPad, install from Safari Share → Add to Home Screen.':'Install ATM Town for an app-like launch and faster repeat loads.');
+    return `<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>ATM Town App</b><span>${installed?'INSTALLED':'PWA'}</span></div><p class="peopleHubCopy">${esc(status)} Game assets and streamed world chunks are cached as you use them; optional Game Data caching preloads the town chunks for faster repeat visits.</p><div class="peopleHubPwaActions"><button class="${installed?'':'primary'}" type="button" id="atmPeopleHubInstall" ${installed?'disabled':''}>${esc(installLabel)}</button><button class="${subscribed?'':'primary'}" type="button" id="atmPeopleHubNotify" ${permission==='denied'?'disabled':''}>${esc(notifyLabel)}</button><button type="button" id="atmPeopleHubCache" ${download.active?'disabled':''}>${esc(downloadLabel)}</button></div><div class="peopleHubPwaStatus${subscribed?' ok':''}" id="atmPeopleHubPwaStatus">${subscribed?'Player pings can reach this device when ATM Town is closed.':'Enable notifications to receive player pings outside the game.'}</div></div>`;
+  }
+  function setPwaStatus(message,tone=''){const el=document.getElementById('atmPeopleHubPwaStatus');if(!el)return;el.textContent=message||'';el.className='peopleHubPwaStatus'+(tone?' '+tone:'');}
+  function bindPwaButtons(){
+    document.getElementById('atmPeopleHubInstall')?.addEventListener('click',async()=>{try{setPwaStatus('Opening install…');await window.ATMPWA?.install?.();renderOnline();}catch(error){setPwaStatus(error?.message||'Use your browser install option.','warn');}});
+    document.getElementById('atmPeopleHubNotify')?.addEventListener('click',async()=>{try{setPwaStatus('Requesting notification permission…');await window.ATMPWA?.enableNotifications?.();renderOnline();}catch(error){setPwaStatus(error?.message||'Notifications could not be enabled.','warn');}});
+    document.getElementById('atmPeopleHubCache')?.addEventListener('click',async()=>{try{setPwaStatus('Starting game-data cache…');await window.ATMPWA?.downloadWorld?.();}catch(error){setPwaStatus(error?.message||'Game data could not be cached.','warn');}});
+  }
+  function payPerson(person){if(!person?.atm_pay_ready)return;close();window.ATMPay?.openToRecipient?.({user_id:person.user_id,handle:person.handle,display_name:person.display_name,character_id:person.character_id,atm_pay_ready:true});}
+  function personRow(person,{showStatus=true,pay=true,ping=true}={}){
+    const p=normalizePerson(person);if(!p)return '';
+    const payReady=pay&&p.atm_pay_ready&&!p.is_self,pingReady=ping&&!!p.user_id&&!p.is_self;
+    const actions=(pingReady||payReady)?`<span class="peopleHubPersonActions">${pingReady?`<button class="peopleHubPingBtn" type="button" data-people-ping="${esc(p.user_id)}">Ping</button>`:''}${payReady?`<button class="peopleHubPayBtn" type="button" data-people-pay="${esc(p.user_id)}">Pay</button>`:''}</span>`:'';
+    return `<div class="peopleHubPerson">${avatar(p)}<span class="peopleHubPersonMain"><b>${esc(p.display_name)}${p.is_self?' · You':''}</b>${p.handle?`<span class="peopleHubHandle">@${esc(p.handle)}</span>`:''}${showStatus?`<span>${esc(statusText(p))}</span>`:''}<span class="peopleHubBadges">${p.nearby&&!p.is_self?'<span class="peopleHubPill near">Nearby</span>':''}${p.atm_pay_ready?'<span class="peopleHubPill">ATM Pay</span>':''}</span></span>${actions}</div>`;
+  }
+  function bindPersonButtons(host){host?.querySelectorAll('[data-people-pay]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePay||''));if(person)payPerson(person);}));host?.querySelectorAll('[data-people-ping]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePing||''));if(person)openPingComposer(person);}));}
   function renderOnline(){
     const host=document.getElementById('atmPeopleHubOnline');if(!host)return;
     const online=(state.game.online||[]).map(normalizePerson).filter(Boolean);
     const near=online.filter(p=>p.nearby&&!p.is_self).length;
-    host.innerHTML=`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Online now</b><span>${online.length||state.onlineCount} PLAYER${(online.length||state.onlineCount)===1?'':'S'}</span></div><p class="peopleHubCopy">Nearby players are pinned first. Tap Pay only when you actually want to send money.</p>${online.length?online.map(p=>personRow(p)).join(''):'<div class="peopleHubEmpty">No other players are visible in this room yet.</div>'}</div>${near?`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Nearby</b><span>${near}</span></div><p class="peopleHubCopy">The green dot on the player-count icon appears whenever someone is close enough for quick social actions.</p></div>`:''}`;
-    bindPayButtons(host);
+    host.innerHTML=`${pwaSection()}<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Online now</b><span>${online.length||state.onlineCount} PLAYER${(online.length||state.onlineCount)===1?'':'S'}</span></div><p class="peopleHubCopy">Ping someone to get their attention. If they enabled notifications, the ping can reach their phone/computer even when ATM Town is closed.</p>${online.length?online.map(p=>personRow(p)).join(''):'<div class="peopleHubEmpty">No other players are visible in this room yet.</div>'}</div>${near?`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Nearby</b><span>${near}</span></div><p class="peopleHubCopy">The green dot on the player-count icon appears whenever someone is close enough for quick social actions.</p></div>`:''}`;
+    bindPersonButtons(host);bindPwaButtons();
   }
   function dedupePeople(list){const out=[],seen=new Set();for(const raw of list){const p=normalizePerson(raw);const key=p?.user_id||p?.session_id;if(!p||!key||seen.has(key))continue;seen.add(key);out.push(p);}return out;}
   function renderPeople(){
@@ -84,7 +134,7 @@
     const paymentPeople=dedupePeople(state.pay.recentPeople||[]);
     const encounters=dedupePeople(state.game.encounters||[]).filter(p=>!paymentPeople.some(x=>x.user_id&&x.user_id===p.user_id));
     host.innerHTML=`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Recent payments</b><span>${paymentPeople.length}</span></div><p class="peopleHubCopy">People you’ve paid or requested stay easy to find, even when they’re offline.</p>${paymentPeople.length?paymentPeople.map(p=>personRow(p,{showStatus:false})).join(''):'<div class="peopleHubEmpty">Your payment contacts will appear here.</div>'}</div><div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Met this session</b><span>${encounters.length}</span></div><p class="peopleHubCopy">Only ATM Pay-enabled players you got close to are remembered for this browser session. This is not a permanent location history.</p>${encounters.length?encounters.map(p=>personRow(p,{showStatus:false})).join(''):'<div class="peopleHubEmpty">Walk near another ATM Pay player and they’ll appear here for this session.</div>'}</div>`;
-    bindPayButtons(host);
+    bindPersonButtons(host);
   }
   function requestRow(item){
     const p=normalizePerson(item?.other);if(!p)return '';
@@ -99,7 +149,7 @@
     const host=document.getElementById('atmPeopleHubPay');if(!host)return;
     const requests=state.pay.incomingRequests||[],activity=state.pay.recentActivity||[];
     host.innerHTML=`${requests.length?`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Requests for you</b><span>${requests.length}</span></div></div>${requests.map(requestRow).join('')}`:''}<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Find someone to pay</b><span>ATM PAY</span></div><p class="peopleHubCopy">Search by player name or @handle. Wallet addresses stay out of the flow.</p><input class="peopleHubSearch" id="atmPeopleHubSearch" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="@handle or player name" value="${esc(state.searchQuery)}"><div id="atmPeopleHubSearchResults">${state.searchResults.length?state.searchResults.map(p=>personRow(p,{showStatus:false})).join(''):''}</div></div><div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Recent activity</b><span>${activity.length}</span></div>${activity.length?activity.slice(0,6).map(activityLine).join(''):'<div class="peopleHubEmpty">No ATM Pay activity yet.</div>'}<button class="peopleHubSecondary" id="atmPeopleHubOpenPay" type="button">Open full ATM Pay</button></div>`;
-    bindPayButtons(host);
+    bindPersonButtons(host);
     host.querySelectorAll('[data-people-request-pay]').forEach(button=>button.addEventListener('click',()=>{const id=String(button.dataset.peopleRequestPay||'');close();window.ATMPay?.openRequest?.(id);}));
     document.getElementById('atmPeopleHubOpenPay')?.addEventListener('click',()=>{close();window.ATMPay?.open?.();});
     const input=document.getElementById('atmPeopleHubSearch');input?.addEventListener('input',()=>{state.searchQuery=input.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>runSearch(state.searchQuery),250);});
@@ -132,4 +182,5 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();refresh({network:false});});else{ensureUi();refresh({network:false});}
   window.addEventListener('atm:online-players-changed',()=>{state.game=window.ATMGamePeople?.snapshot?.()||state.game;if(state.open)render();else refreshTrigger();});
   window.addEventListener('atm:pay-state-changed',event=>{state.pay=event.detail||window.ATMPay?.getConsumerSnapshot?.()||state.pay;if(state.open)render();else refreshTrigger();});
+  window.addEventListener('atm:pwa-state-changed',()=>{if(state.open&&state.page===0)renderOnline();});
 })();

@@ -8,7 +8,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.105.0",
     "livekit-server-sdk": "^2.17.0",
-    "xumm-sdk": "^1.11.2"
+    "xumm-sdk": "^1.11.2",
+    "web-push": "^3.6.7"
   },
   "scripts": {
     "validate": "node scripts/validate-build.mjs",
