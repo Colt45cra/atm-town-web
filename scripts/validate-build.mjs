@@ -109,6 +109,7 @@ const requiredFiles = [
   'docs/V235.4-XBOX-CONTROLLER.md',
   'docs/V235.5-ATM-PAY-TESTNET-WALLET-RESET.md',
   'docs/V235.6-PWA-PLAYER-PINGS.md',
+  'docs/V235.6.1-PEOPLE-HUB-MOBILE-SCROLL-HOTFIX.md',
   'manifest.webmanifest',
   'service-worker.js',
   'js/pwa.js',
@@ -174,8 +175,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.6'")) errors.push('Missing v235.6 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'PWA + Player Pings'")) errors.push('Missing v235.6 PWA + Player Pings display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.6.1'")) errors.push('Missing v235.6.1 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'People Hub Mobile Scroll Hotfix'")) errors.push('Missing v235.6.1 People Hub Mobile Scroll Hotfix display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -284,7 +285,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.6'")) errors.push('js/config.js is not marked v235.6.');
+if (!configSource.includes("version: 'v235.6.1'")) errors.push('js/config.js is not marked v235.6.1.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -352,6 +353,9 @@ if (!serviceWorkerSource.includes('ATM_PWA_DOWNLOAD_WORLD') || !serviceWorkerSou
 if (!pwaSource.includes("navigator.serviceWorker.register(SW_URL") || !pwaSource.includes('pushManager.subscribe')) errors.push('v235.6 client PWA/push subscription flow is missing.');
 if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authenticatedApi('player-ping'")) errors.push('v235.6 client player-ping API bridge is missing.');
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
+if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
+if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.6.1")) errors.push('v235.6.1 PWA shell cache was not bumped for the People Hub hotfix.');
 if (!gameRuntimeParts[0].includes("event:'player_ping'") || !gameRuntimeParts[0].includes('sendAtmPlayerPing')) errors.push('v235.6 realtime in-game player ping bridge is missing.');
 if (!embeddedWalletApiSource.includes('isPushAction(action)') || !embeddedWalletApiSource.includes('handlePushAction')) errors.push('v235.6 push API actions are not routed through the existing Hobby serverless function.');
 if (!pushSource.includes("new Set(['push-config','push-subscribe','push-unsubscribe','player-ping'])") || !pushSource.includes('PAIR_COOLDOWN_MS = 30_000')) errors.push('v235.6 push server action/rate-limit invariants are missing.');
@@ -702,5 +706,5 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('ATM Town v235.6 build validation passed.');
+console.log('ATM Town v235.6.1 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
