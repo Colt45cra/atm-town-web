@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.6.2',name:ATM_CONFIG?.build?.name||'Persistent Live Chat'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.6.3',name:ATM_CONFIG?.build?.name||'Chat + UI Readability Hotfix'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2701,7 +2701,7 @@ function addChatLine(name,message,meta={}){
     },{local:Boolean(meta.local),historical:Boolean(meta.historical)});
     return;
   }
-  const log=document.getElementById('chatLog');if(!log)return;const line=document.createElement('div');line.className='chatLine';line.textContent=name+': '+message;log.appendChild(line);while(log.children.length>4)log.removeChild(log.firstChild);setTimeout(()=>line.remove(),5*60*1000);
+  const log=document.getElementById('chatLog');if(!log)return;const line=document.createElement('div');line.className='chatLine';line.textContent=name+': '+message;log.appendChild(line);while(log.children.length>4)log.removeChild(log.firstChild);setTimeout(()=>line.remove(),8000);
 }
 function showBubble(id,name,message,x,y,map,meta={}){chatBubbles.push({id,name,message,x,y,map,expires:Date.now()+6500});addChatLine(name,message,{...meta,senderPlayerId:id});}
 async function connectMultiplayer(){
@@ -4764,7 +4764,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){let hint='';if(thing?.type==='player-nft-beacon')hint='Tap VIEW NFT to inspect '+String(thing.remotePlayer?.name||'this player')+"'s Trade Beacon";else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
+function interactionHint(thing){let hint='';if(thing?.type==='player-nft-beacon')hint='';else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -5172,8 +5172,9 @@ function update(dt){
   currentNearThing=nearThing;
   updateWorldAlive(dt);
   const hintEl=document.getElementById('hint');
-  hintEl.textContent=interactionHint(nearThing);
-  hintEl.style.opacity=nearThing?1:0;
+  const hintText=interactionHint(nearThing);
+  hintEl.textContent=hintText;
+  hintEl.style.opacity=(nearThing&&hintText)?1:0;
   const registeredEntrance=nearThing&&currentMap==='town'&&ATM_MAPS.fromEntrance(nearThing.id);
   let actionLabel='ACTION';
   if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';

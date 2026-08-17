@@ -37,6 +37,17 @@
   }
 
   let pingToastTimer=null;
+  function positionPingToast(toast){
+    if(!toast)return;
+    const vv=global.visualViewport;
+    const vvTop=vv?vv.offsetTop:0;
+    let top=vvTop+72;
+    const payment=document.getElementById('xrplPaymentToast');
+    if(payment?.classList.contains('visible')) top=Math.max(top,payment.getBoundingClientRect().bottom+8);
+    const eventHud=document.getElementById('atmWorldEventHud');
+    if(eventHud?.classList.contains('show')) top=Math.max(top,eventHud.getBoundingClientRect().bottom+8);
+    toast.style.top=Math.round(top)+'px';
+  }
   function receivePing(payload){
     if(!payload||payload.type!=='player_ping')return false;
     const id=String(payload.ping_id||'');
@@ -44,6 +55,7 @@
     if(id){seenPingIds.add(id);if(seenPingIds.size>80)seenPingIds.delete(seenPingIds.values().next().value);}
     const message=cleanMessage(payload.message||'A player pinged you in ATM Town.');
     const toast=ensurePingToast();const text=document.getElementById('atmPlayerPingText');if(text)text.textContent=message;
+    positionPingToast(toast);
     toast.classList.add('show');clearTimeout(pingToastTimer);pingToastTimer=setTimeout(()=>toast.classList.remove('show'),9000);
     try{navigator.vibrate?.([80,50,80]);}catch(_error){}
     global.dispatchEvent(new CustomEvent('atm:player-ping',{detail:payload}));
@@ -174,5 +186,7 @@
     readyRegistration().catch((error)=>console.warn('ATM Town PWA registration failed',error));
   }
 
+  global.visualViewport?.addEventListener('resize',()=>positionPingToast(document.getElementById('atmPlayerPingToast')));
+  global.visualViewport?.addEventListener('scroll',()=>positionPingToast(document.getElementById('atmPlayerPingToast')));
   global.ATMPWA={getState,install,enableNotifications,disableNotifications,syncSubscription,onAuthChanged,downloadWorld,storageEstimate,sendPing,receivePing};
 })(window);

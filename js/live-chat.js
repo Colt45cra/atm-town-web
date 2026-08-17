@@ -1,4 +1,4 @@
-/* ATM Town v235.6.2 persistent live chat
+/* ATM Town v235.6.3 chat readability + mobile keyboard hotfix
  * Overhead speech bubbles keep their short lifetime in game-core.
  * This module keeps chat messages for the current browser play session and
  * loads the last 10 minutes of authenticated server history on room join.
@@ -7,7 +7,7 @@
   'use strict';
 
   const MAX_SESSION_MESSAGES = 200;
-  const PREVIEW_LIFETIME_MS = 5 * 60_000;
+  const PREVIEW_LIFETIME_MS = 8_000;
   const PREVIEW_LIMIT = 4;
   const state = {
     room: '',
@@ -56,6 +56,29 @@
   function nearBottom(el) {
     if (!el) return true;
     return el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+  }
+
+  // Keep the chat panel inside the *visual* viewport. On mobile browsers the
+  // software keyboard shrinks visualViewport without shrinking the layout
+  // viewport, so a normal fixed bottom value can leave the panel behind the
+  // keyboard. We anchor the panel immediately above the chat composer instead.
+  function syncPanelToVisualViewport() {
+    const panel = $('liveChatPanel');
+    if (!panel || !state.open) return;
+    const vv = global.visualViewport;
+    const vvTop = vv ? vv.offsetTop : 0;
+    const vvHeight = vv ? vv.height : global.innerHeight;
+    const composerTop = vvTop + vvHeight - 68;
+    const topGap = 8;
+    const panelGap = 8;
+    const available = Math.max(150, composerTop - vvTop - topGap - panelGap);
+    const preferred = Math.min(520, vvHeight * (global.innerWidth <= 600 ? 0.58 : 0.56));
+    const panelHeight = Math.max(150, Math.min(preferred, available));
+    const panelTop = Math.max(vvTop + topGap, composerTop - panelHeight - panelGap);
+    panel.style.top = `${Math.round(panelTop)}px`;
+    panel.style.bottom = 'auto';
+    panel.style.height = `${Math.round(panelHeight)}px`;
+    panel.style.maxHeight = `${Math.round(available)}px`;
   }
 
   function timeLabel(value) {
@@ -136,8 +159,13 @@
     if (state.open) {
       state.unread = 0;
       updateUnread();
+      syncPanelToVisualViewport();
       renderPanel({ preserveScroll: false });
-      requestAnimationFrame(() => { const list = $('liveChatMessages'); if (list) list.scrollTop = list.scrollHeight; });
+      requestAnimationFrame(() => {
+        syncPanelToVisualViewport();
+        const list = $('liveChatMessages');
+        if (list) list.scrollTop = list.scrollHeight;
+      });
     }
   }
 
@@ -194,10 +222,23 @@
   function bind() {
     $('chatToggle')?.addEventListener('click', () => setOpen(!state.open));
     $('liveChatClose')?.addEventListener('click', () => setOpen(false));
+    $('chatInput')?.addEventListener('focus', () => {
+      if (state.open) {
+        syncPanelToVisualViewport();
+        setTimeout(() => {
+          syncPanelToVisualViewport();
+          const list = $('liveChatMessages');
+          if (list) list.scrollTop = list.scrollHeight;
+        }, 80);
+      }
+    });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && state.open) setOpen(false);
     });
-    setInterval(renderPreview, 30_000);
+    global.visualViewport?.addEventListener('resize', syncPanelToVisualViewport);
+    global.visualViewport?.addEventListener('scroll', syncPanelToVisualViewport);
+    global.addEventListener('orientationchange', () => setTimeout(syncPanelToVisualViewport, 120));
+    setInterval(renderPreview, 2_000);
     updateUnread(); renderPreview(); renderPanel();
   }
 

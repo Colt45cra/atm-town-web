@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.6.3: keeps live chat visible above mobile keyboards, restores brief HUD chat previews, removes Trade Beacon instruction spam, and separates colliding HUD messages.
  * v235.6.2: adds persistent session live chat, a readable chat panel, and recent authenticated server history while preserving short overhead bubbles.
  * v235.6.1: fixes People Hub mobile scrolling and prevents live roster refreshes from resetting an active scroll.
  * v235.5: adds an explicit Testnet ATM Pay wallet reset/replacement flow while preserving the user's ATM Pay identity.
@@ -32,10 +33,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.62,
-    version: 'v235.6.2',
+    number: 235.63,
+    version: 'v235.6.3',
     name: 'Persistent Live Chat',
-    title: 'ATM Town v235.6.2 — Persistent Live Chat'
+    title: 'ATM Town v235.6.3 — Chat + UI Readability Hotfix'
   });
 
   const MAPS = Object.freeze({
