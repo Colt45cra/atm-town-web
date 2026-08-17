@@ -2,6 +2,7 @@ import { requireUser, sendError, setCors } from '../lib/auth.js';
 import { handleAtmPayAction, isAtmPayAction } from '../lib/atm-pay.js';
 import { xrplTestnetRpc } from '../lib/xrpl-testnet-rpc.js';
 import { handlePushAction, isPushAction } from '../lib/push-notifications.js';
+import { handleLiveChatAction, isLiveChatAction } from '../lib/live-chat.js';
 const NETWORK = 'testnet';
 const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const MAX_BACKUP_BYTES = 24 * 1024;
@@ -207,6 +208,7 @@ export default async function handler(req, res) {
 
     if (isAtmPayAction(action)) return await handleAtmPayAction(req, res, { admin, user, action });
     if (isPushAction(action)) return await handlePushAction(req, res, { admin, user, action });
+    if (isLiveChatAction(action)) return await handleLiveChatAction(req, res, { admin, user, action });
 
     if (req.method === 'GET' && action === 'status') {
       const row = await readWallet(admin, user.id);

@@ -111,10 +111,25 @@ body.directory-open #controls,body.directory-open #hud,body.directory-open #ques
 
 #onlineBadge{position:fixed;right:12px;top:137px;z-index:3;background:rgba(5,18,26,.86);border:1px solid rgba(88,241,230,.25);border-radius:12px;padding:8px 10px;font-size:12px;font-weight:800;pointer-events:none}
 #chatBar{position:fixed;left:max(118px,calc(env(safe-area-inset-left) + 108px));right:max(102px,calc(env(safe-area-inset-right) + 92px));top:calc(var(--vv-top,0px) + var(--vv-height,100vh) - 68px);bottom:auto;height:46px;z-index:45;display:flex;gap:6px;visibility:visible!important;opacity:1!important}
+#chatToggle{position:relative;flex:0 0 46px;width:46px;border:1px solid rgba(88,241,230,.28);border-radius:12px;background:rgba(5,18,26,.94);color:#eaffff;font-size:18px;font-weight:1000;display:grid;place-items:center;touch-action:manipulation}
+#chatToggle[aria-expanded="true"]{border-color:#58f1e6;background:rgba(12,45,54,.96);box-shadow:0 0 0 1px rgba(88,241,230,.16)}
+#chatUnreadBadge{position:absolute;right:-4px;top:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#ffd166;color:#10232b;font:1000 9px/18px system-ui;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.36)}
 #chatInput{min-width:0;flex:1;padding:12px;border-radius:12px;border:1px solid rgba(88,241,230,.28);background:rgba(5,18,26,.9);color:white;font-size:14px}
 #chatSend{width:62px;border:0;border-radius:12px;background:#58f1e6;color:#06212b;font-weight:900}
-#chatLog{position:fixed;left:12px;bottom:118px;width:min(320px,70vw);max-height:145px;overflow:hidden;z-index:3;pointer-events:none}
-.chatLine{margin-top:5px;background:rgba(3,13,19,.68);border-left:3px solid #58f1e6;padding:6px 8px;border-radius:6px;font-size:12px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+#chatLog{position:fixed;left:12px;bottom:118px;width:min(340px,72vw);max-height:176px;overflow:hidden;z-index:3;pointer-events:none;display:grid;gap:5px}
+.chatLine{background:rgba(3,13,19,.74);border-left:3px solid #58f1e6;padding:6px 8px;border-radius:7px;font-size:12px;box-shadow:0 6px 16px rgba(0,0,0,.2);display:grid;gap:2px}
+.chatLine.local{border-left-color:#ffd166}.chatLine strong{color:#dffcff;font:1000 10px/1.15 system-ui}.chatLine span{color:#fff;font:800 11px/1.3 system-ui;overflow-wrap:anywhere}
+#liveChatPanel{position:fixed;left:max(10px,env(safe-area-inset-left));bottom:calc(76px + env(safe-area-inset-bottom));z-index:44;width:min(430px,calc(100vw - 20px));height:min(56vh,520px);max-height:calc(var(--vv-height,100vh) - 150px);display:none;grid-template-rows:auto minmax(0,1fr);overflow:hidden;border:1px solid rgba(88,241,230,.3);border-radius:18px;background:linear-gradient(180deg,rgba(6,26,36,.98),rgba(3,14,21,.98));box-shadow:0 24px 60px rgba(0,0,0,.5);backdrop-filter:blur(14px);pointer-events:auto}
+#liveChatPanel.open{display:grid}
+.liveChatHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px 11px;border-bottom:1px solid rgba(255,255,255,.08)}
+.liveChatHeaderText{min-width:0}.liveChatHeaderText strong{display:block;color:#f4ffff;font:1000 14px/1.1 system-ui;letter-spacing:.04em}.liveChatHeaderText span{display:block;margin-top:4px;color:#8fb5bf;font:800 9px/1.2 system-ui}
+#liveChatClose{width:36px;height:36px;flex:0 0 auto;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(255,255,255,.06);color:#eaffff;font:1000 21px/1 system-ui;touch-action:manipulation}
+.liveChatBody{position:relative;min-height:0;overflow:hidden}.liveChatMessages{height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:10px 10px 16px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:rgba(88,241,230,.35) transparent}
+.liveChatMessage{padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06)}.liveChatMessage.local{background:rgba(255,209,102,.055);border-color:rgba(255,209,102,.13)}
+.liveChatMessageHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.liveChatMessageHeader strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#58f1e6;font:1000 10px/1.1 system-ui}.liveChatMessage.local .liveChatMessageHeader strong{color:#ffd166}.liveChatMessageHeader time{flex:0 0 auto;color:#7f9da6;font:800 8px/1 system-ui}.liveChatMessageBody{color:#f5ffff;font:800 12px/1.35 system-ui;overflow-wrap:anywhere;white-space:pre-wrap}
+#liveChatEmpty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;color:#8fb5bf;text-align:center;font:800 11px/1.4 system-ui;pointer-events:none}
+body.live-chat-open #chatLog{display:none}
+@media(max-width:600px){#liveChatPanel{left:8px;width:calc(100vw - 16px);height:min(58dvh,520px);max-height:calc(var(--vv-height,100vh) - 146px);bottom:74px;border-radius:16px}.liveChatMessages{padding:9px 9px 14px}.liveChatMessage{padding:8px 9px}.liveChatMessageBody{font-size:11px}#chatToggle{flex-basis:42px;width:42px}}
 #mapLabel{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:3;background:rgba(5,18,26,.8);padding:7px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:900;pointer-events:none}#jetpackTip{position:fixed;left:50%;bottom:108px;transform:translateX(-50%);z-index:4;padding:7px 10px;border-radius:10px;background:rgba(5,18,26,.82);border:1px solid rgba(255,117,54,.45);color:#fff3d6;font:900 10px system-ui;letter-spacing:.35px;pointer-events:none;white-space:nowrap}
 
 #musicToggle{position:fixed;right:12px;top:101px;z-index:6;width:42px;height:42px;border-radius:13px;border:1px solid rgba(88,241,230,.35);background:rgba(5,18,26,.88);color:#eafcff;font-size:18px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.28);backdrop-filter:blur(8px);pointer-events:auto;touch-action:manipulation}
@@ -162,6 +177,7 @@ body.directory-open #controls,body.directory-open #hud,body.directory-open #ques
 /* v135: vending must cover all gameplay controls */
 body.vending-modal-open #joystick,
 body.vending-modal-open #chatBar,
+body.vending-modal-open #liveChatPanel,
 body.vending-modal-open #action,
 body.vending-modal-open #jumpHint,
 body.vending-modal-open #interactionHint{
@@ -427,6 +443,7 @@ html,body{width:100%;height:100%;max-width:100%;overflow:hidden!important;oversc
 body.access-flow-open #controls,
 body.access-flow-open #chatBar,
 body.access-flow-open #chatLog,
+body.access-flow-open #liveChatPanel,
 body.access-flow-open #hud,
 body.access-flow-open #quest,
 body.access-flow-open #mini,
@@ -923,7 +940,12 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 </div>
 </div>
 <div aria-hidden="true" id="multiplayerPanel" style="display:none"></div>
-<div id="mapLabel">ATM TOWN · v172</div><div id="buildVersion" style="display:none">v172</div><div id="onlineBadge">1 online</div><div id="chatLog"></div><div id="chatBar"><input id="chatInput" maxlength="120" placeholder="Nearby message..."/><button id="chatSend">SEND</button></div>
+<div id="mapLabel">ATM TOWN · v172</div><div id="buildVersion" style="display:none">v172</div><div id="onlineBadge">1 online</div><div aria-live="polite" id="chatLog"></div>
+<div aria-hidden="true" aria-labelledby="liveChatTitle" id="liveChatPanel" role="dialog">
+  <header class="liveChatHeader"><div class="liveChatHeaderText"><strong id="liveChatTitle">ATM TOWN LIVE</strong><span>Session chat · recent messages load when you join online</span></div><button aria-label="Close live chat" id="liveChatClose" type="button">×</button></header>
+  <div class="liveChatBody"><div class="liveChatMessages" id="liveChatMessages"></div><div id="liveChatEmpty">No messages yet. Say something to the town.</div></div>
+</div>
+<div id="chatBar"><button aria-expanded="false" aria-label="Open live chat" id="chatToggle" type="button">💬<span hidden id="chatUnreadBadge">0</span></button><input id="chatInput" maxlength="180" placeholder="Message ATM Town..."/><button id="chatSend">SEND</button></div>
 <div aria-live="polite" id="voiceMeetingPanel">
 <button class="voiceMeetingButton" id="voiceJoinButton" type="button">JOIN VOICE</button>
 <div id="voiceMeetingInfo">
@@ -1024,6 +1046,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 <script src="js/pwa.js"></script>
 <script src="js/people-hub.js"></script>
 <script src="js/world-events.js"></script>
+<script src="js/live-chat.js"></script>
 <script src="js/runtime/game-core.js"></script>
 <script src="js/runtime/sky-run.js"></script>
 <script src="js/runtime/platform-panic.js"></script>

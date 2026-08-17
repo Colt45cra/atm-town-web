@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.6.2: adds persistent session live chat, a readable chat panel, and recent authenticated server history while preserving short overhead bubbles.
  * v235.6.1: fixes People Hub mobile scrolling and prevents live roster refreshes from resetting an active scroll.
  * v235.5: adds an explicit Testnet ATM Pay wallet reset/replacement flow while preserving the user's ATM Pay identity.
  * v235.4: adds desktop Xbox-style controller support with analog movement, controller UI navigation, camera look, jetpack controls, and arcade keyboard bridging.
@@ -31,10 +32,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.61,
-    version: 'v235.6.1',
-    name: 'People Hub Mobile Scroll Hotfix',
-    title: 'ATM Town v235.6.1 — People Hub Mobile Scroll Hotfix'
+    number: 235.62,
+    version: 'v235.6.2',
+    name: 'Persistent Live Chat',
+    title: 'ATM Town v235.6.2 — Persistent Live Chat'
   });
 
   const MAPS = Object.freeze({

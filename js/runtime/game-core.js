@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.6.1',name:ATM_CONFIG?.build?.name||'People Hub Mobile Scroll Hotfix'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.6.2',name:ATM_CONFIG?.build?.name||'Persistent Live Chat'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2688,10 +2688,22 @@ window.addEventListener('focus',()=>{resumePendingXamanLink();resumePendingMagne
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){resumePendingXamanLink();resumePendingMagnetPayment();}});
 initializeIdentity();
 
-function addChatLine(name,message){
-  const log=document.getElementById('chatLog');const line=document.createElement('div');line.className='chatLine';line.textContent=name+': '+message;log.appendChild(line);while(log.children.length>5)log.removeChild(log.firstChild);setTimeout(()=>line.remove(),9000);
+function addChatLine(name,message,meta={}){
+  if(window.ATMLiveChat?.receiveMessage){
+    window.ATMLiveChat.receiveMessage({
+      message_id:meta.messageId||meta.message_id||'',
+      created_at:meta.createdAt||meta.created_at||new Date().toISOString(),
+      sender_user_id:meta.senderUserId||meta.sender_user_id||'',
+      sender_player_id:meta.senderPlayerId||meta.sender_player_id||'',
+      sender_name:name,
+      message,
+      room:roomName
+    },{local:Boolean(meta.local),historical:Boolean(meta.historical)});
+    return;
+  }
+  const log=document.getElementById('chatLog');if(!log)return;const line=document.createElement('div');line.className='chatLine';line.textContent=name+': '+message;log.appendChild(line);while(log.children.length>4)log.removeChild(log.firstChild);setTimeout(()=>line.remove(),5*60*1000);
 }
-function showBubble(id,name,message,x,y,map){chatBubbles.push({id,name,message,x,y,map,expires:Date.now()+6500});addChatLine(name,message);}
+function showBubble(id,name,message,x,y,map,meta={}){chatBubbles.push({id,name,message,x,y,map,expires:Date.now()+6500});addChatLine(name,message,{...meta,senderPlayerId:id});}
 async function connectMultiplayer(){
   const panel=document.getElementById('multiplayerPanel');
   const button=document.getElementById('joinOnline');
@@ -2777,7 +2789,7 @@ async function connectMultiplayer(){
       remotePlayers.set(payload.id,{...old,...payload,lastSeen:Date.now(),drawX:old.drawX??payload.x,drawY:old.drawY??payload.y});updateVoiceProximityVolumes();updateVoiceCount();window.dispatchEvent(new CustomEvent('atm:online-players-changed'));
     });
     realtimeChannel.on('broadcast',{event:'chat'},({payload})=>{
-      if(payload.id!==playerId)showBubble(payload.id,payload.name,payload.message,payload.x,payload.y,payload.map);
+      if(payload.id!==playerId)showBubble(payload.id,payload.name,payload.message,payload.x,payload.y,payload.map,{messageId:payload.message_id,createdAt:payload.created_at,senderUserId:payload.user_id});
     });
     realtimeChannel.on('broadcast',{event:'player_ping'},({payload})=>{
       const myUserId=String(window.ATMPay?.getPublicIdentity?.()?.user_id||'');
@@ -2809,6 +2821,7 @@ async function connectMultiplayer(){
             await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
             broadcastState(true);
             if(authSession?.user){supabaseClient.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id).then(()=>{});}
+            window.ATMLiveChat?.connectRoom?.(roomName);
             resolve();
           }catch(err){reject(err);}
         }else if(channelStatus==='CHANNEL_ERROR' || channelStatus==='TIMED_OUT' || channelStatus==='CLOSED'){
@@ -2942,9 +2955,17 @@ async function resumeMultiplayerConnection(){
 window.addEventListener('pageshow',()=>setTimeout(resumeMultiplayerConnection,250));
 window.addEventListener('focus',()=>setTimeout(resumeMultiplayerConnection,250));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(resumeMultiplayerConnection,250);});
+let lastChatSentAt=0;
 function sendChat(){
-  const input=document.getElementById('chatInput');const message=input.value.trim();if(!message)return;input.value='';showBubble(playerId,playerName,message,player.x,player.y,currentMap);
-  if(onlineMode&&realtimeChannel)realtimeChannel.send({type:'broadcast',event:'chat',payload:{id:playerId,name:playerName,message,x:player.x,y:player.y,map:currentMap}});
+  const input=document.getElementById('chatInput');const message=String(input?.value||'').replace(/\s+/g,' ').trim().slice(0,180);if(!message)return;
+  const now=Date.now();if(now-lastChatSentAt<500)return;lastChatSentAt=now;input.value='';
+  const messageId=globalThis.crypto?.randomUUID?.()||`chat_${now}_${Math.random().toString(36).slice(2,12)}`;
+  const createdAt=new Date(now).toISOString();const senderUserId=String(authSession?.user?.id||'');
+  showBubble(playerId,playerName,message,player.x,player.y,currentMap,{messageId,createdAt,senderUserId,local:true});
+  if(onlineMode&&realtimeChannel){
+    realtimeChannel.send({type:'broadcast',event:'chat',payload:{id:playerId,user_id:senderUserId,name:playerName,message,message_id:messageId,created_at:createdAt,x:player.x,y:player.y,map:currentMap}});
+    window.ATMLiveChat?.persistSentMessage?.({message_id:messageId,message});
+  }
 }
 function updateRemoteInterpolation(){
   const now=Date.now();

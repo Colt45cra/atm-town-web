@@ -110,6 +110,10 @@ const requiredFiles = [
   'docs/V235.5-ATM-PAY-TESTNET-WALLET-RESET.md',
   'docs/V235.6-PWA-PLAYER-PINGS.md',
   'docs/V235.6.1-PEOPLE-HUB-MOBILE-SCROLL-HOTFIX.md',
+  'docs/V235.6.2-PERSISTENT-LIVE-CHAT.md',
+  'js/live-chat.js',
+  'lib/live-chat.js',
+  'supabase/ATM-Town-v235.6.2.sql',
   'manifest.webmanifest',
   'service-worker.js',
   'js/pwa.js',
@@ -166,7 +170,7 @@ const gameRuntimeParts = await Promise.all([
 ]);
 const gameRuntimeSource = gameRuntimeParts.join('\n');
 const runtimeSource = `${html}\n${gameRuntimeSource}`;
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/pwa.js', 'js/people-hub.js', 'js/world-events.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/pwa.js', 'js/people-hub.js', 'js/world-events.js', 'js/live-chat.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -175,8 +179,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.6.1'")) errors.push('Missing v235.6.1 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'People Hub Mobile Scroll Hotfix'")) errors.push('Missing v235.6.1 People Hub Mobile Scroll Hotfix display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.6.2'")) errors.push('Missing v235.6.2 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Persistent Live Chat'")) errors.push('Missing v235.6.2 Persistent Live Chat display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -285,7 +289,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.6.1'")) errors.push('js/config.js is not marked v235.6.1.');
+if (!configSource.includes("version: 'v235.6.2'")) errors.push('js/config.js is not marked v235.6.2.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -343,6 +347,9 @@ const pwaSource = await readFile(path.join(root, 'js', 'pwa.js'), 'utf8');
 const serviceWorkerSource = await readFile(path.join(root, 'service-worker.js'), 'utf8');
 const pushSource = await readFile(path.join(root, 'lib', 'push-notifications.js'), 'utf8');
 const pushSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.6.sql'), 'utf8');
+const liveChatSource = await readFile(path.join(root, 'js', 'live-chat.js'), 'utf8');
+const liveChatServerSource = await readFile(path.join(root, 'lib', 'live-chat.js'), 'utf8');
+const liveChatSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.6.2.sql'), 'utf8');
 const manifestSource = JSON.parse(await readFile(path.join(root, 'manifest.webmanifest'), 'utf8'));
 if (!html.includes('<link rel="manifest" href="/manifest.webmanifest"/>')) errors.push('v235.6 index is missing the PWA manifest link.');
 if (!html.includes('<script src="js/pwa.js"></script>')) errors.push('v235.6 index is missing the PWA runtime.');
@@ -355,7 +362,19 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.6.1")) errors.push('v235.6.1 PWA shell cache was not bumped for the People Hub hotfix.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.6.2")) errors.push('v235.6.2 PWA shell cache was not bumped for persistent live chat.');
+if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
+if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
+if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');
+if (!html.includes('maxlength="180"') || !html.includes('Message ATM Town...')) errors.push('v235.6.2 chat composer length/label update is missing.');
+if (!liveChatSource.includes('PREVIEW_LIFETIME_MS = 5 * 60_000') || !liveChatSource.includes('MAX_SESSION_MESSAGES = 200')) errors.push('v235.6.2 client chat retention invariants are missing.');
+if (!liveChatSource.includes('live-chat-history') || !liveChatSource.includes('live-chat-send') || !liveChatSource.includes('state.unread')) errors.push('v235.6.2 client recent-history/unread chat bridge is incomplete.');
+if (!gameRuntimeParts[0].includes('expires:Date.now()+6500') || !gameRuntimeParts[0].includes('window.ATMLiveChat?.receiveMessage')) errors.push('v235.6.2 must preserve short overhead bubbles while routing messages into Live Chat.');
+if (!gameRuntimeParts[0].includes('message_id:messageId') || !gameRuntimeParts[0].includes('persistSentMessage')) errors.push('v235.6.2 realtime chat ids/server persistence bridge is missing.');
+if (!embeddedWalletApiSource.includes('isLiveChatAction(action)') || !embeddedWalletApiSource.includes('handleLiveChatAction')) errors.push('v235.6.2 live chat is not routed through the existing Hobby serverless function.');
+if (!liveChatServerSource.includes("new Set(['live-chat-history', 'live-chat-send'])") || !liveChatServerSource.includes('RECENT_MINUTES = 10') || !liveChatServerSource.includes('RETENTION_HOURS = 1')) errors.push('v235.6.2 live-chat server history/retention invariants are missing.');
+if (!liveChatServerSource.includes('enforceRateLimit') || !liveChatServerSource.includes('MAX_MESSAGE = 180')) errors.push('v235.6.2 live-chat server rate limit/message cap is missing.');
+if (!liveChatSql.includes('create table if not exists public.atm_live_chat_messages') || !liveChatSql.includes('enable row level security')) errors.push('v235.6.2 live-chat Supabase schema/RLS is incomplete.');
 if (!gameRuntimeParts[0].includes("event:'player_ping'") || !gameRuntimeParts[0].includes('sendAtmPlayerPing')) errors.push('v235.6 realtime in-game player ping bridge is missing.');
 if (!embeddedWalletApiSource.includes('isPushAction(action)') || !embeddedWalletApiSource.includes('handlePushAction')) errors.push('v235.6 push API actions are not routed through the existing Hobby serverless function.');
 if (!pushSource.includes("new Set(['push-config','push-subscribe','push-unsubscribe','player-ping'])") || !pushSource.includes('PAIR_COOLDOWN_MS = 30_000')) errors.push('v235.6 push server action/rate-limit invariants are missing.');
@@ -666,6 +685,7 @@ try {
   // Runtime files execute as classic browser scripts. Check them from a temporary
   // directory outside this package's module scope so node --check uses Script semantics.
   const classicRuntimeFiles = [
+    'js/live-chat.js',
     'js/runtime/game-core.js',
     'js/runtime/sky-run.js',
     'js/runtime/platform-panic.js',
@@ -684,7 +704,7 @@ try {
 
   const syntaxTargets = [
     'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/world-events.js',
-    'lib/auth.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js', 'lib/world-events.js', 'lib/world-event-money-rain-points.js', 'lib/payload-integration.js', 'lib/payload-money-rain.js',
+    'lib/auth.js', 'lib/live-chat.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js', 'lib/world-events.js', 'lib/world-event-money-rain-points.js', 'lib/payload-integration.js', 'lib/payload-money-rain.js',
     'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/leaderboards.js', 'api/xrpl-nft-trade.js',
     'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js', 'api/embedded-wallet.js', 'api/world-time.js',
     'server/xaman-link-start.js', 'server/xaman-link-status.js',
@@ -701,10 +721,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.3.2 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.6.2 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.6.1 build validation passed.');
+console.log('ATM Town v235.6.2 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
