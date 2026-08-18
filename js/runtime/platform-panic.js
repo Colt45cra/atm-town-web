@@ -1,4 +1,4 @@
-/* ===== v186: ATM Platform Panic endless procedural climb ===== */
+/* ===== v235.7.2: ATM Platform Panic 440m jetpack phase ===== */
 (()=>{
   const panel=document.getElementById('platformPanicPanel');
   const canvas=document.getElementById('platformPanicCanvas');
@@ -16,13 +16,15 @@
 
   const WORLD_W=960,VIEW_H=540,BASE_VIEW_W=960,PLAYER_W=32,PLAYER_H=52;
   const START_Y=500,START_LAVA_Y=585,GEN_AHEAD=1050,CLEAN_BELOW=760;
+  const JETPACK_UNLOCK_HEIGHT=440,JETPACK_FUEL_MAX=1.6,JETPACK_THRUST=2700,JETPACK_MAX_RISE_SPEED=720;
   const input={left:false,right:false,axisX:0,jump:false,jumpPressed:false};
   const state={
     open:false,running:false,last:0,elapsed:0,viewW:BASE_VIEW_W,cameraX:0,cameraY:0,
     astronaut:false,bestHeight:0,bestCoins:0,lavaY:START_LAVA_Y,lavaSpeed:18,
+    jetpackUnlocked:false,jetpackActive:false,jetpackNotice:0,
     generatedTop:START_Y,seed:1,platformSerial:0
   };
-  const runner={x:110,y:START_Y,vx:0,vy:0,onGround:true,face:1,coins:0};
+  const runner={x:110,y:START_Y,vx:0,vy:0,onGround:true,face:1,coins:0,jetpackFuel:0};
   let platforms=[];
   let moving=[];
   let coins=[];
@@ -98,10 +100,13 @@
   function resetRun(){
     state.elapsed=0;state.astronaut=isAstronaut();state.cameraX=0;state.cameraY=0;
     state.lavaY=START_LAVA_Y;state.lavaSpeed=18;state.seed=(Date.now()>>>0)||1;
-    Object.assign(runner,{x:110,y:START_Y,vx:0,vy:0,onGround:true,face:1,coins:0});
+    state.jetpackUnlocked=false;state.jetpackActive=false;state.jetpackNotice=0;
+    Object.assign(runner,{x:110,y:START_Y,vx:0,vy:0,onGround:true,face:1,coins:0,jetpackFuel:0});
     buildStartingTower();
     ui.time.textContent='0:00';ui.coins.textContent='0';ui.height.textContent='0m';
-    ui.ability.textContent=state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS';
+    ui.ability.classList.remove('jetpack');
+    ui.ability.textContent=state.astronaut?'ASTRONAUT LOW GRAVITY · JETPACK AT 440m':'STANDARD PHYSICS · JETPACK AT 440m';
+    const tapHint=panel.querySelector('.platformPanicTapHint');if(tapHint)tapHint.textContent='TAP PLAY AREA TO JUMP';
   }
 
   function showIntro(){
@@ -151,6 +156,27 @@
   function updateMoving(){for(const p of moving)p.x=p.baseX+Math.sin(state.elapsed*p.speed+p.phase)*p.range;}
   function jumpIfNeeded(){if(!input.jumpPressed)return;input.jumpPressed=false;if(runner.onGround){runner.onGround=false;runner.vy=-(state.astronaut?720:625);}}
 
+  function currentHeight(){return Math.max(0,Math.floor((START_Y-runner.y)/10));}
+  function unlockJetpackIfNeeded(height=currentHeight()){
+    if(state.jetpackUnlocked||height<JETPACK_UNLOCK_HEIGHT)return;
+    state.jetpackUnlocked=true;state.jetpackNotice=3.2;runner.jetpackFuel=JETPACK_FUEL_MAX;
+    ui.ability.classList.add('jetpack');ui.ability.textContent='🚀 JETPACK 100% · HOLD JUMP';
+    const tapHint=panel.querySelector('.platformPanicTapHint');if(tapHint)tapHint.textContent='HOLD PLAY AREA TO JETPACK';
+  }
+  function updateJetpack(dt){
+    state.jetpackActive=false;
+    if(!state.jetpackUnlocked)return;
+    if(runner.onGround)runner.jetpackFuel=JETPACK_FUEL_MAX;
+    if(!runner.onGround&&input.jump&&runner.jetpackFuel>0){
+      state.jetpackActive=true;
+      runner.jetpackFuel=Math.max(0,runner.jetpackFuel-dt);
+      runner.vy-=JETPACK_THRUST*dt;
+      runner.vy=Math.max(-JETPACK_MAX_RISE_SPEED,runner.vy);
+    }
+    const fuel=Math.round((runner.jetpackFuel/JETPACK_FUEL_MAX)*100);
+    ui.ability.textContent=`🚀 JETPACK ${fuel}% · HOLD JUMP`;
+  }
+
   function moveHorizontal(dt){
     const accel=runner.onGround?1850:state.astronaut?780:1050,maxSpeed=state.astronaut?300:335,friction=runner.onGround?1900:state.astronaut?180:260;
     const keyDir=(input.right?1:0)-(input.left?1:0);const dir=Math.abs(input.axisX)>.04?input.axisX:keyDir;
@@ -159,7 +185,10 @@
   }
 
   function moveVertical(dt){
-    const prevY=runner.y;runner.vy+=(state.astronaut?470:1550)*dt;runner.vy=Math.min(runner.vy,state.astronaut?520:900);
+    const prevY=runner.y;
+    runner.vy+=(state.astronaut?470:1550)*dt;
+    updateJetpack(dt);
+    runner.vy=Math.min(runner.vy,state.astronaut?520:900);
     let ny=runner.y+runner.vy*dt;runner.onGround=false;
     if(runner.vy>=0){
       let landing=null;
@@ -167,7 +196,7 @@
         const within=runner.x+PLAYER_W*.36>p.x&&runner.x-PLAYER_W*.36<p.x+p.w;
         if(within&&prevY<=p.y+2&&ny>=p.y){if(!landing||p.y<landing.y)landing=p;}
       }
-      if(landing){ny=landing.y;runner.vy=0;runner.onGround=true;}
+      if(landing){ny=landing.y;runner.vy=0;runner.onGround=true;state.jetpackActive=false;if(state.jetpackUnlocked)runner.jetpackFuel=JETPACK_FUEL_MAX;}
     }
     runner.y=ny;
   }
@@ -206,9 +235,9 @@
     if(runner.y-5>=state.lavaY){finish('Keep climbing');return;}
     if(runner.y>state.cameraY+VIEW_H+110){finish('You fell below the tower');return;}
 
-    const height=Math.max(0,Math.floor((START_Y-runner.y)/10));
+    const height=currentHeight();unlockJetpackIfNeeded(height);if(state.jetpackNotice>0)state.jetpackNotice=Math.max(0,state.jetpackNotice-dt);
     ui.time.textContent=fmtTime(state.elapsed);ui.height.textContent=`${height}m`;
-    window.atmPublishArcadeGameState?.('platform-panic',{x:runner.x,y:runner.y,face:runner.face,onGround:runner.onGround,vx:runner.vx,time:state.elapsed});
+    window.atmPublishArcadeGameState?.('platform-panic',{x:runner.x,y:runner.y,face:runner.face,onGround:runner.onGround,vx:runner.vx,time:state.elapsed,jetpack:state.jetpackActive,jetpackUnlocked:state.jetpackUnlocked});
   }
 
   function worldX(x){return x-state.cameraX;}
@@ -263,10 +292,30 @@
     const x=worldX(runner.x),y=worldY(runner.y),{characterId,config,image}=getSprite();
     if(!config||!image?.complete||!image.naturalWidth){ctx.fillStyle='#ff83c8';ctx.fillRect(x-16,y-48,32,48);return;}
     const dir=runner.face<0?'left':'right',row=Math.max(0,(config.rowOrder||['down','left','up','right']).indexOf(dir));
-    const movingNow=Math.abs(runner.vx)>20&&runner.onGround,frame=!runner.onGround?2:(movingNow?Math.floor(state.elapsed*8)%3:1),scale=.185;
+    const jetpackEquipped=state.jetpackUnlocked;
+    const movingNow=Math.abs(runner.vx)>20&&runner.onGround,frame=jetpackEquipped?1:(!runner.onGround?2:(movingNow?Math.floor(state.elapsed*8)%3:1)),scale=.185;
     drawLayer(image,config,x,y,row,frame,scale);
     const equip=slot=>{const id=lockerLoadout?.[slot],ec=ATM_EQUIPMENT_SHEETS?.[id],ei=equipmentSheetImgs?.[id];if(id)drawLayer(ei,ec,x,y,Math.max(0,(ec?.rowOrder||['down','left','up','right']).indexOf(dir)),frame,scale);};
-    if(characterId==='classic'){equip('back');equip('katana');for(const slot of ['chest','face','feet','head'])equip(slot);equip('hands');}
+    if(characterId==='classic'){if(!jetpackEquipped)equip('back');equip('katana');for(const slot of ['chest','face','feet','head'])equip(slot);}
+    let overlayMetrics=null;
+    if(jetpackEquipped&&typeof jetpackOverlayImg!=='undefined'&&jetpackOverlayImg.complete&&jetpackOverlayImg.naturalWidth){
+      const oc=jetpackOverlaySheet.cols||3,orows=jetpackOverlaySheet.rows||4,ofw=Math.floor(jetpackOverlayImg.naturalWidth/oc),ofh=Math.floor(jetpackOverlayImg.naturalHeight/orows);
+      const orow=Math.max(0,(jetpackOverlaySheet.rowOrder||['down','left','up','right']).indexOf(dir)),oframe=1;
+      const oax=Number.isFinite(jetpackOverlaySheet.anchorX)?jetpackOverlaySheet.anchorX:ofw/2,oay=Number.isFinite(jetpackOverlaySheet.anchorY)?jetpackOverlaySheet.anchorY:ofh-1;
+      const odx=Math.round(x-oax*scale),ody=Math.round(y-oay*scale),odw=Math.round(ofw*scale),odh=Math.round(ofh*scale);
+      ctx.drawImage(jetpackOverlayImg,oframe*ofw,orow*ofh,ofw,ofh,odx,ody,odw,odh);
+      overlayMetrics={x:odx,y:ody,w:odw,h:odh,fw:ofw,fh:ofh};
+    }
+    if(characterId==='classic')equip('hands');
+    if(state.jetpackActive&&overlayMetrics){
+      const nozzle=dir==='left'?{x:178,y:249}:{x:76,y:251};
+      const nozzleX=overlayMetrics.x+(nozzle.x/overlayMetrics.fw)*overlayMetrics.w;
+      const nozzleY=overlayMetrics.y+(nozzle.y/overlayMetrics.fh)*overlayMetrics.h;
+      const flamePulse=3+Math.abs(Math.sin(performance.now()*.025))*6;
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      ctx.fillStyle='rgba(88,241,230,.78)';ctx.beginPath();ctx.moveTo(nozzleX-2.5,nozzleY);ctx.lineTo(nozzleX+2.5,nozzleY);ctx.lineTo(nozzleX,nozzleY+12+flamePulse);ctx.closePath();ctx.fill();
+      ctx.fillStyle='rgba(255,139,36,.98)';ctx.beginPath();ctx.moveTo(nozzleX-1.6,nozzleY+.5);ctx.lineTo(nozzleX+1.6,nozzleY+.5);ctx.lineTo(nozzleX,nozzleY+6+flamePulse*.55);ctx.closePath();ctx.fill();ctx.restore();
+    }
   }
 
   function drawSpeedMeter(){
@@ -278,10 +327,21 @@
     ctx.textAlign='start';
   }
 
+  function drawJetpackNotice(){
+    if(state.jetpackNotice<=0)return;
+    const viewW=state.viewW||BASE_VIEW_W,alpha=Math.min(1,state.jetpackNotice/.35,Math.max(.18,state.jetpackNotice/3.2));
+    ctx.save();ctx.globalAlpha=alpha;
+    const w=Math.min(380,viewW-32),x=(viewW-w)/2,y=72;
+    ctx.fillStyle='rgba(5,24,33,.88)';ctx.strokeStyle='rgba(88,241,230,.72)';ctx.lineWidth=2;ctx.fillRect(x,y,w,72);ctx.strokeRect(x,y,w,72);
+    ctx.textAlign='center';ctx.fillStyle='#58f1e6';ctx.font='1000 18px system-ui';ctx.fillText('🚀 JETPACK UNLOCKED · 440m',viewW/2,y+24);
+    ctx.fillStyle='#eaffff';ctx.font='800 9px system-ui';ctx.fillText('HOLD JUMP / HOLD THE PLAY AREA TO BOOST',viewW/2,y+44);ctx.fillText('FUEL REFILLS EVERY TIME YOU LAND',viewW/2,y+59);
+    ctx.restore();ctx.textAlign='start';
+  }
+
   function drawRemoteRunners(){for(const remote of window.atmArcadeGameRemotes?.('platform-panic')||[]){const s=remote.miniState||{},sx=worldX(s.x||0),sy=worldY(s.y||START_Y);if(sy<-80||sy>VIEW_H+80)continue;const dir=(s.face||1)<0?'left':'right',frame=!s.onGround?2:(Math.abs(s.vx||0)>20?Math.floor((s.time||0)*8)%3:1);window.atmDrawArcadeMiniGhost?.(ctx,remote,sx,sy,dir,frame,.185);}}
   function render(){
     const viewW=state.viewW||BASE_VIEW_W;ctx.setTransform(canvas.width/viewW,0,0,canvas.height/VIEW_H,0,0);ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,viewW,VIEW_H);
-    drawBackground();for(const p of platforms)drawPlatform(p);for(const p of moving)drawPlatform(p);drawCoins();drawLava();drawRemoteRunners();drawRunner();drawSpeedMeter();ctx.setTransform(1,0,0,1,0,0);
+    drawBackground();for(const p of platforms)drawPlatform(p);for(const p of moving)drawPlatform(p);drawCoins();drawLava();drawRemoteRunners();drawRunner();drawSpeedMeter();drawJetpackNotice();ctx.setTransform(1,0,0,1,0,0);
   }
 
   function loop(now){if(!state.open||!state.running)return;const dt=Math.min(.033,Math.max(.001,(now-state.last)/1000));state.last=now;update(dt);render();if(state.running)requestAnimationFrame(loop);}
@@ -302,6 +362,9 @@
   const keyMap={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'jump',w:'jump',' ':'jump'};
   window.addEventListener('keydown',e=>{if(!state.open)return;const key=keyMap[e.key.toLowerCase()];if(key){e.preventDefault();setControl(key,true);}});
   window.addEventListener('keyup',e=>{if(!state.open)return;const key=keyMap[e.key.toLowerCase()];if(key){e.preventDefault();setControl(key,false);}});
-  stage.addEventListener('pointerdown',e=>{if(!state.open||!state.running)return;if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();input.jumpPressed=true;},{passive:false});
+  let stageJumpPointer=null;
+  stage.addEventListener('pointerdown',e=>{if(!state.open||!state.running)return;if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();stageJumpPointer=e.pointerId;stage.setPointerCapture?.(e.pointerId);setControl('jump',true);},{passive:false});
+  const releaseStageJump=e=>{if(stageJumpPointer===null||e.pointerId===stageJumpPointer){stageJumpPointer=null;setControl('jump',false);}};
+  stage.addEventListener('pointerup',releaseStageJump,{passive:false});stage.addEventListener('pointercancel',releaseStageJump,{passive:false});stage.addEventListener('lostpointercapture',()=>{stageJumpPointer=null;setControl('jump',false);});
   ui.start.addEventListener('click',startRun);ui.close.addEventListener('click',close);panel.addEventListener('pointerdown',e=>{if(e.target===panel)close();});
 })();

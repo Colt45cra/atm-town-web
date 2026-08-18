@@ -114,6 +114,7 @@ const requiredFiles = [
   'docs/V235.6.3-CHAT-UI-READABILITY-HOTFIX.md',
   'docs/V235.7-MOBILE-HUD-LAYOUT-SYSTEM.md',
   'docs/V235.7.1-KEYBOARD-COUPLED-HUD-HOTFIX.md',
+  'docs/V235.7.2-LIVE-CHAT-SEND-PANIC-JETPACK.md',
   'js/hud-layout.js',
   'js/live-chat.js',
   'lib/live-chat.js',
@@ -183,8 +184,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.7.1'")) errors.push('Missing v235.7.1 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Keyboard-Coupled HUD Hotfix'")) errors.push('Missing v235.7.1 HUD hotfix display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.7.2'")) errors.push('Missing v235.7.2 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Live Chat Send + Panic Jetpack'")) errors.push('Missing v235.7.2 display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -293,7 +294,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.7.1'")) errors.push('js/config.js is not marked v235.7.1.');
+if (!configSource.includes("version: 'v235.7.2'")) errors.push('js/config.js is not marked v235.7.2.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -367,7 +368,7 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.7.1")) errors.push('v235.7.1 PWA shell cache was not bumped for the keyboard HUD hotfix.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.7.2")) errors.push('v235.7.2 PWA shell cache was not bumped for the chat/Panic hotfix.');
 if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
 if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
 if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');
@@ -376,6 +377,10 @@ if (!html.includes('<script src="js/hud-layout.js"></script>')) errors.push('v23
 if (!hudLayoutSource.includes('setLiveChatOpen') || !hudLayoutSource.includes('visualViewport') || !hudLayoutSource.includes('moveComposer')) errors.push('v235.7 HUD layout/keyboard runtime is incomplete.');
 if (!hudLayoutSource.includes('atm:live-chat-keyboard-failed') || !hudLayoutSource.includes('expectsSoftKeyboard') || !hudLayoutSource.includes('atm-quick-chat-focus')) errors.push('v235.7.1 keyboard-coupled HUD guards are missing.');
 if (!liveChatSource.includes("addEventListener('atm:live-chat-keyboard-failed'") || !liveChatSource.includes("addEventListener('blur'")) errors.push('v235.7.1 Live Chat keyboard-close coupling is missing.');
+if (!liveChatSource.includes("sendButton?.addEventListener('pointerdown'") || !liveChatSource.includes("sendButton?.addEventListener('pointerup'") || !liveChatSource.includes('global.atmSendChat?.()') || !liveChatSource.includes("empty.style.display = hasMessages ? 'none' : 'grid'")) errors.push('v235.7.2 Live Chat visible-SEND focus preservation or empty-state fix is missing.');
+if (!gameRuntimeParts[0].includes('keepLiveChatFocused') || !gameRuntimeParts[0].includes('window.atmSendChat=sendChat') || !gameRuntimeParts[0].includes('window.ATMHudLayout?.sync?.()')) errors.push('v235.7.2 sendChat refocus/public bridge is missing.');
+if (!gameRuntimeParts[2].includes('JETPACK_UNLOCK_HEIGHT=440') || !gameRuntimeParts[2].includes('JETPACK_FUEL_MAX=1.6') || !gameRuntimeParts[2].includes('unlockJetpackIfNeeded') || !gameRuntimeParts[2].includes("HOLD PLAY AREA TO JETPACK")) errors.push('v235.7.2 Platform Panic 440m rechargeable jetpack phase is missing.');
+if (!html.includes('#liveChatEmpty[hidden]{display:none!important}') || !html.includes('.platformPanicAbility.jetpack')) errors.push('v235.7.2 Live Chat empty-state/Platform Panic jetpack CSS is missing.');
 if (!gameRuntimeParts[0].includes('stableGameH') || !gameRuntimeParts[0].includes('keyboard changes HUD geometry, not the game canvas')) errors.push('v235.7.1 stable game-canvas keyboard behavior is missing.');
 if (!html.includes('body.atm-quick-chat-focus #controls') || !html.includes('body.atm-soft-keyboard-device.live-chat-open:not(.atm-keyboard-open)')) errors.push('v235.7.1 keyboard HUD CSS policy is missing.');
 if (!serviceWorkerSource.includes('Build/runtime files must stay version-consistent') || !serviceWorkerSource.includes('event.respondWith(networkFirst(request))')) errors.push('v235.7.1 PWA build-file network-first policy is missing.');
@@ -736,10 +741,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.7.1 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.7.2 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.7.1 build validation passed.');
+console.log('ATM Town v235.7.2 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

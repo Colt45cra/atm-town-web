@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.7.2: keeps Live Chat open when the visible SEND button is tapped, fixes the empty-state display, and unlocks a rechargeable jetpack phase in Platform Panic at 440m.
  * v235.7.1: couples Live Chat to the software keyboard, preserves the game canvas while typing, and restores transparent game visibility behind chat.
  * v235.6.2: adds persistent session live chat, a readable chat panel, and recent authenticated server history while preserving short overhead bubbles.
  * v235.6.1: fixes People Hub mobile scrolling and prevents live roster refreshes from resetting an active scroll.
@@ -33,10 +34,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.71,
-    version: 'v235.7.1',
-    name: 'Keyboard-Coupled HUD Hotfix',
-    title: 'ATM Town v235.7.1 — Keyboard-Coupled HUD Hotfix'
+    number: 235.72,
+    version: 'v235.7.2',
+    name: 'Live Chat Send + Panic Jetpack',
+    title: 'ATM Town v235.7.2 — Live Chat Send + Panic Jetpack'
   });
 
   const MAPS = Object.freeze({

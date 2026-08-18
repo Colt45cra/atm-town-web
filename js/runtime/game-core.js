@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.7.1',name:ATM_CONFIG?.build?.name||'Keyboard-Coupled HUD Hotfix'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.7.2',name:ATM_CONFIG?.build?.name||'Live Chat Send + Panic Jetpack'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2984,6 +2984,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout
 let lastChatSentAt=0;
 function sendChat(){
   const input=document.getElementById('chatInput');const message=String(input?.value||'').replace(/\s+/g,' ').trim().slice(0,180);if(!message)return;
+  const keepLiveChatFocused=!!window.ATMLiveChat?.isOpen?.();
   const now=Date.now();if(now-lastChatSentAt<500)return;lastChatSentAt=now;input.value='';
   const messageId=globalThis.crypto?.randomUUID?.()||`chat_${now}_${Math.random().toString(36).slice(2,12)}`;
   const createdAt=new Date(now).toISOString();const senderUserId=String(authSession?.user?.id||'');
@@ -2992,7 +2993,15 @@ function sendChat(){
     realtimeChannel.send({type:'broadcast',event:'chat',payload:{id:playerId,user_id:senderUserId,name:playerName,message,message_id:messageId,created_at:createdAt,x:player.x,y:player.y,map:currentMap}});
     window.ATMLiveChat?.persistSentMessage?.({message_id:messageId,message});
   }
+  if(keepLiveChatFocused&&input){
+    requestAnimationFrame(()=>{
+      if(!window.ATMLiveChat?.isOpen?.())return;
+      try{input.focus({preventScroll:true});}catch(_e){input.focus();}
+      window.ATMHudLayout?.sync?.();
+    });
+  }
 }
+window.atmSendChat=sendChat;
 function updateRemoteInterpolation(){
   const now=Date.now();
   for(const [id,p] of remotePlayers){

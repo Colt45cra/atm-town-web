@@ -1,4 +1,4 @@
-/* ATM Town v235.7.1 keyboard-coupled HUD + live chat integration
+/* ATM Town v235.7.2 keyboard-coupled HUD + live chat integration
  * Overhead speech bubbles keep their short lifetime in game-core.
  * This module keeps chat messages for the current browser play session and
  * loads the last 10 minutes of authenticated server history on room join.
@@ -110,7 +110,11 @@
       const body = document.createElement('div'); body.className = 'liveChatMessageBody'; body.textContent = item.message;
       header.append(name, time); row.append(header, body); list.appendChild(row);
     }
-    if (empty) empty.hidden = state.messages.length > 0;
+    if (empty) {
+      const hasMessages = state.messages.length > 0;
+      empty.hidden = hasMessages;
+      empty.style.display = hasMessages ? 'none' : 'grid';
+    }
     if (shouldStick) list.scrollTop = list.scrollHeight;
     else list.scrollTop = previousTop;
   }
@@ -219,6 +223,40 @@
         }, 80);
       }
     });
+
+    // Keep the visible SEND button from stealing focus from the live-chat
+    // input. Live Chat owns pointer activation in capture phase, sends through
+    // the same game-core function used by the keyboard Send key, then restores
+    // the text caret without allowing the software keyboard to collapse.
+    const sendButton = $('chatSend');
+    let pointerSendAt = 0;
+    const restoreLiveChatFocus = () => {
+      if (!state.open) return;
+      const input = $('chatInput');
+      try { input?.focus?.({ preventScroll: true }); }
+      catch (_) { input?.focus?.(); }
+      syncPanelToVisualViewport();
+    };
+    sendButton?.addEventListener('pointerdown', (event) => {
+      if (!state.open) return;
+      event.preventDefault();
+    }, { passive: false, capture: true });
+    sendButton?.addEventListener('pointerup', (event) => {
+      if (!state.open) return;
+      event.preventDefault();
+      pointerSendAt = Date.now();
+      global.atmSendChat?.();
+      restoreLiveChatFocus();
+    }, { passive: false, capture: true });
+    sendButton?.addEventListener('click', (event) => {
+      if (!state.open) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      // Keyboard/button activation can produce click without pointerup. Pointer
+      // clicks were already sent above, so only send here when needed.
+      if (Date.now() - pointerSendAt > 350) global.atmSendChat?.();
+      restoreLiveChatFocus();
+    }, { capture: true });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && state.open) setOpen(false);
     });
