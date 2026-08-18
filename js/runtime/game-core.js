@@ -296,7 +296,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.6.3',name:ATM_CONFIG?.build?.name||'Chat + UI Readability Hotfix'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.7',name:ATM_CONFIG?.build?.name||'Mobile HUD Layout System'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2701,7 +2701,7 @@ function addChatLine(name,message,meta={}){
     },{local:Boolean(meta.local),historical:Boolean(meta.historical)});
     return;
   }
-  const log=document.getElementById('chatLog');if(!log)return;const line=document.createElement('div');line.className='chatLine';line.textContent=name+': '+message;log.appendChild(line);while(log.children.length>4)log.removeChild(log.firstChild);setTimeout(()=>line.remove(),8000);
+  const log=document.getElementById('chatLog');if(!log)return;const line=document.createElement('div');line.className='chatLine';line.textContent=name+': '+message;log.appendChild(line);while(log.children.length>4)log.removeChild(log.firstChild);setTimeout(()=>line.remove(),5000);
 }
 function showBubble(id,name,message,x,y,map,meta={}){chatBubbles.push({id,name,message,x,y,map,expires:Date.now()+6500});addChatLine(name,message,{...meta,senderPlayerId:id});}
 async function connectMultiplayer(){

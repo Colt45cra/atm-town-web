@@ -28,7 +28,7 @@
     let toast=document.getElementById('atmPlayerPingToast');
     if(toast)return toast;
     const style=document.createElement('style');
-    style.textContent=`#atmPlayerPingToast{position:fixed;left:50%;top:calc(var(--vv-top,0px) + 72px);transform:translate(-50%,-16px);z-index:12050;width:min(520px,calc(100vw - 24px));display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid rgba(88,241,230,.48);border-radius:15px;background:rgba(5,18,26,.97);box-shadow:0 18px 48px rgba(0,0,0,.5);color:#eaffff;font:800 12px/1.35 system-ui;opacity:0;pointer-events:none;transition:.2s ease;backdrop-filter:blur(12px)}#atmPlayerPingToast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}#atmPlayerPingToast .atmPingIcon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:rgba(88,241,230,.12);font-size:20px}#atmPlayerPingToast .atmPingText{min-width:0;flex:1}#atmPlayerPingToast .atmPingText b{display:block;color:#58f1e6;font-size:10px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}#atmPlayerPingToast .atmPingText span{display:block;white-space:normal}#atmPlayerPingToast button{border:0;border-radius:10px;background:#17313d;color:#dffcff;padding:8px 10px;font:1000 8px system-ui;text-transform:uppercase}`;
+    style.textContent=`#atmPlayerPingToast{position:fixed;left:50%;top:var(--hud-notice-top,calc(var(--vv-top,0px) + 72px));transform:translate(-50%,-16px);z-index:12050;width:min(520px,calc(100vw - 24px));display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid rgba(88,241,230,.48);border-radius:15px;background:rgba(5,18,26,.97);box-shadow:0 18px 48px rgba(0,0,0,.5);color:#eaffff;font:800 12px/1.35 system-ui;opacity:0;pointer-events:none;transition:.2s ease;backdrop-filter:blur(12px)}#atmPlayerPingToast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}#atmPlayerPingToast .atmPingIcon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:rgba(88,241,230,.12);font-size:20px}#atmPlayerPingToast .atmPingText{min-width:0;flex:1}#atmPlayerPingToast .atmPingText b{display:block;color:#58f1e6;font-size:10px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}#atmPlayerPingToast .atmPingText span{display:block;white-space:normal}#atmPlayerPingToast button{border:0;border-radius:10px;background:#17313d;color:#dffcff;padding:8px 10px;font:1000 8px system-ui;text-transform:uppercase}`;
     document.head.appendChild(style);
     toast=document.createElement('div');toast.id='atmPlayerPingToast';toast.innerHTML='<span class="atmPingIcon">📣</span><span class="atmPingText"><b>Player Ping</b><span id="atmPlayerPingText"></span></span><button type="button" id="atmPlayerPingOpen">People</button>';
     document.body.appendChild(toast);
@@ -41,7 +41,8 @@
     if(!toast)return;
     const vv=global.visualViewport;
     const vvTop=vv?vv.offsetTop:0;
-    let top=vvTop+72;
+    const sharedTop=Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hud-notice-top'));
+    let top=Number.isFinite(sharedTop)?sharedTop:vvTop+72;
     const payment=document.getElementById('xrplPaymentToast');
     if(payment?.classList.contains('visible')) top=Math.max(top,payment.getBoundingClientRect().bottom+8);
     const eventHud=document.getElementById('atmWorldEventHud');

@@ -696,6 +696,90 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 .tradeOfferComposer{grid-column:1/-1;display:grid;gap:8px;padding:10px;border:1px solid rgba(112,249,200,.2);border-radius:11px;background:rgba(112,249,200,.045)}.tradeOfferComposer label{display:grid;gap:5px;color:#8fb5bf;font-size:8px;font-weight:1000;letter-spacing:.08em}.tradeOfferAmountRow{display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:7px}.tradeOfferAmountRow input{min-width:0;width:100%;height:40px;padding:0 10px;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:#061923;color:#efffff;font:900 13px system-ui;outline:none}.tradeOfferAmountRow span{display:grid;place-items:center;border:1px solid rgba(255,209,102,.25);border-radius:9px;background:rgba(255,209,102,.07);color:#ffd166;font:1000 10px system-ui}.tradeOfferSubmit{min-height:42px!important;border-color:rgba(112,249,200,.44)!important;background:rgba(112,249,200,.12)!important;color:#70f9c8!important}.tradeOfferStatus{min-height:16px;color:#8fb5bf;font-size:8px;line-height:1.4}.tradeOfferStatus.ok{color:#70f9c8}.tradeOfferStatus.error{color:#ff9bbf}.lockerNftOffers{display:grid;gap:7px;padding:9px;border:1px solid rgba(255,209,102,.16);border-radius:11px;background:rgba(255,209,102,.035)}.lockerNftOffersHeader{display:flex;justify-content:space-between;gap:8px;align-items:center}.lockerNftOffersHeader strong{color:#ffd166;font-size:9px}.lockerNftOffersHeader span{color:#789ba5;font-size:7px}.lockerNftOfferRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border-radius:9px;background:rgba(255,255,255,.035)}.lockerNftOfferRow strong{display:block;color:#efffff;font-size:10px}.lockerNftOfferRow small{display:block;margin-top:2px;color:#789ba5;font-size:7px}.lockerNftOfferAccept{min-height:34px;border:1px solid rgba(112,249,200,.36);border-radius:8px;background:rgba(112,249,200,.1);color:#70f9c8;font:1000 8px system-ui}.lockerNftOffersEmpty{color:#789ba5;font-size:8px;line-height:1.4}
 @media(max-width:600px){.arcadeLeaderboardRow{grid-template-columns:28px 30px minmax(0,1fr) auto;gap:6px;padding:7px 3px}.arcadeLeaderboardAvatar{width:29px;height:32px}.arcadeLeaderboardScore{font-size:9px}.arcadeLeaderboardPlayer strong{font-size:9px}}
 
+
+/* ===== v235.7: Mobile HUD Layout System =====
+   One set of zones owns the lower HUD: left social rail, centered composer,
+   right context action. Live Chat owns the visible viewport when open. */
+:root{
+  --hud-edge:8px;
+  --hud-social-bottom:calc(106px + env(safe-area-inset-bottom));
+  --hud-chat-preview-bottom:0px;
+  --hud-composer-bottom:calc(14px + env(safe-area-inset-bottom));
+  --hud-transient-bottom:calc(172px + env(safe-area-inset-bottom));
+  --hud-notice-top:58px;
+}
+
+#hudSocialRail{position:fixed;left:calc(var(--hud-edge) + env(safe-area-inset-left));bottom:var(--hud-social-bottom);z-index:46;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:auto}
+#chatToggleAnchor{position:relative;width:42px;height:42px}
+#chatToggle{position:relative!important;width:42px!important;height:42px!important;min-width:42px;flex:none!important;padding:0;border-radius:13px!important;background:rgba(5,18,26,.9)!important;font-size:18px!important;box-shadow:0 7px 20px rgba(0,0,0,.24)}
+#chatUnreadBadge{right:-4px;top:-5px}
+
+/* Temporary text belongs to the chat icon, not the microphone. */
+#chatLog{position:absolute!important;left:50px!important;bottom:var(--hud-chat-preview-bottom)!important;width:min(280px,calc(100vw - 76px))!important;max-height:92px!important;overflow:visible!important;z-index:1!important;display:flex!important;flex-direction:column!important;justify-content:flex-end;gap:4px;pointer-events:none}
+.chatLine{position:relative;background:rgba(3,13,19,.24)!important;border:1px solid rgba(88,241,230,.08)!important;border-left:0!important;padding:5px 8px!important;border-radius:9px!important;box-shadow:0 5px 14px rgba(0,0,0,.09)!important;backdrop-filter:blur(2px);gap:1px!important}
+.chatLine:last-child::after{content:'';position:absolute;left:-8px;bottom:9px;border:5px solid transparent;border-right-color:rgba(3,13,19,.24)}
+.chatLine.local{border-color:rgba(255,209,102,.1)!important}.chatLine strong{font-size:9px!important}.chatLine span{font-size:10px!important}
+body.live-chat-open #chatLog{display:none!important}
+
+/* Voice is a compact microphone icon directly under Chat. The primary button
+   remains the existing join/leave control, so no voice state is lost. */
+#hudSocialRail #voiceMeetingPanel{position:relative!important;inset:auto!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;z-index:auto!important;width:42px!important;height:42px!important;min-width:42px!important;max-width:42px!important;padding:0!important;border-radius:13px!important;display:none!important;background:rgba(5,18,26,.9)!important;overflow:visible;box-shadow:0 7px 20px rgba(0,0,0,.24)!important}
+#hudSocialRail #voiceMeetingPanel.visible{display:block!important}
+#hudSocialRail #voiceMeetingInfo,#hudSocialRail #voiceMuteButton,#hudSocialRail #voiceLeaveButton{display:none!important}
+#hudSocialRail #voiceJoinButton,#hudSocialRail #voiceMeetingPanel.joined #voiceJoinButton{display:grid!important;place-items:center;position:absolute;inset:0;width:100%;height:100%;min-height:0!important;padding:0!important;border-radius:12px!important;background:transparent!important;color:transparent!important;font-size:0!important;overflow:visible}
+#hudSocialRail #voiceJoinButton::before{content:'🎙️';color:#eaffff;font-size:18px;line-height:1}
+#hudSocialRail #voiceMeetingPanel.joined{border-color:rgba(99,255,177,.58)!important;box-shadow:0 0 0 1px rgba(99,255,177,.1),0 7px 20px rgba(0,0,0,.24)!important}
+#hudSocialRail #voiceMeetingPanel.joined #voiceJoinButton::after{content:'';position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:#63ffb1;box-shadow:0 0 8px rgba(99,255,177,.65)}
+#hudSocialRail #voiceMeetingPanel.speaking #voiceJoinButton::before{filter:drop-shadow(0 0 5px rgba(99,255,177,.75))}
+
+/* The normal gameplay composer is centered and intentionally leaves the
+   right-hand action lane untouched. */
+#chatComposerDock{position:fixed;inset:0;z-index:45;pointer-events:none}
+#chatComposerDock #chatBar{position:absolute!important;left:50%!important;right:auto!important;top:auto!important;bottom:var(--hud-composer-bottom)!important;transform:translateX(-50%);width:min(46vw,320px)!important;max-width:calc(100vw - 194px)!important;height:44px!important;display:flex!important;gap:6px!important;visibility:visible!important;opacity:1!important;pointer-events:auto}
+#chatBar #chatInput{min-width:0;flex:1;height:44px;padding:0 11px!important;border-radius:13px!important;font-size:12px!important}
+#chatBar #chatSend{flex:0 0 58px;width:58px!important;height:44px;border-radius:13px!important;font-size:10px!important}
+
+/* Action owns the lower-right lane. Existing context availability still
+   decides whether the button is visible. */
+#controls{z-index:40}
+#action{right:max(10px,env(safe-area-inset-right))!important;bottom:max(14px,env(safe-area-inset-bottom))!important;width:64px!important;height:64px!important}
+
+/* Live Chat: the same composer moves into this slot. Its panel geometry is
+   supplied by hud-layout.js from the real visual viewport, so the keyboard is
+   part of the layout rather than an overlay. */
+#liveChatPanel{grid-template-rows:auto minmax(0,1fr) auto!important;z-index:120!important;left:max(8px,env(safe-area-inset-left))!important;width:calc(100vw - max(16px,env(safe-area-inset-left) + env(safe-area-inset-right)))!important;top:8px;bottom:auto!important;height:min(62vh,520px);max-height:calc(var(--vv-height,100vh) - 16px)!important}
+#liveChatComposerSlot{padding:8px 9px calc(9px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.07);background:rgba(3,14,21,.99);min-height:58px}
+#liveChatComposerSlot #chatBar{position:static!important;inset:auto!important;transform:none!important;width:100%!important;max-width:none!important;height:42px!important;display:flex!important;gap:6px!important;visibility:visible!important;opacity:1!important;pointer-events:auto}
+#liveChatComposerSlot #chatInput{height:42px!important;font-size:12px!important}
+#liveChatComposerSlot #chatSend{height:42px!important}
+body.live-chat-open #controls,body.live-chat-open #hudSocialRail,body.live-chat-open #hint,body.live-chat-open #jetpackTip,body.live-chat-open #atmWorldEventToast{opacity:.12!important;pointer-events:none!important}
+body.live-chat-open #hudSocialRail,body.live-chat-open #hint,body.live-chat-open #jetpackTip,body.live-chat-open #atmWorldEventToast{visibility:hidden!important}
+body.live-chat-open #liveChatPanel{opacity:1!important;visibility:visible!important;pointer-events:auto!important}
+
+/* Shared lower-message lane for non-chat transient notices. */
+#hint,#jetpackTip{bottom:var(--hud-transient-bottom)!important}
+
+/* Hide the newly grouped HUD pieces anywhere the old HUD was already hidden. */
+body.access-flow-open #hudSocialRail,body.access-flow-open #chatComposerDock,
+body.directory-open #hudSocialRail,body.directory-open #chatComposerDock,
+body.vending-modal-open #hudSocialRail,body.vending-modal-open #chatComposerDock,
+body.locker-modal-open #hudSocialRail,body.locker-modal-open #chatComposerDock,
+body.sky-run-open #hudSocialRail,body.sky-run-open #chatComposerDock,
+body.platform-panic-open #hudSocialRail,body.platform-panic-open #chatComposerDock,
+body.ring-rumble-open #hudSocialRail,body.ring-rumble-open #chatComposerDock,
+body.flappy-jetpack-open #hudSocialRail,body.flappy-jetpack-open #chatComposerDock,
+body.atm-darts-open #hudSocialRail,body.atm-darts-open #chatComposerDock{visibility:hidden!important;pointer-events:none!important}
+
+@media(max-width:700px){
+  :root{--hud-edge:7px;--hud-social-bottom:calc(104px + env(safe-area-inset-bottom));--hud-transient-bottom:calc(168px + env(safe-area-inset-bottom))}
+  #powerHud{left:8px;top:104px}
+  #chatComposerDock #chatBar{width:min(46vw,300px)!important;max-width:calc(100vw - 194px)!important}
+  #liveChatPanel{left:7px!important;width:calc(100vw - 14px)!important;border-radius:16px!important}
+  .liveChatHeader{padding:10px 11px 8px!important}.liveChatHeaderText strong{font-size:13px!important}.liveChatHeaderText span{font-size:8px!important}
+  #liveChatClose{width:34px;height:34px}
+  .liveChatMessages{padding:8px 9px 10px!important}.liveChatMessage{padding:7px 9px!important}.liveChatMessageBody{font-size:10px!important}
+}
+
 </style>
 </head>
 <body class="access-flow-open">
@@ -943,21 +1027,21 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 </div>
 </div>
 <div aria-hidden="true" id="multiplayerPanel" style="display:none"></div>
-<div id="mapLabel">ATM TOWN · v172</div><div id="buildVersion" style="display:none">v172</div><div id="onlineBadge">1 online</div><div aria-live="polite" id="chatLog"></div>
+<div id="mapLabel">ATM TOWN · v172</div><div id="buildVersion" style="display:none">v172</div><div id="onlineBadge">1 online</div>
+<div id="hudSocialRail">
+  <div id="chatToggleAnchor"><button aria-expanded="false" aria-label="Open live chat" id="chatToggle" type="button">💬<span hidden id="chatUnreadBadge">0</span></button><div aria-live="polite" id="chatLog"></div></div>
+  <div aria-live="polite" id="voiceMeetingPanel">
+    <button class="voiceMeetingButton" id="voiceJoinButton" type="button">JOIN VOICE</button>
+    <div id="voiceMeetingInfo"><div id="voiceMeetingTitle"><span class="voiceSpeakingDot"></span><span id="voiceZoneName">ATM TOWN PROXIMITY VOICE</span><span id="voiceCount">0 WITH VOICE</span></div><div id="voiceMeetingStatus">Join voice anywhere. Nearby players on your current map will be audible.</div></div>
+    <button class="voiceMeetingButton" id="voiceMuteButton" type="button">MUTE</button><button class="voiceMeetingButton" id="voiceLeaveButton" type="button">LEAVE</button>
+  </div>
+</div>
 <div aria-hidden="true" aria-labelledby="liveChatTitle" id="liveChatPanel" role="dialog">
   <header class="liveChatHeader"><div class="liveChatHeaderText"><strong id="liveChatTitle">ATM TOWN LIVE</strong><span>Session chat · recent messages load when you join online</span></div><button aria-label="Close live chat" id="liveChatClose" type="button">×</button></header>
   <div class="liveChatBody"><div class="liveChatMessages" id="liveChatMessages"></div><div id="liveChatEmpty">No messages yet. Say something to the town.</div></div>
+  <div id="liveChatComposerSlot"></div>
 </div>
-<div id="chatBar"><button aria-expanded="false" aria-label="Open live chat" id="chatToggle" type="button">💬<span hidden id="chatUnreadBadge">0</span></button><input id="chatInput" maxlength="180" placeholder="Message ATM Town..."/><button id="chatSend">SEND</button></div>
-<div aria-live="polite" id="voiceMeetingPanel">
-<button class="voiceMeetingButton" id="voiceJoinButton" type="button">JOIN VOICE</button>
-<div id="voiceMeetingInfo">
-<div id="voiceMeetingTitle"><span class="voiceSpeakingDot"></span><span id="voiceZoneName">ATM TOWN PROXIMITY VOICE</span><span id="voiceCount">0 WITH VOICE</span></div>
-<div id="voiceMeetingStatus">Join voice anywhere. Nearby players on your current map will be audible.</div>
-</div>
-<button class="voiceMeetingButton" id="voiceMuteButton" type="button">MUTE</button>
-<button class="voiceMeetingButton" id="voiceLeaveButton" type="button">LEAVE</button>
-</div>
+<div id="chatComposerDock"><div id="chatBar"><input enterkeyhint="send" id="chatInput" inputmode="text" maxlength="180" placeholder="Message ATM Town..."/><button id="chatSend">SEND</button></div></div>
 <div id="hud"><div class="chip">ATM TOWN <span>ALPHA</span></div><div class="chip">Coins: <span id="coins">0</span>/6</div></div>
 <div id="quest"><div class="title">MAIN QUEST</div><div class="line">Collect 6 Coins</div><div class="sub"><span id="progress">0</span> / 6</div></div>
 <div aria-live="polite" id="powerHud">
@@ -1049,6 +1133,7 @@ body.voice-game-zone #voiceMeetingPanel{top:auto;bottom:calc(112px + env(safe-ar
 <script src="js/pwa.js"></script>
 <script src="js/people-hub.js"></script>
 <script src="js/world-events.js"></script>
+<script src="js/hud-layout.js"></script>
 <script src="js/live-chat.js"></script>
 <script src="js/runtime/game-core.js"></script>
 <script src="js/runtime/sky-run.js"></script>

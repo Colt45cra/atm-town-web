@@ -1,4 +1,4 @@
-/* ATM Town v235.6.3 chat readability + mobile keyboard hotfix
+/* ATM Town v235.7 HUD layout + live chat integration
  * Overhead speech bubbles keep their short lifetime in game-core.
  * This module keeps chat messages for the current browser play session and
  * loads the last 10 minutes of authenticated server history on room join.
@@ -7,8 +7,8 @@
   'use strict';
 
   const MAX_SESSION_MESSAGES = 200;
-  const PREVIEW_LIFETIME_MS = 8_000;
-  const PREVIEW_LIMIT = 4;
+  const PREVIEW_LIFETIME_MS = 5_000;
+  const PREVIEW_LIMIT = 2;
   const state = {
     room: '',
     messages: [],
@@ -58,27 +58,9 @@
     return el.scrollHeight - el.scrollTop - el.clientHeight < 48;
   }
 
-  // Keep the chat panel inside the *visual* viewport. On mobile browsers the
-  // software keyboard shrinks visualViewport without shrinking the layout
-  // viewport, so a normal fixed bottom value can leave the panel behind the
-  // keyboard. We anchor the panel immediately above the chat composer instead.
   function syncPanelToVisualViewport() {
-    const panel = $('liveChatPanel');
-    if (!panel || !state.open) return;
-    const vv = global.visualViewport;
-    const vvTop = vv ? vv.offsetTop : 0;
-    const vvHeight = vv ? vv.height : global.innerHeight;
-    const composerTop = vvTop + vvHeight - 68;
-    const topGap = 8;
-    const panelGap = 8;
-    const available = Math.max(150, composerTop - vvTop - topGap - panelGap);
-    const preferred = Math.min(520, vvHeight * (global.innerWidth <= 600 ? 0.58 : 0.56));
-    const panelHeight = Math.max(150, Math.min(preferred, available));
-    const panelTop = Math.max(vvTop + topGap, composerTop - panelHeight - panelGap);
-    panel.style.top = `${Math.round(panelTop)}px`;
-    panel.style.bottom = 'auto';
-    panel.style.height = `${Math.round(panelHeight)}px`;
-    panel.style.maxHeight = `${Math.round(available)}px`;
+    if (!state.open) return;
+    global.ATMHudLayout?.sync?.();
   }
 
   function timeLabel(value) {
@@ -145,6 +127,7 @@
     if (!item.historical && !item.local && !state.open) state.unread += 1;
     updateUnread();
     renderPreview();
+    setTimeout(renderPreview, PREVIEW_LIFETIME_MS + 60);
     renderPanel();
     return true;
   }
@@ -156,10 +139,10 @@
     if (panel) { panel.classList.toggle('open', state.open); panel.setAttribute('aria-hidden', state.open ? 'false' : 'true'); }
     if (toggle) toggle.setAttribute('aria-expanded', state.open ? 'true' : 'false');
     document.body.classList.toggle('live-chat-open', state.open);
+    global.ATMHudLayout?.setLiveChatOpen?.(state.open, { focusInput: state.open });
     if (state.open) {
       state.unread = 0;
       updateUnread();
-      syncPanelToVisualViewport();
       renderPanel({ preserveScroll: false });
       requestAnimationFrame(() => {
         syncPanelToVisualViewport();
@@ -238,7 +221,7 @@
     global.visualViewport?.addEventListener('resize', syncPanelToVisualViewport);
     global.visualViewport?.addEventListener('scroll', syncPanelToVisualViewport);
     global.addEventListener('orientationchange', () => setTimeout(syncPanelToVisualViewport, 120));
-    setInterval(renderPreview, 2_000);
+    setInterval(renderPreview, 1_000);
     updateUnread(); renderPreview(); renderPanel();
   }
 
