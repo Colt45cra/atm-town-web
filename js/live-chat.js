@@ -1,4 +1,4 @@
-/* ATM Town v235.7 HUD layout + live chat integration
+/* ATM Town v235.7.1 keyboard-coupled HUD + live chat integration
  * Overhead speech bubbles keep their short lifetime in game-core.
  * This module keeps chat messages for the current browser play session and
  * loads the last 10 minutes of authenticated server history on room join.
@@ -139,7 +139,11 @@
     if (panel) { panel.classList.toggle('open', state.open); panel.setAttribute('aria-hidden', state.open ? 'false' : 'true'); }
     if (toggle) toggle.setAttribute('aria-expanded', state.open ? 'true' : 'false');
     document.body.classList.toggle('live-chat-open', state.open);
+
+    // The HUD layout owns keyboard coupling. On touch devices the panel is
+    // intentionally transparent/hidden until the software keyboard is real.
     global.ATMHudLayout?.setLiveChatOpen?.(state.open, { focusInput: state.open });
+
     if (state.open) {
       state.unread = 0;
       updateUnread();
@@ -221,6 +225,19 @@
     global.visualViewport?.addEventListener('resize', syncPanelToVisualViewport);
     global.visualViewport?.addEventListener('scroll', syncPanelToVisualViewport);
     global.addEventListener('orientationchange', () => setTimeout(syncPanelToVisualViewport, 120));
+
+    // If a phone refuses to open (or the user dismisses) the software keyboard,
+    // close Live Chat instead of ever leaving the chat panel open by itself.
+    global.addEventListener('atm:live-chat-keyboard-failed', () => {
+      if (state.open) setOpen(false);
+    });
+    $('chatInput')?.addEventListener('blur', () => {
+      if (!state.open || !global.ATMHudLayout?.expectsSoftKeyboard?.()) return;
+      setTimeout(() => {
+        if (state.open && !global.ATMHudLayout?.isKeyboardOpen?.()) setOpen(false);
+      }, 260);
+    });
+
     setInterval(renderPreview, 1_000);
     updateUnread(); renderPreview(); renderPanel();
   }

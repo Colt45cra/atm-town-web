@@ -5,6 +5,8 @@
   const IOS=/iPad|iPhone|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1);
   const STANDALONE=()=>Boolean(global.matchMedia?.('(display-mode: standalone)')?.matches||navigator.standalone===true);
   const seenPingIds=new Set();
+  const hadServiceWorkerController=Boolean(navigator.serviceWorker?.controller);
+  let reloadingForServiceWorkerUpdate=false;
   let deferredInstallPrompt=null;
   let registration=null;
   let state={
@@ -171,6 +173,13 @@
   global.matchMedia?.('(display-mode: standalone)')?.addEventListener?.('change',()=>update({installed:STANDALONE()}));
 
   if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      // Only reload for an actual update of an already-controlled ATM Town.
+      // First-time installs do not need an extra reload.
+      if(!hadServiceWorkerController||reloadingForServiceWorkerUpdate)return;
+      reloadingForServiceWorkerUpdate=true;
+      global.location.reload();
+    });
     navigator.serviceWorker.addEventListener('message',(event)=>{
       const data=event.data||{};
       if(data.type==='ATM_PLAYER_PING'){receivePing(data.payload);return;}

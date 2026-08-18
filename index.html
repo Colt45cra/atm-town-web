@@ -780,6 +780,68 @@ body.atm-darts-open #hudSocialRail,body.atm-darts-open #chatComposerDock{visibil
   .liveChatMessages{padding:8px 9px 10px!important}.liveChatMessage{padding:7px 9px!important}.liveChatMessageBody{font-size:10px!important}
 }
 
+
+/* ===== v235.7.1: Keyboard-Coupled HUD Hotfix =====
+   The software keyboard changes HUD geometry only. The game canvas remains
+   stable behind it, Live Chat is never visibly open without the keyboard on
+   touch devices, and the chat surface stays translucent over the game. */
+#game{position:fixed!important;left:0!important;top:0!important}
+
+/* Anchor the normal quick-chat composer to the real visible viewport bottom. */
+#chatComposerDock #chatBar{
+  top:calc(var(--vv-top,0px) + var(--vv-height,100vh) - 58px)!important;
+  bottom:auto!important;
+}
+
+/* Keep Chat + Mic directly above the joystick even while quick-chat keyboard is open. */
+#hudSocialRail{
+  top:calc(var(--vv-top,0px) + var(--vv-height,100vh) - 194px)!important;
+  bottom:auto!important;
+}
+
+/* Quick typing does not need movement/action controls competing with the game view. */
+body.atm-quick-chat-focus #controls,
+body.atm-quick-chat-focus #hudSocialRail{
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+/* Live Chat occupies the visible viewport above the keyboard, not the layout viewport. */
+#liveChatPanel{
+  top:auto!important;
+  bottom:calc(var(--vv-bottom-gap,0px) + 8px)!important;
+  height:min(470px,56vh)!important;
+  max-height:calc(var(--vv-height,100vh) - 16px)!important;
+  background:linear-gradient(180deg,rgba(6,26,36,.76),rgba(3,14,21,.68))!important;
+  backdrop-filter:blur(6px) saturate(1.06)!important;
+  -webkit-backdrop-filter:blur(6px) saturate(1.06)!important;
+  box-shadow:0 18px 52px rgba(0,0,0,.34)!important;
+}
+.liveChatHeader{background:rgba(5,22,31,.28)!important}
+.liveChatBody{background:rgba(3,14,21,.10)!important}
+.liveChatMessage{background:rgba(7,28,36,.42)!important;border-color:rgba(255,255,255,.055)!important}
+.liveChatMessage.local{background:rgba(50,43,19,.34)!important}
+#liveChatComposerSlot{
+  background:rgba(3,14,21,.72)!important;
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+}
+
+/* On phones/tablets the panel remains physically mounted so its input can
+   receive focus, but is invisible until the keyboard is confirmed open. */
+body.atm-soft-keyboard-device.live-chat-open:not(.atm-keyboard-open) #liveChatPanel.open{
+  opacity:0!important;
+  pointer-events:none!important;
+}
+body.atm-soft-keyboard-device.live-chat-open.atm-keyboard-open #liveChatPanel.open{
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+@media(max-width:700px){
+  #liveChatPanel{left:7px!important;width:calc(100vw - 14px)!important}
+}
+
 </style>
 </head>
 <body class="access-flow-open">

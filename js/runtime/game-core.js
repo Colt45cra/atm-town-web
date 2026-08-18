@@ -262,12 +262,25 @@ function updateLoungeTvEmbed(cameraX,cameraY){
 loungeTvFrame?.addEventListener('load',()=>{loungeTvReady=true;if(currentMap==='lounge'){loungeTvCommand('mute');loungeTvCommand('playVideo');}});
 ctx.imageSmoothingEnabled=false; mctx.imageSmoothingEnabled=false;
 let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,3);
+let stableGameW=Math.max(1,Math.round(innerWidth||1));
+let stableGameH=Math.max(1,Math.round(innerHeight||1));
+
+function focusedTextEntry(){
+  const el=document.activeElement;if(!el)return false;
+  if(el.isContentEditable)return true;
+  const tag=String(el.tagName||'').toLowerCase();
+  return tag==='input'||tag==='textarea'||tag==='select';
+}
 function syncVisualViewport(){
   const vv=window.visualViewport;
   const vvTop=vv?vv.offsetTop:0;
   const vvHeight=vv?vv.height:innerHeight;
+  const vvWidth=vv?vv.width:innerWidth;
+  const bottomGap=Math.max(0,(innerHeight||vvHeight)-(vvTop+vvHeight));
   document.documentElement.style.setProperty('--vv-top',vvTop+'px');
   document.documentElement.style.setProperty('--vv-height',vvHeight+'px');
+  document.documentElement.style.setProperty('--vv-width',vvWidth+'px');
+  document.documentElement.style.setProperty('--vv-bottom-gap',bottomGap+'px');
   const controls=document.getElementById('controls');
   if(controls){controls.style.display='block';controls.style.visibility='visible';controls.style.opacity='1';}
   const chatBar=document.getElementById('chatBar');
@@ -275,11 +288,24 @@ function syncVisualViewport(){
 }
 function resize(){
   const vv=window.visualViewport;
-  W=Math.max(1,Math.round(vv?vv.width:innerWidth));
-  H=Math.max(1,Math.round(vv?vv.height:innerHeight));
+  const visualH=Math.max(1,Math.round(vv?vv.height:innerHeight));
+  const visualBottomGap=Math.max(0,(innerHeight||visualH)-((vv?.offsetTop||0)+visualH));
+  const keyboardLikely=focusedTextEntry()&&(stableGameH-visualH>70||visualBottomGap>70);
+
+  // v235.7.1: the keyboard changes HUD geometry, not the game canvas. Keeping
+  // the canvas at the last stable game viewport prevents Android/iOS from
+  // panning into the page background while typing quick chat or Live Chat.
+  if(!keyboardLikely){
+    stableGameW=Math.max(1,Math.round(innerWidth||vv?.width||stableGameW));
+    stableGameH=Math.max(1,Math.round(innerHeight||vv?.height||stableGameH));
+  }
+  W=stableGameW;H=stableGameH;
   DPR=Math.min(devicePixelRatio||1,3);
   canvas.width=Math.max(1,Math.round(W*DPR));
   canvas.height=Math.max(1,Math.round(H*DPR));
+  canvas.style.position='fixed';
+  canvas.style.left='0px';
+  canvas.style.top='0px';
   canvas.style.width=W+'px';
   canvas.style.height=H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -296,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.7',name:ATM_CONFIG?.build?.name||'Mobile HUD Layout System'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.7.1',name:ATM_CONFIG?.build?.name||'Keyboard-Coupled HUD Hotfix'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
