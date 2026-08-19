@@ -25,7 +25,13 @@
     phnix:'assets/characters/thumbnails/character-phnix.webp',
     bear:'assets/characters/thumbnails/character-bear.webp',
     xoge:'assets/characters/thumbnails/character-xoge.webp',
-    flippy:'assets/characters/thumbnails/character-flippy.webp'
+    flippy:'assets/characters/thumbnails/character-flippy.webp',
+    salute:'assets/characters/thumbnails/character-salute.webp',
+    brad:'assets/characters/thumbnails/character-brad.webp',
+    david:'assets/characters/thumbnails/character-david.webp',
+    kaj:'assets/characters/thumbnails/character-kaj.webp',
+    daniel:'assets/characters/thumbnails/character-daniel.webp',
+    army:'assets/characters/thumbnails/character-army.webp'
   });
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
