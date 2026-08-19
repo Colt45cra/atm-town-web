@@ -1,10 +1,11 @@
-/* ATM Town v235.8.1 — Zombie Outbreak Sync Hotfix
+/* ATM Town v235.9 — Synchronized Zombie Combat
  *
- * World-event timing/spawn manifest is synchronized by the existing server-backed
- * World Event Engine. Combat resolution is intentionally client-local in this
- * first zombie preview so the movement/aim/weapon feel can be proven before a
- * later authoritative realtime combat service is used for PvP/rewarded combat.
- * Every local zombie simulation hunts the nearest known player anywhere outdoors in town.
+ * Zombie Outbreak now uses one elected room combat authority over Supabase
+ * Realtime. That authority alone advances zombie AI/HP/deaths and broadcasts
+ * compact snapshots; every other client interpolates to the same state.
+ * Weapon-fire packets are shared so every player sees the same firing effects.
+ * This authority seam is intentionally replaceable by a dedicated server later
+ * for PvP/rewarded combat without changing the approved controls/weapons.
  */
 (function initializeATMZombieOutbreak(global) {
   'use strict';
@@ -52,6 +53,17 @@
     mouseX: 0,
     mouseY: 0,
     controllerAim: false,
+    localId: '',
+    networkOnline: false,
+    authorityId: '',
+    snapshotSeq: 0,
+    lastSnapshotSeq: -1,
+    lastSnapshotAt: 0,
+    lastSnapshotSendAt: 0,
+    netFireSeq: 0,
+    lastFireSeqByShooter: new Map(),
+    rapidNetworkQueue: [],
+    lastRapidNetworkFlushAt: 0,
   };
 
   function isZombieEvent(event = state.event) { return event?.type === EVENT_TYPE; }
@@ -83,6 +95,93 @@
     return Math.max(0, serverNow - Date.parse(state.event.starts_at));
   }
   function spawned(zombie) { return eventElapsedMs() >= Number(zombie.spawn_offset_ms || 0); }
+
+  function roundNet(value, places = 1) {
+    const factor = places === 0 ? 1 : 10 ** places;
+    return Math.round((Number(value) || 0) * factor) / factor;
+  }
+  function emitNetwork(kind, payload = {}) {
+    if (!state.networkOnline || !state.localId || !state.eventId) return false;
+    global.dispatchEvent(new CustomEvent('atm:zombie-network-send', {
+      detail: {
+        kind,
+        eventId: state.eventId,
+        senderId: state.localId,
+        authorityId: state.authorityId,
+        ...payload,
+      },
+    }));
+    return true;
+  }
+  function candidateAuthorityId() {
+    const ids = new Set();
+    for (const participant of state.participants || []) {
+      if (participant?.map !== 'town') continue;
+      const id = String(participant.id || '');
+      if (id) ids.add(id);
+    }
+    if (state.localPlayer.map === 'town' && state.localId) ids.add(state.localId);
+    return [...ids].sort((a, b) => a.localeCompare(b))[0] || '';
+  }
+  function refreshAuthority() {
+    if (!state.networkOnline) {
+      state.authorityId = state.localId || 'offline';
+      return true;
+    }
+    const candidate = candidateAuthorityId();
+    const leaseFresh = Boolean(state.authorityId && state.authorityId !== state.localId && state.lastSnapshotAt && Date.now() - state.lastSnapshotAt < 1200);
+    // Preserve a fresh lower-id remote authority even when this client has not
+    // received that player's normal player_state yet. A genuinely lower local
+    // candidate can still take over deterministically.
+    if (leaseFresh && (!candidate || state.authorityId.localeCompare(candidate) < 0)) {
+      return false;
+    }
+    if (candidate && candidate !== state.authorityId) {
+      state.authorityId = candidate;
+      state.lastSnapshotSendAt = 0;
+    }
+    return Boolean(state.localId && state.authorityId === state.localId);
+  }
+  function isAuthority() {
+    return !state.networkOnline || Boolean(state.localId && state.authorityId === state.localId);
+  }
+  function shotRng(seed) {
+    let x = (Number(seed) >>> 0) || 0x9E3779B9;
+    return () => {
+      x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+      return (x >>> 0) / 4294967296;
+    };
+  }
+  function nextShotSeed() {
+    state.netFireSeq = (state.netFireSeq + 1) >>> 0;
+    const base = ((Date.now() & 0x7fffffff) ^ (state.netFireSeq * 2654435761)) >>> 0;
+    return base || state.netFireSeq || 1;
+  }
+  function queueFirePacket(weapon, shot) {
+    if (!state.networkOnline) return;
+    if (weapon === 'rapid') {
+      state.rapidNetworkQueue.push(shot);
+      if (state.rapidNetworkQueue.length > 6) flushRapidNetwork(true);
+      return;
+    }
+    emitNetwork('fire', {
+      seq: ++state.netFireSeq,
+      weapon,
+      shots: [shot],
+    });
+  }
+  function flushRapidNetwork(force = false) {
+    if (!state.networkOnline || !state.rapidNetworkQueue.length) return;
+    const now = performance.now();
+    if (!force && now - state.lastRapidNetworkFlushAt < 72) return;
+    const shots = state.rapidNetworkQueue.splice(0, 6);
+    state.lastRapidNetworkFlushAt = now;
+    emitNetwork('fire', {
+      seq: ++state.netFireSeq,
+      weapon: 'rapid',
+      shots,
+    });
+  }
 
   function installUi() {
     if (document.getElementById('atmZombieAimStick')) return;
@@ -156,6 +255,7 @@
       id: Number(def.id),
       spawnX: Number(def.x), spawnY: Number(def.y),
       x: Number(def.x), y: Number(def.y),
+      netX: Number(def.x), netY: Number(def.y),
       hp: Number(def.hp || 10), maxHp: Number(def.hp || 10),
       speed: Number(def.speed || 58),
       points: Number(def.points || 10),
@@ -174,10 +274,13 @@
       state.weaponMode = 'default'; state.kills = 0; state.hits = 0; state.shots = 0;
       state.defaultBullets.length = 0; state.microStreaks.length = 0; state.spreadTracers.length = 0; state.muzzleFx.length = 0; state.hitFx.length = 0;
       state.bodyDir = 'down'; state.aimX = 0; state.aimY = 1; state.aimActive = false; state.touchAimActive = false;
+      state.authorityId = ''; state.snapshotSeq = 0; state.lastSnapshotSeq = -1; state.lastSnapshotAt = 0; state.lastSnapshotSendAt = 0;
+      state.lastFireSeqByShooter.clear(); state.rapidNetworkQueue.length = 0; state.lastRapidNetworkFlushAt = 0;
     } else if (incomingId) {
       state.event = event;
     } else if (state.eventId) {
       state.event = null; state.eventId = ''; state.zombies = []; state.aimActive = false; state.touchAimActive = false; state.weaponMode = 'default';
+      state.authorityId = ''; state.lastSnapshotSeq = -1; state.lastSnapshotAt = 0; state.rapidNetworkQueue.length = 0;
     }
     state.phase = incomingId ? String(phase || event?.phase || 'none') : 'none';
     document.body.classList.toggle('atm-zombie-combat-active', isActiveTown());
@@ -280,65 +383,90 @@
     return Math.max(1800, Math.hypot(width, height) + 180);
   }
 
-  function addMicroVisual(ox, oy, angle, maxDistance) {
+  function addMicroVisual(ox, oy, angle, maxDistance, random = Math.random) {
     for (let i = 0; i < 4; i += 1) {
-      const a = angle + (Math.random() - .5) * (7 * Math.PI / 180);
-      // These are visual micro-streaks, not the authoritative projectile.
-      // They travel almost instantly across the world so the weapon reads as a
-      // dense stream without drawing a large conventional bullet.
-      const speed = 5400 + Math.random() * 2200;
+      const a = angle + (random() - .5) * (7 * Math.PI / 180);
+      const speed = 5400 + random() * 2200;
       const life = Math.min(.72, Math.max(.18, maxDistance / speed));
       state.microStreaks.push({
-        x: ox + Math.cos(a) * (16 + Math.random() * 18),
-        y: oy + Math.sin(a) * (16 + Math.random() * 18),
+        x: ox + Math.cos(a) * (16 + random() * 18),
+        y: oy + Math.sin(a) * (16 + random() * 18),
         vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-        life, maxLife: life, length: 7 + Math.random() * 9,
+        life, maxLife: life, length: 7 + random() * 9,
       });
     }
-    if (state.microStreaks.length > 150) state.microStreaks.splice(0, state.microStreaks.length - 150);
+    if (state.microStreaks.length > 180) state.microStreaks.splice(0, state.microStreaks.length - 180);
   }
 
-  function fireRapid(ox, oy, ax, ay) {
+  function fireRapid(ox, oy, ax, ay, options = {}) {
+    const random = shotRng(options.seed || nextShotSeed());
     const base = Math.atan2(ay, ax);
-    const jitter = (Math.random() - .5) * (8 * Math.PI / 180);
+    const jitter = (random() - .5) * (8 * Math.PI / 180);
     const angle = base + jitter, dx = Math.cos(angle), dy = Math.sin(angle);
     const maxRange = rapidMaxRange();
-    const result = hitZombieRay(ox, oy, dx, dy, maxRange, (distance, range) => {
-      const fullDamageUntil = range * .88;
-      if (distance <= fullDamageUntil) return 2.2;
-      const p = Math.min(1, (distance - fullDamageUntil) / Math.max(1, range - fullDamageUntil));
-      return 2.2 - p * 1.1;
-    });
-    addMicroVisual(ox, oy, angle, result.distance || maxRange);
-    state.muzzleFx.push({ x: ox, y: oy, life: .055, maxLife: .055, kind: 'rapid' });
+    let visualDistance = maxRange;
+    if (options.damage !== false) {
+      const result = hitZombieRay(ox, oy, dx, dy, maxRange, (distance, range) => {
+        const fullDamageUntil = range * .88;
+        if (distance <= fullDamageUntil) return 2.2;
+        const p = Math.min(1, (distance - fullDamageUntil) / Math.max(1, range - fullDamageUntil));
+        return 2.2 - p * 1.1;
+      });
+      visualDistance = result.distance || maxRange;
+    } else {
+      visualDistance = rayObstacleDistance(ox, oy, dx, dy, maxRange);
+    }
+    addMicroVisual(ox, oy, angle, visualDistance, random);
+    state.muzzleFx.push({ x: ox, y: oy, ax: dx, ay: dy, life: .055, maxLife: .055, kind: 'rapid' });
   }
 
-  function fireSpread(ox, oy, ax, ay) {
+  function fireSpread(ox, oy, ax, ay, options = {}) {
+    const random = shotRng(options.seed || nextShotSeed());
     const base = Math.atan2(ay, ax);
     const pellets = 7, spreadHalf = 18 * Math.PI / 180;
     for (let i = 0; i < pellets; i += 1) {
       const t = pellets === 1 ? .5 : i / (pellets - 1);
-      const a = base - spreadHalf + t * spreadHalf * 2 + (Math.random() - .5) * (2.5 * Math.PI / 180);
+      const a = base - spreadHalf + t * spreadHalf * 2 + (random() - .5) * (2.5 * Math.PI / 180);
       const dx = Math.cos(a), dy = Math.sin(a);
-      const result = hitZombieRay(ox, oy, dx, dy, SPREAD_RANGE, (distance) => {
-        if (distance <= 150) return 3.2;
-        if (distance <= 280) return 2.2;
-        const p = Math.min(1, (distance - 280) / (SPREAD_RANGE - 280));
-        return 2.2 - p * 1.45;
-      });
+      let distance = rayObstacleDistance(ox, oy, dx, dy, SPREAD_RANGE);
+      if (options.damage !== false) {
+        const result = hitZombieRay(ox, oy, dx, dy, SPREAD_RANGE, (distance) => {
+          if (distance <= 150) return 3.2;
+          if (distance <= 280) return 2.2;
+          const p = Math.min(1, (distance - 280) / (SPREAD_RANGE - 280));
+          return 2.2 - p * 1.45;
+        });
+        distance = result.distance;
+      }
       state.spreadTracers.push({
         x1: ox, y1: oy,
-        x2: ox + dx * result.distance, y2: oy + dy * result.distance,
+        x2: ox + dx * distance, y2: oy + dy * distance,
         life: .09, maxLife: .09,
       });
     }
-    if (state.spreadTracers.length > 100) state.spreadTracers.splice(0, state.spreadTracers.length - 100);
-    state.muzzleFx.push({ x: ox, y: oy, life: .08, maxLife: .08, kind: 'spread' });
+    if (state.spreadTracers.length > 130) state.spreadTracers.splice(0, state.spreadTracers.length - 130);
+    state.muzzleFx.push({ x: ox, y: oy, ax, ay, life: .08, maxLife: .08, kind: 'spread' });
   }
 
-  function fireDefault(ox, oy, ax, ay) {
-    state.defaultBullets.push({ x: ox + ax * 22, y: oy + ay * 22, vx: ax * 720, vy: ay * 720, life: DEFAULT_RANGE / 720, damage: 1.2 });
-    state.muzzleFx.push({ x: ox, y: oy, life: .06, maxLife: .06, kind: 'default' });
+  function fireDefault(ox, oy, ax, ay, options = {}) {
+    state.defaultBullets.push({
+      x: ox + ax * 22, y: oy + ay * 22,
+      vx: ax * 720, vy: ay * 720,
+      life: DEFAULT_RANGE / 720,
+      damage: 1.2,
+      canDamage: options.damage !== false,
+    });
+    state.muzzleFx.push({ x: ox, y: oy, ax, ay, life: .06, maxLife: .06, kind: 'default' });
+  }
+
+  function applyWeaponShot(weapon, shot, damage = false) {
+    const ox = Number(shot?.x), oy = Number(shot?.y);
+    let [ax, ay, mag] = norm(shot?.ax, shot?.ay);
+    if (!Number.isFinite(ox) || !Number.isFinite(oy) || mag <= .08) return;
+    const seed = Number(shot?.seed) >>> 0;
+    if (weapon === 'rapid') fireRapid(ox, oy, ax, ay, { damage, seed });
+    else if (weapon === 'spread') fireSpread(ox, oy, ax, ay, { damage, seed });
+    else fireDefault(ox, oy, ax, ay, { damage, seed });
   }
 
   function updateDefaultBullets(dt) {
@@ -346,7 +474,7 @@
       const b = state.defaultBullets[i], beforeX = b.x, beforeY = b.y;
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       let remove = b.life <= 0 || (typeof state.isBlocked === 'function' && state.isBlocked(b.x, b.y));
-      if (!remove) {
+      if (!remove && b.canDamage) {
         for (const zombie of state.zombies) {
           if (zombie.dead || !spawned(zombie)) continue;
           const dx = b.x - zombie.x, dy = b.y - (zombie.y - 20);
@@ -363,6 +491,84 @@
     }
   }
 
+  function buildSnapshot() {
+    return {
+      kind: 'snapshot',
+      seq: ++state.snapshotSeq,
+      authorityId: state.authorityId,
+      at: Date.now(),
+      zombies: state.zombies.map((z) => [z.id, roundNet(z.x), roundNet(z.y), roundNet(z.hp), z.dead ? 1 : 0]),
+    };
+  }
+  function sendSnapshot(force = false) {
+    if (!state.networkOnline || !isAuthority() || !isZombieEvent() || state.phase !== 'active') return;
+    const now = performance.now();
+    if (!force && now - state.lastSnapshotSendAt < 125) return;
+    state.lastSnapshotSendAt = now;
+    emitNetwork('snapshot', buildSnapshot());
+  }
+  function applySnapshot(payload) {
+    if (!payload || String(payload.eventId || '') !== state.eventId) return;
+    const authorityId = String(payload.authorityId || payload.senderId || '');
+    if (!authorityId) return;
+    const candidate = candidateAuthorityId();
+    if (candidate && authorityId !== candidate && state.lastSnapshotAt && Date.now() - state.lastSnapshotAt < 1200) return;
+    const seq = Number(payload.seq);
+    if (authorityId === state.authorityId && Number.isFinite(seq) && seq <= state.lastSnapshotSeq) return;
+    state.authorityId = authorityId;
+    state.lastSnapshotSeq = Number.isFinite(seq) ? seq : state.lastSnapshotSeq + 1;
+    state.lastSnapshotAt = Date.now();
+    const byId = new Map(state.zombies.map((z) => [Number(z.id), z]));
+    for (const row of Array.isArray(payload.zombies) ? payload.zombies : []) {
+      if (!Array.isArray(row) || row.length < 5) continue;
+      const z = byId.get(Number(row[0]));
+      if (!z) continue;
+      const nx = Number(row[1]), ny = Number(row[2]), hp = Number(row[3]), dead = Boolean(row[4]);
+      if (!Number.isFinite(nx) || !Number.isFinite(ny) || !Number.isFinite(hp)) continue;
+      if (hp < z.hp - .05) {
+        z.hitFlash = .10;
+        state.hitFx.push({ x: nx, y: ny - 22, life: .14, maxLife: .14 });
+      }
+      z.netX = nx; z.netY = ny; z.hp = Math.max(0, hp); z.dead = dead;
+      if (Math.hypot(z.x - nx, z.y - ny) > 180) { z.x = nx; z.y = ny; }
+    }
+  }
+  function updateFollowerZombies(dt) {
+    const smoothing = Math.min(1, dt * 12);
+    for (const z of state.zombies) {
+      if (z.dead || !spawned(z)) continue;
+      if (Number.isFinite(z.netX)) z.x += (z.netX - z.x) * smoothing;
+      if (Number.isFinite(z.netY)) z.y += (z.netY - z.y) * smoothing;
+      z.hitFlash = Math.max(0, z.hitFlash - dt);
+      z.bob += dt * 3.2;
+    }
+  }
+  function receiveNetwork(payload = {}) {
+    if (!payload || String(payload.eventId || '') !== state.eventId || String(payload.senderId || '') === state.localId) return false;
+    const kind = String(payload.kind || '');
+    if (kind === 'snapshot') {
+      applySnapshot(payload);
+      return true;
+    }
+    if (kind === 'request_snapshot') {
+      if (isAuthority()) sendSnapshot(true);
+      return true;
+    }
+    if (kind !== 'fire') return false;
+
+    const shooterId = String(payload.senderId || '');
+    const seq = Number(payload.seq || 0);
+    const last = Number(state.lastFireSeqByShooter.get(shooterId) || 0);
+    if (seq && seq <= last) return true;
+    if (seq) state.lastFireSeqByShooter.set(shooterId, seq);
+
+    const weapon = payload.weapon === 'rapid' ? 'rapid' : payload.weapon === 'spread' ? 'spread' : 'default';
+    for (const shot of Array.isArray(payload.shots) ? payload.shots : []) {
+      applyWeaponShot(weapon, shot, isAuthority());
+    }
+    if (isAuthority()) sendSnapshot(true);
+    return true;
+  }
   function updateFx(dt) {
     for (const s of state.microStreaks) { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; }
     state.microStreaks = state.microStreaks.filter((s) => s.life > 0);
@@ -391,7 +597,9 @@
     installUi();
     syncFromWorldEvents();
     const dt = Math.max(0, Math.min(.05, Number(args.dt || 0)));
-    state.localPlayer = { x: Number(args.x || 0), y: Number(args.y || 0), map: String(args.map || '') };
+    state.localId = String(args.localId || state.localId || '');
+    state.networkOnline = Boolean(args.networkOnline);
+    state.localPlayer = { id: state.localId, x: Number(args.x || 0), y: Number(args.y || 0), map: String(args.map || '') };
     state.participants = Array.isArray(args.participants) ? args.participants : [state.localPlayer];
     state.mapBounds = args.mapBounds || state.mapBounds;
     state.isBlocked = typeof args.isBlocked === 'function' ? args.isBlocked : state.isBlocked;
@@ -399,8 +607,11 @@
 
     if (!isActiveTown()) {
       state.aimActive = false; state.touchAimActive = false; state.controllerAim = false; state.mouseFiring = false;
+      state.rapidNetworkQueue.length = 0;
       updateFx(dt); updateDefaultBullets(dt); return;
     }
+
+    refreshAuthority();
 
     // Controller right stick becomes aim/fire during the combat event. Touch,
     // mouse, and controller keep independent active flags so releasing one input
@@ -425,8 +636,6 @@
     if (state.aimActive) {
       setAimFromVector(state.aimRawX, state.aimRawY);
     } else {
-      // When the trigger/stick is released, keep the held weapon visually aligned
-      // with normal four-way walking instead of leaving it pointed at stale aim.
       const [mx, my, moveMag] = norm(args.movementX, args.movementY);
       if (moveMag > .08) {
         state.bodyDir = nearestFacingForVector(mx, my);
@@ -436,19 +645,47 @@
       state.movementMode = 'standing';
     }
 
-    for (const zombie of state.zombies) { moveZombie(zombie, dt); zombie.hitFlash = Math.max(0, zombie.hitFlash - dt); zombie.bob += dt * 3.2; }
+    // One elected town player is authoritative for all zombie movement/HP/deaths.
+    // Everyone else only interpolates compact snapshots from that authority.
+    if (isAuthority()) {
+      for (const zombie of state.zombies) {
+        moveZombie(zombie, dt);
+        zombie.netX = zombie.x; zombie.netY = zombie.y;
+        zombie.hitFlash = Math.max(0, zombie.hitFlash - dt);
+        zombie.bob += dt * 3.2;
+      }
+      sendSnapshot(false);
+    } else {
+      updateFollowerZombies(dt);
+    }
+
     checkWeaponPickups();
 
     state.fireTimer = Math.max(0, state.fireTimer - dt);
     if (state.aimActive && state.fireTimer <= 0) {
       const ox = state.localPlayer.x, oy = state.localPlayer.y - 28;
-      if (state.weaponMode === 'rapid') { fireRapid(ox, oy, state.aimX, state.aimY); state.fireTimer = .038; }
-      else if (state.weaponMode === 'spread') { fireSpread(ox, oy, state.aimX, state.aimY); state.fireTimer = .23; }
-      else { fireDefault(ox, oy, state.aimX, state.aimY); state.fireTimer = .13; }
+      const weapon = state.weaponMode === 'rapid' ? 'rapid' : state.weaponMode === 'spread' ? 'spread' : 'default';
+      const seed = nextShotSeed();
+      const shot = {
+        x: roundNet(ox), y: roundNet(oy),
+        ax: roundNet(state.aimX, 3), ay: roundNet(state.aimY, 3),
+        seed,
+      };
+
+      // Local response is immediate. Only the elected authority is allowed to
+      // mutate zombie HP; non-authority shooters wait for the shared snapshot.
+      applyWeaponShot(weapon, shot, isAuthority());
+
+      if (state.networkOnline) queueFirePacket(weapon, shot);
+      if (weapon === 'rapid') state.fireTimer = .038;
+      else if (weapon === 'spread') state.fireTimer = .23;
+      else state.fireTimer = .13;
       state.shots += 1;
     }
 
-    updateDefaultBullets(dt); updateFx(dt);
+    flushRapidNetwork(false);
+    updateDefaultBullets(dt);
+    updateFx(dt);
     state.pickupPulse = Math.max(0, state.pickupPulse - dt);
   }
 
@@ -513,8 +750,10 @@
     }
     for (const m of state.muzzleFx) {
       const alpha = Math.max(0, m.life / m.maxLife);
+      const max = Math.hypot(Number(m.ax)||0, Number(m.ay)||0) || 1;
+      const maxX = (Number(m.ax)||0) / max, maxY = (Number(m.ay)||0) / max;
       ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = m.kind === 'rapid' ? '#8ffdf7' : m.kind === 'spread' ? '#ffd166' : '#fff0a8';
-      ctx.beginPath(); ctx.arc(m.x + state.aimX * 26, m.y + state.aimY * 26, 5 + alpha * 6, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      ctx.beginPath(); ctx.arc(m.x + maxX * 26, m.y + maxY * 26, 5 + alpha * 6, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     for (const h of state.hitFx) {
       const p = 1 - h.life / h.maxLife;
@@ -578,6 +817,10 @@
       weaponMode: state.weaponMode,
       bodyDir: state.bodyDir,
       movementMode: state.movementMode,
+      networkOnline: state.networkOnline,
+      authorityId: state.authorityId,
+      isAuthority: isAuthority(),
+      lastSnapshotAgeMs: state.lastSnapshotAt ? Date.now() - state.lastSnapshotAt : null,
     };
   }
 
@@ -598,6 +841,7 @@
     getDepthActors,
     drawActor,
     drawRemoteWeapon,
+    receiveNetwork,
     controllerOwnsRightStick,
     getBroadcastState,
     getStats,

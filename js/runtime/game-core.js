@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.8.1',name:ATM_CONFIG?.build?.name||'Zombie Outbreak Sync Hotfix'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.9',name:ATM_CONFIG?.build?.name||'Synchronized Zombie Combat'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2826,6 +2826,10 @@ async function connectMultiplayer(){
       if(!payload||String(payload.sender_id||'')===playerId)return;
       window.ATMWorldEvents?.refresh?.('realtime-hint');
     });
+    realtimeChannel.on('broadcast',{event:'zombie_combat'},({payload})=>{
+      if(!payload||String(payload.senderId||'')===playerId)return;
+      window.ATMZombieOutbreak?.receiveNetwork?.(payload);
+    });
     realtimeChannel.on('broadcast',{event:'nft_trade_offer'},({payload})=>{
       if(!payload||String(payload.sellerWallet||'')!==lockerWalletAddress())return;
       const amount=Number(payload.amountXrp||0);showXrplPaymentToast(`${payload.buyerName||'A player'} made a ${amount} XRP offer on your displayed NFT.`,'success',10000);
@@ -2885,6 +2889,19 @@ window.addEventListener('atm:world-event-triggered',(event)=>{
   // Push the local combat/event state immediately instead of waiting for the
   // normal 100 ms multiplayer heartbeat.
   broadcastState(true);
+});
+
+window.addEventListener('atm:zombie-network-send',(event)=>{
+  if(!onlineMode||!realtimeChannel)return;
+  const detail=event?.detail;
+  if(!detail||String(detail.eventId||'')==='')return;
+  try{
+    realtimeChannel.send({
+      type:'broadcast',
+      event:'zombie_combat',
+      payload:{...detail,senderId:playerId,sentAt:Date.now()}
+    });
+  }catch(_error){}
 });
 
 const ARCADE_GAME_PRESENCE_CONFIG=Object.freeze({
@@ -5076,15 +5093,16 @@ function update(dt){
   const combatMoveX=mag>0?dx/mag:0,combatMoveY=mag>0?dy/mag:0;
   const zombieParticipants=[{id:playerId,x:player.x,y:player.y,map:currentMap,local:true}];
   if(currentMap==='town'){
+    const zombieNow=Date.now();
     for(const [id,p] of remotePlayers){
-      if(p?.map!=='town')continue;
+      if(p?.map!=='town'||zombieNow-Number(p.lastSeen||0)>3500)continue;
       const px=Number.isFinite(Number(p.drawX))?Number(p.drawX):Number(p.x);
       const py=Number.isFinite(Number(p.drawY))?Number(p.drawY):Number(p.y);
       if(Number.isFinite(px)&&Number.isFinite(py))zombieParticipants.push({id,x:px,y:py,map:'town'});
     }
   }
   window.ATMZombieOutbreak?.update?.({
-    dt,map:currentMap,x:player.x,y:player.y,
+    dt,map:currentMap,x:player.x,y:player.y,localId:playerId,networkOnline:onlineMode,
     movementX:combatMoveX,movementY:combatMoveY,
     controllerAimX:gamepadState.lookX,controllerAimY:gamepadState.lookY,
     participants:zombieParticipants,

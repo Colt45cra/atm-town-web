@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.9: synchronizes Zombie Outbreak combat with an elected realtime authority, shared zombie snapshots, and shared weapon-fire effects.
  * v235.8.1: hardens Zombie Outbreak multiplayer event delivery, late-join/resume synchronization, and remote-player weapon visibility.
  * v235.8: adds the HQ-triggered Zombie Outbreak combat preview with ±40° aim/facing, backpedal/strafe movement, and Rapid Micro / Spread ground upgrades.
  * v235.7.2: keeps Live Chat open when the visible SEND button is tapped, fixes the empty-state display, and unlocks a rechargeable jetpack phase in Platform Panic at 440m.
@@ -36,10 +37,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.81,
-    version: 'v235.8.1',
-    name: 'Zombie Outbreak Sync Hotfix',
-    title: 'ATM Town v235.8.1 — Zombie Outbreak Sync Hotfix'
+    number: 235.9,
+    version: 'v235.9',
+    name: 'Synchronized Zombie Combat',
+    title: 'ATM Town v235.9 — Synchronized Zombie Combat'
   });
 
   const MAPS = Object.freeze({
