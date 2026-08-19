@@ -115,6 +115,7 @@ const requiredFiles = [
   'docs/V235.7-MOBILE-HUD-LAYOUT-SYSTEM.md',
   'docs/V235.7.1-KEYBOARD-COUPLED-HUD-HOTFIX.md',
   'docs/V235.7.2-LIVE-CHAT-SEND-PANIC-JETPACK.md',
+  'docs/V235.8-ZOMBIE-OUTBREAK-COMBAT-PREVIEW.md',
   'js/hud-layout.js',
   'js/live-chat.js',
   'lib/live-chat.js',
@@ -132,9 +133,11 @@ const requiredFiles = [
   'lib/payload-integration.js',
   'lib/payload-money-rain.js',
   'js/world-events.js',
+  'js/zombie-outbreak.js',
   'lib/world-events.js',
   'lib/world-event-money-rain-points.js',
   'supabase/ATM-Town-v235.sql',
+  'supabase/ATM-Town-v235.8-Zombie-Outbreak.sql',
   'scripts/generate-security-headers.mjs',
   'vercel.json',
   'package.json',
@@ -175,7 +178,7 @@ const gameRuntimeParts = await Promise.all([
 ]);
 const gameRuntimeSource = gameRuntimeParts.join('\n');
 const runtimeSource = `${html}\n${gameRuntimeSource}`;
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/pwa.js', 'js/people-hub.js', 'js/world-events.js', 'js/hud-layout.js', 'js/live-chat.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/pwa.js', 'js/people-hub.js', 'js/world-events.js', 'js/zombie-outbreak.js', 'js/hud-layout.js', 'js/live-chat.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/darts.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -184,8 +187,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.7.2'")) errors.push('Missing v235.7.2 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Live Chat Send + Panic Jetpack'")) errors.push('Missing v235.7.2 display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.8'")) errors.push('Missing v235.8 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Zombie Outbreak Combat Preview'")) errors.push('Missing v235.8 display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -283,7 +286,7 @@ if (!gameRuntimeParts[0].includes('navigator.getGamepads')) errors.push('v235.4 
 if (!gameRuntimeParts[0].includes("window.addEventListener('gamepadconnected'")) errors.push('v235.4 controller connection detection is missing.');
 if (!gameRuntimeParts[0].includes("const ATM_GAMEPAD_BUTTON=Object.freeze({A:0,B:1,X:2,Y:3")) errors.push('v235.4 standard Xbox button mapping is missing.');
 if (!gameRuntimeParts[0].includes('let dx=joy.x+gamepadState.moveX,dy=joy.y+gamepadState.moveY;')) errors.push('v235.4 analog controller movement is not merged into world movement.');
-if (!gameRuntimeParts[0].includes('const controllerLookX=gamepadState.lookX*220')) errors.push('v235.4 right-stick camera look is missing.');
+if (!gameRuntimeParts[0].includes('gamepadState.lookX*220') || !gameRuntimeParts[0].includes('zombieOwnsRightStick')) errors.push('v235.8 must preserve right-stick camera look outside combat and hand it to Zombie Outbreak while active.');
 if (!gameRuntimeParts[0].includes("gamepadStatus('🎮 CONTROLLER CONNECTED · A JUMP · X ACTION · Y MAP'")) errors.push('v235.4 controller connection/mapping status is missing.');
 if (!gameRuntimeParts[0].includes("gamepadSetArcadeKey('ArrowLeft'")) errors.push('v235.4 controller-to-arcade keyboard bridge is missing.');
 
@@ -294,7 +297,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.7.2'")) errors.push('js/config.js is not marked v235.7.2.');
+if (!configSource.includes("version: 'v235.8'")) errors.push('js/config.js is not marked v235.8.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -313,6 +316,8 @@ const worldEventsServerSource = await readFile(path.join(root, 'lib', 'world-eve
 const worldEventSafePointsSource = await readFile(path.join(root, 'lib', 'world-event-money-rain-points.js'), 'utf8');
 const worldTimeApiSource = await readFile(path.join(root, 'api', 'world-time.js'), 'utf8');
 const worldEventsSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.sql'), 'utf8');
+const zombieOutbreakSource = await readFile(path.join(root, 'js', 'zombie-outbreak.js'), 'utf8');
+const zombieOutbreakSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.8-Zombie-Outbreak.sql'), 'utf8');
 const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
 const atmPaySource = await readFile(path.join(root, 'lib', 'atm-pay.js'), 'utf8');
 const testnetRpcSource = await readFile(path.join(root, 'lib', 'xrpl-testnet-rpc.js'), 'utf8');
@@ -368,7 +373,7 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.7.2")) errors.push('v235.7.2 PWA shell cache was not bumped for the chat/Panic hotfix.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.8") || !serviceWorkerSource.includes('/js/zombie-outbreak.js')) errors.push('v235.8 PWA shell cache/module registration is missing.');
 if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
 if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
 if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');
@@ -403,7 +408,7 @@ if (!pushSql.includes('enable row level security')) errors.push('v235.6 push not
 if (!String((JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))).dependencies?.['web-push'] || '').startsWith('^3.6.7')) errors.push('v235.6 web-push dependency is missing.');
 if (!worldEventsClientSource.includes('START PREVIEW · NO XRP') || !worldEventsClientSource.includes('updateGameplay') || !worldEventsClientSource.includes('drawGround') || !worldEventsClientSource.includes('drawAir')) errors.push('v235.3.1 must preserve the no-XRP preview plus Money Rain client/rendering hooks.');
 if (!worldEventsClientSource.includes('/api/world-time?action=start-money-rain') || !worldEventsClientSource.includes('/api/world-time?action=claim-money-rain')) errors.push('v235.1 Money Rain client is missing authenticated World Event API actions.');
-if (!worldEventsServerSource.includes("const EVENT_TYPE = 'money_rain'") || !worldEventsServerSource.includes('buildMoneyRainManifest(seed)') || !worldEventsServerSource.includes('MAX_CLAIM_DISTANCE')) errors.push('v235.1 server-authoritative Money Rain manifest/claim validation is incomplete.');
+if (!worldEventsServerSource.includes("const MONEY_RAIN_EVENT_TYPE = 'money_rain'") || !worldEventsServerSource.includes('buildMoneyRainManifest(seed)') || !worldEventsServerSource.includes('MAX_CLAIM_DISTANCE')) errors.push('v235.1 server-authoritative Money Rain manifest/claim validation is incomplete.');
 if (!worldEventsServerSource.includes("layout_strategy: 'organic_cluster_scatter_v3'") || !worldEventsServerSource.includes('chooseClusterCenters') || !worldEventsServerSource.includes('clustered_pickups') || !worldEventsServerSource.includes('scatter_pickups')) errors.push('v235.1.1 organic seeded Money Rain cluster/wide-scatter generation is missing.');
 if (!worldEventsServerSource.includes("kind: 'bag'") || !worldEventsServerSource.includes("kind: 'bundle'") || !worldEventsClientSource.includes("pickup.kind === 'bag'") || !worldEventsClientSource.includes("pickup.kind === 'bundle'")) errors.push('v235.1 rare-drop presentation framework is incomplete.');
 if (!worldEventsClientSource.includes('const CLAIM_SCAN_MS = 32') || !worldEventsClientSource.includes('const PICKUP_RADIUS = 54') || !worldEventsClientSource.includes('pickup_ids: ids') || !worldEventsClientSource.includes('state.claiming.has(id)')) errors.push('v235.1 responsive optimistic/batched pickup behavior is incomplete.');
@@ -418,6 +423,16 @@ if (!gameRuntimeParts[0].includes("for(const eventName of ['gesturestart','gestu
 if (!gameRuntimeParts[0].includes("Never release the\n  // joystick here") || /function blockNativeGameplayZoom\(e\)\{[\s\S]{0,260}?endJoy\(/.test(gameRuntimeParts[0])) errors.push('v235.1.5 Safari zoom guard must preserve joystick pointer ownership during two-thumb jump.');
 if (!worldEventsServerSource.includes('MAX_BATCH_CLAIMS = 8') || !worldEventsServerSource.includes('Array.isArray(body.pickup_ids)') || !worldEventsServerSource.includes('claimed_pickup_ids_now')) errors.push('v235.1 server batch-claim support is incomplete.');
 if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsServerSource.includes('sponsor_mode') || !worldEventsServerSource.includes('sponsor_label') || !worldEventsClientSource.includes('PROJECT / BRAND') || !worldEventsClientSource.includes('Money Rain provided by')) errors.push('v235.1 sponsor / project attribution is incomplete.');
+// v235.8 Zombie Outbreak combat preview: server lifecycle/spawn manifest + local combat seam.
+if (!worldEventsServerSource.includes("const ZOMBIE_EVENT_TYPE = 'zombie_outbreak'") || !worldEventsServerSource.includes('buildZombieOutbreakManifest(seed)') || !worldEventsServerSource.includes('startZombieOutbreak')) errors.push('v235.8 server Zombie Outbreak launch/manifest is incomplete.');
+if (!worldTimeApiSource.includes("action === 'start-zombie-outbreak'") || !worldEventsClientSource.includes('/api/world-time?action=start-zombie-outbreak')) errors.push('v235.8 Zombie Outbreak is not wired through the existing World Event API/client.');
+if (!worldEventsClientSource.includes('START ZOMBIE OUTBREAK') || !worldEventsClientSource.includes('R · Rapid') || !worldEventsClientSource.includes('S · Spread')) errors.push('v235.8 HQ World Event control panel is missing Zombie Outbreak launch/weapon guidance.');
+if (!zombieOutbreakSource.includes('const MAX_AIM_OFFSET = 40 * Math.PI / 180') || !zombieOutbreakSource.includes('movementOverride') || !zombieOutbreakSource.includes("movementMode === 'backpedal' ? -1 : 1")) errors.push('v235.8 ±40° aim/facing or backpedal animation contract is missing.');
+if (!zombieOutbreakSource.includes('rapidMaxRange()') || !zombieOutbreakSource.includes('range * .88') || !zombieOutbreakSource.includes('const speed = 5400 + Math.random() * 2200')) errors.push('v235.8 Rapid Micro must retain map-edge range, extreme-distance-only falloff, and ultra-fast micro-streak visuals.');
+if (!zombieOutbreakSource.includes('const pellets = 7') || !zombieOutbreakSource.includes('if (distance <= 150) return 3.2') || !zombieOutbreakSource.includes('SPREAD_RANGE = 560')) errors.push('v235.8 Spread must remain a devastating close-range seven-pellet weapon.');
+if (!worldEventsServerSource.includes("sync_model: 'server_timeline_client_combat'")) errors.push('v235.8 combat preview synchronization boundary is missing from server event state.');
+if (!zombieOutbreakSql.includes("'zombie_outbreak'") || !zombieOutbreakSql.includes('world_events_event_type_check')) errors.push('v235.8 Supabase migration does not allow the zombie_outbreak world-event type.');
+if (!gameRuntimeParts[0].includes('ATMZombieOutbreak?.update?.') || !gameRuntimeParts[0].includes('ATMZombieOutbreak?.movementOverride?.') || !gameRuntimeParts[0].includes("type:'zombie'")) errors.push('v235.8 game-core combat update/movement/depth-sort integration is missing.');
 if (!worldEventsClientSource.includes('background event polling must never replace a focused iOS input') || !worldEventsClientSource.includes('document.activeElement === currentSponsorInput') || !worldEventsClientSource.includes('document.activeElement === currentPoolInput')) errors.push('v235.3.1 iOS World Event sponsor/pool text-focus protection is missing.');
 if (!gameRuntimeParts[0].includes('const canvasPinchZoomEnabled=') || !gameRuntimeParts[0].includes("stick.addEventListener('lostpointercapture',endJoy)") || !gameRuntimeParts[0].includes("document.addEventListener('focusin'")) errors.push('v235.1.1 mobile control-release / accidental-zoom guards are incomplete.');
 if (!html.includes('viewport-fit=cover') || !html.includes('body,body *{-webkit-user-select:none') || !html.includes('@media (hover:none) and (pointer:coarse){input,textarea,select{font-size:16px!important}}')) errors.push('v235.1.1 iPhone selection / input auto-zoom CSS guards are missing.');
@@ -706,6 +721,7 @@ try {
   // directory outside this package's module scope so node --check uses Script semantics.
   const classicRuntimeFiles = [
     'js/live-chat.js',
+    'js/zombie-outbreak.js',
     'js/runtime/game-core.js',
     'js/runtime/sky-run.js',
     'js/runtime/platform-panic.js',
@@ -723,7 +739,7 @@ try {
   }
 
   const syntaxTargets = [
-    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/world-events.js',
+    'js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/people-hub.js', 'js/world-events.js', 'js/zombie-outbreak.js',
     'lib/auth.js', 'lib/live-chat.js', 'lib/xaman-vending.js', 'lib/xrpl-nft-trading.js', 'lib/atm-pay.js', 'lib/xrpl-testnet-rpc.js', 'lib/world-events.js', 'lib/world-event-money-rain-points.js', 'lib/payload-integration.js', 'lib/payload-money-rain.js',
     'api/xrpl-inventory.js', 'api/xrpl-nft-metadata.js', 'api/leaderboards.js', 'api/xrpl-nft-trade.js',
     'api/xaman-link.js', 'api/xaman-vending-start.js', 'api/xaman-vending-status.js', 'api/xaman-vending-webhook.js', 'api/embedded-wallet.js', 'api/world-time.js',
@@ -741,10 +757,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.7.2 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.8 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.7.2 build validation passed.');
+console.log('ATM Town v235.8 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

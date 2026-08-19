@@ -1,4 +1,4 @@
-/* ATM Town v235.7.2 PWA service worker
+/* ATM Town v235.8 PWA service worker
  * - App shell is precached for fast relaunch.
  * - Same-origin game assets use stale-while-revalidate so repeat loads are fast
  *   without permanently pinning old art/chunks after a deploy.
@@ -6,7 +6,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v235.7.2';
+const BUILD_CACHE = 'atm-town-shell-v235.8';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = ASSET_CACHE;
 const CACHE_PREFIX = 'atm-town-';
@@ -24,6 +24,7 @@ const SHELL = [
   '/js/pwa.js',
   '/js/people-hub.js',
   '/js/world-events.js',
+  '/js/zombie-outbreak.js',
   '/js/hud-layout.js',
   '/js/live-chat.js',
   '/js/runtime/game-core.js',

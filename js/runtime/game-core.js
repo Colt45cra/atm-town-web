@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.7.2',name:ATM_CONFIG?.build?.name||'Live Chat Send + Panic Jetpack'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.8',name:ATM_CONFIG?.build?.name||'Zombie Outbreak Combat Preview'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -3851,6 +3851,9 @@ function drawDepthScene(t){
     for(const bot of townBots){
       items.push({depth:bot.drawY+20,type:'bot',bot});
     }
+    for(const actor of window.ATMZombieOutbreak?.getDepthActors?.({map:currentMap})||[]){
+      items.push({depth:Number(actor.depth)||Number(actor.y)||0,type:'zombie',actor});
+    }
     items.push({depth:player.y+20,type:'local'});
     items.sort((a,b)=>a.depth-b.depth);
     for(const item of items){
@@ -3883,6 +3886,8 @@ function drawDepthScene(t){
       }else if(item.type==='bot'){
         const bot=item.bot;
         drawPlayerSprite(bot.drawX,bot.drawY,bot.dir,bot.frame,bot.name,0.96,0,0,bot.characterId,false,false,false,bot.loadout||{},null);
+      }else if(item.type==='zombie'){
+        window.ATMZombieOutbreak?.drawActor?.(ctx,item.actor);
       }else if(item.type==='local'){
         const onStairs=playerOnStairs();
         const amount=onStairs?0.75:2.0;
@@ -5055,6 +5060,29 @@ function update(dt){
   if(keys['w']||keys['arrowup'])dy-=1;
   if(keys['s']||keys['arrowdown'])dy+=1;
   const mag=Math.hypot(dx,dy);
+  const combatMoveX=mag>0?dx/mag:0,combatMoveY=mag>0?dy/mag:0;
+  const zombieParticipants=[{id:playerId,x:player.x,y:player.y,map:currentMap,local:true}];
+  if(currentMap==='town'){
+    for(const [id,p] of remotePlayers){
+      if(p?.map!=='town')continue;
+      const px=Number.isFinite(Number(p.drawX))?Number(p.drawX):Number(p.x);
+      const py=Number.isFinite(Number(p.drawY))?Number(p.drawY):Number(p.y);
+      if(Number.isFinite(px)&&Number.isFinite(py))zombieParticipants.push({id,x:px,y:py,map:'town'});
+    }
+  }
+  window.ATMZombieOutbreak?.update?.({
+    dt,map:currentMap,x:player.x,y:player.y,
+    movementX:combatMoveX,movementY:combatMoveY,
+    controllerAimX:gamepadState.lookX,controllerAimY:gamepadState.lookY,
+    participants:zombieParticipants,
+    mapBounds:currentMap==='town'?townWorldBounds():null,
+    isBlocked:(x,y)=>currentMap==='town'?obstacleAtFootprint(x,y):blocked(x,y),
+    screenToWorld:(clientX,clientY)=>{
+      const rect=canvas.getBoundingClientRect();
+      return {x:cam.x+(clientX-rect.left)/zoom,y:cam.y+(clientY-rect.top)/zoom};
+    }
+  });
+  const zombieMotion=window.ATMZombieOutbreak?.movementOverride?.({map:currentMap,movementX:combatMoveX,movementY:combatMoveY,currentDir:player.dir,airborne:jumpState.active||jetpackState.active})||null;
   let moved=false;
   let onStairs=false;
   const beforeX=player.x,beforeY=player.y;
@@ -5136,6 +5164,9 @@ function update(dt){
     moved=Math.hypot(player.x-beforeX,player.y-beforeY)>0.05;
     player.dir=directionFromVector(dx,dy);
   }
+  // During combat, aim owns the four-direction body sprite. Movement remains
+  // independent, so moving against the aim direction reads as backpedaling.
+  if(zombieMotion?.bodyDir)player.dir=zombieMotion.bodyDir;
   const travelDist=Math.hypot(player.x-beforeX,player.y-beforeY);
   const airborne=jumpState.active||jetpackState.active;
   if(currentMap==='town'&&!airborne&&travelDist>0.05){
@@ -5159,7 +5190,9 @@ function update(dt){
     player.animTimer=0;
     player.frame=0;
   }else if(moved){
-    player.animTimer+=dt*(onStairs?7:8);
+    const combatAnimDirection=zombieMotion?.animationDirection===-1?-1:1;
+    player.animTimer+=dt*(onStairs?7:8)*combatAnimDirection;
+    while(player.animTimer<0)player.animTimer+=3000;
     player.frame=Math.floor(player.animTimer)%3;
   }
   player.moving=moved;
@@ -5187,7 +5220,8 @@ function update(dt){
   }
   window.ATMWorldEvents?.updateGameplay?.({map:currentMap,x:player.x,y:player.y});
   const cameraLift=jetpackState.active?jetpackState.lift*.68:0;
-  const controllerLookX=gamepadState.lookX*220,controllerLookY=gamepadState.lookY*150;
+  const zombieOwnsRightStick=window.ATMZombieOutbreak?.controllerOwnsRightStick?.()===true;
+  const controllerLookX=zombieOwnsRightStick?0:gamepadState.lookX*220,controllerLookY=zombieOwnsRightStick?0:gamepadState.lookY*150;
   const targetX=player.x+controllerLookX-W/(2*zoom),targetY=player.y-cameraLift+controllerLookY-H/(2*zoom);
   cam.x+=(targetX-cam.x)*Math.min(1,dt*6);
   cam.y+=(targetY-cam.y)*Math.min(1,dt*6);

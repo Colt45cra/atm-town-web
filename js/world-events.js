@@ -82,6 +82,8 @@
     const handle = String(event?.sponsor?.handle || '');
     return handle ? `@${handle}` : String(event?.sponsor?.display_name || 'An ATM Town player');
   }
+  function isMoneyRainEvent(event = state.event) { return event?.type === 'money_rain'; }
+  function isZombieEvent(event = state.event) { return event?.type === 'zombie_outbreak'; }
   function optimisticPoints() {
     if (!state.event || !state.claiming.size) return 0;
     const byId = new Map((state.event.pickups || []).map((pickup) => [Number(pickup.id), pickup]));
@@ -159,39 +161,58 @@
     const oldPhase = eventPhase(state.event);
     state.event = incoming;
     if (!incoming) {
-      state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = ''; state.lastPhase = 'none'; renderHud(); renderControlPanel(); return;
+      state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = ''; state.lastPhase = 'none';
+      global.ATMZombieOutbreak?.syncEvent?.(null, 'none');
+      renderHud(); renderControlPanel(); return;
     }
-    const hasPersonalScore = incoming.personal_score_available !== false;
-    if (incoming.id !== oldId) {
-      state.claimed = new Set((incoming.claimed_pickup_ids || []).map(Number)); state.claiming.clear();
-      if (hasPersonalScore) { state.myScore = Number(incoming.my_score || 0); state.myPickups = Number(incoming.my_pickups || 0); }
-      else if (!oldId) { state.myScore = 0; state.myPickups = 0; }
-      state.lastEventId = incoming.id;
-      toast(`💸 Money Rain provided by ${sponsorLabel(incoming)}!`);
-    } else {
-      state.claimed = new Set((incoming.claimed_pickup_ids || []).map(Number));
-      // Public fallback state can keep the event synchronized, but it must never wipe
-      // an authenticated player's already-earned total back to zero.
-      if (hasPersonalScore && Number.isFinite(Number(incoming.my_score))) state.myScore = Number(incoming.my_score);
-      if (hasPersonalScore && Number.isFinite(Number(incoming.my_pickups))) state.myPickups = Number(incoming.my_pickups);
+
+    if (isMoneyRainEvent(incoming)) {
+      const hasPersonalScore = incoming.personal_score_available !== false;
+      if (incoming.id !== oldId) {
+        state.claimed = new Set((incoming.claimed_pickup_ids || []).map(Number)); state.claiming.clear();
+        if (hasPersonalScore) { state.myScore = Number(incoming.my_score || 0); state.myPickups = Number(incoming.my_pickups || 0); }
+        else if (!oldId) { state.myScore = 0; state.myPickups = 0; }
+        state.lastEventId = incoming.id;
+        toast(`💸 Money Rain provided by ${sponsorLabel(incoming)}!`);
+      } else {
+        state.claimed = new Set((incoming.claimed_pickup_ids || []).map(Number));
+        // Public fallback state can keep the event synchronized, but it must never wipe
+        // an authenticated player's already-earned total back to zero.
+        if (hasPersonalScore && Number.isFinite(Number(incoming.my_score))) state.myScore = Number(incoming.my_score);
+        if (hasPersonalScore && Number.isFinite(Number(incoming.my_pickups))) state.myPickups = Number(incoming.my_pickups);
+      }
+    } else if (isZombieEvent(incoming) && incoming.id !== oldId) {
+      state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = incoming.id;
+      toast(`🧟 Zombie Outbreak triggered by ${sponsorLabel(incoming)}!`, 4200);
     }
+
     const phase = eventPhase(incoming);
+    global.ATMZombieOutbreak?.syncEvent?.(incoming, phase);
     if (phase !== oldPhase && incoming.id === oldId) {
-      if (phase === 'active') toast(`💸 MONEY RAIN provided by ${sponsorLabel(incoming)}!`, 4200);
-      if (phase === 'completed') {
-        const winner = incoming.leaders?.[0];
-        const mine = incoming.personal_score_available !== false ? Number(incoming.my_score || state.myScore || 0) : state.myScore;
-        const myReward = incoming.reward_settlement ? (incoming.my_reward_xrp || rewardForPoints(mine, incoming)) : '';
-        const winnerValue = incoming.reward_settlement ? `${winner?.reward_amount_xrp || rewardForPoints(winner?.points || 0, incoming)} XRP` : `${winner?.points || 0}`;
-        const mineValue = incoming.reward_settlement ? `${myReward || '0'} XRP` : `${mine}`;
-        const payoutSuffix = incoming.reward_settlement ? ' · payout pending XRPL confirmation' : '';
-        toast(winner ? `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix} · #1 ${winner.display_name} ${winnerValue}` : `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix}`, 5200);
+      if (isMoneyRainEvent(incoming)) {
+        if (phase === 'active') toast(`💸 MONEY RAIN provided by ${sponsorLabel(incoming)}!`, 4200);
+        if (phase === 'completed') {
+          const winner = incoming.leaders?.[0];
+          const mine = incoming.personal_score_available !== false ? Number(incoming.my_score || state.myScore || 0) : state.myScore;
+          const myReward = incoming.reward_settlement ? (incoming.my_reward_xrp || rewardForPoints(mine, incoming)) : '';
+          const winnerValue = incoming.reward_settlement ? `${winner?.reward_amount_xrp || rewardForPoints(winner?.points || 0, incoming)} XRP` : `${winner?.points || 0}`;
+          const mineValue = incoming.reward_settlement ? `${myReward || '0'} XRP` : `${mine}`;
+          const payoutSuffix = incoming.reward_settlement ? ' · payout pending XRPL confirmation' : '';
+          toast(winner ? `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix} · #1 ${winner.display_name} ${winnerValue}` : `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix}`, 5200);
+        }
+      } else if (isZombieEvent(incoming)) {
+        if (phase === 'active') toast('🧟 ZOMBIE OUTBREAK · GET OUTSIDE AND FIGHT!', 4400);
+        if (phase === 'completed') {
+          const kills = Number(global.ATMZombieOutbreak?.getStats?.().kills || 0);
+          toast(`🧟 Outbreak contained · ${kills} local kill${kills === 1 ? '' : 's'}`, 4800);
+        }
       }
     }
-    maybeNotifyConfirmedPayout(incoming);
+    if (isMoneyRainEvent(incoming)) maybeNotifyConfirmedPayout(incoming);
     state.lastPhase = phase;
     renderHud(); renderControlPanel();
   }
+
   async function poll() {
     if (state.pollBusy) return;
     state.pollBusy = true;
@@ -208,8 +229,31 @@
     if (!event) { hud.classList.remove('show'); return; }
     const phase = eventPhase(event), now = nowMs(), starts = Date.parse(event.starts_at), ends = Date.parse(event.ends_at);
     if (phase === 'completed' && Number.isFinite(ends) && now > ends + RESULTS_WINDOW_MS) { hud.classList.remove('show'); return; }
-    const title = hud.querySelector('.atmWorldEventHudTitle'), meta = hud.querySelector('.atmWorldEventHudMeta'), score = hud.querySelector('.atmWorldEventHudScore');
+    const icon = hud.querySelector('.atmWorldEventHudIcon'), title = hud.querySelector('.atmWorldEventHudTitle'), meta = hud.querySelector('.atmWorldEventHudMeta'), score = hud.querySelector('.atmWorldEventHudScore');
     const providedBy = sponsorLabel(event);
+
+    if (isZombieEvent(event)) {
+      const stats = global.ATMZombieOutbreak?.getStats?.() || {};
+      if (icon) icon.textContent = '🧟';
+      if (phase === 'announced') {
+        title.textContent = `ZOMBIE OUTBREAK IN ${secondsLabel(starts - now)}`;
+        meta.textContent = `Triggered by ${providedBy} · get outside · combat preview`;
+        score.textContent = 'GET READY';
+      } else if (phase === 'active') {
+        title.textContent = `ZOMBIE OUTBREAK · ${secondsLabel(ends - now)} LEFT`;
+        const weapon = stats.weaponMode === 'rapid' ? 'RAPID MICRO' : stats.weaponMode === 'spread' ? 'SPREAD' : 'BLASTER';
+        meta.textContent = `${Number(event.zombie_count || event.zombies?.length || 0)} red-box stand-ins · ${weapon}`;
+        score.textContent = `KILLS ${Number(stats.kills || 0)}`;
+      } else {
+        title.textContent = 'ZOMBIE OUTBREAK CONTAINED';
+        meta.textContent = `Combat preview complete · triggered by ${providedBy}`;
+        score.textContent = `KILLS ${Number(stats.kills || 0)}`;
+      }
+      hud.classList.add('show');
+      return;
+    }
+
+    if (icon) icon.textContent = '💸';
     if (phase === 'announced') {
       title.textContent = `💸 MONEY RAIN IN ${secondsLabel(starts - now)}`;
       meta.textContent = event.reward_settlement
@@ -265,8 +309,15 @@
     const event = state.event, phase = eventPhase(event);
     let activeBlock = '';
     if (event && phase !== 'completed') {
-      const reward = event.reward_settlement ? `<div style="margin-top:7px;color:#66f7bd;font-weight:850">Prize pool: ${escapeHtml(event.reward_pool_xrp)} Testnet XRP · you keep exactly what you collect.</div>` : '';
-      activeBlock = `<div class="atmWorldEventPreview"><strong>💸 Money Rain is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Money Rain provided by <b>${escapeHtml(sponsorLabel(event))}</b>.</div>${reward}<div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until drops begin.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining.`}</div></div>`;
+      if (isZombieEvent(event)) {
+        activeBlock = `<div class="atmWorldEventPreview"><strong>🧟 Zombie Outbreak is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Triggered by <b>${escapeHtml(sponsorLabel(event))}</b>.</div><div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until the outbreak begins. Get outside.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining · red boxes are temporary zombie stand-ins.`}</div></div>`;
+      } else {
+        const reward = event.reward_settlement ? `<div style="margin-top:7px;color:#66f7bd;font-weight:850">Prize pool: ${escapeHtml(event.reward_pool_xrp)} Testnet XRP · you keep exactly what you collect.</div>` : '';
+        activeBlock = `<div class="atmWorldEventPreview"><strong>💸 Money Rain is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Money Rain provided by <b>${escapeHtml(sponsorLabel(event))}</b>.</div>${reward}<div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until drops begin.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining.`}</div></div>`;
+      }
+    } else if (event && phase === 'completed' && isZombieEvent(event)) {
+      const kills = Number(global.ATMZombieOutbreak?.getStats?.().kills || 0);
+      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Zombie Outbreak</strong><div style="color:#afcbd2">Combat preview complete · ${kills} local kill${kills === 1 ? '' : 's'}. Zombie health and kills are intentionally client-local in this phase; the event clock/spawn manifest is synchronized.</div></div>`;
     } else if (event && phase === 'completed' && event.leaders?.length) {
       const rewardEvent = Boolean(event.reward_settlement);
       const settlement = String(event.settlement_status || '');
@@ -284,8 +335,10 @@
     const draft = state.fundingDraft;
     const pendingFunding = draft ? `<div class="atmWorldEventFunding"><div class="atmWorldEventEyebrow">PAYLOAD · TESTNET FUNDING</div><div class="atmWorldEventFundingRow"><span>Prize pool</span><b>${escapeHtml(draft.pool_xrp)} XRP</b></div><div class="atmWorldEventFundingRow"><span>Total funding required</span><b>${escapeHtml(draft.funding_required_xrp)} XRP</b></div><div class="atmWorldEventFundingRow"><span>Status</span><b>${draft.tx_hash ? 'SIGNED / CHECKING XRPL' : 'AWAITING AUTHORIZATION'}</b></div><div class="atmWorldEventFundingNote">The extra funding above the prize pool covers the campaign wallet reserve, worst-case payout fees and safety buffer. Payload automatically returns unused campaign XRP to your ATM Town Testnet wallet after settlement. The campaign address stays hidden from the normal game flow.</div></div>` : '';
     const primaryText = draft ? (draft.tx_hash ? 'CHECK FUNDING & START' : `AUTHORIZE & FUND ${escapeHtml(draft.funding_required_xrp)} XRP`) : 'PREPARE PAYLOAD MONEY RAIN';
-    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Fund a Testnet XRP Money Rain through Payload, then let ATM Town lock the exact amount each player collected for automatic settlement.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>💸 PAYLOAD MONEY RAIN · TESTNET</strong><div>Choose the prize pool before the event. The 1,000 game points divide that pool exactly, so every collectible has a deterministic XRP value. First place is only a rank — every collector receives what they actually picked up.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>exact reward basis</span></div><div class="atmWorldEventFact"><b>Testnet XRP</b><span>Payload v0.2.1</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled && !draft ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div><label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">TESTNET XRP PRIZE POOL</label><input class="atmWorldEventPoolInput" id="atmWorldEventPoolInput" type="text" inputmode="decimal" maxlength="10" placeholder="0.100" value="${escapeHtml(state.poolXrp)}" ${sponsorDisabled || draft ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">0.001–5 XRP in 0.001 XRP increments. For the first live test, 0.100 XRP is plenty.</div></div>${pendingFunding}<div style="font-size:12px;color:#66f7bd;font-weight:850">ONE PASSKEY / RECOVERY AUTHORIZATION FUNDS THE CAMPAIGN. ATM TOWN NEVER SENDS YOUR WALLET SEED TO PAYLOAD.</div></div><button class="atmWorldEventBtn" id="atmWorldEventPayloadAction" type="button" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : primaryText}</button>${!draft ? `<button class="atmWorldEventBtn" id="atmWorldEventPreviewStart" type="button" style="margin-top:9px;background:#173746;color:#dff7fb" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>START PREVIEW · NO XRP</button>` : ''}<div class="atmWorldEventStatus" id="atmWorldEventStatus" style="color:${escapeHtml(state.panelStatusColor)}">${escapeHtml(state.panelStatus)}</div>`;
+    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch synchronized ATM Town events from the Command Core. Money Rain uses server-authoritative collection; Zombie Outbreak begins the new combat system with synchronized timing and a client-local combat preview.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>🧟 ZOMBIE OUTBREAK · COMBAT PREVIEW</strong><div>Start a 15-second global countdown, then fight for 90 seconds in the outdoor town. Red boxes stand in for zombies until final enemy art is ready.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>±40°</b><span>body-facing fire cone</span></div><div class="atmWorldEventFact"><b>Backpedal</b><span>aim owns body facing</span></div><div class="atmWorldEventFact"><b>R · Rapid</b><span>map-edge power weapon</span></div><div class="atmWorldEventFact"><b>S · Spread</b><span>close-range power weapon</span></div></div><div class="atmWorldEventSponsorHint">This phase does not award XRP/ATM and does not use authoritative PvP hit registration. It is structured so combat authority can move to a realtime server later without replacing the controls/weapons.</div></div><button class="atmWorldEventBtn" id="atmZombieEventStart" type="button" style="background:linear-gradient(90deg,#ff7f98,#ffb266);color:#2b0911" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START ZOMBIE OUTBREAK'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>💸 PAYLOAD MONEY RAIN · TESTNET</strong><div>Choose the prize pool before the event. The 1,000 game points divide that pool exactly, so every collectible has a deterministic XRP value. First place is only a rank — every collector receives what they actually picked up.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>exact reward basis</span></div><div class="atmWorldEventFact"><b>Testnet XRP</b><span>Payload v0.2.1</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled && !draft ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div><label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">TESTNET XRP PRIZE POOL</label><input class="atmWorldEventPoolInput" id="atmWorldEventPoolInput" type="text" inputmode="decimal" maxlength="10" placeholder="0.100" value="${escapeHtml(state.poolXrp)}" ${sponsorDisabled || draft ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">0.001–5 XRP in 0.001 XRP increments. For the first live test, 0.100 XRP is plenty.</div></div>${pendingFunding}<div style="font-size:12px;color:#66f7bd;font-weight:850">ONE PASSKEY / RECOVERY AUTHORIZATION FUNDS THE CAMPAIGN. ATM TOWN NEVER SENDS YOUR WALLET SEED TO PAYLOAD.</div></div><button class="atmWorldEventBtn" id="atmWorldEventPayloadAction" type="button" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : primaryText}</button>${!draft ? `<button class="atmWorldEventBtn" id="atmWorldEventPreviewStart" type="button" style="margin-top:9px;background:#173746;color:#dff7fb" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>START PREVIEW · NO XRP</button>` : ''}<div class="atmWorldEventStatus" id="atmWorldEventStatus" style="color:${escapeHtml(state.panelStatusColor)}">${escapeHtml(state.panelStatus)}</div>`;
 
+
+    body.querySelector('#atmZombieEventStart')?.addEventListener('click', startZombieOutbreakPreview);
     body.querySelector('#atmWorldEventPayloadAction')?.addEventListener('click', () => {
       if (!state.fundingDraft) preparePayloadMoneyRain();
       else if (state.fundingDraft.tx_hash) checkPayloadFundingAndStart({ wait: true });
@@ -452,6 +505,23 @@
     }
   }
 
+  async function startZombieOutbreakPreview() {
+    const button = document.getElementById('atmZombieEventStart');
+    try {
+      if (button) button.disabled = true; setPanelStatus('Starting synchronized Zombie Outbreak…');
+      if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to start a World Event.');
+      if (!state.controlContext) throw new Error('Open the ATM Command Core again before starting the outbreak.');
+      const data = await global.atmApiWithAuth('/api/world-time?action=start-zombie-outbreak', {
+        method: 'POST',
+        body: JSON.stringify({ ...state.controlContext }),
+      });
+      applyState(data); closeControlPanel(); toast(`🧟 Zombie Outbreak triggered by ${sponsorLabel(data.event)}!`, 4400);
+    } catch (error) {
+      setPanelStatus(error?.message || 'Zombie Outbreak could not start.', '#ff9fb1');
+      if (button) button.disabled = false;
+    }
+  }
+
   function pickupFrame(pickup, event = state.event) {
     if (!event || eventPhase(event) !== 'active') return null;
     const now = nowMs(), spawnAt = Date.parse(event.starts_at) + Number(pickup.spawn_offset_ms || 0), fallMs = Math.max(1, Number(pickup.fall_ms || 1200));
@@ -529,7 +599,7 @@
     return (x >>> 0) / 4294967296;
   }
   function drawAtmosphericMoneyRain(ctx, args = {}) {
-    if (!state.event || eventPhase() !== 'active' || args.map !== 'town') return;
+    if (!isMoneyRainEvent() || eventPhase() !== 'active' || args.map !== 'town') return;
     const viewX = Number(args.cameraX), viewY = Number(args.cameraY), viewW = Number(args.viewportWidth), viewH = Number(args.viewportHeight);
     if (![viewX, viewY, viewW, viewH].every(Number.isFinite) || viewW <= 0 || viewH <= 0) return;
     const now = nowMs(), start = Date.parse(state.event.starts_at), elapsed = Math.max(0, now - start), seed = Number(state.event.seed || 1) >>> 0;
@@ -577,7 +647,8 @@
     ctx.restore();
   }
   function drawGround(ctx, args = {}) {
-    if (args.map !== 'town' || !state.event || eventPhase() !== 'active') return;
+    if (isZombieEvent()) { global.ATMZombieOutbreak?.drawGround?.(ctx, args); return; }
+    if (args.map !== 'town' || !isMoneyRainEvent() || eventPhase() !== 'active') return;
     for (const pickup of state.event.pickups || []) {
       const id = Number(pickup.id);
       if (state.claimed.has(id) || state.claiming.has(id)) continue;
@@ -588,7 +659,8 @@
     }
   }
   function drawAir(ctx, args = {}) {
-    if (args.map !== 'town' || !state.event || eventPhase() !== 'active') return;
+    if (isZombieEvent()) { global.ATMZombieOutbreak?.drawAir?.(ctx, args); return; }
+    if (args.map !== 'town' || !isMoneyRainEvent() || eventPhase() !== 'active') return;
     drawAtmosphericMoneyRain(ctx, args);
     for (const pickup of state.event.pickups || []) {
       const id = Number(pickup.id);
@@ -637,7 +709,7 @@
     }
   }
   function updateGameplay(player = {}) {
-    if (!state.event || eventPhase() !== 'active' || player.map !== 'town') return;
+    if (!isMoneyRainEvent() || eventPhase() !== 'active' || player.map !== 'town') return;
     const now = Date.now(); if (now - state.lastClaimScan < CLAIM_SCAN_MS) return; state.lastClaimScan = now;
     const px = Number(player.x), py = Number(player.y); if (!Number.isFinite(px) || !Number.isFinite(py)) return;
     const nearby = [];
@@ -662,6 +734,7 @@
     updateGameplay,
     drawGround,
     drawAir,
-    getState: () => ({ event: state.event, phase: eventPhase(), myScore: state.myScore, myPickups: state.myPickups }),
+    toast,
+    getState: () => ({ event: state.event, phase: eventPhase(), myScore: state.myScore, myPickups: state.myPickups, serverOffsetMs: state.serverOffsetMs }),
   });
 })(window);

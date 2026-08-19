@@ -6,6 +6,7 @@ import {
   resolveMoneyRainSponsor,
   startFundedMoneyRain,
   startMoneyRain,
+  startZombieOutbreak,
   WORLD_EVENT_ACTIONS,
 } from '../lib/world-events.js';
 import {
@@ -58,6 +59,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && WORLD_EVENT_ACTIONS.has(action)) {
       const { admin, user } = await requireUser(req);
       if (action === 'start-money-rain') return res.status(200).json(await startMoneyRain(admin, user, req.body || {}));
+      if (action === 'start-zombie-outbreak') return res.status(200).json(await startZombieOutbreak(admin, user, req.body || {}));
       if (action === 'claim-money-rain') return res.status(200).json(await claimMoneyPickup(admin, user, req.body || {}));
     }
 
