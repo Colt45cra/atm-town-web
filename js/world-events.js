@@ -154,7 +154,7 @@
     global.dispatchEvent(new CustomEvent('atm:pay-notification', { detail }));
     Promise.resolve(global.ATMEmbeddedWallet?.refreshBalance?.({ silent: true })).catch(() => {});
   }
-  function applyState(data) {
+  function applyState(data, reason = 'poll') {
     if (Number.isFinite(Number(data?.server_time_ms))) state.serverOffsetMs = Number(data.server_time_ms) - Date.now();
     const incoming = data?.event || null;
     const oldId = state.event?.id || '';
@@ -163,7 +163,9 @@
     if (!incoming) {
       state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = ''; state.lastPhase = 'none';
       global.ATMZombieOutbreak?.syncEvent?.(null, 'none');
-      renderHud(); renderControlPanel(); return;
+      renderHud(); renderControlPanel();
+      global.dispatchEvent(new CustomEvent('atm:world-event-state', { detail: { event: null, phase: 'none', serverOffsetMs: state.serverOffsetMs, reason } }));
+      return;
     }
 
     if (isMoneyRainEvent(incoming)) {
@@ -211,12 +213,13 @@
     if (isMoneyRainEvent(incoming)) maybeNotifyConfirmedPayout(incoming);
     state.lastPhase = phase;
     renderHud(); renderControlPanel();
+    global.dispatchEvent(new CustomEvent('atm:world-event-state', { detail: { event: incoming, phase, serverOffsetMs: state.serverOffsetMs, reason } }));
   }
 
-  async function poll() {
+  async function poll(reason = 'poll') {
     if (state.pollBusy) return;
     state.pollBusy = true;
-    try { applyState(await fetchState()); }
+    try { applyState(await fetchState(), reason); }
     catch (error) { console.warn('ATM World Event poll failed.', error); }
     finally {
       state.pollBusy = false; clearTimeout(state.pollTimer); state.pollTimer = setTimeout(poll, document.hidden ? HIDDEN_POLL_MS : POLL_MS);
@@ -498,7 +501,8 @@
       if (button) button.disabled = true; setPanelStatus('Starting synchronized preview event…');
       if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to start a World Event.');
       const data = await global.atmApiWithAuth('/api/world-time?action=start-money-rain', { method: 'POST', body: JSON.stringify(currentLaunchPayload()) });
-      applyState(data); closeControlPanel(); toast(`💸 Preview Money Rain provided by ${sponsorLabel(data.event)}!`, 4200);
+      applyState(data, 'local-start'); closeControlPanel(); toast(`💸 Preview Money Rain provided by ${sponsorLabel(data.event)}!`, 4200);
+      global.dispatchEvent(new CustomEvent('atm:world-event-triggered', { detail: { event_id: String(data?.event?.id || ''), type: String(data?.event?.type || 'money_rain') } }));
     } catch (error) {
       setPanelStatus(error?.message || 'Money Rain preview could not start.', '#ff9fb1');
       if (button) button.disabled = false;
@@ -515,7 +519,8 @@
         method: 'POST',
         body: JSON.stringify({ ...state.controlContext }),
       });
-      applyState(data); closeControlPanel(); toast(`🧟 Zombie Outbreak triggered by ${sponsorLabel(data.event)}!`, 4400);
+      applyState(data, 'local-start'); closeControlPanel(); toast(`🧟 Zombie Outbreak triggered by ${sponsorLabel(data.event)}!`, 4400);
+      global.dispatchEvent(new CustomEvent('atm:world-event-triggered', { detail: { event_id: String(data?.event?.id || ''), type: 'zombie_outbreak' } }));
     } catch (error) {
       setPanelStatus(error?.message || 'Zombie Outbreak could not start.', '#ff9fb1');
       if (button) button.disabled = false;
@@ -724,13 +729,20 @@
 
   loadFundingDraft();
   installUi();
-  document.addEventListener('visibilitychange', () => { clearTimeout(state.pollTimer); state.pollTimer = setTimeout(poll, 150); });
-  setTimeout(poll, 250);
+  function scheduleImmediateRefresh(reason = 'resume') {
+    clearTimeout(state.pollTimer);
+    state.pollTimer = setTimeout(() => poll(reason), 80);
+  }
+  document.addEventListener('visibilitychange', () => scheduleImmediateRefresh('visibility'));
+  global.addEventListener('focus', () => scheduleImmediateRefresh('focus'));
+  global.addEventListener('pageshow', () => scheduleImmediateRefresh('pageshow'));
+  global.addEventListener('online', () => scheduleImmediateRefresh('online'));
+  setTimeout(() => poll('startup'), 250);
 
   global.ATMWorldEvents = Object.freeze({
     openControlPanel,
     closeControlPanel,
-    refresh: poll,
+    refresh: (reason = 'manual') => poll(reason),
     updateGameplay,
     drawGround,
     drawAir,

@@ -1,9 +1,10 @@
-/* ATM Town v235.8 — Zombie Outbreak Combat Preview
+/* ATM Town v235.8.1 — Zombie Outbreak Sync Hotfix
  *
  * World-event timing/spawn manifest is synchronized by the existing server-backed
  * World Event Engine. Combat resolution is intentionally client-local in this
  * first zombie preview so the movement/aim/weapon feel can be proven before a
  * later authoritative realtime combat service is used for PvP/rewarded combat.
+ * Every local zombie simulation hunts the nearest known player anywhere outdoors in town.
  */
 (function initializeATMZombieOutbreak(global) {
   'use strict';
@@ -182,6 +183,19 @@
     document.body.classList.toggle('atm-zombie-combat-active', isActiveTown());
   }
 
+  function syncFromWorldEvents() {
+    const snapshot = global.ATMWorldEvents?.getState?.();
+    if (!snapshot) return false;
+    const event = snapshot.event?.type === EVENT_TYPE ? snapshot.event : null;
+    const incomingId = event ? String(event.id || '') : '';
+    const phase = incomingId ? String(snapshot.phase || 'none') : 'none';
+    if (incomingId !== state.eventId || phase !== state.phase || (incomingId && !state.event)) {
+      syncEvent(event, phase);
+      return true;
+    }
+    return false;
+  }
+
   function setAimFromVector(rawX, rawY) {
     const [nx, ny, mag] = norm(rawX, rawY);
     if (mag <= .08) return false;
@@ -219,7 +233,7 @@
   function moveZombie(zombie, dt) {
     if (zombie.dead || !spawned(zombie)) return;
     const target = nearestTargetForZombie(zombie);
-    if (!target || target.d < 30 || target.d > 1200) return;
+    if (!target || target.d < 30) return;
     const dx = (target.x - zombie.x) / target.d, dy = (target.y - zombie.y) / target.d;
     const step = zombie.speed * dt;
     const nx = zombie.x + dx * step, ny = zombie.y + dy * step;
@@ -375,6 +389,7 @@
 
   function update(args = {}) {
     installUi();
+    syncFromWorldEvents();
     const dt = Math.max(0, Math.min(.05, Number(args.dt || 0)));
     state.localPlayer = { x: Number(args.x || 0), y: Number(args.y || 0), map: String(args.map || '') };
     state.participants = Array.isArray(args.participants) ? args.participants : [state.localPlayer];
@@ -516,6 +531,42 @@
     }
   }
 
+  function getBroadcastState() {
+    if (!isZombieEvent() || state.phase !== 'active') return null;
+    return {
+      active: true,
+      eventId: state.eventId,
+      weaponMode: state.weaponMode,
+      bodyDir: state.bodyDir,
+      aimX: Number(state.aimX || 0),
+      aimY: Number(state.aimY || 1),
+      aimActive: Boolean(state.aimActive),
+    };
+  }
+
+  function drawRemoteWeapon(ctx, remote = {}) {
+    const combat = remote?.zombieCombat;
+    if (!combat?.active || !isZombieEvent() || state.phase !== 'active' || String(combat.eventId || '') !== state.eventId || remote.map !== 'town') return;
+    const x = Number.isFinite(Number(remote.drawX)) ? Number(remote.drawX) : Number(remote.x);
+    const y = Number.isFinite(Number(remote.drawY)) ? Number(remote.drawY) : Number(remote.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    let [ax, ay, mag] = norm(combat.aimX, combat.aimY);
+    if (mag <= .08) {
+      const facing = String(combat.bodyDir || remote.dir || 'down');
+      [ax, ay] = FACING_VECTOR[facing] || [0, 1];
+    }
+    const weaponMode = combat.weaponMode === 'rapid' ? 'rapid' : combat.weaponMode === 'spread' ? 'spread' : 'default';
+    const lift = Math.max(0, Number(remote.jump || 0));
+    const ox = x, oy = y - 28 - lift;
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.rotate(Math.atan2(ay, ax));
+    ctx.fillStyle = weaponMode === 'rapid' ? '#8ffdf7' : weaponMode === 'spread' ? '#ffd166' : '#dffcff';
+    ctx.strokeStyle = '#061a21'; ctx.lineWidth = 2;
+    ctx.fillRect(4, -4, 30, 8); ctx.strokeRect(4, -4, 30, 8);
+    ctx.restore();
+  }
+
   function controllerOwnsRightStick() { return isActiveTown(); }
   function getStats() {
     return {
@@ -530,7 +581,14 @@
     };
   }
 
+  global.addEventListener('atm:world-event-state', (event) => {
+    const detail = event?.detail || {};
+    const incoming = detail.event?.type === EVENT_TYPE ? detail.event : null;
+    syncEvent(incoming, incoming ? String(detail.phase || 'none') : 'none');
+  });
+
   installUi();
+  setTimeout(syncFromWorldEvents, 0);
   global.ATMZombieOutbreak = Object.freeze({
     syncEvent,
     update,
@@ -539,7 +597,9 @@
     drawAir,
     getDepthActors,
     drawActor,
+    drawRemoteWeapon,
     controllerOwnsRightStick,
+    getBroadcastState,
     getStats,
   });
 })(window);

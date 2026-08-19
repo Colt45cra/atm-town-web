@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.8',name:ATM_CONFIG?.build?.name||'Zombie Outbreak Combat Preview'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.8.1',name:ATM_CONFIG?.build?.name||'Zombie Outbreak Sync Hotfix'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2822,6 +2822,10 @@ async function connectMultiplayer(){
       if(!payload||!myUserId||String(payload.target_user_id||'')!==myUserId)return;
       window.ATMPWA?.receivePing?.(payload);
     });
+    realtimeChannel.on('broadcast',{event:'world_event_hint'},({payload})=>{
+      if(!payload||String(payload.sender_id||'')===playerId)return;
+      window.ATMWorldEvents?.refresh?.('realtime-hint');
+    });
     realtimeChannel.on('broadcast',{event:'nft_trade_offer'},({payload})=>{
       if(!payload||String(payload.sellerWallet||'')!==lockerWalletAddress())return;
       const amount=Number(payload.amountXrp||0);showXrplPaymentToast(`${payload.buyerName||'A player'} made a ${amount} XRP offer on your displayed NFT.`,'success',10000);
@@ -2872,8 +2876,16 @@ async function connectMultiplayer(){
 }
 function broadcastState(force=false){
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
+window.addEventListener('atm:world-event-triggered',(event)=>{
+  if(!onlineMode||!realtimeChannel)return;
+  const detail=event?.detail||{};
+  try{realtimeChannel.send({type:'broadcast',event:'world_event_hint',payload:{sender_id:playerId,event_id:String(detail.event_id||''),event_type:String(detail.type||''),sent_at:Date.now()}});}catch(_error){}
+  // Push the local combat/event state immediately instead of waiting for the
+  // normal 100 ms multiplayer heartbeat.
+  broadcastState(true);
+});
 
 const ARCADE_GAME_PRESENCE_CONFIG=Object.freeze({
   'sky-run':{panel:'skyRunPanel',label:'SKY RUN'},
@@ -3883,6 +3895,7 @@ function drawDepthScene(t){
         }
       }else if(item.type==='remote'){
         drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
+        window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
       }else if(item.type==='bot'){
         const bot=item.bot;
         drawPlayerSprite(bot.drawX,bot.drawY,bot.dir,bot.frame,bot.name,0.96,0,0,bot.characterId,false,false,false,bot.loadout||{},null);
