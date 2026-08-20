@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.9.2',name:ATM_CONFIG?.build?.name||'The Horde Enemy Sprites'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.9.4',name:ATM_CONFIG?.build?.name||'Horde Nightfall'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -773,6 +773,54 @@ function getTownNightAlpha(timeMs=0){
   return 1-((cycle-fadeStart)/DAY_NIGHT_CYCLE_MS.fadeToDay);
 }
 
+// v235.9.4 Horde Nightfall: The Horde temporarily overrides the normal shared
+// day/night cycle while the local player is outdoors in the active shared event.
+// The fade is visual-only and does not mutate the server clock or event state.
+const HORDE_NIGHTFALL={fadeInPerSecond:1.6,fadeOutPerSecond:.72,visionInner:92,visionOuter:285,darkness:.78};
+let hordeNightfallAlpha=0;
+let hordeNightfallLastAt=0;
+function hordeNightfallActive(){
+  return currentMap==='town'&&Boolean(window.ATMZombieOutbreak?.getStats?.().active);
+}
+function updateHordeNightfall(t){
+  const now=Number(t)||performance.now();
+  const dt=hordeNightfallLastAt?Math.min(.05,Math.max(0,(now-hordeNightfallLastAt)/1000)):0;
+  hordeNightfallLastAt=now;
+  const target=hordeNightfallActive()?1:0;
+  if(target>hordeNightfallAlpha)hordeNightfallAlpha=Math.min(target,hordeNightfallAlpha+dt*HORDE_NIGHTFALL.fadeInPerSecond);
+  else if(target<hordeNightfallAlpha)hordeNightfallAlpha=Math.max(target,hordeNightfallAlpha-dt*HORDE_NIGHTFALL.fadeOutPerSecond);
+  return hordeNightfallAlpha;
+}
+function getHordeStreetLightAlpha(timeMs=getSharedTownTimeMs()){
+  if(hordeNightfallAlpha<=.001)return 1;
+  // Shared-server time makes the grid flicker at the same moments for every
+  // connected player instead of each device producing unrelated random flashes.
+  const t=(Number(timeMs)||0)/1000;
+  let alpha=.92+Math.sin(t*17.3)*.035+Math.sin(t*43.7)*.025;
+  const cycle=((Number(timeMs)||0)%6100+6100)%6100;
+  if((cycle>720&&cycle<805)||(cycle>842&&cycle<905))alpha=.38;
+  else if(cycle>2950&&cycle<3020)alpha=.58;
+  else if(cycle>4480&&cycle<4545)alpha=.48;
+  return Math.max(.3,Math.min(1,1-(1-alpha)*hordeNightfallAlpha));
+}
+function drawHordeVisionDarkness(target=ctx,cameraX=cam.x,cameraY=cam.y){
+  const intensity=Math.max(0,Math.min(1,hordeNightfallAlpha));
+  if(intensity<=.001||currentMap!=='town')return;
+  const viewW=W/zoom,viewH=H/zoom;
+  const cx=player.x,cy=player.y-18;
+  const inner=HORDE_NIGHTFALL.visionInner,outer=HORDE_NIGHTFALL.visionOuter;
+  const maxDark=HORDE_NIGHTFALL.darkness*intensity;
+  const gradient=target.createRadialGradient(cx,cy,inner,cx,cy,outer);
+  gradient.addColorStop(0,'rgba(1,3,8,0)');
+  gradient.addColorStop(.42,`rgba(1,3,8,${(maxDark*.12).toFixed(3)})`);
+  gradient.addColorStop(.72,`rgba(1,3,8,${(maxDark*.48).toFixed(3)})`);
+  gradient.addColorStop(1,`rgba(1,3,8,${maxDark.toFixed(3)})`);
+  target.save();
+  target.fillStyle=gradient;
+  target.fillRect(cameraX-4,cameraY-4,viewW+8,viewH+8);
+  target.restore();
+}
+
 function getSourceRectForImage(img,fallbackW=1152,fallbackH=1536){
   const sw=img.naturalWidth||fallbackW;
   const sh=img.naturalHeight||fallbackH;
@@ -890,14 +938,14 @@ function updateTownForegroundStreaming(){
     else if(!townForegroundNearView(piece)&&piece.img&&now-piece.lastUsed>TOWN_FOREGROUND_CACHE_GRACE_MS)releaseTownForegroundImage(piece);
   }
 }
-function drawTownLightOverlay(target=ctx){
+function drawTownLightOverlay(target=ctx,alpha=1){
   if(!townWorldStream.hasManifest())return;
   const view={x:cam.x,y:cam.y,w:W/zoom,h:H/zoom};
   const prevSmooth=target.imageSmoothingEnabled;
   const prevQuality=target.imageSmoothingQuality;
   target.imageSmoothingEnabled=true;
   try{target.imageSmoothingQuality='high';}catch(_e){}
-  townWorldStream.drawLayer(target,'lighting',view,1);
+  townWorldStream.drawLayer(target,'lighting',view,Math.max(0,Math.min(1,Number(alpha)||0)));
   target.imageSmoothingEnabled=prevSmooth;
   try{target.imageSmoothingQuality=prevQuality||'low';}catch(_e){}
 }
@@ -5384,7 +5432,8 @@ function drawMini(){
 function loop(t){
   pollGamepad(t);
   const dt=Math.min((t-last)/1000,.033);last=t;update(dt);
-  currentTownNightAlpha=getTownNightAlpha(getSharedTownTimeMs());
+  updateHordeNightfall(t);
+  currentTownNightAlpha=Math.max(getTownNightAlpha(getSharedTownTimeMs()),hordeNightfallAlpha);
   ctx.clearRect(0,0,W,H);
   const snappedCamX=Math.round(cam.x*zoom*DPR)/(zoom*DPR);
   const snappedCamY=Math.round(cam.y*zoom*DPR)/(zoom*DPR);
@@ -5397,8 +5446,13 @@ function loop(t){
   drawDepthScene(t);
   window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
   drawWorldAliveOverlay(t);
-  // Illumination is intentionally rendered above the player and all outdoor foreground objects.
-  if(currentMap==='town')drawTownLightOverlay(ctx);
+  // Horde Nightfall restricts visibility around the local player. Authored
+  // street-light illumination is rendered after the darkness so lit areas can
+  // still pierce the blackout, with a synchronized failing-grid flicker.
+  if(currentMap==='town'){
+    drawHordeVisionDarkness(ctx,snappedCamX,snappedCamY);
+    drawTownLightOverlay(ctx,getHordeStreetLightAlpha(getSharedTownTimeMs()));
+  }
   drawChatBubbles();
   ctx.restore();updateTradeBeaconWorldOverlays(t);drawWorldAliveUi();drawMini();requestAnimationFrame(loop);
 }

@@ -1,4 +1,4 @@
-/* ATM Town v235.9.2 — The Horde
+/* ATM Town v235.9.3 — Horde Sprite Grounding + Walk Animation
  *
  * The Horde uses one elected room combat authority over Supabase
  * Realtime. That authority alone advances zombie AI/HP/deaths and broadcasts
@@ -17,6 +17,8 @@
   const DEFAULT_RANGE = 760;
   const SPREAD_RANGE = 560;
   const PICKUP_RADIUS = 42;
+  const WALK_ANIM_FPS = 8;
+  const PLAYER_GROUND_FOOT_OFFSET = 34;
   const FACING_ANGLE = Object.freeze({ right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 });
   const FACING_VECTOR = Object.freeze({ right: [1, 0], down: [0, 1], left: [-1, 0], up: [0, -1] });
 
@@ -280,8 +282,8 @@
       scale: Number(def.scale || sheet.displayScale || 0.33),
       hitRadius: Number(def.hit_radius || sheet.hitRadius || DEFAULT_HORDE_HIT_RADIUS),
       spawn_offset_ms: Number(def.spawn_offset_ms || 0),
-      dead: false, hitFlash: 0, bob: Math.random() * Math.PI * 2,
-      dir: 'down', moving: false, animClock: Math.random() * 10,
+      dead: false, hitFlash: 0,
+      dir: 'down', moving: false, animClock: 0,
     };
   }
 
@@ -357,7 +359,7 @@
   function moveZombie(zombie, dt) {
     if (zombie.dead || !spawned(zombie)) return;
     const target = nearestTargetForZombie(zombie);
-    if (!target || target.d < 30) { zombie.moving = false; return; }
+    if (!target || target.d < 30) { zombie.moving = false; zombie.animClock = 0; return; }
     const dx = (target.x - zombie.x) / target.d, dy = (target.y - zombie.y) / target.d;
     zombie.dir = nearestFacingForVector(dx, dy);
     const step = zombie.speed * dt;
@@ -369,7 +371,8 @@
     if (!blocked || !blocked(zombie.x, ny)) { zombie.y = ny; moved = true; }
     else if (!blocked || !blocked(zombie.x, zombie.y + dx * step * .7)) { zombie.y += dx * step * .7; moved = true; }
     zombie.moving = moved;
-    if (moved) zombie.animClock += dt * Math.max(3.2, zombie.speed * 0.09);
+    if (moved) zombie.animClock += dt * WALK_ANIM_FPS;
+    else zombie.animClock = 0;
   }
 
   function rayObstacleDistance(ox, oy, dx, dy, maxDistance) {
@@ -524,7 +527,9 @@
       seq: ++state.snapshotSeq,
       authorityId: state.authorityId,
       at: Date.now(),
-      zombies: state.zombies.map((z) => [z.id, roundNet(z.x), roundNet(z.y), roundNet(z.hp), z.dead ? 1 : 0]),
+      // Direction, moving state and walk phase ride with the authoritative
+      // position snapshot so every client renders the same 3-frame walk cycle.
+      zombies: state.zombies.map((z) => [z.id, roundNet(z.x), roundNet(z.y), roundNet(z.hp), z.dead ? 1 : 0, z.dir, z.moving ? 1 : 0, roundNet(z.animClock, 2)]),
     };
   }
   function sendSnapshot(force = false) {
@@ -556,6 +561,13 @@
         z.hitFlash = .10;
         state.hitFx.push({ x: nx, y: ny - 22, life: .14, maxLife: .14 });
       }
+      const travelX = nx - Number(z.netX ?? z.x), travelY = ny - Number(z.netY ?? z.y);
+      const snapshotDir = ['down', 'left', 'up', 'right'].includes(String(row[5])) ? String(row[5]) : '';
+      const snapshotMoving = row.length >= 7 ? Boolean(row[6]) : Math.hypot(travelX, travelY) > .25;
+      z.dir = snapshotDir || (snapshotMoving ? nearestFacingForVector(travelX, travelY) : z.dir);
+      z.moving = snapshotMoving;
+      if (Number.isFinite(Number(row[7]))) z.animClock = Number(row[7]);
+      else if (!z.moving) z.animClock = 0;
       z.netX = nx; z.netY = ny; z.hp = Math.max(0, hp); z.dead = dead;
       if (Math.hypot(z.x - nx, z.y - ny) > 180) { z.x = nx; z.y = ny; }
     }
@@ -567,8 +579,8 @@
       if (Number.isFinite(z.netX)) z.x += (z.netX - z.x) * smoothing;
       if (Number.isFinite(z.netY)) z.y += (z.netY - z.y) * smoothing;
       z.hitFlash = Math.max(0, z.hitFlash - dt);
-      z.bob += dt * 3.2;
-      if (z.moving) z.animClock += dt * Math.max(3.2, z.speed * 0.09);
+      if (z.moving) z.animClock += dt * WALK_ANIM_FPS;
+      else z.animClock = 0;
     }
   }
   function receiveNetwork(payload = {}) {
@@ -680,7 +692,6 @@
         moveZombie(zombie, dt);
         zombie.netX = zombie.x; zombie.netY = zombie.y;
         zombie.hitFlash = Math.max(0, zombie.hitFlash - dt);
-        zombie.bob += dt * 3.2;
       }
       sendSnapshot(false);
     } else {
@@ -749,46 +760,57 @@
   function drawActor(ctx, actor) {
     const z = actor?.zombie || actor;
     if (!z || z.dead) return;
-    const bob = Math.sin(z.bob) * 1.5;
     const sheet = hordeSheet(z.type);
     const image = hordeSheetImgs[z.type] || hordeSheetImgs.gutter;
     const hp = Math.max(0, z.hp / Math.max(1, z.maxHp));
+
+    // Match drawPlayerSprite's coordinate contract exactly: actor x/y is the
+    // movement/collision point, while the sprite is foot-anchored 34px lower.
+    // Walking bob only exists while moving, so idle horde members stay planted
+    // instead of continuously oscillating above their shadows.
+    const bob = z.moving ? Math.abs(Math.sin(z.animClock * 1.2)) * 2.0 : 0;
+    const groundFootY = Math.round(z.y + PLAYER_GROUND_FOOT_OFFSET - bob);
+    let healthY = groundFootY + 13;
+
     ctx.save();
-    ctx.translate(z.x, z.y + bob);
-    ctx.fillStyle = 'rgba(0,0,0,.28)';
-    ctx.beginPath();
-    ctx.ellipse(0, 8, z.type === 'beast' ? 28 : 20, z.type === 'beast' ? 8 : 6, 0, 0, Math.PI * 2);
-    ctx.fill();
     if (image && image.complete && image.naturalWidth > 0) {
       const cols = sheet.cols || 3, rows = sheet.rows || 4;
       const frameW = Math.floor(image.naturalWidth / cols), frameH = Math.floor(image.naturalHeight / rows);
       const rowOrder = sheet.rowOrder || ['down', 'left', 'up', 'right'];
       const row = Math.max(0, rowOrder.indexOf(z.dir || 'down'));
-      let frame = 1;
-      if (z.moving) frame = Math.floor(z.animClock % 2) === 0 ? 0 : 2;
+      const frame = z.moving ? Math.floor(z.animClock) % 3 : 1;
       const scale = Number(z.scale || sheet.displayScale || 0.33);
       const anchorX = Number(sheet.anchorX || frameW / 2), anchorY = Number(sheet.anchorY || frameH - 1);
-      const dx = Math.round(-anchorX * scale), dy = Math.round(-anchorY * scale);
+      const drawX = Math.round(z.x - anchorX * scale), drawY = Math.round(groundFootY - anchorY * scale);
       const dw = Math.round(frameW * scale), dh = Math.round(frameH * scale);
+
+      // Same grounded ellipse placement/sizing used by playable characters.
+      ctx.fillStyle = 'rgba(3,10,14,.24)';
+      ctx.beginPath();
+      ctx.ellipse(Math.round(z.x), groundFootY - 1, Math.max(14, Math.round(Math.max(26, dw * .50))), 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+
       const prevSmooth = ctx.imageSmoothingEnabled;
       ctx.imageSmoothingEnabled = false;
       if (z.hitFlash > 0) {
         ctx.save();
         ctx.globalAlpha = 0.35 + Math.min(0.45, z.hitFlash * 4);
         ctx.filter = 'brightness(1.65) saturate(0.2)';
-        ctx.drawImage(image, frame * frameW, row * frameH, frameW, frameH, dx, dy, dw, dh);
+        ctx.drawImage(image, frame * frameW, row * frameH, frameW, frameH, drawX, drawY, dw, dh);
         ctx.restore();
       }
-      ctx.drawImage(image, frame * frameW, row * frameH, frameW, frameH, dx, dy, dw, dh);
+      ctx.drawImage(image, frame * frameW, row * frameH, frameW, frameH, drawX, drawY, dw, dh);
       ctx.imageSmoothingEnabled = prevSmooth;
     } else {
+      ctx.fillStyle = 'rgba(3,10,14,.24)';
+      ctx.beginPath(); ctx.ellipse(Math.round(z.x), groundFootY - 1, 18, 7, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = z.hitFlash > 0 ? '#fff' : '#c73f4b'; ctx.strokeStyle = '#57161e'; ctx.lineWidth = 2;
-      ctx.fillRect(-18, -34, 36, 42); ctx.strokeRect(-18, -34, 36, 42);
-      ctx.fillStyle = '#fff'; ctx.font = '1000 15px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Z', 0, -13);
+      ctx.fillRect(z.x - 18, groundFootY - 42, 36, 42); ctx.strokeRect(z.x - 18, groundFootY - 42, 36, 42);
+      ctx.fillStyle = '#fff'; ctx.font = '1000 15px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Z', z.x, groundFootY - 21);
     }
     const barW = z.type === 'beast' ? 52 : 38;
-    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(-barW / 2, 13, barW, 5);
-    ctx.fillStyle = hp > .5 ? '#70f9c8' : hp > .25 ? '#ffd166' : '#ff6d86'; ctx.fillRect(-barW / 2, 13, barW * hp, 5);
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(z.x - barW / 2, healthY, barW, 5);
+    ctx.fillStyle = hp > .5 ? '#70f9c8' : hp > .25 ? '#ffd166' : '#ff6d86'; ctx.fillRect(z.x - barW / 2, healthY, barW * hp, 5);
     ctx.restore();
   }
 

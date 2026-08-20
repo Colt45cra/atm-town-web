@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>ATM Town Combat Sample — Weapon Upgrades</title>
+<style>
+:root{
+  --cyan:#58efe5;
+  --gold:#ffd45d;
+  --panel:rgba(5,27,36,.84);
+  --line:rgba(88,239,229,.28);
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;
+  background:#0a1920;color:#fff;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  touch-action:none;
+}
+#game{
+  position:fixed;inset:0;width:100%;height:100%;display:block;
+  background:#0b1c23;touch-action:none;
+}
+.hud{position:fixed;inset:0;pointer-events:none}
+.panel{
+  background:var(--panel);border:1px solid var(--line);
+  box-shadow:0 8px 24px rgba(0,0,0,.25);backdrop-filter:blur(7px)
+}
+.badge{
+  position:absolute;top:max(10px,env(safe-area-inset-top));
+  padding:7px 10px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap
+}
+#brand{left:10px}
+#mode{left:50%;transform:translateX(-50%)}
+#scoreBox{right:10px}
+#debug{
+  position:absolute;left:10px;top:calc(max(10px,env(safe-area-inset-top)) + 42px);
+  padding:8px 10px;border-radius:12px;font-size:10px;line-height:1.45;max-width:275px
+}
+#debug .ok{color:#68f5a7}
+#debug .bad{color:#ff8585}
+.pad{
+  position:absolute;width:116px;height:116px;border-radius:50%;
+  border:2px solid rgba(88,239,229,.24);background:rgba(5,27,36,.18);
+  box-shadow:inset 0 0 0 10px rgba(88,239,229,.04);
+  pointer-events:auto;touch-action:none
+}
+.pad .knob{
+  position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;
+  border-radius:50%;background:rgba(88,239,229,.86);
+  box-shadow:0 0 22px rgba(88,239,229,.2);
+  transform:translate(0,0)
+}
+.pad .label{
+  position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);
+  font-size:9px;opacity:.75;white-space:nowrap
+}
+#movePad{
+  left:max(14px,env(safe-area-inset-left));
+  bottom:max(24px,calc(env(safe-area-inset-bottom) + 10px))
+}
+#aimPad{
+  right:max(14px,env(safe-area-inset-right));
+  bottom:max(24px,calc(env(safe-area-inset-bottom) + 10px))
+}
+#status{
+  position:absolute;left:50%;bottom:calc(max(24px,env(safe-area-inset-bottom)) + 128px);
+  transform:translateX(-50%);padding:7px 10px;border-radius:999px;
+  font-size:9px;white-space:nowrap
+}
+@media(max-width:650px){
+  .badge{font-size:9px}
+  #debug{top:calc(max(10px,env(safe-area-inset-top)) + 82px);max-width:235px}
+  .pad{width:108px;height:108px}
+  .pad .knob{width:48px;height:48px;margin:-24px}
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="hud">
+  <div id="brand" class="badge panel">ATM TOWN <span style="color:var(--gold)">ALPHA</span></div>
+  <div id="mode" class="badge panel">UPGRADES · RAPID MICRO + SPREAD</div>
+  <div id="scoreBox" class="badge panel">Hits: <span id="score">0</span></div>
+
+  <div id="debug" class="panel">
+    <div>JS: <span class="ok">RUNNING</span></div>
+    <div>Sprite: <span id="spriteState">LOADING…</span></div>
+    <div>Facing: <span id="facing">down</span></div>
+    <div>Shot angle: <span id="aim">90°</span></div>
+    <div>Movement: <span id="movementMode">standing</span></div>
+    <div>Weapon: <span id="weaponMode">default</span></div>
+    <div>Cone: ±40° from facing</div>
+  </div>
+
+  <div id="movePad" class="pad">
+    <div class="knob"></div>
+    <div class="label">MOVE</div>
+  </div>
+
+  <div id="aimPad" class="pad">
+    <div class="knob"></div>
+    <div class="label">AIM / FIRE</div>
+  </div>
+
+  <div id="status" class="panel">Walk over R or S upgrades on the ground to change projectile style</div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const SPRITE_URL = "./assets/characters/playable/atm.webp";
+  const FRAME_W = 256;
+  const FRAME_H = 320;
+  const ROW = { down:0, left:1, up:2, right:3 };
+  const FACING_ANGLE = {
+    right: 0,
+    down: Math.PI / 2,
+    left: Math.PI,
+    up: -Math.PI / 2
+  };
+  const FACING_VECTOR = {
+    right: [1,0],
+    down: [0,1],
+    left: [-1,0],
+    up: [0,-1]
+  };
+  const MAX_AIM_OFFSET = 40 * Math.PI / 180;
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+
+  const spriteState = document.getElementById("spriteState");
+  const facingEl = document.getElementById("facing");
+  const aimEl = document.getElementById("aim");
+  const movementModeEl = document.getElementById("movementMode");
+  const weaponModeEl = document.getElementById("weaponMode");
+  const scoreEl = document.getElementById("score");
+
+  const sprite = new Image();
+  sprite.decoding = "async";
+  sprite.onload = () => {
+    spriteState.textContent = `OK ${sprite.naturalWidth}×${sprite.naturalHeight}`;
+    spriteState.className = "ok";
+  };
+  sprite.onerror = () => {
+    spriteState.textContent = "FAILED — check asset path";
+    spriteState.className = "bad";
+  };
+  sprite.src = SPRITE_URL;
+
+  let W = innerWidth;
+  let H = innerHeight;
+  let DPR = Math.min(devicePixelRatio || 1, 2);
+
+  const player = {
+    x: W * 0.5,
+    y: H * 0.56,
+    speed: 190,
+    facing: "down",
+    frame: 1,
+    animT: 0,
+    aimX: 0,
+    aimY: 1,
+    movementMode: "standing",
+    weaponMode: "default",
+    fireTimer: 0,
+    pickupFlash: 0
+  };
+
+  const bullets = [];
+  const tracers = [];
+  const targets = [];
+  const muzzleBursts = [];
+  const pickups = [];
+  let score = 0;
+  let last = performance.now();
+
+  function resize() {
+    W = innerWidth;
+    H = innerHeight;
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    player.x = Math.max(50, Math.min(W - 50, player.x));
+    player.y = Math.max(80, Math.min(H - 55, player.y));
+
+    pickups.length = 0;
+    pickups.push(
+      { x: Math.max(115, W * 0.28), y: Math.max(140, H * 0.32), r: 22, type: "rapid", label: "R" },
+      { x: Math.min(W - 115, W * 0.72), y: Math.max(140, H * 0.32), r: 22, type: "spread", label: "S" }
+    );
+  }
+  addEventListener("resize", resize);
+
+  function norm(x, y) {
+    const m = Math.hypot(x, y);
+    return m > 0.0001 ? [x / m, y / m, m] : [0, 0, 0];
+  }
+
+  function wrapAngle(a) {
+    while (a <= -Math.PI) a += Math.PI * 2;
+    while (a > Math.PI) a -= Math.PI * 2;
+    return a;
+  }
+
+  function nearestFacingForVector(x, y) {
+    if (Math.abs(x) > Math.abs(y)) return x < 0 ? "left" : "right";
+    return y < 0 ? "up" : "down";
+  }
+
+  function clampAimToFacing(rawX, rawY, facing) {
+    const rawAngle = Math.atan2(rawY, rawX);
+    const center = FACING_ANGLE[facing];
+    const offset = wrapAngle(rawAngle - center);
+    const clampedOffset = Math.max(-MAX_AIM_OFFSET, Math.min(MAX_AIM_OFFSET, offset));
+    const a = center + clampedOffset;
+    return [Math.cos(a), Math.sin(a), a];
+  }
+
+  function spawnTarget(initial=false) {
+    const size = 28 + Math.random() * 10;
+    let x, y, vx, vy;
+    const s = 55 + Math.random() * 35;
+
+    if (initial) {
+      x = 90 + Math.random() * Math.max(120, W - 180);
+      y = 130 + Math.random() * Math.max(140, H - 320);
+      const a = Math.random() * Math.PI * 2;
+      vx = Math.cos(a) * s;
+      vy = Math.sin(a) * s;
+    } else {
+      const side = Math.floor(Math.random() * 4);
+      if (side === 0) { x=-size; y=100+Math.random()*(H-220); vx=s; vy=(Math.random()-.5)*45; }
+      else if (side === 1) { x=W+size; y=100+Math.random()*(H-220); vx=-s; vy=(Math.random()-.5)*45; }
+      else if (side === 2) { x=80+Math.random()*(W-160); y=-size; vx=(Math.random()-.5)*45; vy=s; }
+      else { x=80+Math.random()*(W-160); y=H+size; vx=(Math.random()-.5)*45; vy=-s; }
+    }
+
+    targets.push({x,y,vx,vy,size,hp:4,flash:0});
+  }
+
+  function addTracer(x1,y1,x2,y2,color,width,ttl) {
+    tracers.push({x1,y1,x2,y2,color,width,ttl});
+  }
+
+  function addMuzzleBurst(x,y,color,ttl,size) {
+    muzzleBursts.push({x,y,color,ttl,size});
+  }
+
+  function applyHitAlongRay(originX, originY, dirX, dirY, maxDist, damage, tracerColor, tracerWidth, tracerTTL) {
+    let hitTarget = null;
+    let bestDist = maxDist;
+
+    for (const t of targets) {
+      const toX = t.x - originX;
+      const toY = t.y - originY;
+      const proj = toX * dirX + toY * dirY;
+      if (proj < 0 || proj > bestDist) continue;
+
+      const perpX = toX - dirX * proj;
+      const perpY = toY - dirY * proj;
+      const hitRadius = t.size * 0.55;
+      if (perpX*perpX + perpY*perpY <= hitRadius * hitRadius) {
+        bestDist = proj;
+        hitTarget = t;
+      }
+    }
+
+    const endX = originX + dirX * bestDist;
+    const endY = originY + dirY * bestDist;
+    addTracer(originX, originY, endX, endY, tracerColor, tracerWidth, tracerTTL);
+
+    if (hitTarget) {
+      hitTarget.hp -= damage;
+      hitTarget.flash = 0.1;
+      if (hitTarget.hp <= 0) {
+        const idx = targets.indexOf(hitTarget);
+        if (idx >= 0) targets.splice(idx,1);
+        score++;
+        scoreEl.textContent = score;
+        spawnTarget(false);
+      }
+    }
+  }
+
+  function fireDefault(ax, ay, gunX, gunY) {
+    bullets.push({
+      x: gunX + ax * 22,
+      y: gunY + ay * 22,
+      vx: ax * 520,
+      vy: ay * 520,
+      life: 1.2
+    });
+    addMuzzleBurst(gunX, gunY, "rgba(255,220,100,.85)", 0.06, 12);
+  }
+
+  function fireRapidMicro(ax, ay, gunX, gunY) {
+    // Almost hitscan style: tiny rapid streaks instead of visible bullets.
+    const baseAngle = Math.atan2(ay, ax);
+    const jitter = (Math.random() - 0.5) * (10 * Math.PI / 180);
+    const a = baseAngle + jitter;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    addMuzzleBurst(gunX, gunY, "rgba(88,239,229,.95)", 0.05, 11);
+    applyHitAlongRay(gunX, gunY, dx, dy, 220, 1, "rgba(88,239,229,.95)", 2.0, 0.055);
+    for (let i=0; i<2; i++) {
+      const sparkA = a + (Math.random() - 0.5) * 0.18;
+      const sx = gunX + Math.cos(sparkA) * (34 + Math.random() * 16);
+      const sy = gunY + Math.sin(sparkA) * (34 + Math.random() * 16);
+      addTracer(gunX, gunY, sx, sy, "rgba(210,255,255,.45)", 1.2, 0.04);
+    }
+  }
+
+  function fireSpread(ax, ay, gunX, gunY) {
+    const baseAngle = Math.atan2(ay, ax);
+    addMuzzleBurst(gunX, gunY, "rgba(255,212,93,.95)", 0.065, 14);
+    const pellets = 5;
+    const spreadHalf = 18 * Math.PI / 180;
+    for (let i=0; i<pellets; i++) {
+      const t = pellets === 1 ? 0 : i / (pellets - 1);
+      const offset = -spreadHalf + t * spreadHalf * 2;
+      const a = baseAngle + offset + (Math.random() - 0.5) * (3 * Math.PI / 180);
+      const dx = Math.cos(a), dy = Math.sin(a);
+      applyHitAlongRay(gunX, gunY, dx, dy, 180, 1, "rgba(255,212,93,.92)", 2.4, 0.08);
+    }
+  }
+
+  function fireWeapon() {
+    const [ax, ay] = norm(player.aimX, player.aimY);
+    const gunX = player.x;
+    const gunY = player.y - 29;
+
+    if (player.weaponMode === "rapid") {
+      fireRapidMicro(ax, ay, gunX, gunY);
+    } else if (player.weaponMode === "spread") {
+      fireSpread(ax, ay, gunX, gunY);
+    } else {
+      fireDefault(ax, ay, gunX, gunY);
+    }
+  }
+
+  const moveState = { id:null, x:0, y:0, active:false };
+  const aimState = { id:null, x:0, y:1, active:false };
+
+  function updateMovementMode(mx, my, moveMag) {
+    if (moveMag < 0.08) {
+      player.movementMode = "standing";
+      return;
+    }
+    const [fx, fy] = FACING_VECTOR[player.facing];
+    const dot = mx * fx + my * fy;
+    if (dot < -0.35) player.movementMode = "backpedal";
+    else if (dot > 0.35) player.movementMode = "forward";
+    else player.movementMode = "strafe";
+  }
+
+  function checkPickups() {
+    for (const p of pickups) {
+      const d = Math.hypot(player.x - p.x, player.y - p.y);
+      if (d < p.r + 18) {
+        if (player.weaponMode !== p.type) {
+          player.weaponMode = p.type;
+          player.pickupFlash = 0.26;
+        }
+      }
+    }
+  }
+
+  function update(dt) {
+    const [mx,my,moveMag] = norm(moveState.x, moveState.y);
+
+    if (aimState.active) {
+      const [rawAx, rawAy, rawMag] = norm(aimState.x, aimState.y);
+      if (rawMag > 0.08) {
+        player.facing = nearestFacingForVector(rawAx, rawAy);
+        const [clampedX, clampedY] = clampAimToFacing(rawAx, rawAy, player.facing);
+        player.aimX = clampedX;
+        player.aimY = clampedY;
+      }
+    } else if (moveMag > 0.08) {
+      player.facing = nearestFacingForVector(mx, my);
+      const [fx, fy] = FACING_VECTOR[player.facing];
+      player.aimX = fx;
+      player.aimY = fy;
+    }
+
+    updateMovementMode(mx, my, moveMag);
+
+    player.x += mx * player.speed * dt;
+    player.y += my * player.speed * dt;
+    player.x = Math.max(38, Math.min(W - 38, player.x));
+    player.y = Math.max(74, Math.min(H - 44, player.y));
+
+    if (moveMag > 0.08) {
+      const animDir = player.movementMode === "backpedal" ? -1 : 1;
+      player.animT += dt * 8.0 * animDir;
+      while (player.animT < 0) player.animT += 3000;
+      player.frame = Math.floor(player.animT) % 3;
+    } else {
+      player.frame = 1;
+    }
+
+    checkPickups();
+
+    const fireRate = player.weaponMode === "rapid" ? 0.04 : (player.weaponMode === "spread" ? 0.22 : 0.12);
+    player.fireTimer = Math.max(0, player.fireTimer - dt);
+    if (aimState.active && player.fireTimer <= 0) {
+      fireWeapon();
+      player.fireTimer = fireRate;
+    }
+
+    player.pickupFlash = Math.max(0, player.pickupFlash - dt);
+
+    for (let i=bullets.length-1; i>=0; i--) {
+      const b = bullets[i];
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+
+      if (b.life <= 0 || b.x < -20 || b.x > W+20 || b.y < -20 || b.y > H+20) {
+        bullets.splice(i,1);
+        continue;
+      }
+
+      let hit = false;
+      for (let j=targets.length-1; j>=0; j--) {
+        const t = targets[j];
+        if (Math.abs(b.x-t.x) < t.size/2+5 && Math.abs(b.y-t.y) < t.size/2+5) {
+          t.hp--;
+          t.flash = 0.1;
+          hit = true;
+          if (t.hp <= 0) {
+            targets.splice(j,1);
+            score++;
+            scoreEl.textContent = score;
+            spawnTarget(false);
+          }
+          break;
+        }
+      }
+      if (hit) bullets.splice(i,1);
+    }
+
+    for (let i=tracers.length-1; i>=0; i--) {
+      tracers[i].ttl -= dt;
+      if (tracers[i].ttl <= 0) tracers.splice(i,1);
+    }
+
+    for (let i=muzzleBursts.length-1; i>=0; i--) {
+      muzzleBursts[i].ttl -= dt;
+      if (muzzleBursts[i].ttl <= 0) muzzleBursts.splice(i,1);
+    }
+
+    for (const t of targets) {
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      t.flash = Math.max(0, t.flash - dt);
+
+      if (t.x < t.size/2 && t.vx < 0) t.vx *= -1;
+      if (t.x > W-t.size/2 && t.vx > 0) t.vx *= -1;
+      if (t.y < 72+t.size/2 && t.vy < 0) t.vy *= -1;
+      if (t.y > H-55-t.size/2 && t.vy > 0) t.vy *= -1;
+    }
+
+    const deg = (Math.atan2(player.aimY, player.aimX) * 180 / Math.PI + 360) % 360;
+    facingEl.textContent = player.facing;
+    aimEl.textContent = Math.round(deg) + "°";
+    movementModeEl.textContent = player.movementMode;
+    weaponModeEl.textContent = player.weaponMode;
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = "#0b1c23";
+    ctx.fillRect(0,0,W,H);
+
+    ctx.strokeStyle = "rgba(88,239,229,.045)";
+    ctx.lineWidth = 1;
+    for (let x=0; x<W; x+=44) {
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for (let y=0; y<H; y+=44) {
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+  }
+
+  function drawPickups() {
+    for (const p of pickups) {
+      const active = player.weaponMode === p.type;
+      const fill = p.type === "rapid" ? "rgba(88,239,229,.25)" : "rgba(255,212,93,.25)";
+      const glow = p.type === "rapid" ? "rgba(88,239,229,.45)" : "rgba(255,212,93,.45)";
+      const stroke = p.type === "rapid" ? "#58efe5" : "#ffd45d";
+
+      ctx.save();
+      ctx.shadowBlur = active ? 18 : 10;
+      ctx.shadowColor = glow;
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = active ? 3 : 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = stroke;
+      ctx.font = "bold 18px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(p.label, p.x, p.y + 1);
+      ctx.restore();
+    }
+  }
+
+  function drawAimCone() {
+    const center = FACING_ANGLE[player.facing];
+    const r = 112;
+    const gunY = player.y - 29;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(88,239,229,.055)";
+    ctx.strokeStyle = "rgba(88,239,229,.18)";
+    ctx.lineWidth = 1.5;
+
+    ctx.beginPath();
+    ctx.moveTo(player.x, gunY);
+    ctx.arc(player.x, gunY, r, center - MAX_AIM_OFFSET, center + MAX_AIM_OFFSET);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTargets() {
+    for (const t of targets) {
+      ctx.save();
+      ctx.translate(t.x,t.y);
+      ctx.fillStyle = t.flash > 0 ? "#ffffff" : "#ff6570";
+      ctx.strokeStyle = "rgba(255,255,255,.55)";
+      ctx.lineWidth = 2;
+      ctx.fillRect(-t.size/2,-t.size/2,t.size,t.size);
+      ctx.strokeRect(-t.size/2,-t.size/2,t.size,t.size);
+
+      ctx.fillStyle = "rgba(0,0,0,.4)";
+      ctx.fillRect(-t.size/2, t.size/2 + 6, t.size, 4);
+      ctx.fillStyle = "#58efe5";
+      ctx.fillRect(-t.size/2, t.size/2 + 6, t.size * (t.hp / 4), 4);
+      ctx.restore();
+    }
+  }
+
+  function drawBullets() {
+    ctx.fillStyle = "#ffe36f";
+    for (const b of bullets) {
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,4,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawTracers() {
+    for (const t of tracers) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, t.ttl * 13);
+      ctx.strokeStyle = t.color;
+      ctx.lineWidth = t.width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(t.x1, t.y1);
+      ctx.lineTo(t.x2, t.y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    for (const m of muzzleBursts) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, m.ttl * 16);
+      ctx.fillStyle = m.color;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.size * (0.45 + m.ttl * 4), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawPlayer() {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.3)";
+    ctx.beginPath();
+    ctx.ellipse(player.x,player.y+6,39,14,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    const scale = 0.34;
+    const dw = FRAME_W * scale;
+    const dh = FRAME_H * scale;
+    const sx = player.frame * FRAME_W;
+    const sy = ROW[player.facing] * FRAME_H;
+    const dx = player.x - dw/2;
+    const dy = player.y - dh*0.84;
+
+    if (sprite.complete && sprite.naturalWidth >= 768) {
+      ctx.drawImage(sprite,sx,sy,FRAME_W,FRAME_H,dx,dy,dw,dh);
+    } else {
+      ctx.fillStyle = "#58efe5";
+      ctx.fillRect(player.x-28,player.y-70,56,70);
+      ctx.fillStyle = "#082029";
+      ctx.font = "bold 14px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("ATM", player.x, player.y-33);
+    }
+
+    const [ax,ay] = norm(player.aimX,player.aimY);
+    const gunY = player.y - 29;
+    const gunColor = player.weaponMode === "rapid" ? "#7affff" : (player.weaponMode === "spread" ? "#ffd45d" : "#d9fbff");
+
+    ctx.save();
+    ctx.translate(player.x,gunY);
+    ctx.rotate(Math.atan2(ay,ax));
+    ctx.fillStyle = gunColor;
+    ctx.strokeStyle = "#061a21";
+    ctx.lineWidth = 2;
+    ctx.fillRect(4,-4,31,8);
+    ctx.strokeRect(4,-4,31,8);
+    ctx.fillStyle = player.weaponMode === "spread" ? "#ff9d4f" : "#ffd45d";
+    ctx.fillRect(27,-2,9,4);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = player.weaponMode === "rapid" ? "rgba(122,255,255,.28)" : "rgba(88,239,229,.30)";
+    ctx.setLineDash([5,7]);
+    ctx.beginPath();
+    ctx.moveTo(player.x + ax*40, gunY + ay*40);
+    ctx.lineTo(player.x + ax*120, gunY + ay*120);
+    ctx.stroke();
+    ctx.restore();
+
+    if (player.pickupFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, player.pickupFlash * 4);
+      ctx.strokeStyle = player.weaponMode === "rapid" ? "rgba(88,239,229,.95)" : "rgba(255,212,93,.95)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y - 18, 34 + (0.26 - player.pickupFlash) * 70, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function render() {
+    drawBackground();
+    drawPickups();
+    drawAimCone();
+    drawTargets();
+    drawBullets();
+    drawTracers();
+    drawPlayer();
+  }
+
+  function tick(now) {
+    const dt = Math.min(0.033,(now-last)/1000);
+    last = now;
+    update(dt);
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  const movePad = document.getElementById("movePad");
+  const aimPad = document.getElementById("aimPad");
+  const moveKnob = movePad.querySelector(".knob");
+  const aimKnob = aimPad.querySelector(".knob");
+
+  function vectorForPad(el, clientX, clientY) {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width/2;
+    const cy = r.top + r.height/2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const max = r.width * 0.33;
+    const mag = Math.hypot(dx,dy);
+
+    if (mag > max) {
+      dx = dx/mag*max;
+      dy = dy/mag*max;
+    }
+
+    return { x:dx/max, y:dy/max, px:dx, py:dy };
+  }
+
+  function setState(el, knob, state, e) {
+    const v = vectorForPad(el,e.clientX,e.clientY);
+    state.x = v.x;
+    state.y = v.y;
+    knob.style.transform = `translate(${v.px}px,${v.py}px)`;
+  }
+
+  function bindPad(el,knob,state,isAim) {
+    el.addEventListener("pointerdown",e => {
+      e.preventDefault();
+      state.id = e.pointerId;
+      state.active = true;
+      el.setPointerCapture?.(e.pointerId);
+      setState(el,knob,state,e);
+    });
+
+    el.addEventListener("pointermove",e => {
+      if (state.id !== e.pointerId) return;
+      e.preventDefault();
+      setState(el,knob,state,e);
+    });
+
+    const finish = e => {
+      if (state.id !== e.pointerId) return;
+      state.id = null;
+      state.active = false;
+      if (!isAim) {
+        state.x = 0;
+        state.y = 0;
+      }
+      knob.style.transform = "translate(0,0)";
+    };
+
+    el.addEventListener("pointerup",finish);
+    el.addEventListener("pointercancel",finish);
+    el.addEventListener("lostpointercapture",finish);
+  }
+
+  bindPad(movePad,moveKnob,moveState,false);
+  bindPad(aimPad,aimKnob,aimState,true);
+
+  // Keyboard movement fallback.
+  const keys = new Set();
+  addEventListener("keydown",e => {
+    keys.add(e.code);
+  });
+  addEventListener("keyup",e => keys.delete(e.code));
+
+  function keyboardDrive() {
+    if (moveState.active) return;
+    let x=0,y=0;
+    if (keys.has("KeyA") || keys.has("ArrowLeft")) x--;
+    if (keys.has("KeyD") || keys.has("ArrowRight")) x++;
+    if (keys.has("KeyW") || keys.has("ArrowUp")) y--;
+    if (keys.has("KeyS") || keys.has("ArrowDown")) y++;
+    moveState.x=x;
+    moveState.y=y;
+  }
+  setInterval(keyboardDrive,16);
+
+  resize();
+  for (let i=0; i<7; i++) spawnTarget(true);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

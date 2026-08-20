@@ -1,5 +1,7 @@
 /*
  * ATM Town runtime configuration
+ * v235.9.4: forces Horde Nightfall outdoors, adds a limited local vision radius, and synchronizes a flickering street-light illumination layer while preserving v235.9.3 Horde grounding/animation.
+ * v235.9.3: grounds Horde sprites with the playable-character foot anchor, uses the full 0/1/2 walk cycle, and synchronizes Horde direction/movement animation state.
  * v235.9.2: replaces Zombie Outbreak red boxes with The Horde enemy sprite sheets, renames the event to The Horde, and introduces tougher Beast Men.
  * v235.9.1: adds Daniel and ARMY as full starter playable characters across entry, profile, Locker, multiplayer, People Hub, and ATM Pay.
  * v235.9: synchronizes Zombie Outbreak combat with an elected realtime authority, shared zombie snapshots, and shared weapon-fire effects.
@@ -39,10 +41,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.92,
-    version: 'v235.9.2',
-    name: 'The Horde Enemy Sprites',
-    title: 'ATM Town v235.9.2 — The Horde Enemy Sprites'
+    number: 235.94,
+    version: 'v235.9.4',
+    name: 'Horde Nightfall',
+    title: 'ATM Town v235.9.4 — Horde Nightfall'
   });
 
   const MAPS = Object.freeze({
