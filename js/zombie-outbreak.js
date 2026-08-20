@@ -1,6 +1,6 @@
-/* ATM Town v235.9 — Synchronized Zombie Combat
+/* ATM Town v235.9.2 — The Horde
  *
- * Zombie Outbreak now uses one elected room combat authority over Supabase
+ * The Horde uses one elected room combat authority over Supabase
  * Realtime. That authority alone advances zombie AI/HP/deaths and broadcasts
  * compact snapshots; every other client interpolates to the same state.
  * Weapon-fire packets are shared so every player sees the same firing effects.
@@ -13,12 +13,27 @@
   const EVENT_TYPE = 'zombie_outbreak';
   const MAX_AIM_OFFSET = 40 * Math.PI / 180;
   const PLAYER_HIT_RADIUS = 18;
-  const ZOMBIE_HIT_RADIUS = 21;
+  const DEFAULT_HORDE_HIT_RADIUS = 21;
   const DEFAULT_RANGE = 760;
   const SPREAD_RANGE = 560;
   const PICKUP_RADIUS = 42;
   const FACING_ANGLE = Object.freeze({ right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 });
   const FACING_VECTOR = Object.freeze({ right: [1, 0], down: [0, 1], left: [-1, 0], up: [0, -1] });
+
+  const HORDE_SHEETS = Object.freeze({
+    gutter: Object.freeze({ src: 'assets/world-events/horde/gutter.png', cols: 3, rows: 4, rowOrder: ['down', 'left', 'up', 'right'], anchorX: 128, anchorY: 303, displayScale: 0.33, hitRadius: 21 }),
+    handy: Object.freeze({ src: 'assets/world-events/horde/handy-man.png', cols: 3, rows: 4, rowOrder: ['down', 'left', 'up', 'right'], anchorX: 128, anchorY: 303, displayScale: 0.33, hitRadius: 21 }),
+    beast: Object.freeze({ src: 'assets/world-events/horde/beast-man.png', cols: 3, rows: 4, rowOrder: ['down', 'left', 'up', 'right'], anchorX: 128, anchorY: 303, displayScale: 0.46, hitRadius: 32 }),
+  });
+  const hordeSheetImgs = {};
+  for (const type in HORDE_SHEETS) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = HORDE_SHEETS[type].src;
+    hordeSheetImgs[type] = img;
+  }
+  function hordeSheet(type) { return HORDE_SHEETS[type] || HORDE_SHEETS.gutter; }
+  function zombieHitRadius(zombie) { return Number(zombie?.hitRadius || zombie?.hit_radius || hordeSheet(zombie?.type).hitRadius || DEFAULT_HORDE_HIT_RADIUS); }
 
   const state = {
     event: null,
@@ -251,16 +266,22 @@
   }
 
   function cloneZombie(def) {
+    const type = String(def.type || 'gutter');
+    const sheet = hordeSheet(type);
     return {
       id: Number(def.id),
+      type,
       spawnX: Number(def.x), spawnY: Number(def.y),
       x: Number(def.x), y: Number(def.y),
       netX: Number(def.x), netY: Number(def.y),
       hp: Number(def.hp || 10), maxHp: Number(def.hp || 10),
       speed: Number(def.speed || 58),
       points: Number(def.points || 10),
+      scale: Number(def.scale || sheet.displayScale || 0.33),
+      hitRadius: Number(def.hit_radius || sheet.hitRadius || DEFAULT_HORDE_HIT_RADIUS),
       spawn_offset_ms: Number(def.spawn_offset_ms || 0),
       dead: false, hitFlash: 0, bob: Math.random() * Math.PI * 2,
+      dir: 'down', moving: false, animClock: Math.random() * 10,
     };
   }
 
@@ -336,15 +357,19 @@
   function moveZombie(zombie, dt) {
     if (zombie.dead || !spawned(zombie)) return;
     const target = nearestTargetForZombie(zombie);
-    if (!target || target.d < 30) return;
+    if (!target || target.d < 30) { zombie.moving = false; return; }
     const dx = (target.x - zombie.x) / target.d, dy = (target.y - zombie.y) / target.d;
+    zombie.dir = nearestFacingForVector(dx, dy);
     const step = zombie.speed * dt;
     const nx = zombie.x + dx * step, ny = zombie.y + dy * step;
     const blocked = typeof state.isBlocked === 'function' ? state.isBlocked : null;
-    if (!blocked || !blocked(nx, zombie.y)) zombie.x = nx;
-    else if (!blocked || !blocked(zombie.x - dy * step * .7, zombie.y)) zombie.x -= dy * step * .7;
-    if (!blocked || !blocked(zombie.x, ny)) zombie.y = ny;
-    else if (!blocked || !blocked(zombie.x, zombie.y + dx * step * .7)) zombie.y += dx * step * .7;
+    let moved = false;
+    if (!blocked || !blocked(nx, zombie.y)) { zombie.x = nx; moved = true; }
+    else if (!blocked || !blocked(zombie.x - dy * step * .7, zombie.y)) { zombie.x -= dy * step * .7; moved = true; }
+    if (!blocked || !blocked(zombie.x, ny)) { zombie.y = ny; moved = true; }
+    else if (!blocked || !blocked(zombie.x, zombie.y + dx * step * .7)) { zombie.y += dx * step * .7; moved = true; }
+    zombie.moving = moved;
+    if (moved) zombie.animClock += dt * Math.max(3.2, zombie.speed * 0.09);
   }
 
   function rayObstacleDistance(ox, oy, dx, dy, maxDistance) {
@@ -365,7 +390,8 @@
       const proj = tx * dx + ty * dy;
       if (proj < 0 || proj > bestDistance) continue;
       const px = tx - dx * proj, py = ty - dy * proj;
-      if (px * px + py * py <= ZOMBIE_HIT_RADIUS * ZOMBIE_HIT_RADIUS) { best = zombie; bestDistance = proj; }
+      const hitRadius = zombieHitRadius(zombie);
+      if (px * px + py * py <= hitRadius * hitRadius) { best = zombie; bestDistance = proj; }
     }
     if (best) {
       const damage = Math.max(.1, Number(damageAtDistance(bestDistance, maxDistance)) || 0);
@@ -478,7 +504,8 @@
         for (const zombie of state.zombies) {
           if (zombie.dead || !spawned(zombie)) continue;
           const dx = b.x - zombie.x, dy = b.y - (zombie.y - 20);
-          if (dx * dx + dy * dy <= ZOMBIE_HIT_RADIUS * ZOMBIE_HIT_RADIUS) {
+          const hitRadius = zombieHitRadius(zombie);
+          if (dx * dx + dy * dy <= hitRadius * hitRadius) {
             zombie.hp -= b.damage; zombie.hitFlash = .10; state.hits += 1;
             state.hitFx.push({ x: zombie.x, y: zombie.y - 22, life: .18, maxLife: .18 });
             if (zombie.hp <= 0) { zombie.hp = 0; zombie.dead = true; state.kills += 1; }
@@ -541,6 +568,7 @@
       if (Number.isFinite(z.netY)) z.y += (z.netY - z.y) * smoothing;
       z.hitFlash = Math.max(0, z.hitFlash - dt);
       z.bob += dt * 3.2;
+      if (z.moving) z.animClock += dt * Math.max(3.2, z.speed * 0.09);
     }
   }
   function receiveNetwork(payload = {}) {
@@ -722,15 +750,45 @@
     const z = actor?.zombie || actor;
     if (!z || z.dead) return;
     const bob = Math.sin(z.bob) * 1.5;
+    const sheet = hordeSheet(z.type);
+    const image = hordeSheetImgs[z.type] || hordeSheetImgs.gutter;
+    const hp = Math.max(0, z.hp / Math.max(1, z.maxHp));
     ctx.save();
     ctx.translate(z.x, z.y + bob);
-    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(0, 8, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = z.hitFlash > 0 ? '#fff' : '#c73f4b'; ctx.strokeStyle = '#57161e'; ctx.lineWidth = 2;
-    ctx.fillRect(-18, -34, 36, 42); ctx.strokeRect(-18, -34, 36, 42);
-    ctx.fillStyle = '#fff'; ctx.font = '1000 15px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Z', 0, -13);
-    const hp = Math.max(0, z.hp / Math.max(1, z.maxHp));
-    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(-19, 13, 38, 5);
-    ctx.fillStyle = hp > .5 ? '#70f9c8' : hp > .25 ? '#ffd166' : '#ff6d86'; ctx.fillRect(-19, 13, 38 * hp, 5);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath();
+    ctx.ellipse(0, 8, z.type === 'beast' ? 28 : 20, z.type === 'beast' ? 8 : 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (image && image.complete && image.naturalWidth > 0) {
+      const cols = sheet.cols || 3, rows = sheet.rows || 4;
+      const frameW = Math.floor(image.naturalWidth / cols), frameH = Math.floor(image.naturalHeight / rows);
+      const rowOrder = sheet.rowOrder || ['down', 'left', 'up', 'right'];
+      const row = Math.max(0, rowOrder.indexOf(z.dir || 'down'));
+      let frame = 1;
+      if (z.moving) frame = Math.floor(z.animClock % 2) === 0 ? 0 : 2;
+      const scale = Number(z.scale || sheet.displayScale || 0.33);
+      const anchorX = Number(sheet.anchorX || frameW / 2), anchorY = Number(sheet.anchorY || frameH - 1);
+      const dx = Math.round(-anchorX * scale), dy = Math.round(-anchorY * scale);
+      const dw = Math.round(frameW * scale), dh = Math.round(frameH * scale);
+      const prevSmooth = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      if (z.hitFlash > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.35 + Math.min(0.45, z.hitFlash * 4);
+        ctx.filter = 'brightness(1.65) saturate(0.2)';
+        ctx.drawImage(image, frame * frameW, row * frameH, frameW, frameH, dx, dy, dw, dh);
+        ctx.restore();
+      }
+      ctx.drawImage(image, frame * frameW, row * frameH, frameW, frameH, dx, dy, dw, dh);
+      ctx.imageSmoothingEnabled = prevSmooth;
+    } else {
+      ctx.fillStyle = z.hitFlash > 0 ? '#fff' : '#c73f4b'; ctx.strokeStyle = '#57161e'; ctx.lineWidth = 2;
+      ctx.fillRect(-18, -34, 36, 42); ctx.strokeRect(-18, -34, 36, 42);
+      ctx.fillStyle = '#fff'; ctx.font = '1000 15px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Z', 0, -13);
+    }
+    const barW = z.type === 'beast' ? 52 : 38;
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(-barW / 2, 13, barW, 5);
+    ctx.fillStyle = hp > .5 ? '#70f9c8' : hp > .25 ? '#ffd166' : '#ff6d86'; ctx.fillRect(-barW / 2, 13, barW * hp, 5);
     ctx.restore();
   }
 

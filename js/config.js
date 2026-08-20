@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.9.2: replaces Zombie Outbreak red boxes with The Horde enemy sprite sheets, renames the event to The Horde, and introduces tougher Beast Men.
  * v235.9.1: adds Daniel and ARMY as full starter playable characters across entry, profile, Locker, multiplayer, People Hub, and ATM Pay.
  * v235.9: synchronizes Zombie Outbreak combat with an elected realtime authority, shared zombie snapshots, and shared weapon-fire effects.
  * v235.8.1: hardens Zombie Outbreak multiplayer event delivery, late-join/resume synchronization, and remote-player weapon visibility.
@@ -38,10 +39,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.91,
-    version: 'v235.9.1',
-    name: 'Daniel + ARMY Characters',
-    title: 'ATM Town v235.9.1 — Daniel + ARMY Characters'
+    number: 235.92,
+    version: 'v235.9.2',
+    name: 'The Horde Enemy Sprites',
+    title: 'ATM Town v235.9.2 — The Horde Enemy Sprites'
   });
 
   const MAPS = Object.freeze({
