@@ -4,9 +4,13 @@ ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/Java
 
 ## Current version
 
-**v231 — XRPL NFT Collection**
+**v235.10 — You Are ATM Entitlements**
 
-This build preserves the v230 streamed-world architecture and adds Phase 1 of ATM Town's player-facing XRPL NFT system. Signed-in players with a verified Xaman-linked wallet can open **Locker → XRPL NFTs** to read their on-ledger collection, search/sort it, resolve NFT artwork/metadata, and inspect token details. The new NFT UI is intentionally read-only; selling, Trade Beacon, offers, frames, and world drops build on this foundation in later phases.
+This build preserves v235.9.4 Horde Nightfall and adds the first monetization foundation to the Locker. A signed-in player's verified Xaman-linked XRPL wallet is scanned for the **You Are ATM** collection (`rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H`, Taxon `1`). Explicitly mapped metadata traits unlock their matching in-game equipment while the NFT remains in that wallet. Starter characters remain free; other former development-grant cosmetics are now store-locked pending direct checkout in the next commerce phase.
+
+The existing vending Jetpack remains available as temporary time. A verified You Are ATM `Back: Jetpack` trait now grants permanent Jetpack access while the Jetpack is equipped.
+
+See `docs/V235.10-YOU-ARE-ATM-ENTITLEMENTS.md` for the mapping, entitlement rules, and test checklist.
 
 ## Project structure
 
@@ -45,4 +49,4 @@ npm run audit:assets
 
 ## Deployment
 
-Upload the **contents** of the v231 build/ZIP to the repository root, preserving all folders and paths. Do not flatten the `/assets`, `/api`, `/js`, `/docs`, or `/scripts` directories.
+Apply the v235.10 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.

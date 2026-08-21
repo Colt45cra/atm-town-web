@@ -125,6 +125,7 @@ const requiredFiles = [
   'docs/V235.9.2-THE-HORDE.md',
   'docs/V235.9.3-HORDE-GROUNDING-ANIMATION.md',
   'docs/V235.9.4-HORDE-NIGHTFALL.md',
+  'docs/V235.10-YOU-ARE-ATM-ENTITLEMENTS.md',
   'assets/world-events/horde/gutter.png',
   'assets/world-events/horde/handy-man.png',
   'assets/world-events/horde/beast-man.png',
@@ -199,8 +200,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.9.4'")) errors.push('Missing v235.9.4 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Horde Nightfall'")) errors.push('Missing v235.9.4 display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.10'")) errors.push('Missing v235.10 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'You Are ATM Entitlements'")) errors.push('Missing v235.10 display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -309,7 +310,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.9.4'")) errors.push('js/config.js is not marked v235.9.4.');
+if (!configSource.includes("version: 'v235.10'")) errors.push('js/config.js is not marked v235.10.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -385,7 +386,7 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.9.4") || !serviceWorkerSource.includes('/js/zombie-outbreak.js')) errors.push('v235.9.4 PWA shell cache/module registration is missing.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.10") || !serviceWorkerSource.includes('/js/zombie-outbreak.js')) errors.push('v235.10 PWA shell cache/module registration is missing.');
 if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
 if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
 if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');
@@ -447,6 +448,14 @@ if (!zombieOutbreakSource.includes('z.dir, z.moving ? 1 : 0, roundNet(z.animCloc
 if (!runtimeSource.includes('const HORDE_NIGHTFALL=') || !runtimeSource.includes('currentTownNightAlpha=Math.max(getTownNightAlpha(getSharedTownTimeMs()),hordeNightfallAlpha)')) errors.push('v235.9.4 Horde event does not force the outdoor town into night.');
 if (!runtimeSource.includes('function drawHordeVisionDarkness') || !runtimeSource.includes('HORDE_NIGHTFALL.visionOuter')) errors.push('v235.9.4 Horde local vision-radius darkness is missing.');
 if (!runtimeSource.includes('function getHordeStreetLightAlpha') || !runtimeSource.includes("drawTownLightOverlay(ctx,getHordeStreetLightAlpha(getSharedTownTimeMs()))")) errors.push('v235.9.4 synchronized street-light flicker is missing.');
+// v235.10 You Are ATM NFT entitlement + store-lock foundation.
+if (!gameRuntimeParts[0].includes("issuer:'rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H'") || !gameRuntimeParts[0].includes('taxon:1')) errors.push('v235.10 You Are ATM collection issuer/taxon configuration is missing.');
+if (!gameRuntimeParts[0].includes("'head:paper-hat':{traitTypes:['Head'],values:['Paper Hat']}") || !gameRuntimeParts[0].includes("'back:green-katana':{traitTypes:['Katana'],values:['Green','Green Katana']}") || !gameRuntimeParts[0].includes("'back:yellow-katana':{traitTypes:['Katana'],values:['Yellow','Yellow Katana']}")) errors.push('v235.10 core You Are ATM headgear/katana trait mappings are missing.');
+if (!gameRuntimeParts[0].includes("'equipment:jetpack':{traitTypes:['Back'],values:['Jetpack','Jet Pack']}") || !gameRuntimeParts[0].includes("'face:gold':{traitTypes:['Face'],values:['Gold','Gold Face']}")) errors.push('v235.10 Jetpack/Gold Face NFT trait mappings are missing.');
+if (!gameRuntimeParts[0].includes("if(item.ownership==='development')return Object.freeze({...item,rarity:mapping?'You Are ATM / Store':'Store',ownership:'store'") || !gameRuntimeParts[0].includes('].map(atmMonetizeCatalogItem));')) errors.push('v235.10 development cosmetics are not converted into store-locked inventory.');
+if (!gameRuntimeParts[0].includes('function lockerAttributeRuleMatches') || !gameRuntimeParts[0].includes("label:matches.length>1?'NFT OWNED ×'+matches.length:'NFT OWNED'") || !gameRuntimeParts[0].includes("label:'VERIFYING NFT'")) errors.push('v235.10 metadata-backed Locker entitlement verification is incomplete.');
+if (!gameRuntimeParts[0].includes('window.atmLockerPermanentJetpackEquipped') || !gameRuntimeParts[0].includes("permanent?'NFT OWNED · PERMANENT'")) errors.push('v235.10 permanent NFT Jetpack entitlement is missing.');
+if (!html.includes('id="lockerYouAreAtmCount"') || !html.includes('id="lockerNftUnlockCount"') || !html.includes('LOCKER v6 · YATM ENTITLEMENTS · v235.10')) errors.push('v235.10 Locker entitlement summary/UI markers are missing.');
 if (!zombieOutbreakSource.includes('const MAX_AIM_OFFSET = 40 * Math.PI / 180') || !zombieOutbreakSource.includes('movementOverride') || !zombieOutbreakSource.includes("movementMode === 'backpedal' ? -1 : 1")) errors.push('v235.8 ±40° aim/facing or backpedal animation contract is missing.');
 if (!zombieOutbreakSource.includes('rapidMaxRange()') || !zombieOutbreakSource.includes('range * .88') || !zombieOutbreakSource.includes('const speed = 5400 + random() * 2200')) errors.push('v235.8 Rapid Micro must retain map-edge range, extreme-distance-only falloff, and ultra-fast micro-streak visuals.');
 if (!zombieOutbreakSource.includes('const pellets = 7') || !zombieOutbreakSource.includes('if (distance <= 150) return 3.2') || !zombieOutbreakSource.includes('SPREAD_RANGE = 560')) errors.push('v235.8 Spread must remain a devastating close-range seven-pellet weapon.');
@@ -794,10 +803,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.9.4 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.10 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.9.4 build validation passed.');
+console.log('ATM Town v235.10 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.9.4',name:ATM_CONFIG?.build?.name||'Horde Nightfall'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.10',name:ATM_CONFIG?.build?.name||'You Are ATM Entitlements'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -338,7 +338,8 @@ const TOWN_INITIAL_SPAWN=ATM_MAPS.spawn('town');
 const ZOOM_MIN=0.46, ZOOM_MAX=1.6;
 const savedCameraZoom=parseFloat(safeStorageGet('atm_camera_zoom',''));
 try{localStorage.removeItem('atm_equipment');}catch(_e){}
-function canUseJetpack(){return powerUps.jetpack>0;}
+function hasPermanentEquippedJetpack(){return window.atmLockerPermanentJetpackEquipped?.()===true;}
+function canUseJetpack(){return powerUps.jetpack>0||hasPermanentEquippedJetpack();}
 let townZoom=Number.isFinite(savedCameraZoom)?Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,savedCameraZoom)):0.92;
 let zoom=townZoom;
 const player={x:TOWN_INITIAL_SPAWN.x,y:TOWN_INITIAL_SPAWN.y,r:14,speed:182,dir:'up',moving:false,frame:1,animTimer:0};
@@ -4734,8 +4735,9 @@ function syncJetpackUi(){
   const timer=document.getElementById('jetpackProductTimer');
   const hudName=document.querySelector('#jetpackPowerTimer .powerName');
   const active=canUseJetpack();
-  const value=formatPowerTime(powerUps.jetpack);
-  if(timer)timer.textContent=active?'ACTIVE · '+value+' REMAINING':'';
+  const permanent=hasPermanentEquippedJetpack();
+  const value=permanent?'NFT OWNED · PERMANENT':formatPowerTime(powerUps.jetpack);
+  if(timer)timer.textContent=active?(permanent?'ACTIVE · '+value:'ACTIVE · '+value+' REMAINING'):'';
   if(active&&!jetpackTipShownForCurrentActivation){jetpackTipShownForCurrentActivation=true;showJetpackTip();}
   if(!active){jetpackTipShownForCurrentActivation=false;hideJetpackTip();}
   if(hudName)hudName.textContent='JETPACK';
@@ -4762,7 +4764,7 @@ function updatePowerUps(dt){
     if(powerUps[type]>0){
       const before=Math.ceil(powerUps[type]);
       powerUps[type]=Math.max(0,powerUps[type]-dt);
-      if(type==='jetpack'&&powerUps[type]<=0&&jetpackState.active)endJetpack();
+      if(type==='jetpack'&&powerUps[type]<=0&&jetpackState.active&&!hasPermanentEquippedJetpack())endJetpack();
       if(Math.ceil(powerUps[type])!==before)changed=true;
     }
   }
@@ -4775,7 +4777,8 @@ function updateJetpackHud(force=false){
   syncJetpackUi();
   timer.classList.toggle('active',canUseJetpack());
   if(!canUseJetpack()){time.textContent='LOCKED';return;}
-  const remaining=formatPowerTime(powerUps.jetpack);
+  const permanent=hasPermanentEquippedJetpack();
+  const remaining=permanent?'NFT':formatPowerTime(powerUps.jetpack);
   if(!jetpackState.active){time.textContent='READY · '+remaining;return;}
   const mode=jetpackState.thrusting?'RISING':((jetpackState.velocity>20)?'COAST':'FALLING');
   time.textContent=mode+' · '+remaining;
@@ -5528,12 +5531,69 @@ requestAnimationFrame(loop);
 
 
 
-// v169 Locker inventory foundation. XRPL-mapped items use validated ledger ownership;
-// current art remains explicitly labeled as starter, session, or development inventory.
+// v235.10 Locker commerce foundation. The linked wallet is the source of truth
+// for You Are ATM collection entitlements; non-starter cosmetics are store-locked
+// unless a matching collection attribute is verified. Checkout comes after the
+// entitlement pass is tested against real holder wallets.
 const ATM_LOCKER_FOUND_KEY='atm_locker_found_items_v1';
 const ATM_LOCKER_LOADOUT_KEY='atm_locker_loadout_v1';
 const ATM_LOCKER_SAVED_CHARACTERS_KEY='atm_locker_saved_characters_v1';
 const ATM_TRADE_BEACON_KEY='atm_trade_beacon_v1';
+
+const ATM_YOU_ARE_ATM_COLLECTION=Object.freeze({
+  name:'You Are ATM',
+  issuer:'rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H',
+  taxon:1
+});
+// Explicit trait aliases only. These intentionally avoid fuzzy cross-category
+// matching so an unrelated NFT trait cannot unlock the wrong in-game asset.
+const ATM_YOU_ARE_ATM_TRAIT_RULES=Object.freeze({
+  'head:baby-blue-headphones':{traitTypes:['Head'],values:['Baby Blue Headphones']},
+  'head:banana-headphones':{traitTypes:['Head'],values:['Banana Headphones']},
+  'head:blue-mohawk':{traitTypes:['Head'],values:['Blue Mohawk','Teal Blue Mohawk']},
+  'head:bullish-black':{traitTypes:['Head'],values:['Bullish Black','Bullish Black Horns','Black Horns']},
+  'head:buuvva-headphones':{traitTypes:['Head'],values:['Buuvva Headphones']},
+  'head:green-headphones':{traitTypes:['Head'],values:['Green Headphones']},
+  'head:orange-green-mohawk':{traitTypes:['Head'],values:['Orange Green Mohawk']},
+  'head:paper-hat':{traitTypes:['Head'],values:['Paper Hat']},
+  'head:pink-mohawk':{traitTypes:['Head'],values:['Pink Mohawk']},
+  'head:red-headphones':{traitTypes:['Head'],values:['Red Headphones']},
+  'back:green-katana':{traitTypes:['Katana'],values:['Green','Green Katana']},
+  'back:white-katana':{traitTypes:['Katana'],values:['White','White Katana']},
+  'back:yellow-katana':{traitTypes:['Katana'],values:['Yellow','Yellow Katana']},
+  'equipment:jetpack':{traitTypes:['Back'],values:['Jetpack','Jet Pack']},
+  'face:gold':{traitTypes:['Face'],values:['Gold','Gold Face']},
+  // Confirmed collection aliases that already line up with current ATM Town art.
+  'backpack:blue-green':{traitTypes:['Back'],values:['Blue Green Backpack','Blue & Green Backpack']},
+  'backpack:blue-yellow':{traitTypes:['Back'],values:['Blue Yellow Backpack','Blue & Yellow Backpack']},
+  'backpack:bright-orange':{traitTypes:['Back'],values:['Bright Orange Backpack']},
+  'backpack:gold-purple':{traitTypes:['Back'],values:['Gold Purple Backpack','Gold & Purple Backpack','Yellow Purple Backpack']},
+  'backpack:green':{traitTypes:['Back'],values:['Green Backpack']},
+  'backpack:pink-teal':{traitTypes:['Back'],values:['Pink Teal Backpack','Pink & Teal Backpack']},
+  'backpack:rucksack':{traitTypes:['Back'],values:['Rucksack']},
+  'backpack:teal':{traitTypes:['Back'],values:['Teal Backpack']},
+  'backpack:yellow-pink':{traitTypes:['Back'],values:['Yellow Pink Backpack','Yellow & Pink Backpack']},
+  'face:black-dead-face':{traitTypes:['Face'],values:['Dead Emote Black','Black Dead Face']},
+  'face:white-dead-face':{traitTypes:['Face'],values:['Dead Emote White','White Dead Face']},
+  'face:squint-face-black':{traitTypes:['Face'],values:['Squint Emote Black','Black Squint Face']},
+  'face:squint-face-white':{traitTypes:['Face'],values:['Squint Emote White','White Squint Face']},
+  'gloves:boxing-gloves':{traitTypes:['Hand'],values:['Boxing Gloves']},
+  'chest:baby-blue':{traitTypes:['Clothing'],values:['Baby Blue']},
+  'chest:gold':{traitTypes:['Clothing'],values:['Gold']},
+  'body:red':{traitTypes:['ATM'],values:['Red']}
+});
+function atmYouAreAtmMapping(itemId){
+  const rule=ATM_YOU_ARE_ATM_TRAIT_RULES[itemId];if(!rule)return null;
+  return Object.freeze({issuer:ATM_YOU_ARE_ATM_COLLECTION.issuer,taxon:ATM_YOU_ARE_ATM_COLLECTION.taxon,attributes:Object.freeze([Object.freeze({traitTypes:Object.freeze(rule.traitTypes.slice()),values:Object.freeze(rule.values.slice())})])});
+}
+function atmMonetizeCatalogItem(rawItem){
+  const item={...rawItem};
+  if(item.type!=='equipment')return Object.freeze(item);
+  const mapping=atmYouAreAtmMapping(item.id);
+  if(item.id==='equipment:jetpack')return Object.freeze({...item,rarity:'You Are ATM / Vending',ownership:'session',xrpl:mapping||item.xrpl||null,description:'Permanent when your verified You Are ATM NFT has Back: Jetpack. Otherwise temporary vending time still works.'});
+  if(item.ownership==='development')return Object.freeze({...item,rarity:mapping?'You Are ATM / Store':'Store',ownership:'store',xrpl:mapping||null});
+  return Object.freeze({...item,xrpl:item.xrpl||mapping||null});
+}
 
 const ATM_LOCKER_SLOTS=Object.freeze([
   {id:'body',label:'BODY',icon:'🦺'},
@@ -5623,8 +5683,9 @@ const ATM_ITEM_CATALOG=Object.freeze([
   {id:'shoes:red',name:'Red Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:tan',name:'Tan Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'equipment:jetpack',name:'Jetpack Module',type:'equipment',slot:'back',rarity:'Session',ownership:'session',emoji:'🚀',xrpl:null,description:'Purchased from an ATM Town vending machine. Each purchase adds 30 seconds.'}
-]);
+].map(atmMonetizeCatalogItem));
 window.ATM_ITEM_CATALOG=ATM_ITEM_CATALOG;
+window.ATM_YOU_ARE_ATM_COLLECTION=ATM_YOU_ARE_ATM_COLLECTION;
 
 let lockerFoundItems=safeJsonParse(safeStorageGet(ATM_LOCKER_FOUND_KEY,'{}'),{});
 let lockerLoadout=safeJsonParse(safeStorageGet(ATM_LOCKER_LOADOUT_KEY,'{}'),{});
@@ -5780,9 +5841,19 @@ function lockerDecodeHexUri(hex){
   if(!hex||typeof hex!=='string'||hex.length%2)return '';
   try{const bytes=new Uint8Array(hex.match(/.{1,2}/g).map(part=>parseInt(part,16)));return new TextDecoder().decode(bytes).replace(/\0/g,'');}catch(_e){return '';}
 }
+function lockerNormalizeTrait(value){return String(value??'').trim().toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
+function lockerIsYouAreAtmNft(nft){return String(nft?.Issuer||'')===ATM_YOU_ARE_ATM_COLLECTION.issuer&&Number(nft?.NFTokenTaxon)===ATM_YOU_ARE_ATM_COLLECTION.taxon;}
+function lockerYouAreAtmNfts(){return lockerState.nfts.filter(lockerIsYouAreAtmNft);}
 function lockerHasXrplMapping(item){
   const map=item?.xrpl;if(!map)return false;
-  return !!(String(map.issuer||'').trim()||Number.isFinite(map.taxon)||(Array.isArray(map.tokenIds)&&map.tokenIds.length)||(Array.isArray(map.uriIncludes)&&map.uriIncludes.length));
+  return !!(String(map.issuer||'').trim()||Number.isFinite(map.taxon)||(Array.isArray(map.tokenIds)&&map.tokenIds.length)||(Array.isArray(map.uriIncludes)&&map.uriIncludes.length)||(Array.isArray(map.attributes)&&map.attributes.length));
+}
+function lockerAttributeRuleMatches(rule,meta){
+  const attributes=Array.isArray(meta?.attributes)?meta.attributes:[];
+  const traitTypes=new Set((rule?.traitTypes||[]).map(lockerNormalizeTrait).filter(Boolean));
+  const values=new Set((rule?.values||[]).map(lockerNormalizeTrait).filter(Boolean));
+  if(!traitTypes.size||!values.size)return false;
+  return attributes.some(attribute=>traitTypes.has(lockerNormalizeTrait(attribute?.trait_type))&&values.has(lockerNormalizeTrait(attribute?.value)));
 }
 function lockerNftMatches(item,nft){
   const map=item.xrpl||{};
@@ -5793,24 +5864,41 @@ function lockerNftMatches(item,nft){
     const decoded=lockerDecodeHexUri(nft.URI||'').toLowerCase();
     if(!map.uriIncludes.some(value=>decoded.includes(String(value).toLowerCase())))return false;
   }
+  if(Array.isArray(map.attributes)&&map.attributes.length){
+    const meta=lockerNftMetadata(nft);if(!meta||meta.status!=='resolved')return false;
+    if(!map.attributes.some(rule=>lockerAttributeRuleMatches(rule,meta)))return false;
+  }
   return true;
+}
+function lockerXrplMappingPending(item){
+  if(!lockerHasXrplMapping(item)||!Array.isArray(item?.xrpl?.attributes)||!item.xrpl.attributes.length)return false;
+  return lockerState.nfts.some(nft=>{
+    const map=item.xrpl||{};
+    if(map.issuer&&String(nft?.Issuer||'')!==String(map.issuer))return false;
+    if(Number.isFinite(map.taxon)&&Number(nft?.NFTokenTaxon)!==Number(map.taxon))return false;
+    const tokenId=lockerNftTokenId(nft),meta=lockerNftMetadata(nft);
+    return !meta||lockerState.nftMetadataLoading.has(tokenId);
+  });
 }
 function lockerOwnershipInfo(item){
   if(item?.ownership==='saved')return {owned:true,quantity:1,label:'SAVED BUILD',source:'saved'};
   if(lockerHasXrplMapping(item)){
     const matches=lockerState.nfts.filter(nft=>lockerNftMatches(item,nft));
-    return {owned:matches.length>0,quantity:matches.length,label:matches.length?'XRPL VERIFIED':'XRPL LOCKED',source:'xrpl'};
+    if(matches.length)return {owned:true,quantity:matches.length,label:matches.length>1?'NFT OWNED ×'+matches.length:'NFT OWNED',source:'xrpl',matches};
   }
   if(item.ownership==='starter')return {owned:true,quantity:1,label:'STARTER',source:'starter'};
-  if(item.ownership==='development')return {owned:true,quantity:1,label:'DEV GRANT',source:'development'};
   if(item.ownership==='session'){
     const seconds=item.id==='equipment:jetpack'?Math.ceil(powerUps.jetpack):0;
-    return {owned:seconds>0,quantity:seconds,label:seconds>0?formatPowerTime(seconds)+' LEFT':'NOT FOUND',source:'session'};
+    if(seconds>0)return {owned:true,quantity:seconds,label:formatPowerTime(seconds)+' LEFT',source:'session'};
   }
+  if(lockerHasXrplMapping(item)&&lockerXrplMappingPending(item))return {owned:false,quantity:0,label:'VERIFYING NFT',source:'verifying'};
+  if(item.ownership==='session')return {owned:false,quantity:0,label:lockerHasXrplMapping(item)?'VENDING / NFT':'NOT FOUND',source:'store'};
   if(item.ownership==='found'){
     const quantity=Math.max(0,Number(lockerFoundItems[item.id]||0));
     return {owned:quantity>0,quantity,label:quantity>0?'FOUND ×'+quantity:'NOT FOUND',source:'found'};
   }
+  if(item.ownership==='store')return {owned:false,quantity:0,label:lockerHasXrplMapping(item)?'STORE / NFT':'STORE LOCKED',source:'store'};
+  if(item.ownership==='development')return {owned:false,quantity:0,label:'STORE LOCKED',source:'store'};
   return {owned:false,quantity:0,label:'LOCKED',source:'unknown'};
 }
 function lockerItemForCharacter(characterId){return ATM_ITEM_CATALOG.find(item=>item.characterId===characterId)||null;}
@@ -5924,13 +6012,15 @@ function lockerEquipItem(item){
   if(Array.isArray(item.compatibleCharacterIds)&&!item.compatibleCharacterIds.includes(selectedCharacter)){
     const target=item.compatibleCharacterIds[0]||'classic';selectCharacter(target);lockerLoadout.base=lockerItemForCharacter(target)?.id||'character:classic';
   }
-  if(item.slot!=='base'&&item.id!=='equipment:jetpack'&&lockerLoadout[item.slot]===item.id){
+  if(item.slot!=='base'&&lockerLoadout[item.slot]===item.id&&(item.id!=='equipment:jetpack'||ownership.source==='xrpl')){
     delete lockerLoadout[item.slot];lockerSaveLoadout();lockerState.selectedItemId=null;lockerSetStatus(item.name+' unequipped.','ok');lockerRender();broadcastState(true);return;
   }
   if(item.slot==='base'){
     if(selectCharacter(item.characterId)===false)return;lockerLoadout.base=item.id;
   }else if(item.id==='equipment:jetpack'){
-    lockerLoadout.back=item.id;lockerSetStatus('Jetpack is equipped automatically while vending time remains.','ok');
+    lockerLoadout.back=item.id;
+    if(ownership.source==='xrpl')lockerSetStatus('Jetpack equipped permanently from your verified You Are ATM NFT.','ok');
+    else lockerSetStatus('Jetpack is equipped automatically while vending time remains.','ok');
   }else{
     lockerLoadout[item.slot]=item.id;
     if(item.id==='body:astronaut')lockerSetStatus('Astronaut Body equipped. Low gravity is active: 4× jump height, or 8× with Bounce while keeping the same slow astronaut rise, fall, and momentum profile.','ok');
@@ -5955,9 +6045,11 @@ function lockerCanSelectCharacter(characterId){
 window.atmLockerCanSelectCharacter=lockerCanSelectCharacter;
 window.atmLockerOpenForLockedCharacter=(characterId)=>{lockerOpen();lockerState.slot='body';lockerState.filter='my-characters';lockerState.selectedItemId=lockerItemForCharacter(characterId)?.id||null;lockerRender();lockerSetStatus(lockerCharacterName(characterId)+' is not owned by the linked wallet.','error');};
 window.atmLockerCharacterChanged=(characterId)=>{lockerActiveSavedCharacterId=null;lockerLoadout.base=lockerItemForCharacter(characterId)?.id||'character:classic';lockerSaveLoadout();lockerRender();};
-window.atmLockerInventoryChanged=()=>{if(lockerState.open)lockerRender();};
+window.atmLockerInventoryChanged=()=>{if(lockerState.status==='ready'&&!lockerState.nftMetadataLoading.size)lockerEnforceEquipmentOwnership();if(lockerState.open)lockerRender();};
 window.atmLockerAccountUpdated=()=>{lockerUpdateWalletBadge();if(lockerState.open&&lockerWalletAddress())lockerRefreshXrpl(true);else lockerRender();};
-window.atmInventory=Object.freeze({catalog:ATM_ITEM_CATALOG,open:()=>lockerOpen(),refreshXrpl:()=>lockerRefreshXrpl(false),grantFoundItem:lockerGrantFoundItem,revokeFoundItem:lockerRevokeFoundItem});
+window.atmInventory=Object.freeze({catalog:ATM_ITEM_CATALOG,collection:ATM_YOU_ARE_ATM_COLLECTION,traitRules:ATM_YOU_ARE_ATM_TRAIT_RULES,open:()=>lockerOpen(),refreshXrpl:()=>lockerRefreshXrpl(false),entitlements:()=>ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).source==='xrpl').map(item=>item.id),grantFoundItem:lockerGrantFoundItem,revokeFoundItem:lockerRevokeFoundItem});
+window.atmLockerOwns=(itemId)=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id===itemId);return !!item&&lockerOwnershipInfo(item).owned;};
+window.atmLockerPermanentJetpackEquipped=()=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id==='equipment:jetpack');return lockerLoadout.back==='equipment:jetpack'&&!!item&&lockerOwnershipInfo(item).source==='xrpl';};
 
 function lockerUpdateWalletBadge(){
   const node=document.getElementById('lockerWalletBadge');if(!node)return;
@@ -5968,9 +6060,10 @@ function lockerNftTokenId(nft){return String(nft?.NFTokenID||'').toUpperCase();}
 function lockerNftSerial(nft){return Number.isFinite(Number(nft?.nft_serial))?Number(nft.nft_serial):null;}
 function lockerNftMetadata(nft){return lockerState.nftMetadata.get(lockerNftTokenId(nft))||null;}
 function lockerNftDisplayName(nft){const meta=lockerNftMetadata(nft);const serial=lockerNftSerial(nft);return String(meta?.name||'').trim()||(serial!==null?'XRPL NFT #'+serial:'XRPL NFT');}
+function lockerItemsUnlockedByNft(nft){return ATM_ITEM_CATALOG.filter(item=>lockerHasXrplMapping(item)&&lockerNftMatches(item,nft));}
 function lockerNftShortToken(nft){const id=lockerNftTokenId(nft);return id.length>16?id.slice(0,8)+'…'+id.slice(-8):id||'Unknown token';}
 function lockerNftShortIssuer(nft){const issuer=String(nft?.Issuer||'');return issuer?lockerShortWallet(issuer):'Unknown issuer';}
-function lockerNftScheduleRender(){clearTimeout(lockerNftRenderTimer);lockerNftRenderTimer=setTimeout(()=>{lockerNftRenderTimer=0;if(lockerState.open)lockerRenderNftCollection();},90);}
+function lockerNftScheduleRender(){clearTimeout(lockerNftRenderTimer);lockerNftRenderTimer=setTimeout(()=>{lockerNftRenderTimer=0;if(lockerState.open)lockerRender();},90);}
 function lockerNftImageNode(nft,detail=false){
   const host=document.createElement('div');host.className=detail?'lockerNftDetailArt':'lockerNftArt';
   const meta=lockerNftMetadata(nft);const candidates=[meta?.image_url,...(Array.isArray(meta?.image_candidates)?meta.image_candidates:[])].map(value=>String(value||'').trim()).filter((value,index,list)=>value&&list.indexOf(value)===index);let candidateIndex=0;
@@ -6010,12 +6103,13 @@ function lockerRenderNftDetail(){
   const title=document.createElement('div');title.className='lockerNftDetailTitle';const h=document.createElement('h3');h.textContent=lockerNftDisplayName(nft);const sub=document.createElement('span');sub.textContent=(meta?.collection?meta.collection+' · ':'')+(lockerNftSerial(nft)!==null?'SERIAL #'+lockerNftSerial(nft):'ON-LEDGER NFT');title.append(h,sub);body.appendChild(title);
   const badges=document.createElement('div');badges.className='lockerNftBadges';
   const badge=(text,tone='')=>{const b=document.createElement('span');b.className='lockerNftBadge'+(tone?' '+tone:'');b.textContent=text;badges.appendChild(b);};
-  badge(nft.transferable?'TRANSFERABLE':'TRANSFER RESTRICTED',nft.transferable?'good':'warn');if(nft.xrp_only)badge('XRP ONLY','warn');if(nft.mutable)badge('MUTABLE URI');if(nft.burnable)badge('BURNABLE');badge(lockerState.validated?'VALIDATED LEDGER':'LEDGER READ');body.appendChild(badges);
+  badge(nft.transferable?'TRANSFERABLE':'TRANSFER RESTRICTED',nft.transferable?'good':'warn');if(nft.xrp_only)badge('XRP ONLY','warn');if(nft.mutable)badge('MUTABLE URI');if(nft.burnable)badge('BURNABLE');if(lockerIsYouAreAtmNft(nft)){badge('YOU ARE ATM · TAXON 1','good');const unlocks=lockerItemsUnlockedByNft(nft);if(unlocks.length)badge('UNLOCKS '+unlocks.length+' GAME ITEM'+(unlocks.length===1?'':'S'),'good');}badge(lockerState.validated?'VALIDATED LEDGER':'LEDGER READ');body.appendChild(badges);
   if(meta?.description){const description=document.createElement('div');description.className='lockerNftDescription';description.textContent=meta.description;body.appendChild(description);}
   if(meta?.status==='unavailable'&&meta?.error){const warning=document.createElement('div');warning.className='lockerNftDescription';warning.textContent='Artwork/metadata unavailable: '+meta.error;body.appendChild(warning);}
   if(meta?.status==='missing'){const warning=document.createElement('div');warning.className='lockerNftDescription';warning.textContent='No metadata URI is stored on this NFToken, so ATM Town has no on-ledger location to retrieve artwork from.';body.appendChild(warning);}
   const facts=document.createElement('div');facts.className='lockerNftFacts';facts.append(lockerNftFact('ISSUER',nft.Issuer||'—'),lockerNftFact('TAXON',nft.NFTokenTaxon??'—'),lockerNftFact('TOKEN ID',nft.NFTokenID||'—'),lockerNftFact('URI',nft.uri||lockerDecodeHexUri(nft.URI||'')||'No URI'));body.appendChild(facts);
   if(Array.isArray(meta?.attributes)&&meta.attributes.length){const traits=document.createElement('div');traits.className='lockerNftTraits';for(const trait of meta.attributes.slice(0,12)){const item=document.createElement('div');item.className='lockerNftTrait';const label=document.createElement('span');label.textContent=trait.trait_type||'TRAIT';const value=document.createElement('strong');value.textContent=trait.value||'—';item.append(label,value);traits.appendChild(item);}body.appendChild(traits);}
+  if(lockerIsYouAreAtmNft(nft)&&meta?.status==='resolved'){const unlocks=lockerItemsUnlockedByNft(nft);const entitlement=document.createElement('div');entitlement.className='lockerNftDescription';entitlement.innerHTML=unlocks.length?'<strong>ATM TOWN UNLOCKS:</strong> '+unlocks.map(item=>item.name).join(' · '):'<strong>ATM TOWN UNLOCKS:</strong> No mapped in-game item yet for this NFT’s current traits.';body.appendChild(entitlement);}
   if(lockerState.nftMetadataLoading.has(lockerNftTokenId(nft))){const load=document.createElement('div');load.className='lockerNftLoadingBar';const i=document.createElement('i');load.appendChild(i);body.appendChild(load);}
   const tokenId=lockerNftTokenId(nft);const activeForThis=tradeBeaconIsLocalActive()&&tradeBeaconState.tokenId===tokenId;const beaconState=document.createElement('div');beaconState.className='lockerNftBeaconState'+(activeForThis&&tradeBeaconState.mode==='open_to_trade'?' trade':'');beaconState.innerHTML=activeForThis?'<strong>BEACON ACTIVE:</strong> '+tradeBeaconModeLabel(tradeBeaconState.mode)+' · visible above your player in multiplayer.':'Choose how this NFT should appear above your player.';body.appendChild(beaconState);
   const actions=document.createElement('div');actions.className='lockerNftFutureActions';
@@ -6048,13 +6142,14 @@ async function lockerLoadNftMetadata(nft){
   try{const data=await apiWithAuth('/api/xrpl-nft-metadata',{method:'POST',body:JSON.stringify({nftoken_id:tokenId,uri})});lockerState.nftMetadata.set(tokenId,data||{status:'unavailable'});}catch(error){lockerState.nftMetadata.set(tokenId,{status:'unavailable',error:error?.message||'Metadata unavailable.',name:'',description:'',image_url:'',attributes:[]});}finally{lockerState.nftMetadataLoading.delete(tokenId);lockerNftScheduleRender();}
 }
 async function lockerHydrateNftMetadata(){
-  const generation=++lockerState.nftHydrationGeneration;const queue=lockerState.nfts.filter(nft=>!lockerState.nftMetadata.has(lockerNftTokenId(nft))&&!lockerState.nftMetadataLoading.has(lockerNftTokenId(nft)));let cursor=0;const workers=Math.min(4,queue.length);
+  const generation=++lockerState.nftHydrationGeneration;const queue=lockerState.nfts.filter(nft=>!lockerState.nftMetadata.has(lockerNftTokenId(nft))&&!lockerState.nftMetadataLoading.has(lockerNftTokenId(nft))).sort((a,b)=>Number(lockerIsYouAreAtmNft(b))-Number(lockerIsYouAreAtmNft(a)));let cursor=0;const workers=Math.min(4,queue.length);
   await Promise.all(Array.from({length:workers},async()=>{while(generation===lockerState.nftHydrationGeneration&&cursor<queue.length){const nft=queue[cursor++];await lockerLoadNftMetadata(nft);}}));
+  if(generation===lockerState.nftHydrationGeneration){lockerEnforceEquipmentOwnership();if(lockerState.open)lockerRender();}
 }
 async function lockerRefreshXrpl(silent=false){
   const button=document.getElementById('lockerRefreshButton');
-  if(!authSession?.user){lockerState.status='guest';lockerState.nfts=[];lockerState.selectedNftId=null;lockerSetStatus('Sign in and link Xaman to verify XRPL NFT ownership.','error');lockerRender();return;}
-  if(!lockerWalletAddress()){lockerState.status='unlinked';lockerState.nfts=[];lockerState.selectedNftId=null;lockerSetStatus('Link a Xaman wallet from your account screen before refreshing XRPL ownership.','error');lockerRender();return;}
+  if(!authSession?.user){lockerState.status='guest';lockerState.nfts=[];lockerState.selectedNftId=null;lockerEnforceEquipmentOwnership();lockerSetStatus('Sign in and link Xaman to verify XRPL NFT ownership.','error');lockerRender();return;}
+  if(!lockerWalletAddress()){lockerState.status='unlinked';lockerState.nfts=[];lockerState.selectedNftId=null;lockerEnforceEquipmentOwnership();lockerSetStatus('Link a Xaman wallet from your account screen before refreshing XRPL ownership.','error');lockerRender();return;}
   if(lockerState.status==='loading')return;
   lockerState.status='loading';lockerState.error='';if(button)button.disabled=true;if(!silent){for(const [tokenId,meta] of lockerState.nftMetadata.entries())if(!meta||['unavailable','missing'].includes(meta.status))lockerState.nftMetadata.delete(tokenId);lockerSetStatus('Reading validated NFT ownership from the XRP Ledger…');}lockerRender();
   try{
@@ -6062,7 +6157,7 @@ async function lockerRefreshXrpl(silent=false){
     lockerState.nfts=Array.isArray(data.nfts)?data.nfts:[];
     lockerState.ledgerIndex=data.ledger_index??null;lockerState.validated=data.validated===true;lockerState.truncated=data.truncated===true;lockerState.status='ready';
     const ownedIds=new Set(lockerState.nfts.map(lockerNftTokenId));for(const key of lockerState.nftMetadata.keys())if(!ownedIds.has(key))lockerState.nftMetadata.delete(key);if(lockerState.selectedNftId&&!ownedIds.has(lockerState.selectedNftId))lockerState.selectedNftId=null;tradeBeaconValidateOwnership();
-    lockerSetStatus(`${lockerState.nfts.length} NFT${lockerState.nfts.length===1?'':'s'} found in ${lockerShortWallet(data.account||lockerWalletAddress())}${lockerState.ledgerIndex?' · ledger '+lockerState.ledgerIndex:''}${lockerState.truncated?' · safety limit reached':''}.`,'ok');
+    const youAreAtmCount=lockerYouAreAtmNfts().length;lockerSetStatus(`${lockerState.nfts.length} NFT${lockerState.nfts.length===1?'':'s'} found · ${youAreAtmCount} You Are ATM${youAreAtmCount===1?'':' NFTs'} · ${lockerShortWallet(data.account||lockerWalletAddress())}${lockerState.ledgerIndex?' · ledger '+lockerState.ledgerIndex:''}${lockerState.truncated?' · safety limit reached':''}.`,'ok');
     lockerEnforceCharacterOwnership();lockerHydrateNftMetadata();
   }catch(error){
     lockerState.status='error';lockerState.error=error?.message||'XRPL inventory lookup failed.';lockerSetStatus(lockerState.error,'error');
@@ -6071,6 +6166,20 @@ async function lockerRefreshXrpl(silent=false){
 function lockerEnforceCharacterOwnership(){
   if(lockerCanSelectCharacter(selectedCharacter))return;
   selectCharacter('classic');lockerSetStatus('Your previous character is not owned by the linked wallet, so ATM was equipped.','error');
+}
+function lockerEnforceEquipmentOwnership(){
+  let changed=false;const removed=[];
+  for(const [slot,itemId] of Object.entries({...lockerLoadout})){
+    if(slot==='base')continue;
+    const item=ATM_ITEM_CATALOG.find(entry=>entry.id===itemId);if(!item)continue;
+    if(lockerOwnershipInfo(item).owned)continue;
+    // Temporary vending jetpack is only invalid after time reaches zero and no NFT entitlement remains.
+    delete lockerLoadout[slot];changed=true;removed.push(item.name);
+  }
+  if(changed){lockerSaveLoadout();lockerActiveSavedCharacterId=null;broadcastState(true);}
+  if(!canUseJetpack()&&jetpackState.active)endJetpack();
+  if(removed.length)lockerSetStatus('Ownership refreshed. Locked equipment removed: '+removed.join(', ')+'.','error');
+  return changed;
 }
 function lockerSyncEntryPicker(){
   document.querySelectorAll('.characterChoice[data-character]').forEach(button=>{
@@ -6098,11 +6207,11 @@ function lockerVisibleItems(forInventory=false){
   return ATM_ITEM_CATALOG.filter(item=>item.slot===lockerState.filter);
 }
 function lockerCreateItemCard(item){
-  const info=lockerOwnershipInfo(item);const equipped=lockerIsEquipped(item);const button=document.createElement('button');button.type='button';button.className='lockerItemCard'+(equipped?' equipped':'')+(info.owned?'':' locked');button.dataset.itemId=item.id;
+  const info=lockerOwnershipInfo(item);const equipped=lockerIsEquipped(item);const button=document.createElement('button');button.type='button';button.className='lockerItemCard'+(equipped?' equipped':'')+(info.owned?'':' locked')+(info.source==='xrpl'?' nftOwned':'')+(info.source==='store'?' storeLocked':'');button.dataset.itemId=item.id;
   const preview=lockerItemPreview(item);const art=preview?`<img alt="${item.name}" src="${preview}">`:`<span class="lockerItemEmoji">${item.emoji||'◈'}</span>`;
   const itemMeta=item.type==='saved-character'?'MY CHARACTERS · SAVED BUILD':item.type==='character'?'MY CHARACTERS · PRESET':`${lockerSlotName(item.slot)} · ${item.rarity||item.type}`;
   button.innerHTML=`<span class="lockerItemBadge">${equipped?'EQUIPPED':info.label}</span><span class="lockerItemArt">${art}</span><span class="lockerItemName">${item.name}</span><span class="lockerItemMeta">${itemMeta}</span>`;
-  button.addEventListener('click',()=>{lockerState.selectedItemId=item.id;if(info.owned)lockerEquipItem(item);else{lockerSetStatus(item.name+' is locked. Ownership source: '+info.source.toUpperCase()+'.','error');lockerRender();}});return button;
+  button.addEventListener('click',()=>{lockerState.selectedItemId=item.id;if(info.owned)lockerEquipItem(item);else if(info.source==='verifying'){lockerSetStatus('Checking your You Are ATM NFT metadata for '+item.name+'…');lockerRender();}else if(info.source==='store'){lockerSetStatus(item.name+' is store-locked. A matching You Are ATM NFT unlocks it automatically when mapped; direct purchase checkout is the next commerce step.','error');lockerRender();}else{lockerSetStatus(item.name+' is locked. Ownership source: '+info.source.toUpperCase()+'.','error');lockerRender();}});return button;
 }
 function lockerRenderGrids(){
   const itemGrid=document.getElementById('lockerItemGrid');if(itemGrid){itemGrid.textContent='';if(lockerState.filter==='my-characters'&&!lockerSavedCharacters.length){const note=document.createElement('div');note.className='lockerSourceNote';note.innerHTML='<b>No custom characters saved yet.</b><br>Build a character with the attribute categories, then tap SAVE BUILD beside the preview.';itemGrid.appendChild(note);}for(const item of lockerVisibleItems(false))itemGrid.appendChild(lockerCreateItemCard(item));if(!itemGrid.children.length){const empty=document.createElement('div');empty.className='lockerSourceNote';empty.innerHTML='<b>No assets in this category yet.</b><br>Add new item definitions and matching sprite sheets as you create them.';itemGrid.appendChild(empty);}}
@@ -6140,17 +6249,17 @@ function lockerDrawPreview(){
   };
   if(characterId==='classic'){
     const backItem=lockerEquippedItem('back');
-    if(powerUps.jetpack<=0)drawPreviewEquipment(backItem);
+    if(!canUseJetpack())drawPreviewEquipment(backItem);
     drawPreviewEquipment(lockerEquippedItem('katana'));
     for(const slotId of ['chest','face','feet','head'])drawPreviewEquipment(lockerEquippedItem(slotId));
   }
-  if(powerUps.jetpack>0&&jetpackOverlayImg.complete&&jetpackOverlayImg.naturalWidth){const oc=jetpackOverlaySheet.cols||3,or=jetpackOverlaySheet.rows||4,ofw=Math.floor(jetpackOverlayImg.naturalWidth/oc),ofh=Math.floor(jetpackOverlayImg.naturalHeight/or),orow=Math.max(0,(jetpackOverlaySheet.rowOrder||['down','left','up','right']).indexOf(lockerState.direction)),os=Math.min(1.05,(ch-55)/ofh,(cw-36)/ofw),oax=Number.isFinite(jetpackOverlaySheet.anchorX)?jetpackOverlaySheet.anchorX:ofw/2,oay=Number.isFinite(jetpackOverlaySheet.anchorY)?jetpackOverlaySheet.anchorY:ofh-1,odx=Math.round(footX-oax*os),ody=Math.round(footY-oay*os),odw=Math.round(ofw*os),odh=Math.round(ofh*os);pctx.drawImage(jetpackOverlayImg,frame*ofw,orow*ofh,ofw,ofh,odx,ody,odw,odh);}
+  if(canUseJetpack()&&jetpackOverlayImg.complete&&jetpackOverlayImg.naturalWidth){const oc=jetpackOverlaySheet.cols||3,or=jetpackOverlaySheet.rows||4,ofw=Math.floor(jetpackOverlayImg.naturalWidth/oc),ofh=Math.floor(jetpackOverlayImg.naturalHeight/or),orow=Math.max(0,(jetpackOverlaySheet.rowOrder||['down','left','up','right']).indexOf(lockerState.direction)),os=Math.min(1.05,(ch-55)/ofh,(cw-36)/ofw),oax=Number.isFinite(jetpackOverlaySheet.anchorX)?jetpackOverlaySheet.anchorX:ofw/2,oay=Number.isFinite(jetpackOverlaySheet.anchorY)?jetpackOverlaySheet.anchorY:ofh-1,odx=Math.round(footX-oax*os),ody=Math.round(footY-oay*os),odw=Math.round(ofw*os),odh=Math.round(ofh*os);pctx.drawImage(jetpackOverlayImg,frame*ofw,orow*ofh,ofw,ofh,odx,ody,odw,odh);}
   if(characterId==='classic')drawPreviewEquipment(lockerEquippedItem('hands'));
 }
 function lockerRender(){
   lockerUpdateWalletBadge();lockerSyncEntryPicker();lockerCreateSlots();lockerCreateFilters();lockerRenderGrids();lockerDrawPreview();lockerRenderNftCollection();
   const base=lockerItemForCharacter(selectedCharacter);const activeSaved=lockerSavedCharacters.find(build=>build.id===lockerActiveSavedCharacterId)||null;const name=document.getElementById('lockerPreviewName'),slot=document.getElementById('lockerPreviewSlotText'),pill=document.getElementById('lockerPreviewOwnership');if(name)name.textContent=activeSaved?.name||(selectedCharacter==='classic'?'Current ATM Build':base?.name||lockerCharacterName(selectedCharacter));if(slot)slot.textContent=(activeSaved?'Saved character':'Unsaved character build')+' · '+lockerState.direction.toUpperCase();if(pill)pill.textContent=activeSaved?'SAVED':'UNSAVED';
-  const owned=ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).owned).length;const equipped=ATM_LOCKER_SLOTS.filter(slot=>!!lockerEquippedItem(slot.id)).length;const ownedNode=document.getElementById('lockerOwnedCount'),nftNode=document.getElementById('lockerNftCount'),equippedNode=document.getElementById('lockerEquippedCount');if(ownedNode)ownedNode.textContent=String(owned);if(nftNode)nftNode.textContent=String(lockerState.nfts.length);if(equippedNode)equippedNode.textContent=String(equipped);
+  const owned=ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).owned).length;const nftUnlocked=ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).source==='xrpl').length;const equipped=ATM_LOCKER_SLOTS.filter(slot=>!!lockerEquippedItem(slot.id)).length;const ownedNode=document.getElementById('lockerOwnedCount'),nftNode=document.getElementById('lockerNftCount'),youAreAtmNode=document.getElementById('lockerYouAreAtmCount'),unlockNode=document.getElementById('lockerNftUnlockCount'),equippedNode=document.getElementById('lockerEquippedCount');if(ownedNode)ownedNode.textContent=String(owned);if(nftNode)nftNode.textContent=String(lockerState.nfts.length);if(youAreAtmNode)youAreAtmNode.textContent=String(lockerYouAreAtmNfts().length);if(unlockNode)unlockNode.textContent=String(nftUnlocked);if(equippedNode)equippedNode.textContent=String(equipped);
   document.querySelectorAll('.lockerDirection').forEach(node=>node.classList.toggle('active',node.dataset.lockerDirection===lockerState.direction));const dirLabel=document.getElementById('lockerPreviewDirectionLabel');if(dirLabel)dirLabel.textContent=({down:'FRONT',left:'LEFT',up:'BACK',right:'RIGHT'})[lockerState.direction]||lockerState.direction.toUpperCase();
 }
 function lockerOpen(){
@@ -6159,7 +6268,7 @@ function lockerOpen(){
   currentPlayerActivity={type:'locker',label:'LOCKER',startedAt:Date.now()};
   lockerState.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';document.body.classList.add('locker-modal-open');const panel=document.getElementById('lockerPanel');panel.classList.add('open');panel.setAttribute('aria-hidden','false');
   broadcastState(true);updateVoiceProximityVolumes();
-  lockerSetTab(lockerState.tab);lockerSetStatus(lockerWalletAddress()?'Locker open. Refresh XRPL to verify current NFT ownership.':'Locker open. Link Xaman to enable XRPL ownership verification.');if(lockerWalletAddress()&&lockerState.status==='idle')lockerRefreshXrpl(true);else lockerRender();
+  lockerSetTab(lockerState.tab);lockerSetStatus(lockerWalletAddress()?'Locker open. You Are ATM traits from issuer '+ATM_YOU_ARE_ATM_COLLECTION.issuer+' / Taxon '+ATM_YOU_ARE_ATM_COLLECTION.taxon+' unlock mapped gear.':'Locker open. Link Xaman to verify You Are ATM NFT attribute ownership.');if(lockerWalletAddress()&&lockerState.status==='idle')lockerRefreshXrpl(true);else lockerRender();
 }
 function lockerClose(){
   if(!lockerState.open)return;

@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.10: connects verified You Are ATM issuer/taxon NFT attributes to Locker entitlements and store-locks non-starter cosmetics for monetization.
  * v235.9.4: forces Horde Nightfall outdoors, adds a limited local vision radius, and synchronizes a flickering street-light illumination layer while preserving v235.9.3 Horde grounding/animation.
  * v235.9.3: grounds Horde sprites with the playable-character foot anchor, uses the full 0/1/2 walk cycle, and synchronizes Horde direction/movement animation state.
  * v235.9.2: replaces Zombie Outbreak red boxes with The Horde enemy sprite sheets, renames the event to The Horde, and introduces tougher Beast Men.
@@ -41,10 +42,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.94,
-    version: 'v235.9.4',
-    name: 'Horde Nightfall',
-    title: 'ATM Town v235.9.4 — Horde Nightfall'
+    number: 235.10,
+    version: 'v235.10',
+    name: 'You Are ATM Entitlements',
+    title: 'ATM Town v235.10 — You Are ATM Entitlements'
   });
 
   const MAPS = Object.freeze({
