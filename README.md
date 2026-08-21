@@ -4,13 +4,13 @@ ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/Java
 
 ## Current version
 
-**v235.10 — You Are ATM Entitlements**
+**v235.11 — Attribute Store Foundation**
 
 This build preserves v235.9.4 Horde Nightfall and adds the first monetization foundation to the Locker. A signed-in player's verified Xaman-linked XRPL wallet is scanned for the **You Are ATM** collection (`rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H`, Taxon `1`). Explicitly mapped metadata traits unlock their matching in-game equipment while the NFT remains in that wallet. Starter characters remain free; other former development-grant cosmetics are now store-locked pending direct checkout in the next commerce phase.
 
 The existing vending Jetpack remains available as temporary time. A verified You Are ATM `Back: Jetpack` trait now grants permanent Jetpack access while the Jetpack is equipped.
 
-See `docs/V235.10-YOU-ARE-ATM-ENTITLEMENTS.md` for the mapping, entitlement rules, and test checklist.
+The Locker is now owned-assets-only, and a new character-catalog Attribute Store sits below the Locker button. See `docs/V235.11-ATTRIBUTE-STORE.md` for store behavior, cart rules, payment policy, and test checklist. The v235.10 NFT mapping remains documented in `docs/V235.10-YOU-ARE-ATM-ENTITLEMENTS.md`.
 
 ## Project structure
 
@@ -49,4 +49,4 @@ npm run audit:assets
 
 ## Deployment
 
-Apply the v235.10 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.
+Apply the v235.11 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.

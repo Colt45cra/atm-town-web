@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.11: adds the character-catalog Attribute Store foundation and makes the Locker owned-assets-only.
  * v235.10: connects verified You Are ATM issuer/taxon NFT attributes to Locker entitlements and store-locks non-starter cosmetics for monetization.
  * v235.9.4: forces Horde Nightfall outdoors, adds a limited local vision radius, and synchronizes a flickering street-light illumination layer while preserving v235.9.3 Horde grounding/animation.
  * v235.9.3: grounds Horde sprites with the playable-character foot anchor, uses the full 0/1/2 walk cycle, and synchronizes Horde direction/movement animation state.
@@ -42,10 +43,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.10,
-    version: 'v235.10',
-    name: 'You Are ATM Entitlements',
-    title: 'ATM Town v235.10 — You Are ATM Entitlements'
+    number: 235.11,
+    version: 'v235.11',
+    name: 'Attribute Store Foundation',
+    title: 'ATM Town v235.11 — Attribute Store Foundation'
   });
 
   const MAPS = Object.freeze({
@@ -154,11 +155,29 @@
     ])
   });
 
+  // v235.11 Attribute Store commerce policy. Prices intentionally remain
+  // configuration-only until the merchant selects a real price for each item.
+  // The payment-method list is permanent product policy: crypto checkout should
+  // continue to offer XRP, ATM and RLUSD even after USD/card checkout is added.
+  const ATTRIBUTE_STORE = Object.freeze({
+    baseCurrency: 'USD',
+    checkoutEnabled: false,
+    defaultUsdPrice: null,
+    prices: Object.freeze({}),
+    paymentMethods: Object.freeze([
+      Object.freeze({ id: 'xrp', label: 'XRP', rail: 'XRPL' }),
+      Object.freeze({ id: 'atm', label: 'ATM', rail: 'XRPL' }),
+      Object.freeze({ id: 'rlusd', label: 'RLUSD', rail: 'XRPL' }),
+      Object.freeze({ id: 'usd', label: 'USD', rail: 'CARD' })
+    ])
+  });
+
   global.ATM_TOWN_CONFIG = Object.freeze({
     tileSize: TILE_SIZE,
     build: BUILD,
     maps: MAPS,
     supabaseCdnSources: SUPABASE_CDN_SOURCES,
-    embeddedWallet: EMBEDDED_WALLET
+    embeddedWallet: EMBEDDED_WALLET,
+    attributeStore: ATTRIBUTE_STORE
   });
 })(window);
