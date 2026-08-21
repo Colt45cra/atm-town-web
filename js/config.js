@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.11.2: groups Attribute Store checkout into CASH or CRYPTO and pins XRPL commerce to Mainnet.
  * v235.11: adds the character-catalog Attribute Store foundation and makes the Locker owned-assets-only.
  * v235.10: connects verified You Are ATM issuer/taxon NFT attributes to Locker entitlements and store-locks non-starter cosmetics for monetization.
  * v235.9.4: forces Horde Nightfall outdoors, adds a limited local vision radius, and synchronizes a flickering street-light illumination layer while preserving v235.9.3 Horde grounding/animation.
@@ -43,10 +44,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.11,
-    version: 'v235.11',
-    name: 'Attribute Store Foundation',
-    title: 'ATM Town v235.11 — Attribute Store Foundation'
+    number: 235.111,
+    version: 'v235.11.2',
+    name: 'Attribute Store UX + Vending Input Guard',
+    title: 'ATM Town v235.11.2 — Attribute Store UX + Vending Input Guard'
   });
 
   const MAPS = Object.freeze({
@@ -155,20 +156,27 @@
     ])
   });
 
-  // v235.11 Attribute Store commerce policy. Prices intentionally remain
-  // configuration-only until the merchant selects a real price for each item.
-  // The payment-method list is permanent product policy: crypto checkout should
-  // continue to offer XRP, ATM and RLUSD even after USD/card checkout is added.
+  // v235.11.2 Attribute Store commerce policy.
+  // Store purchases are real-value MAINNET commerce. World-event rewards remain
+  // isolated on XRPL Testnet and are not changed by this configuration.
+  // The merchant destination intentionally matches the existing Magnet Can
+  // vending receiver. Future XRPL assets can be added behind the CRYPTO rail and
+  // routed/swapped server-side without changing the player-facing CASH/CRYPTO UI.
   const ATTRIBUTE_STORE = Object.freeze({
     baseCurrency: 'USD',
     checkoutEnabled: false,
+    purchaseNetwork: 'mainnet',
+    merchantAddress: 'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB',
     defaultUsdPrice: null,
     prices: Object.freeze({}),
-    paymentMethods: Object.freeze([
-      Object.freeze({ id: 'xrp', label: 'XRP', rail: 'XRPL' }),
-      Object.freeze({ id: 'atm', label: 'ATM', rail: 'XRPL' }),
-      Object.freeze({ id: 'rlusd', label: 'RLUSD', rail: 'XRPL' }),
-      Object.freeze({ id: 'usd', label: 'USD', rail: 'CARD' })
+    paymentCategories: Object.freeze([
+      Object.freeze({ id: 'cash', label: 'CASH', rail: 'CARD', currency: 'USD' }),
+      Object.freeze({ id: 'crypto', label: 'CRYPTO', rail: 'XRPL', network: 'mainnet' })
+    ]),
+    cryptoAssets: Object.freeze([
+      Object.freeze({ id: 'atm', label: 'ATM', type: 'issued', currency: 'ATM', issuer: 'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ' }),
+      Object.freeze({ id: 'rlusd', label: 'RLUSD', type: 'issued', currency: '524C555344000000000000000000000000000000', issuer: 'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De' }),
+      Object.freeze({ id: 'xrp', label: 'XRP', type: 'native', currency: 'XRP', issuer: null })
     ])
   });
 

@@ -4,7 +4,7 @@ ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/Java
 
 ## Current version
 
-**v235.11 — Attribute Store Foundation**
+**v235.11.2 — Attribute Store UX + Vending Input Guard**
 
 This build preserves v235.9.4 Horde Nightfall and adds the first monetization foundation to the Locker. A signed-in player's verified Xaman-linked XRPL wallet is scanned for the **You Are ATM** collection (`rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H`, Taxon `1`). Explicitly mapped metadata traits unlock their matching in-game equipment while the NFT remains in that wallet. Starter characters remain free; other former development-grant cosmetics are now store-locked pending direct checkout in the next commerce phase.
 
@@ -39,6 +39,22 @@ docs/                    Architecture, asset policy, changelog and testing docs
 
 See `docs/ASSET-POLICY.md`.
 
+
+### v235.11.2 store UX + vending input fix
+
+- Attribute Store has an always-visible close button pinned to the upper-right.
+- Vending machines ignore ghost/synthetic close events for 850 ms after opening, preventing touch double-fire open/close behavior.
+
+### v235.11.2 commerce rail policy
+
+- Player-facing checkout is grouped into **CASH** or **CRYPTO**.
+- CRYPTO currently exposes **ATM**, **RLUSD**, and **XRP** on **XRPL Mainnet**.
+- Store crypto payments are configured for the same merchant destination as Magnet Can vending: `rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB`.
+- Official XRPL Mainnet RLUSD issuer: `rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De`.
+- CASH is the future USD/card rail for non-crypto players.
+- Money Rain / world-event funding and rewards remain **XRPL Testnet**.
+- This patch does not activate checkout or charge users; prices and server-side permanent purchase entitlements still come next.
+
 ## Validation
 
 ```bash
@@ -49,4 +65,4 @@ npm run audit:assets
 
 ## Deployment
 
-Apply the v235.11 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.
+Apply the v235.11.2 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.
