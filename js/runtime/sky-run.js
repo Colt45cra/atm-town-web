@@ -276,7 +276,7 @@
 
   function nearestArcadeGameSpot(){
     const thing=arcadeInteractionThing();
-    return thing&&['ring-rumble','sky-run','platform-panic','flappy-jetpack'].includes(thing.type)?thing:null;
+    return thing&&['ring-rumble','sky-run','platform-panic','flappy-jetpack','neon-racer'].includes(thing.type)?thing:null;
   }
   window.atmNearestArcadeGameSpot=nearestArcadeGameSpot;
   const originalNearestThing=nearestThing;
@@ -296,6 +296,7 @@
       if(game?.id==='atmSkyRun'){openSkyRun();return;}
       if(game?.id==='atmPlatformPanic'){window.openATMPlatformPanic?.();return;}
       if(game?.id==='atmFlappyJetpack'){window.openATMFlappyJetpack?.();return;}
+      if(game?.id==='atmNeonRacer'){window.openATMNeonRacer?.();return;}
     }
     return originalInteract();
   };

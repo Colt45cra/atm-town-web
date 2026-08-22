@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { setCors, requireUser, sendError } from '../lib/auth.js';
+import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
 import {
   XAMAN_API_BASE,
   ATM_CURRENCY,
@@ -9,6 +9,18 @@ import {
   xamanHeaders,
   xamanError
 } from '../lib/xaman-vending.js';
+import {
+  ATTRIBUTE_STORE_DESTINATION,
+  ATTRIBUTE_STORE_PAYMENT_WINDOW_MINUTES,
+  ATTRIBUTE_STORE_ASSETS,
+  loadStorePrices,
+  priceCart,
+  invoiceIdForPurchase,
+  createAttributeXamanPayload,
+  cancelAttributePayload,
+  verifyDestinationTrustline as verifyAttributeDestinationTrustline,
+  validWallet
+} from '../lib/attribute-store.js';
 
 const XRPL_RPC_URL = String(process.env.XRPL_RPC_URL || 'https://s1.ripple.com:51234/').trim();
 const UNIT_PRICE = 100;
@@ -103,14 +115,111 @@ async function cancelXamanPayload(payloadUuid) {
   }
 }
 
+
+async function handleAttributeStoreGet(req, res) {
+  const mode = String(req.query?.mode || 'catalog').toLowerCase();
+  if (mode === 'catalog') {
+    const admin = adminClient();
+    const prices = await loadStorePrices(admin);
+    return res.status(200).json({
+      network: 'mainnet',
+      prices,
+      crypto_assets: Object.values(ATTRIBUTE_STORE_ASSETS).map(asset => ({ id: asset.id, label: asset.label }))
+    });
+  }
+  if (mode === 'entitlements') {
+    const { admin, user } = await requireUser(req);
+    const { data, error } = await admin
+      .from('attribute_entitlements')
+      .select('item_id,source,granted_at,tx_hash')
+      .eq('user_id', user.id)
+      .order('granted_at', { ascending: false });
+    if (error) throw error;
+    return res.status(200).json({ item_ids: (data || []).map(row => row.item_id), entitlements: data || [] });
+  }
+  return res.status(400).json({ error: 'Unknown Attribute Store mode.' });
+}
+
+async function handleAttributeStoreStart(req, res) {
+  let payloadUuid = '';
+  try {
+    const { admin, user } = await requireUser(req);
+    const priced = await priceCart(admin, req.body?.item_ids, req.body?.asset_id);
+    const { data: owned, error: ownedError } = await admin
+      .from('attribute_entitlements')
+      .select('item_id')
+      .eq('user_id', user.id)
+      .in('item_id', priced.ids);
+    if (ownedError) throw ownedError;
+    if (owned?.length) throw Object.assign(new Error('Remove attributes you already purchased before checking out.'), { status: 409 });
+
+    const { data: account, error: accountError } = await admin
+      .from('player_accounts')
+      .select('wallet_address')
+      .eq('user_id', user.id)
+      .single();
+    if (accountError) throw accountError;
+    const expectedWallet = String(account?.wallet_address || '');
+    if (!validWallet(expectedWallet)) throw Object.assign(new Error('Link and verify Xaman before purchasing attributes.'), { status: 409 });
+
+    await verifyAttributeDestinationTrustline(priced.asset);
+    const purchaseId = randomUUID();
+    const invoiceId = invoiceIdForPurchase(purchaseId);
+    const createdAt = new Date().toISOString();
+    const expiresAt = new Date(Date.parse(createdAt) + ATTRIBUTE_STORE_PAYMENT_WINDOW_MINUTES * 60 * 1000).toISOString();
+    const xaman = await createAttributeXamanPayload({ purchaseId, invoiceId, asset: priced.asset, total: priced.total, itemCount: priced.ids.length });
+    payloadUuid = xaman.uuid;
+
+    const { error: insertError } = await admin.from('attribute_purchase_requests').insert({
+      id: purchaseId,
+      user_id: user.id,
+      payload_uuid: xaman.uuid,
+      item_ids: priced.ids,
+      asset_id: priced.asset.id,
+      currency: priced.asset.currency,
+      issuer: priced.asset.issuer,
+      destination: ATTRIBUTE_STORE_DESTINATION,
+      expected_wallet: expectedWallet,
+      total_amount: priced.total,
+      pricing_snapshot: priced.lineItems,
+      invoice_id: invoiceId,
+      status: 'pending',
+      created_at: createdAt,
+      expires_at: expiresAt
+    });
+    if (insertError) throw insertError;
+
+    return res.status(201).json({
+      purchase_id: purchaseId,
+      payload_uuid: xaman.uuid,
+      deeplink: xaman.next.always,
+      qr_png: xaman.refs?.qr_png || null,
+      item_ids: priced.ids,
+      total: priced.total,
+      asset_id: priced.asset.id,
+      asset_label: priced.asset.label,
+      network: 'mainnet',
+      expires_at: expiresAt
+    });
+  } catch (error) {
+    if (payloadUuid) await cancelAttributePayload(payloadUuid);
+    throw error;
+  }
+}
+
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'POST required.' });
+  if (!['GET', 'POST'].includes(req.method)) {
+    res.setHeader('Allow', 'GET, POST');
+    return res.status(405).json({ error: 'GET or POST required.' });
   }
 
   try {
+    if (String(req.query?.commerce || '').toLowerCase() === 'attribute-store') {
+      if (req.method === 'GET') return await handleAttributeStoreGet(req, res);
+      return await handleAttributeStoreStart(req, res);
+    }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST required for Magnet Can checkout.' });
     const { admin, user } = await requireUser(req);
     const quantity = Number(req.body?.quantity);
 

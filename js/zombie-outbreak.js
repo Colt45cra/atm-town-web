@@ -1,4 +1,4 @@
-/* ATM Town v235.9.3 — Horde Sprite Grounding + Walk Animation
+/* ATM Town v235.12 — Horde Survival + Power-Up Combat
  *
  * The Horde uses one elected room combat authority over Supabase
  * Realtime. That authority alone advances zombie AI/HP/deaths and broadcasts
@@ -19,6 +19,12 @@
   const PICKUP_RADIUS = 42;
   const WALK_ANIM_FPS = 8;
   const PLAYER_GROUND_FOOT_OFFSET = 34;
+  const BASE_PLAYER_HITS = 2;
+  const JUGGERNAUT_PLAYER_HITS = 5;
+  const PLAYER_ATTACK_DISTANCE = 34;
+  const PLAYER_HIT_INVULN_MS = 900;
+  const FIRE_DAMAGE_RADIUS = 72;
+  const FIRE_DAMAGE_PER_SECOND = 28;
   const FACING_ANGLE = Object.freeze({ right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 });
   const FACING_VECTOR = Object.freeze({ right: [1, 0], down: [0, 1], left: [-1, 0], up: [0, -1] });
 
@@ -81,10 +87,22 @@
     lastFireSeqByShooter: new Map(),
     rapidNetworkQueue: [],
     lastRapidNetworkFlushAt: 0,
+    playerHits: 0,
+    downed: false,
+    hitInvulnerableUntil: 0,
+    netHitSeq: 0,
+    seenHitIds: new Set(),
   };
 
   function isZombieEvent(event = state.event) { return event?.type === EVENT_TYPE; }
   function isActiveTown() { return isZombieEvent() && state.phase === 'active' && state.localPlayer.map === 'town'; }
+  function isLocalDowned() { return isActiveTown() && state.downed; }
+  function currentMaxHits() { return state.localPlayer?.juggernaut ? JUGGERNAUT_PLAYER_HITS : BASE_PLAYER_HITS; }
+  function updateVitals(){const node=document.getElementById('atmZombieVitals');if(node){node.classList.toggle('visible',isActiveTown());node.classList.toggle('downed',state.downed);node.textContent=state.downed?'DOWN · REVIVE NEEDED':`HITS ${Math.min(state.playerHits,currentMaxHits())}/${currentMaxHits()}`;}document.body.classList.toggle('atm-zombie-player-downed',isLocalDowned());}
+  function notifySurvivalChanged(){try{global.dispatchEvent(new CustomEvent('atm:zombie-survival-change',{detail:{downed:state.downed,hits:state.playerHits,maxHits:currentMaxHits()}}));}catch(_){}}
+  function reviveLocal(reviverId=''){if(!state.downed)return false;state.downed=false;state.playerHits=0;state.hitInvulnerableUntil=Date.now()+1400;updateVitals();notifySurvivalChanged();try{navigator.vibrate?.([35,30,60]);}catch(_){}global.ATMWorldEvents?.toast?.(reviverId?'REVIVED · BACK IN THE FIGHT':'REVIVED',2200);return true;}
+  function applyLocalPlayerHit(hitId=''){if(!isActiveTown()||state.downed)return false;const id=String(hitId||'');if(id&&state.seenHitIds.has(id))return false;if(id)state.seenHitIds.add(id);if(Date.now()<state.hitInvulnerableUntil)return false;state.hitInvulnerableUntil=Date.now()+PLAYER_HIT_INVULN_MS;state.playerHits+=1;const max=currentMaxHits();try{navigator.vibrate?.(state.playerHits>=max?[90,50,160]:55);}catch(_){}if(state.playerHits>=max){state.downed=true;state.aimActive=false;state.touchAimActive=false;state.mouseFiring=false;global.ATMWorldEvents?.toast?.('💀 YOU ARE DOWN · ANOTHER PLAYER CAN REVIVE YOU',3200);}else global.ATMWorldEvents?.toast?.(`HORDE HIT · ${state.playerHits}/${max}`,1400);updateVitals();notifySurvivalChanged();return true;}
+  function requestRevive(targetId){if(!isActiveTown()||state.downed||!targetId)return false;const target=state.participants.find(p=>String(p?.id||'')===String(targetId));if(!target||target.map!=='town'||!target.downed)return false;const distance=Math.hypot(Number(target.x)-state.localPlayer.x,Number(target.y)-state.localPlayer.y);if(!Number.isFinite(distance)||distance>86)return false;emitNetwork('revive',{targetId:String(targetId),reviverId:state.localId});global.ATMWorldEvents?.toast?.('REVIVE SENT',1000);return true;}
   function norm(x, y) {
     const m = Math.hypot(Number(x) || 0, Number(y) || 0);
     return m > 0.0001 ? [(Number(x) || 0) / m, (Number(y) || 0) / m, m] : [0, 0, 0];
@@ -208,6 +226,8 @@
       #atmZombieAimKnob{position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px;border-radius:50%;background:linear-gradient(145deg,#ff9cb3,#ff516f);box-shadow:0 6px 18px rgba(0,0,0,.35);transform:translate(0,0)}
       #atmZombieAimStick::after{content:'AIM / FIRE';position:absolute;left:50%;bottom:-18px;transform:translateX(-50%);white-space:nowrap;color:#ffb7c7;font:1000 8px/1 system-ui;letter-spacing:.05em;text-shadow:0 1px 4px #000}
       body.atm-zombie-combat-active #atmZombieAimStick{pointer-events:auto;opacity:1;visibility:visible}
+      body.atm-zombie-player-downed #atmZombieAimStick{opacity:.15!important;pointer-events:none!important}
+      #atmZombieVitals{position:fixed;z-index:48;left:50%;top:max(74px,calc(env(safe-area-inset-top) + 66px));transform:translateX(-50%);display:none;padding:7px 12px;border:1px solid rgba(255,109,134,.42);border-radius:999px;background:rgba(18,7,12,.86);color:#ffd4dc;font:1000 10px/1 system-ui;letter-spacing:.08em;pointer-events:none}#atmZombieVitals.visible{display:block}#atmZombieVitals.downed{border-color:#ff5b72;background:rgba(64,5,16,.92);color:#fff;font-size:12px;animation:atmDownPulse .8s ease-in-out infinite alternate}@keyframes atmDownPulse{to{transform:translateX(-50%) scale(1.04);box-shadow:0 0 22px rgba(255,71,101,.38)}}
       body.atm-zombie-combat-active #action.available{bottom:max(120px,calc(env(safe-area-inset-bottom) + 120px))!important}
       body.live-chat-open #atmZombieAimStick,body.atm-quick-chat-focus #atmZombieAimStick,body.locker-modal-open #atmZombieAimStick,body.directory-open #atmZombieAimStick,body.vending-modal-open #atmZombieAimStick,body.access-flow-open #atmZombieAimStick,body.sky-run-open #atmZombieAimStick,body.platform-panic-open #atmZombieAimStick,body.ring-rumble-open #atmZombieAimStick,body.flappy-jetpack-open #atmZombieAimStick,body.atm-darts-open #atmZombieAimStick{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
       @media(max-width:700px){#atmZombieAimStick{width:92px;height:92px;right:max(12px,env(safe-area-inset-right));bottom:max(13px,env(safe-area-inset-bottom))}#atmZombieAimKnob{width:36px;height:36px;margin:-18px}}
@@ -218,6 +238,7 @@
     stick.setAttribute('aria-label', 'Zombie Outbreak aim and fire control');
     stick.innerHTML = '<div id="atmZombieAimKnob"></div>';
     document.body.appendChild(stick);
+    const vitals=document.createElement('div');vitals.id='atmZombieVitals';vitals.setAttribute('aria-live','polite');document.body.appendChild(vitals);
 
     const knob = stick.querySelector('#atmZombieAimKnob');
     const pointer = { id: null };
@@ -230,7 +251,7 @@
       const nx = dx / max, ny = dy / max;
       state.aimRawX = nx; state.aimRawY = ny;
       state.touchAimActive = Math.hypot(nx, ny) > .08;
-      state.aimActive = state.touchAimActive;
+      state.aimActive = !state.downed && state.touchAimActive;
       knob.style.transform = `translate(${dx}px,${dy}px)`;
     }
     function finish(event) {
@@ -283,7 +304,7 @@
       hitRadius: Number(def.hit_radius || sheet.hitRadius || DEFAULT_HORDE_HIT_RADIUS),
       spawn_offset_ms: Number(def.spawn_offset_ms || 0),
       dead: false, hitFlash: 0,
-      dir: 'down', moving: false, animClock: 0,
+      dir: 'down', moving: false, animClock: 0, attackCooldown: 0, fireFxTimer: 0,
     };
   }
 
@@ -294,7 +315,7 @@
       state.eventId = incomingId;
       state.event = event;
       state.zombies = (event.zombies || []).map(cloneZombie);
-      state.weaponMode = 'default'; state.kills = 0; state.hits = 0; state.shots = 0;
+      state.weaponMode = 'default'; state.kills = 0; state.hits = 0; state.shots = 0; state.playerHits = 0; state.downed = false; state.hitInvulnerableUntil = 0; state.netHitSeq = 0; state.seenHitIds.clear();
       state.defaultBullets.length = 0; state.microStreaks.length = 0; state.spreadTracers.length = 0; state.muzzleFx.length = 0; state.hitFx.length = 0;
       state.bodyDir = 'down'; state.aimX = 0; state.aimY = 1; state.aimActive = false; state.touchAimActive = false;
       state.authorityId = ''; state.snapshotSeq = 0; state.lastSnapshotSeq = -1; state.lastSnapshotAt = 0; state.lastSnapshotSendAt = 0;
@@ -302,11 +323,12 @@
     } else if (incomingId) {
       state.event = event;
     } else if (state.eventId) {
-      state.event = null; state.eventId = ''; state.zombies = []; state.aimActive = false; state.touchAimActive = false; state.weaponMode = 'default';
+      state.event = null; state.eventId = ''; state.zombies = []; state.aimActive = false; state.touchAimActive = false; state.weaponMode = 'default'; state.playerHits = 0; state.downed = false; state.seenHitIds.clear();
       state.authorityId = ''; state.lastSnapshotSeq = -1; state.lastSnapshotAt = 0; state.rapidNetworkQueue.length = 0;
     }
     state.phase = incomingId ? String(phase || event?.phase || 'none') : 'none';
     document.body.classList.toggle('atm-zombie-combat-active', isActiveTown());
+    updateVitals();
   }
 
   function syncFromWorldEvents() {
@@ -332,6 +354,7 @@
   }
 
   function movementOverride(args = {}) {
+    if (isLocalDowned()) return { bodyDir: state.bodyDir, movementMode: 'downed', animationDirection: 1, downed: true };
     if (!isZombieEvent() || state.phase !== 'active' || args.map !== 'town' || !state.aimActive) return null;
     const [mx, my, mag] = norm(args.movementX, args.movementY);
     let movementMode = 'standing';
@@ -347,19 +370,22 @@
   function nearestTargetForZombie(zombie) {
     let best = null, bestD = Infinity;
     for (const p of state.participants) {
-      if (p.map !== 'town') continue;
+      if (p.map !== 'town' || p.downed || p.invisible) continue;
       const x = Number(p.x), y = Number(p.y);
       if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
       const d = Math.hypot(x - zombie.x, y - zombie.y);
-      if (d < bestD) { bestD = d; best = { x, y, d }; }
+      if (d < bestD) { bestD = d; best = { id:String(p.id||''), x, y, d, local:!!p.local }; }
     }
     return best;
   }
+  function zombieAttackPlayer(zombie,target){if(!target?.id)return;const hitId=`${state.eventId}:${zombie.id}:${++state.netHitSeq}`;if(target.id===state.localId)applyLocalPlayerHit(hitId);emitNetwork('player_hit',{targetId:target.id,zombieId:zombie.id,hitId});}
 
   function moveZombie(zombie, dt) {
     if (zombie.dead || !spawned(zombie)) return;
+    zombie.attackCooldown=Math.max(0,Number(zombie.attackCooldown||0)-dt);zombie.fireFxTimer=Math.max(0,Number(zombie.fireFxTimer||0)-dt);
     const target = nearestTargetForZombie(zombie);
-    if (!target || target.d < 30) { zombie.moving = false; zombie.animClock = 0; return; }
+    if (!target) { zombie.moving = false; zombie.animClock = 0; return; }
+    if (target.d < PLAYER_ATTACK_DISTANCE) { zombie.moving = false; zombie.animClock = 0;if(zombie.attackCooldown<=0){zombie.attackCooldown=.9+Math.random()*.28;zombieAttackPlayer(zombie,target);}return; }
     const dx = (target.x - zombie.x) / target.d, dy = (target.y - zombie.y) / target.d;
     zombie.dir = nearestFacingForVector(dx, dy);
     const step = zombie.speed * dt;
@@ -521,6 +547,10 @@
     }
   }
 
+  function applyFireDamage(dt){
+    if(!isAuthority()||!isActiveTown())return;
+    for(const p of state.participants){if(p?.map!=='town'||p?.downed||!p?.fireActive)continue;const px=Number(p.x),py=Number(p.y);if(!Number.isFinite(px)||!Number.isFinite(py))continue;for(const z of state.zombies){if(z.dead||!spawned(z))continue;const d=Math.hypot(z.x-px,z.y-py);if(d>FIRE_DAMAGE_RADIUS)continue;z.hp-=FIRE_DAMAGE_PER_SECOND*dt;z.hitFlash=.08;if(z.fireFxTimer<=0){z.fireFxTimer=.16;state.hitFx.push({x:z.x,y:z.y-20,life:.12,maxLife:.12});}if(z.hp<=0){z.hp=0;z.dead=true;state.kills+=1;}}}
+  }
   function buildSnapshot() {
     return {
       kind: 'snapshot',
@@ -594,6 +624,8 @@
       if (isAuthority()) sendSnapshot(true);
       return true;
     }
+    if (kind === 'player_hit') {if(String(payload.senderId||'')!==String(state.authorityId||''))return false;if(String(payload.targetId||'')===state.localId)applyLocalPlayerHit(String(payload.hitId||''));return true;}
+    if (kind === 'revive') {if(String(payload.targetId||'')!==state.localId)return true;const reviverId=String(payload.reviverId||payload.senderId||''),reviver=state.participants.find(p=>String(p?.id||'')===reviverId);const distance=reviver?Math.hypot(Number(reviver.x)-state.localPlayer.x,Number(reviver.y)-state.localPlayer.y):Infinity;if(reviver&&reviver.map==='town'&&!reviver.downed&&Number.isFinite(distance)&&distance<=96)reviveLocal(reviverId);return true;}
     if (kind !== 'fire') return false;
 
     const shooterId = String(payload.senderId || '');
@@ -641,6 +673,8 @@
     state.networkOnline = Boolean(args.networkOnline);
     state.localPlayer = { id: state.localId, x: Number(args.x || 0), y: Number(args.y || 0), map: String(args.map || '') };
     state.participants = Array.isArray(args.participants) ? args.participants : [state.localPlayer];
+    const localParticipant=state.participants.find(p=>String(p?.id||'')===state.localId)||state.participants.find(p=>p?.local);if(localParticipant){state.localPlayer={...state.localPlayer,juggernaut:!!localParticipant.juggernaut,invisible:!!localParticipant.invisible,fireActive:!!localParticipant.fireActive};}
+    updateVitals();
     state.mapBounds = args.mapBounds || state.mapBounds;
     state.isBlocked = typeof args.isBlocked === 'function' ? args.isBlocked : state.isBlocked;
     document.body.classList.toggle('atm-zombie-combat-active', isActiveTown());
@@ -652,15 +686,17 @@
     }
 
     refreshAuthority();
+    if(!state.downed&&state.playerHits>=currentMaxHits()){state.downed=true;state.aimActive=false;state.touchAimActive=false;state.mouseFiring=false;updateVitals();notifySurvivalChanged();global.ATMWorldEvents?.toast?.('💀 JUGGERNAUT EXPIRED · YOU ARE DOWN',2800);}
+    if(state.downed){state.aimActive=false;state.touchAimActive=false;state.controllerAim=false;state.mouseFiring=false;}
 
     // Controller right stick becomes aim/fire during the combat event. Touch,
     // mouse, and controller keep independent active flags so releasing one input
     // can never leave the weapon stuck firing.
     const [gx, gy, gmag] = norm(args.controllerAimX, args.controllerAimY);
-    state.controllerAim = gmag > .22;
+    state.controllerAim = !state.downed && gmag > .22;
     if (state.controllerAim) {
       state.aimRawX = gx; state.aimRawY = gy; state.aimActive = true;
-    } else if (state.mouseFiring && typeof args.screenToWorld === 'function') {
+    } else if (!state.downed && state.mouseFiring && typeof args.screenToWorld === 'function') {
       const point = args.screenToWorld(state.mouseX, state.mouseY);
       if (point) {
         state.aimRawX = Number(point.x) - state.localPlayer.x;
@@ -693,6 +729,7 @@
         zombie.netX = zombie.x; zombie.netY = zombie.y;
         zombie.hitFlash = Math.max(0, zombie.hitFlash - dt);
       }
+      applyFireDamage(dt);
       sendSnapshot(false);
     } else {
       updateFollowerZombies(dt);
@@ -701,7 +738,7 @@
     checkWeaponPickups();
 
     state.fireTimer = Math.max(0, state.fireTimer - dt);
-    if (state.aimActive && state.fireTimer <= 0) {
+    if (!state.downed && state.aimActive && state.fireTimer <= 0) {
       const ox = state.localPlayer.x, oy = state.localPlayer.y - 28;
       const weapon = state.weaponMode === 'rapid' ? 'rapid' : state.weaponMode === 'spread' ? 'spread' : 'default';
       const seed = nextShotSeed();
@@ -841,7 +878,7 @@
     }
 
     // Weapon points inside the same ±40° body-facing cone used by the sample.
-    if (isActiveTown()) {
+    if (isActiveTown() && !state.downed) {
       const ox = state.localPlayer.x, oy = state.localPlayer.y - 28;
       const angle = Math.atan2(state.aimY, state.aimX);
       ctx.save(); ctx.translate(ox, oy); ctx.rotate(angle);
@@ -860,12 +897,15 @@
       aimX: Number(state.aimX || 0),
       aimY: Number(state.aimY || 1),
       aimActive: Boolean(state.aimActive),
+      downed: Boolean(state.downed),
+      hitsTaken: Number(state.playerHits || 0),
+      maxHits: currentMaxHits(),
     };
   }
 
   function drawRemoteWeapon(ctx, remote = {}) {
     const combat = remote?.zombieCombat;
-    if (!combat?.active || !isZombieEvent() || state.phase !== 'active' || String(combat.eventId || '') !== state.eventId || remote.map !== 'town') return;
+    if (!combat?.active || combat?.downed || !isZombieEvent() || state.phase !== 'active' || String(combat.eventId || '') !== state.eventId || remote.map !== 'town') return;
     const x = Number.isFinite(Number(remote.drawX)) ? Number(remote.drawX) : Number(remote.x);
     const y = Number.isFinite(Number(remote.drawY)) ? Number(remote.drawY) : Number(remote.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -886,6 +926,12 @@
     ctx.restore();
   }
 
+  function drawPlayerEffects(ctx,player={}){
+    if(!isZombieEvent()||state.phase!=='active')return;const x=Number(player.x),y=Number(player.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;
+    if(player.fireActive&&!player.downed){const now=performance.now();ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<8;i++){const phase=now*.006+i*.83;const fx=x+Math.sin(phase*1.7)*18+(i%2?8:-8),fy=y+24-(i%4)*14-Math.abs(Math.sin(phase))*18;const r=5+Math.abs(Math.sin(phase*1.3))*5;const g=ctx.createRadialGradient(fx,fy,1,fx,fy,r*2);g.addColorStop(0,'rgba(255,245,125,.95)');g.addColorStop(.42,'rgba(255,111,28,.82)');g.addColorStop(1,'rgba(255,35,10,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(fx,fy,r*2,0,Math.PI*2);ctx.fill();}ctx.restore();}
+    if(player.downed){ctx.save();ctx.textAlign='center';ctx.font='1000 10px system-ui';ctx.fillStyle='#ff8ea1';ctx.strokeStyle='rgba(0,0,0,.75)';ctx.lineWidth=3;ctx.strokeText('DOWN · REVIVE',x,y-58);ctx.fillText('DOWN · REVIVE',x,y-58);ctx.restore();}
+  }
+  function isActive(){return isActiveTown();}
   function controllerOwnsRightStick() { return isActiveTown(); }
   function getStats() {
     return {
@@ -921,7 +967,11 @@
     getDepthActors,
     drawActor,
     drawRemoteWeapon,
+    drawPlayerEffects,
     receiveNetwork,
+    requestRevive,
+    isLocalDowned,
+    isActive,
     controllerOwnsRightStick,
     getBroadcastState,
     getStats,

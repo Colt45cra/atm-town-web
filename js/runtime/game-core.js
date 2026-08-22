@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.11.8',name:ATM_CONFIG?.build?.name||'Mobile Store Layout Rebuild'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12',name:ATM_CONFIG?.build?.name||'Commerce + Horde Survival + Neon Racer'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -344,7 +344,7 @@ let townZoom=Number.isFinite(savedCameraZoom)?Math.max(ZOOM_MIN,Math.min(ZOOM_MA
 let zoom=townZoom;
 const player={x:TOWN_INITIAL_SPAWN.x,y:TOWN_INITIAL_SPAWN.y,r:14,speed:182,dir:'up',moving:false,frame:1,animTimer:0};
 const VENDING_POWER_SECONDS=30;
-const powerUps={speed:0,bounce:0,magnet:0,jetpack:0};
+const powerUps={speed:0,bounce:0,magnet:0,jetpack:0,invisibility:0,juggernaut:0,fire:0};
 const MAGNET_RANGE=300;
 const MAGNET_PULL_SPEED=430;
 const JETPACK_MAX_LIFT=1040;
@@ -2281,7 +2281,7 @@ const ARCADE_AUTHORED_ZONES=Object.freeze([
   Object.freeze({id:'atmRingRumble',type:'ring-rumble',name:'ATM RING RUMBLE',text:'Knock opponents off the arena while the outer platform rings collapse.',x1:948,y1:357,x2:1019,y2:393,padX:18,padTop:12,padBottom:48}),
   Object.freeze({id:'atmFlappyJetpack',type:'flappy-jetpack',name:'ATM FLAPPY JETPACK',text:'Tap the jetpack through an endless skyline of tower gaps.',x1:1035,y1:357,x2:1110,y2:393,padX:18,padTop:12,padBottom:48}),
   Object.freeze({id:'arcadeTokenCounter',type:'misc',name:'ATM TOKEN COUNTER',text:'Exchange arcade winnings and view ATM Token Arcade rewards here.',x1:871,y1:637,x2:1035,y2:659,padX:20,padTop:12,padBottom:50}),
-  Object.freeze({id:'arcadeRacingCabinet',type:'misc',name:'RACING CABINET',text:'A future ATM Town racing game will launch from this cabinet.',x1:115,y1:718,x2:187,y2:752,padX:18,padTop:12,padBottom:46}),
+  Object.freeze({id:'atmNeonRacer',type:'neon-racer',name:'ATM NEON RACER',text:'Dodge traffic, collect ATM coins, and survive an accelerating neon city run.',x1:115,y1:718,x2:187,y2:752,padX:18,padTop:12,padBottom:46}),
   Object.freeze({id:'arcadeShooterCabinet',type:'misc',name:'SHOOTER CABINET',text:'A future ATM Town shooter game will launch from this cabinet.',x1:204,y1:718,x2:277,y2:752,padX:18,padTop:12,padBottom:46}),
   Object.freeze({id:'arcadeFighterCabinet',type:'misc',name:'FIGHTER CABINET',text:'A future ATM Town fighting game will launch from this cabinet.',x1:293,y1:718,x2:364,y2:752,padX:18,padTop:12,padBottom:46}),
   Object.freeze({id:'arcadeVending',type:'vending',name:'ATM POWER-UP VENDING',text:'Purchase a temporary ATM Town power-up.',x1:941,y1:981,x2:1102,y2:1004,padX:22,padTop:12,padBottom:54})
@@ -2985,7 +2985,7 @@ async function connectMultiplayer(){
 }
 function broadcastState(force=false){
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
 window.addEventListener('atm:world-event-triggered',(event)=>{
   if(!onlineMode||!realtimeChannel)return;
@@ -2995,6 +2995,8 @@ window.addEventListener('atm:world-event-triggered',(event)=>{
   // normal 100 ms multiplayer heartbeat.
   broadcastState(true);
 });
+
+window.addEventListener('atm:zombie-survival-change',()=>broadcastState(true));
 
 window.addEventListener('atm:zombie-network-send',(event)=>{
   if(!onlineMode||!realtimeChannel)return;
@@ -3013,7 +3015,8 @@ const ARCADE_GAME_PRESENCE_CONFIG=Object.freeze({
   'sky-run':{panel:'skyRunPanel',label:'SKY RUN'},
   'platform-panic':{panel:'platformPanicPanel',label:'PLATFORM PANIC'},
   'ring-rumble':{panel:'ringRumblePanel',label:'RING RUMBLE'},
-  'flappy-jetpack':{panel:'flappyJetpackPanel',label:'FLAPPY JETPACK'}
+  'flappy-jetpack':{panel:'flappyJetpackPanel',label:'FLAPPY JETPACK'},
+  'neon-racer':{panel:'neonRacerPanel',label:'NEON RACER'}
 });
 function characterPreviewSource(characterId){
   return document.querySelector(`.characterChoice[data-character="${characterId||'classic'}"] img`)?.src||document.querySelector('.characterChoice[data-character="classic"] img')?.src||'';
@@ -3254,7 +3257,7 @@ function releaseJetpackThrust(pointerId=null){
   broadcastState(true);
 }
 function startJump(){
-  if(dialogOpen)return;
+  if(dialogOpen||window.ATMZombieOutbreak?.isLocalDowned?.()===true)return;
   if(jetpackState.active){beginJetpackThrust(null);return;}
   if(jumpState.active){if(canUseJetpack())activateJetpack(null);return;}
   lockJumpProfile();
@@ -3974,6 +3977,13 @@ function drawHQPlayersAndOccluders(){
   }
 }
 
+function drawHordePlayerSprite({x,y,dir,frame,name='',alpha=1,bob=0,jump=0,character='classic',jetpackActive=false,jetpack=false,jetpackEquipped=false,loadout=null,activity=null,downed=false}){
+  ctx.save();
+  if(downed){const pivotY=y+20;ctx.translate(x,pivotY);ctx.rotate(Math.PI/2);ctx.translate(-x,-pivotY);}
+  drawPlayerSprite(x,y,dir,frame,downed?'':name,alpha,bob,jump,character,jetpackActive,jetpack,jetpackEquipped,loadout,downed?null:activity);
+  ctx.restore();
+  if(downed&&name)drawPlayerNameplate(x,y-55,name,{label:'DOWN'});
+}
 function drawDepthScene(t){
   updateRemoteInterpolation();
   const items=[];
@@ -4019,8 +4029,10 @@ function drawDepthScene(t){
           ctx.restore();
         }
       }else if(item.type==='remote'){
-        drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
-        window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
+        const remoteDowned=!!item.p?.zombieCombat?.downed,remoteInvisible=!!item.p?.powers?.invisibility;
+        drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name,alpha:remoteInvisible?.28:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:remoteInvisible,local:false});
+        if(!remoteDowned)window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
       }else if(item.type==='bot'){
         const bot=item.bot;
         drawPlayerSprite(bot.drawX,bot.drawY,bot.dir,bot.frame,bot.name,0.96,0,0,bot.characterId,false,false,false,bot.loadout||{},null);
@@ -4030,7 +4042,9 @@ function drawDepthScene(t){
         const onStairs=playerOnStairs();
         const amount=onStairs?0.75:2.0;
         const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*amount:0;
-        drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',1,bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);
+        const localDowned=window.ATMZombieOutbreak?.isLocalDowned?.()===true;
+        drawHordePlayerSprite({x:player.x,y:player.y,dir:player.dir,frame:player.frame,name:'',alpha:powerUps.invisibility>0?.28:1,bob,jump:jumpLift(),character:selectedCharacter,jetpackActive:jetpackState.active,jetpack:jetpackState.thrusting,jetpackEquipped:canUseJetpack(),loadout:window.atmActiveLoadout||null,downed:localDowned});
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:localDowned,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
       }
     }
   }else if(currentMap==='hq'){
@@ -4212,7 +4226,7 @@ function gamepadActiveUiRoot(){
   const selectors=[
     '#atmWorldEventOverlay.open','#atmEmbeddedWalletModal.open','#atmPeopleHubModal.open',
     '#lockerPanel.open','#tradeNftPanel.open','#arcadeLeaderboardPanel.open','#directoryPanel.open',
-    '#atmDartsPanel.open','#skyRunPanel.open','#platformPanicPanel.open','#ringRumblePanel.open','#flappyJetpackPanel.open'
+    '#atmDartsPanel.open','#skyRunPanel.open','#platformPanicPanel.open','#ringRumblePanel.open','#flappyJetpackPanel.open','#neonRacerPanel.open'
   ];
   for(const selector of selectors){const el=document.querySelector(selector);if(gamepadElementVisible(el))return el;}
   if(vendingOpen){const el=document.getElementById('vendingPanel');if(gamepadElementVisible(el))return el;}
@@ -4269,6 +4283,7 @@ function gamepadArcadeMode(){
   if(document.body.classList.contains('platform-panic-open'))return'platform-panic';
   if(document.body.classList.contains('ring-rumble-open'))return'ring-rumble';
   if(document.body.classList.contains('flappy-jetpack-open'))return'flappy-jetpack';
+  if(document.body.classList.contains('neon-racer-open'))return'neon-racer';
   if(document.body.classList.contains('atm-darts-open'))return'darts';
   return'';
 }
@@ -4284,7 +4299,7 @@ function gamepadUpdateArcadeAxes(mode,x,y){
   }
 }
 function gamepadArcadeStartButton(mode){
-  const ids={'sky-run':'skyRunStart','platform-panic':'platformPanicStart','ring-rumble':'ringRumbleStart','flappy-jetpack':'flappyJetpackStart'};
+  const ids={'sky-run':'skyRunStart','platform-panic':'platformPanicStart','ring-rumble':'ringRumbleStart','flappy-jetpack':'flappyJetpackStart','neon-racer':'neonRacerStart'};
   const button=document.getElementById(ids[mode]||'');return gamepadElementVisible(button)?button:null;
 }
 function gamepadBack(){
@@ -4293,7 +4308,7 @@ function gamepadBack(){
     '#lockerPanel.open #lockerNftDetailClose','#lockerPanel.open #lockerCloseButton','#tradeNftPanel.open #tradeNftClose',
     '#arcadeLeaderboardPanel.open #arcadeLeaderboardClose','#directoryPanel.open #directoryClose',
     '#atmDartsPanel.open #atmDartsClose','#skyRunPanel.open #skyRunClose','#platformPanicPanel.open #platformPanicClose',
-    '#ringRumblePanel.open #ringRumbleClose','#flappyJetpackPanel.open #flappyJetpackClose'
+    '#ringRumblePanel.open #ringRumbleClose','#flappyJetpackPanel.open #flappyJetpackClose','#neonRacerPanel.open #neonRacerClose'
   ];
   for(const selector of closeSelectors){const button=document.querySelector(selector);if(gamepadElementVisible(button)){button.click();return true;}}
   if(vendingOpen){document.getElementById('closeVending')?.click();return true;}
@@ -4481,8 +4496,14 @@ function nearestAtmPayRemote(maxDistance=82){
   }
   return best;
 }
+function nearestHordeRevivePlayer(maxDistance=78){
+  if(currentMap!=='town'||window.ATMZombieOutbreak?.isActive?.()!==true)return null;
+  const now=Date.now();let best=null,bestDistance=maxDistance;
+  for(const [id,p] of remotePlayers){if(p?.map!=='town'||now-Number(p.lastSeen||0)>3500||!p?.zombieCombat?.downed)continue;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);if(!Number.isFinite(x)||!Number.isFinite(y))continue;const d=Math.hypot(player.x-x,player.y-y);if(d<bestDistance){bestDistance=d;best={id:'horde-revive:'+id,type:'horde-revive',name:'REVIVE '+String(p.name||'PLAYER').toUpperCase(),text:'Bring this player back into The Horde.',remoteId:String(id),x,y,radius:maxDistance};}}return best;
+}
 function nearestThing(){
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
+  const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget)return reviveTarget;
   let best=null,dist=99999,bestRadius=175;
   if(currentMap==='hq'){
     const maskedInteraction=hqInteractionThing();
@@ -4540,10 +4561,10 @@ function formatPowerTime(seconds){
   return mins+':'+String(secs).padStart(2,'0');
 }
 function updatePowerHud(force=false){
-  const totalSecond=Math.ceil(powerUps.speed)+Math.ceil(powerUps.bounce)*10000+Math.ceil(powerUps.magnet)*100000000;
+  const totalSecond=Math.ceil(powerUps.speed)+Math.ceil(powerUps.bounce)*10000+Math.ceil(powerUps.magnet)*100000000+Math.ceil(powerUps.invisibility)*1000000000000+Math.ceil(powerUps.juggernaut)*1000000000000000+Math.ceil(powerUps.fire)*1000000000000000000;
   if(!force&&totalSecond===powerHudSecond)return;
   powerHudSecond=totalSecond;
-  for(const type of ['speed','bounce','magnet']){
+  for(const type of ['speed','bounce','magnet','invisibility','juggernaut','fire']){
     const active=powerUps[type]>0;
     const value=formatPowerTime(powerUps[type]);
     document.getElementById(type+'PowerTimer').classList.toggle('active',active);
@@ -4557,7 +4578,7 @@ function addPowerUp(type){
   powerUps[type]+=VENDING_POWER_SECONDS;
   updatePowerHud(true);
   const message=document.getElementById('vendingMessage');
-  const names={speed:'⚡ Lightning',bounce:'↟ Bounce',magnet:'🧲 Magnet',jetpack:'🚀 Jetpack'};
+  const names={speed:'⚡ Lightning',bounce:'↟ Bounce',magnet:'🧲 Magnet',jetpack:'🚀 Jetpack',invisibility:'👻 Ghost',juggernaut:'🛡️ Juggernaut',fire:'🔥 Inferno'};
   message.textContent=names[type]+' time increased by 30 seconds! No coins charged.';
   if(type==='jetpack'){syncJetpackUi();updateJetpackHud(true);window.atmLockerInventoryChanged?.();}
   clearTimeout(addPowerUp.messageTimer);
@@ -4823,7 +4844,7 @@ function closeVending(options={}){
 }
 function updatePowerUps(dt){
   let changed=false;
-  for(const type of ['speed','bounce','magnet','jetpack']){
+  for(const type of ['speed','bounce','magnet','jetpack','invisibility','juggernaut','fire']){
     if(powerUps[type]>0){
       const before=Math.ceil(powerUps[type]);
       powerUps[type]=Math.max(0,powerUps[type]-dt);
@@ -4948,7 +4969,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){let hint='';if(thing?.type==='player-nft-beacon')hint='';else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
+function interactionHint(thing){let hint='';if(thing?.type==='player-nft-beacon')hint='';else if(thing?.type==='horde-revive')hint='Tap ACTION to revive '+String(thing.name||'player').replace(/^REVIVE /,'');else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack','neon-racer'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -5054,7 +5075,9 @@ setInterval(saveAccountLocation,5000);
 window.addEventListener('pagehide',saveAccountLocation);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAccountLocation();});
 function interact(){
+  if(window.ATMZombieOutbreak?.isLocalDowned?.()===true){window.ATMWorldEvents?.toast?.('💀 YOU ARE DOWN · WAIT FOR A REVIVE',1400);return;}
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget&&!dialogOpen){tradeNftOpen(tradeTarget);return;}
+  const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget&&!dialogOpen){window.ATMZombieOutbreak?.requestRevive?.(reviveTarget.remoteId);return;}
   // Vending keeps priority over normal world objects after player Trade Beacons.
   const vending=nearestVendingMachine();
   if(vending&&!vendingOpen){openVending();return;}
@@ -5205,14 +5228,14 @@ function update(dt){
   if(keys['s']||keys['arrowdown'])dy+=1;
   const mag=Math.hypot(dx,dy);
   const combatMoveX=mag>0?dx/mag:0,combatMoveY=mag>0?dy/mag:0;
-  const zombieParticipants=[{id:playerId,x:player.x,y:player.y,map:currentMap,local:true}];
+  const zombieParticipants=[{id:playerId,x:player.x,y:player.y,map:currentMap,local:true,downed:window.ATMZombieOutbreak?.isLocalDowned?.()===true,invisible:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fireActive:powerUps.fire>0}];
   if(currentMap==='town'){
     const zombieNow=Date.now();
     for(const [id,p] of remotePlayers){
       if(p?.map!=='town'||zombieNow-Number(p.lastSeen||0)>3500)continue;
       const px=Number.isFinite(Number(p.drawX))?Number(p.drawX):Number(p.x);
       const py=Number.isFinite(Number(p.drawY))?Number(p.drawY):Number(p.y);
-      if(Number.isFinite(px)&&Number.isFinite(py))zombieParticipants.push({id,x:px,y:py,map:'town'});
+      if(Number.isFinite(px)&&Number.isFinite(py))zombieParticipants.push({id,x:px,y:py,map:'town',downed:!!p?.zombieCombat?.downed,invisible:!!p?.powers?.invisibility,juggernaut:!!p?.powers?.juggernaut,fireActive:!!p?.powers?.fire});
     }
   }
   window.ATMZombieOutbreak?.update?.({
@@ -5227,6 +5250,8 @@ function update(dt){
       return {x:cam.x+(clientX-rect.left)/zoom,y:cam.y+(clientY-rect.top)/zoom};
     }
   });
+  const hordeDowned=window.ATMZombieOutbreak?.isLocalDowned?.()===true;
+  if(hordeDowned){dx=0;dy=0;if(jumpState.active)jumpState.active=false;if(jetpackState.active)endJetpack();}
   const zombieMotion=window.ATMZombieOutbreak?.movementOverride?.({map:currentMap,movementX:combatMoveX,movementY:combatMoveY,currentDir:player.dir,airborne:jumpState.active||jetpackState.active})||null;
   let moved=false;
   let onStairs=false;
@@ -5392,7 +5417,8 @@ function update(dt){
   const registeredEntrance=nearThing&&currentMap==='town'&&ATM_MAPS.fromEntrance(nearThing.id);
   let actionLabel='ACTION';
   if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';
-  else if(nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack'].includes(nearThing.type))actionLabel='PLAY';
+  else if(nearThing?.type==='horde-revive')actionLabel='REVIVE';
+  else if(nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack','neon-racer'].includes(nearThing.type))actionLabel='PLAY';
   else if(nearThing?.type==='vending')actionLabel='USE';
   else if(nearThing?.type==='voice')actionLabel='JOIN';
   else if(registeredEntrance)actionLabel='ENTER';
@@ -5762,6 +5788,7 @@ let lockerSavedCharacters=safeJsonParse(safeStorageGet(ATM_LOCKER_SAVED_CHARACTE
 if(!Array.isArray(lockerSavedCharacters))lockerSavedCharacters=[];
 let lockerActiveSavedCharacterId=null;
 window.atmActiveLoadout={...lockerLoadout};
+const lockerPurchasedItems=new Set();
 let lockerState={open:false,tab:'character',slot:'body',filter:'my-characters',direction:'down',nfts:[],ledgerIndex:null,validated:false,status:'idle',error:'',selectedItemId:null,nftMetadata:new Map(),nftMetadataLoading:new Set(),nftBuyOffers:new Map(),nftOffersLoading:new Set(),nftSearch:'',nftSort:'serial-desc',selectedNftId:null,nftHydrationGeneration:0,truncated:false};
 let lockerPreviewFrame=1;
 let lockerNftRenderTimer=0;
@@ -5954,6 +5981,7 @@ function lockerOwnershipInfo(item){
     const matches=lockerState.nfts.filter(nft=>lockerNftMatches(item,nft));
     if(matches.length)return {owned:true,quantity:matches.length,label:matches.length>1?'NFT OWNED ×'+matches.length:'NFT OWNED',source:'xrpl',matches};
   }
+  if(lockerPurchasedItems.has(String(item?.id||'')))return {owned:true,quantity:1,label:'PURCHASED',source:'purchase'};
   if(item.ownership==='starter')return {owned:true,quantity:1,label:'STARTER',source:'starter'};
   if(item.ownership==='session'){
     const seconds=item.id==='equipment:jetpack'?Math.ceil(powerUps.jetpack):0;
@@ -6117,7 +6145,7 @@ window.atmLockerInventoryChanged=()=>{if(lockerState.status==='ready'&&!lockerSt
 window.atmLockerAccountUpdated=()=>{lockerUpdateWalletBadge();if(lockerState.open&&lockerWalletAddress())lockerRefreshXrpl(true);else lockerRender();};
 window.atmInventory=Object.freeze({catalog:ATM_ITEM_CATALOG,collection:ATM_YOU_ARE_ATM_COLLECTION,traitRules:ATM_YOU_ARE_ATM_TRAIT_RULES,open:()=>lockerOpen(),refreshXrpl:()=>lockerRefreshXrpl(false),entitlements:()=>ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).source==='xrpl').map(item=>item.id),grantFoundItem:lockerGrantFoundItem,revokeFoundItem:lockerRevokeFoundItem});
 window.atmLockerOwns=(itemId)=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id===itemId);return !!item&&lockerOwnershipInfo(item).owned;};
-window.atmLockerPermanentJetpackEquipped=()=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id==='equipment:jetpack');return lockerLoadout.back==='equipment:jetpack'&&!!item&&lockerOwnershipInfo(item).source==='xrpl';};
+window.atmLockerPermanentJetpackEquipped=()=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id==='equipment:jetpack');const source=item?lockerOwnershipInfo(item).source:'';return lockerLoadout.back==='equipment:jetpack'&&!!item&&(source==='xrpl'||source==='purchase');};
 
 function lockerUpdateWalletBadge(){
   const node=document.getElementById('lockerWalletBadge');if(!node)return;
@@ -6340,6 +6368,7 @@ function lockerRender(){
   document.querySelectorAll('.lockerDirection').forEach(node=>node.classList.toggle('active',node.dataset.lockerDirection===lockerState.direction));const dirLabel=document.getElementById('lockerPreviewDirectionLabel');if(dirLabel)dirLabel.textContent=({down:'FRONT',left:'LEFT',up:'BACK',right:'RIGHT'})[lockerState.direction]||lockerState.direction.toUpperCase();
 }
 function lockerOpen(){
+  attributeStoreRefreshCommerce?.();
   if(lockerState.open||vendingOpen)return;
   lockerPreviousActivity=currentPlayerActivity;
   currentPlayerActivity={type:'locker',label:'LOCKER',startedAt:Date.now()};
@@ -6371,10 +6400,14 @@ document.querySelectorAll('.lockerDirection').forEach(button=>button.addEventLis
 document.getElementById('lockerPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='lockerPanel')lockerClose();});
 window.addEventListener('resize',()=>{if(lockerState.open)lockerDrawPreview();},{passive:true});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&lockerState.open){event.preventDefault();lockerClose();}});
-// ===== v235.11.8 Character Attribute Store + mobile layout rebuild + dedicated checkout sheet =====
+// ===== v235.12 Character Attribute Store + permanent Mainnet crypto checkout =====
 const ATM_ATTRIBUTE_STORE_CART_KEY='atm_attribute_store_cart_v1';
 const ATM_ATTRIBUTE_STORE_CONFIG=ATM_CONFIG?.attributeStore||Object.freeze({baseCurrency:'USD',checkoutEnabled:false,purchaseNetwork:'mainnet',merchantAddress:'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB',defaultUsdPrice:null,prices:Object.freeze({}),paymentCategories:Object.freeze([{id:'cash',label:'CASH',rail:'CARD',currency:'USD'},{id:'crypto',label:'CRYPTO',rail:'XRPL',network:'mainnet'}]),cryptoAssets:Object.freeze([{id:'atm',label:'ATM',type:'issued',currency:'ATM',issuer:'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ'},{id:'rlusd',label:'RLUSD',type:'issued',currency:'524C555344000000000000000000000000000000',issuer:'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De'},{id:'xrp',label:'XRP',type:'native',currency:'XRP',issuer:null}])});
-let attributeStoreState={open:false,checkoutOpen:false,characterId:'classic',filter:'all',show:'buyable',paymentCategory:'crypto',cryptoAsset:'atm',cart:safeJsonParse(safeStorageGet(ATM_ATTRIBUTE_STORE_CART_KEY,'[]'),[])};
+let attributeStoreState={open:false,checkoutOpen:false,characterId:'classic',filter:'all',paymentCategory:'crypto',cryptoAsset:'atm',cart:safeJsonParse(safeStorageGet(ATM_ATTRIBUTE_STORE_CART_KEY,'[]'),[])};
+let attributeStoreServerPrices=Object.create(null);
+let attributeStoreCommerceLoaded=false;
+let attributeStorePaymentPollTimer=null;
+const ATM_ATTRIBUTE_STORE_PENDING_KEY='atm_attribute_store_pending_v1';
 if(!Array.isArray(attributeStoreState.cart))attributeStoreState.cart=[];
 attributeStoreState.cart=[...new Set(attributeStoreState.cart.map(String))].filter(id=>ATM_ITEM_CATALOG.some(item=>item.id===id&&item.type==='equipment'));
 let attributeStorePreviousActivity=null;
@@ -6383,8 +6416,9 @@ function attributeStoreCharacters(){return ATM_ITEM_CATALOG.filter(item=>item.ty
 function attributeStoreItemCharacterIds(item){if(Array.isArray(item?.storeCharacterIds)&&item.storeCharacterIds.length)return item.storeCharacterIds.slice();if(Array.isArray(item?.compatibleCharacterIds)&&item.compatibleCharacterIds.length)return item.compatibleCharacterIds.slice();if(item?.id==='equipment:jetpack')return ['classic'];return ['classic'];}
 function attributeStoreItemInCharacter(item,characterId){return item?.type==='equipment'&&attributeStoreItemCharacterIds(item).includes(characterId);}
 function attributeStoreItemIsCatalogProduct(item){return item?.type==='equipment'&&(item.ownership==='store'||item.ownership==='development'||item.ownership==='session'||lockerHasXrplMapping(item));}
-function attributeStorePrice(item){const raw=ATM_ATTRIBUTE_STORE_CONFIG?.prices?.[item.id]??item.storePriceUsd??ATM_ATTRIBUTE_STORE_CONFIG?.defaultUsdPrice;if(raw===null||raw===undefined||raw==='')return null;const value=Number(raw);return Number.isFinite(value)&&value>=0?value:null;}
-function attributeStorePriceText(item){const price=attributeStorePrice(item);return price===null?'PRICE NOT SET':new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(price);}
+function attributeStorePrice(item,assetId='usd'){const server=attributeStoreServerPrices?.[item?.id]?.[assetId];const raw=server??(assetId==='usd'?(ATM_ATTRIBUTE_STORE_CONFIG?.prices?.[item.id]??item.storePriceUsd??ATM_ATTRIBUTE_STORE_CONFIG?.defaultUsdPrice):null);if(raw===null||raw===undefined||raw==='')return null;const value=Number(raw);return Number.isFinite(value)&&value>0?value:null;}
+function attributeStorePriceText(item){const price=attributeStorePrice(item,'usd');return price===null?'PRICE NOT SET':new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(price);}
+function attributeStoreAssetPriceText(amount,assetId){if(amount===null||amount===undefined)return '—';if(assetId==='usd')return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(amount));return `${Number(amount).toLocaleString(undefined,{maximumFractionDigits:6})} ${String(assetId||'').toUpperCase()}`;}
 function attributeStoreCharacterName(characterId){return lockerCharacterName(characterId).toUpperCase();}
 function attributeStoreSetStatus(message,tone=''){const node=document.getElementById('attributeStoreStatus');if(!node)return;node.textContent=message||'';node.className=tone||'';}
 function attributeStoreCartItems(){return attributeStoreState.cart.map(id=>ATM_ITEM_CATALOG.find(item=>item.id===id)).filter(Boolean);}
@@ -6394,11 +6428,51 @@ function attributeStoreCharacterThumbnail(characterId){return lockerItemPreview(
 function attributeStoreCreateCharacters(){const host=document.getElementById('attributeStoreCharacters');if(!host)return;host.textContent='';for(const character of attributeStoreCharacters()){const count=ATM_ITEM_CATALOG.filter(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,character.characterId)).length;const button=document.createElement('button');button.type='button';button.className='attributeStoreCharacter'+(attributeStoreState.characterId===character.characterId?' active':'');const preview=attributeStoreCharacterThumbnail(character.characterId);button.innerHTML=(preview?`<img alt="${character.name}" src="${preview}">`:`<span class="fallback">${character.emoji||'◈'}</span>`)+`<span><strong>${character.name}</strong><small>${count} ATTRIBUTE${count===1?'':'S'}</small></span>`;button.addEventListener('click',()=>{attributeStoreState.characterId=character.characterId;attributeStoreState.filter='all';attributeStoreRender();});host.appendChild(button);}}
 function attributeStoreCreateFilters(){const host=document.getElementById('attributeStoreFilters');if(!host)return;host.textContent='';const filters=[['all','ALL'],['body','BODY'],['chest','CHEST'],['face','FACE'],['head','HEAD'],['back','BACKPACK'],['katana','KATANA'],['hands','GLOVES'],['feet','SHOES'],['utility','UTILITY']];for(const [id,label] of filters){const button=document.createElement('button');button.type='button';button.className='attributeStoreFilter'+(attributeStoreState.filter===id?' active':'');button.textContent=label;button.addEventListener('click',()=>{attributeStoreState.filter=id;attributeStoreRender();});host.appendChild(button);}}
 function attributeStoreSlotMatch(item,filter){if(filter==='all')return true;if(filter==='utility')return item.id==='equipment:jetpack'||item.slot==='aura';return item.slot===filter;}
-function attributeStoreVisibleItems(){return ATM_ITEM_CATALOG.filter(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,attributeStoreState.characterId)&&attributeStoreSlotMatch(item,attributeStoreState.filter)).filter(item=>{const owned=lockerOwnershipInfo(item).owned;if(attributeStoreState.show==='owned')return owned;if(attributeStoreState.show==='buyable')return !owned;return true;});}
+function attributeStoreVisibleItems(){return ATM_ITEM_CATALOG.filter(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,attributeStoreState.characterId)&&attributeStoreSlotMatch(item,attributeStoreState.filter));}
 function attributeStoreToggleCart(item){const info=lockerOwnershipInfo(item);if(info.owned){attributeStoreSetStatus(item.name+' is already owned and is available in your Locker.','ok');return;}const index=attributeStoreState.cart.indexOf(item.id);if(index>=0){attributeStoreState.cart.splice(index,1);attributeStoreSetStatus(item.name+' removed from cart.');}else{attributeStoreState.cart.push(item.id);attributeStoreSetStatus(item.name+' added to cart.','ok');}attributeStorePersistCart();attributeStoreRender();}
-function attributeStoreCreateItem(item){const info=lockerOwnershipInfo(item),inCart=attributeStoreState.cart.includes(item.id),card=document.createElement('article');card.className='attributeStoreItem'+(info.owned?' owned':'')+(inCart?' inCart':'');const preview=lockerItemPreview(item);const art=preview?`<img alt="${item.name}" src="${preview}">`:`<span class="fallback">${item.emoji||'◈'}</span>`;const badge=info.owned?(info.source==='xrpl'?'NFT OWNED':'OWNED'):(inCart?'IN CART':lockerHasXrplMapping(item)?'NFT OR STORE':'STORE');card.innerHTML=`<span class="attributeStoreItemBadge">${badge}</span><div class="attributeStoreItemArt">${art}</div><div class="attributeStoreItemName">${item.name}</div><div class="attributeStoreItemMeta">${lockerSlotName(item.slot)} · ${attributeStoreCharacterName(attributeStoreState.characterId)}</div><div class="attributeStoreItemPrice">${info.owned?'IN YOUR LOCKER':attributeStorePriceText(item)}</div>`;const action=document.createElement('button');action.type='button';action.className='attributeStoreItemAction';action.textContent=info.owned?'OWNED ✓':inCart?'REMOVE FROM CART':'ADD TO CART';action.disabled=info.owned;action.addEventListener('click',()=>attributeStoreToggleCart(item));card.appendChild(action);return card;}
-function attributeStoreRenderCatalog(){const grid=document.getElementById('attributeStoreGrid'),title=document.getElementById('attributeStoreCatalogTitle'),count=document.getElementById('attributeStoreCatalogCount');if(!grid)return;const items=attributeStoreVisibleItems();if(title)title.textContent=attributeStoreCharacterName(attributeStoreState.characterId)+' ATTRIBUTES';if(count)count.textContent=items.length+' item'+(items.length===1?'':'s');grid.textContent='';for(const item of items)grid.appendChild(attributeStoreCreateItem(item));if(!items.length){const empty=document.createElement('div');empty.className='attributeStoreEmpty';const hasAny=ATM_ITEM_CATALOG.some(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,attributeStoreState.characterId));empty.innerHTML=hasAny?'<strong>No matching attributes</strong>Change the attribute type or SHOW filter.':`<strong>No ${lockerCharacterName(attributeStoreState.characterId)} attribute layers yet</strong>This character catalog is ready. New modular ${lockerCharacterName(attributeStoreState.characterId)} assets will appear automatically when they are added to the item catalog.`;grid.appendChild(empty);}}
+function attributeStoreCreateItem(item){const info=lockerOwnershipInfo(item),inCart=attributeStoreState.cart.includes(item.id),card=document.createElement('article');card.className='attributeStoreItem'+(info.owned?' owned':'')+(inCart?' inCart':'');const preview=lockerItemPreview(item);const art=preview?`<img alt="${item.name}" src="${preview}">`:`<span class="fallback">${item.emoji||'◈'}</span>`;const badge=info.owned?(info.source==='xrpl'?'NFT OWNED':info.source==='purchase'?'PURCHASED':'OWNED'):(inCart?'IN CART':lockerHasXrplMapping(item)?'NFT OR STORE':'STORE');card.innerHTML=`<span class="attributeStoreItemBadge">${badge}</span><div class="attributeStoreItemArt">${art}</div><div class="attributeStoreItemName">${item.name}</div><div class="attributeStoreItemMeta">${lockerSlotName(item.slot)} · ${attributeStoreCharacterName(attributeStoreState.characterId)}</div><div class="attributeStoreItemPrice">${info.owned?'IN YOUR LOCKER':attributeStorePriceText(item)}</div>`;const action=document.createElement('button');action.type='button';action.className='attributeStoreItemAction';action.textContent=info.owned?'OWNED ✓':inCart?'REMOVE FROM CART':'ADD TO CART';action.disabled=info.owned;action.addEventListener('click',()=>attributeStoreToggleCart(item));card.appendChild(action);return card;}
+function attributeStoreRenderCatalog(){const grid=document.getElementById('attributeStoreGrid'),title=document.getElementById('attributeStoreCatalogTitle'),count=document.getElementById('attributeStoreCatalogCount');if(!grid)return;const items=attributeStoreVisibleItems();if(title)title.textContent=attributeStoreCharacterName(attributeStoreState.characterId)+' ATTRIBUTES';if(count)count.textContent=items.length+' item'+(items.length===1?'':'s');grid.textContent='';for(const item of items)grid.appendChild(attributeStoreCreateItem(item));if(!items.length){const empty=document.createElement('div');empty.className='attributeStoreEmpty';const hasAny=ATM_ITEM_CATALOG.some(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,attributeStoreState.characterId));empty.innerHTML=hasAny?'<strong>No matching attributes</strong>Change the attribute type.':`<strong>No ${lockerCharacterName(attributeStoreState.characterId)} attribute layers yet</strong>This character catalog is ready. New modular ${lockerCharacterName(attributeStoreState.characterId)} assets will appear automatically when they are added to the item catalog.`;grid.appendChild(empty);}}
 function attributeStoreSelectedPaymentLabel(){return attributeStoreState.paymentCategory==='cash'?'CASH':String(attributeStoreState.cryptoAsset||'atm').toUpperCase();}
+async function attributeStoreRefreshCommerce(){
+  try{
+    const response=await fetch('/api/xaman-vending-start?commerce=attribute-store&mode=catalog',{cache:'no-store'}),data=await response.json().catch(()=>({}));
+    if(response.ok){attributeStoreServerPrices=data?.prices&&typeof data.prices==='object'?data.prices:Object.create(null);attributeStoreCommerceLoaded=true;}
+  }catch(error){console.warn('Attribute Store pricing refresh failed:',error);}
+  if(authSession?.access_token){
+    try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store&mode=entitlements');lockerPurchasedItems.clear();for(const id of data?.item_ids||[])lockerPurchasedItems.add(String(id));}
+    catch(error){console.warn('Attribute entitlement refresh failed:',error);}
+  }
+  attributeStoreNormalizeCart();if(attributeStoreState.open)attributeStoreRender();if(lockerState.open)lockerRender();
+}
+function attributeStoreSelectedAssetId(){return attributeStoreState.paymentCategory==='cash'?'usd':String(attributeStoreState.cryptoAsset||'atm');}
+function attributeStoreCartPricing(assetId=attributeStoreSelectedAssetId()){
+  const items=attributeStoreCartItems(),prices=items.map(item=>attributeStorePrice(item,assetId));
+  return {items,prices,allPriced:items.length>0&&prices.every(value=>value!==null),total:prices.every(value=>value!==null)?prices.reduce((sum,value)=>sum+Number(value||0),0):null};
+}
+function attributeStoreSavePending(value){try{if(value)localStorage.setItem(ATM_ATTRIBUTE_STORE_PENDING_KEY,JSON.stringify(value));else localStorage.removeItem(ATM_ATTRIBUTE_STORE_PENDING_KEY);}catch(_){}}
+function attributeStoreReadPending(){try{return JSON.parse(localStorage.getItem(ATM_ATTRIBUTE_STORE_PENDING_KEY)||'null');}catch(_){return null;}}
+function attributeStoreStopPoll(){if(attributeStorePaymentPollTimer){clearTimeout(attributeStorePaymentPollTimer);attributeStorePaymentPollTimer=null;}}
+function attributeStorePollPayment(payloadUuid){
+  if(!/^[0-9a-f-]{36}$/i.test(String(payloadUuid||'')))return;attributeStoreStopPoll();let attempts=0;
+  const check=async()=>{if(document.hidden){attributeStorePaymentPollTimer=setTimeout(check,1800);return;}attempts++;
+    try{const data=await apiWithAuth('/api/xaman-vending-status?commerce=attribute-store&payload_uuid='+encodeURIComponent(payloadUuid));
+      if(data.status==='paid'){attributeStoreStopPoll();attributeStoreSavePending(null);attributeStoreSetStatus('Purchase confirmed on XRPL Mainnet. Attributes added to your Locker.','ok');await attributeStoreRefreshCommerce();attributeStoreCheckoutClose();return;}
+      if(['rejected','failed','expired'].includes(data.status)){attributeStoreStopPoll();attributeStoreSavePending(null);attributeStoreSetStatus(data.error||('Payment '+data.status+'.'),'error');return;}
+      attributeStoreSetStatus(data.phase==='validating'?'Payment sent · validating exact XRPL transaction…':data.phase==='opened'?'Xaman opened · waiting for approval…':'Waiting for Xaman approval…');
+    }catch(error){attributeStoreSetStatus(error.message||'Payment status check failed.','error');}
+    if(attempts<100)attributeStorePaymentPollTimer=setTimeout(check,3000);else{attributeStoreStopPoll();attributeStoreSetStatus('Payment verification is still pending. Reopen the Store to resume checking.');}
+  };check();
+}
+async function attributeStoreStartCheckout(){
+  if(attributeStoreState.paymentCategory==='cash'){attributeStoreSetStatus('Cash / card checkout is the next payment rail and is not live yet. Crypto checkout is available first.','error');return;}
+  const pricing=attributeStoreCartPricing();if(!pricing.items.length)return;if(!pricing.allPriced){attributeStoreSetStatus('One or more items do not have a price for '+attributeStoreState.cryptoAsset.toUpperCase()+'.','error');return;}
+  if(!authSession?.access_token){attributeStoreSetStatus('Sign in before purchasing attributes.','error');return;}if(!playerAccount?.wallet_address){attributeStoreSetStatus('Link and verify Xaman before making an XRPL purchase.','error');return;}
+  const button=document.getElementById('attributeStoreCheckoutButton');if(button){button.disabled=true;button.textContent='CREATING XAMAN PAYMENT…';}
+  try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store',{method:'POST',body:JSON.stringify({item_ids:pricing.items.map(item=>item.id),asset_id:attributeStoreState.cryptoAsset})});attributeStoreSavePending({payload_uuid:data.payload_uuid,purchase_id:data.purchase_id,created_at:Date.now()});attributeStoreSetStatus(`Opening Xaman for ${data.total} ${data.asset_label}. Return to ATM Town after signing.`);attributeStorePollPayment(data.payload_uuid);window.location.assign(data.deeplink);}
+  catch(error){attributeStoreSetStatus(error.message||'Could not start Attribute Store checkout.','error');attributeStoreRenderCart();}
+}
+function attributeStoreResumePending(){const pending=attributeStoreReadPending();if(!pending?.payload_uuid||!authSession?.access_token)return;attributeStorePollPayment(pending.payload_uuid);}
+window.addEventListener('focus',()=>setTimeout(attributeStoreResumePending,250));document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(attributeStoreResumePending,250);});
 function attributeStoreRenderCart(){
   attributeStoreNormalizeCart();
   const host=document.getElementById('attributeStoreCartItems'),title=document.getElementById('attributeStoreCartTitle'),totalNode=document.getElementById('attributeStoreCartTotal'),review=document.getElementById('attributeStoreCheckoutReviewButton'),checkout=document.getElementById('attributeStoreCheckoutButton'),note=document.getElementById('attributeStoreCheckoutNote'),summaryHost=document.getElementById('attributeStoreCheckoutSummaryItems'),summaryTotal=document.getElementById('attributeStoreCheckoutSummaryTotal');
@@ -6406,13 +6480,14 @@ function attributeStoreRenderCart(){
   if(title)title.textContent=items.length+' ITEM'+(items.length===1?'':'S');
   if(host){host.textContent='';if(!items.length){const empty=document.createElement('div');empty.className='attributeStoreCartEmpty';empty.textContent='Your cart is empty. Shop any character catalog and add attributes here.';host.appendChild(empty);}for(const item of items){const row=document.createElement('div');row.className='attributeStoreCartRow';const preview=lockerItemPreview(item);row.innerHTML=preview?`<img alt="${item.name}" src="${preview}"><div><strong>${item.name}</strong><small>${attributeStorePriceText(item)}</small></div>`:`<span class="fallback">${item.emoji||'◈'}</span><div><strong>${item.name}</strong><small>${attributeStorePriceText(item)}</small></div>`;const remove=document.createElement('button');remove.type='button';remove.className='attributeStoreCartRemove';remove.textContent='×';remove.setAttribute('aria-label','Remove '+item.name);remove.addEventListener('click',()=>attributeStoreToggleCart(item));row.appendChild(remove);host.appendChild(row);}}
   if(summaryHost){summaryHost.textContent='';if(!items.length){const empty=document.createElement('div');empty.className='attributeStoreCartEmpty';empty.textContent='Your cart is empty.';summaryHost.appendChild(empty);}for(const item of items){const row=document.createElement('div');row.className='attributeStoreCheckoutSummaryRow';const preview=lockerItemPreview(item),price=attributeStorePriceText(item);row.innerHTML=(preview?`<img alt="${item.name}" src="${preview}">`:`<span class="fallback">${item.emoji||'◈'}</span>`)+`<div><strong>${item.name}</strong><small>${lockerSlotName(item.slot)} · ${attributeStoreCharacterName(attributeStoreState.characterId)}</small></div><b>${price}</b>`;summaryHost.appendChild(row);}}
-  const prices=items.map(attributeStorePrice),allPriced=items.length>0&&prices.every(price=>price!==null),formattedTotal=allPriced?new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(prices.reduce((sum,value)=>sum+value,0)):'—';
+  const usdPricing=attributeStoreCartPricing('usd'),selectedPricing=attributeStoreCartPricing(attributeStoreSelectedAssetId());
+  const formattedTotal=usdPricing.allPriced?attributeStoreAssetPriceText(usdPricing.total,'usd'):'—';
   if(totalNode)totalNode.textContent=formattedTotal;
-  if(summaryTotal)summaryTotal.textContent=formattedTotal;
+  if(summaryTotal)summaryTotal.textContent=attributeStoreState.paymentCategory==='cash'?formattedTotal:(selectedPricing.allPriced?attributeStoreAssetPriceText(selectedPricing.total,attributeStoreState.cryptoAsset):'—');
   if(review){review.disabled=items.length===0;review.textContent=items.length?'REVIEW PAYMENT · '+items.length+' ITEM'+(items.length===1?'':'S'):'REVIEW PAYMENT';}
-  const live=ATM_ATTRIBUTE_STORE_CONFIG?.checkoutEnabled===true&&allPriced;
-  if(checkout){checkout.disabled=!live;checkout.textContent=live?'PAY · '+attributeStoreSelectedPaymentLabel():items.length?'CHECKOUT SETUP PENDING':'CHECKOUT';}
-  if(note)note.textContent=!items.length?'Add an unowned attribute to start a cart.':!allPriced?'Prices are not assigned yet. You can review the payment experience, but no money can be submitted.':!ATM_ATTRIBUTE_STORE_CONFIG?.checkoutEnabled?'Pricing is ready, but server-side permanent-purchase checkout is not enabled yet.':'Confirm the selected payment rail before continuing.';
+  const cryptoLive=attributeStoreState.paymentCategory==='crypto'&&ATM_ATTRIBUTE_STORE_CONFIG?.checkoutEnabled===true&&attributeStoreCommerceLoaded&&selectedPricing.allPriced;
+  if(checkout){checkout.disabled=!cryptoLive;checkout.textContent=attributeStoreState.paymentCategory==='cash'?'CARD CHECKOUT · COMING SOON':cryptoLive?`PAY ${attributeStoreAssetPriceText(selectedPricing.total,attributeStoreState.cryptoAsset)} · XAMAN`:items.length?'PRICE REQUIRED':'CHECKOUT';}
+  if(note)note.textContent=!items.length?'Add an unowned attribute to start a cart.':attributeStoreState.paymentCategory==='cash'?'USD/card checkout is staged for a future card processor.':!selectedPricing.allPriced?'One or more items still need a '+String(attributeStoreState.cryptoAsset||'').toUpperCase()+' price.':'XRPL Mainnet payment is verified server-side before permanent ownership is granted.';
   if(!items.length&&attributeStoreState.checkoutOpen)attributeStoreCheckoutClose();
   attributeStoreUpdateButton();
 }
@@ -6437,22 +6512,21 @@ function attributeStoreCheckoutClose(){
   const sheet=document.getElementById('attributeStoreCheckoutSheet');
   sheet?.classList.remove('open');sheet?.setAttribute('aria-hidden','true');
 }
-function attributeStoreRender(){if(!attributeStoreState.open){attributeStoreUpdateButton();return;}attributeStoreNormalizeCart();attributeStoreCreateCharacters();attributeStoreCreateFilters();attributeStoreRenderCatalog();attributeStoreRenderPayments();attributeStoreRenderCart();const show=document.getElementById('attributeStoreShow');if(show&&show.value!==attributeStoreState.show)show.value=attributeStoreState.show;}
+function attributeStoreRender(){if(!attributeStoreState.open){attributeStoreUpdateButton();return;}attributeStoreNormalizeCart();attributeStoreCreateCharacters();attributeStoreCreateFilters();attributeStoreRenderCatalog();attributeStoreRenderPayments();attributeStoreRenderCart();}
 window.atmAttributeStoreRender=attributeStoreRender;
-function attributeStoreOpen(characterId=selectedCharacter){if(attributeStoreState.open||vendingOpen)return;if(lockerState.open)lockerClose();attributeStorePreviousActivity=currentPlayerActivity;currentPlayerActivity={type:'attribute-store',label:'ATTRIBUTE STORE',startedAt:Date.now()};attributeStoreState.characterId=attributeStoreCharacters().some(item=>item.characterId===characterId)?characterId:'classic';attributeStoreState.open=true;attributeStoreState.checkoutOpen=false;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';document.body.classList.add('attribute-store-open');const panel=document.getElementById('attributeStorePanel');panel?.classList.add('open');panel?.setAttribute('aria-hidden','false');broadcastState(true);updateVoiceProximityVolumes();attributeStoreSetStatus('Shopping '+lockerCharacterName(attributeStoreState.characterId)+' attributes. Unowned assets are kept here instead of the Locker.');attributeStoreRender();if(lockerWalletAddress()&&lockerState.status==='idle')lockerRefreshXrpl(true);}
+function attributeStoreOpen(characterId=selectedCharacter){if(attributeStoreState.open||vendingOpen)return;if(lockerState.open)lockerClose();attributeStorePreviousActivity=currentPlayerActivity;currentPlayerActivity={type:'attribute-store',label:'ATTRIBUTE STORE',startedAt:Date.now()};attributeStoreState.characterId=attributeStoreCharacters().some(item=>item.characterId===characterId)?characterId:'classic';attributeStoreState.open=true;attributeStoreState.checkoutOpen=false;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';document.body.classList.add('attribute-store-open');const panel=document.getElementById('attributeStorePanel');panel?.classList.add('open');panel?.setAttribute('aria-hidden','false');broadcastState(true);updateVoiceProximityVolumes();attributeStoreSetStatus('Shopping '+lockerCharacterName(attributeStoreState.characterId)+' attributes. Owned items are labeled in place; unowned items can be added to cart.');attributeStoreRender();attributeStoreRefreshCommerce();attributeStoreResumePending();if(lockerWalletAddress()&&lockerState.status==='idle')lockerRefreshXrpl(true);}
 function attributeStoreClose(){if(!attributeStoreState.open)return;attributeStoreCheckoutClose();attributeStoreState.open=false;dialogOpen=false;if(currentPlayerActivity?.type==='attribute-store')currentPlayerActivity=attributeStorePreviousActivity;attributeStorePreviousActivity=null;document.body.classList.remove('attribute-store-open');const panel=document.getElementById('attributeStorePanel');panel?.classList.remove('open');panel?.setAttribute('aria-hidden','true');broadcastState(true);updateVoiceProximityVolumes();attributeStoreUpdateButton();}
 window.atmOpenAttributeStore=attributeStoreOpen;
 window.atmAttributeStore=Object.freeze({open:attributeStoreOpen,close:attributeStoreClose,config:ATM_ATTRIBUTE_STORE_CONFIG,cart:()=>attributeStoreCartItems().map(item=>item.id),visible:()=>attributeStoreVisibleItems().map(item=>item.id),checkoutOpen:attributeStoreCheckoutOpen,checkoutClose:attributeStoreCheckoutClose});
 document.getElementById('attributeStoreButton')?.addEventListener('click',()=>attributeStoreOpen(selectedCharacter));
 document.getElementById('attributeStoreCloseButton')?.addEventListener('click',attributeStoreClose);
 document.getElementById('attributeStoreRefreshButton')?.addEventListener('click',()=>lockerRefreshXrpl(false).then(()=>attributeStoreRender()));
-document.getElementById('attributeStoreShow')?.addEventListener('change',event=>{attributeStoreState.show=String(event.target.value||'buyable');attributeStoreRender();});
 document.getElementById('attributeStoreClearCart')?.addEventListener('click',()=>{attributeStoreState.cart=[];attributeStorePersistCart();attributeStoreCheckoutClose();attributeStoreSetStatus('Cart cleared.');attributeStoreRender();});
 document.getElementById('attributeStoreCheckoutReviewButton')?.addEventListener('click',attributeStoreCheckoutOpen);
 document.getElementById('attributeStoreCheckoutCloseButton')?.addEventListener('click',attributeStoreCheckoutClose);
 document.getElementById('attributeStoreCheckoutBackButton')?.addEventListener('click',attributeStoreCheckoutClose);
 document.getElementById('attributeStoreCheckoutSheet')?.addEventListener('pointerdown',event=>{if(event.target.id==='attributeStoreCheckoutSheet')attributeStoreCheckoutClose();});
-document.getElementById('attributeStoreCheckoutButton')?.addEventListener('click',()=>{if(!ATM_ATTRIBUTE_STORE_CONFIG.checkoutEnabled){attributeStoreSetStatus('Live checkout is not enabled yet. Assign prices and add server-side purchase entitlements before taking money.','error');return;}});
+document.getElementById('attributeStoreCheckoutButton')?.addEventListener('click',attributeStoreStartCheckout);
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&attributeStoreState.checkoutOpen){event.preventDefault();attributeStoreCheckoutClose();return;}if(event.key==='Escape'&&attributeStoreState.open){event.preventDefault();attributeStoreClose();}});
 attributeStoreUpdateButton();
 

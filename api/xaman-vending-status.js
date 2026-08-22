@@ -1,5 +1,6 @@
 import { setCors, requireUser, sendError } from '../lib/auth.js';
-import { resolveXamanVendingPayment } from '../lib/xaman-vending.js';
+import { resolveXamanVendingPayment, XAMAN_PAYLOAD_UUID } from '../lib/xaman-vending.js';
+import { resolveAttributePayment, ensureAttributeEntitlements } from '../lib/attribute-store.js';
 
 const ATM_CURRENCY = 'ATM';
 const ATM_ISSUER = 'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ';
@@ -337,6 +338,33 @@ async function recoverLatest(admin, userId) {
   return { status: 'pending', phase: 'background-recovery' };
 }
 
+
+async function handleAttributeStoreStatus(req, res, admin, user) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'GET required for Attribute Store status.' });
+  const payloadUuid = String(req.query?.payload_uuid || '');
+  if (!XAMAN_PAYLOAD_UUID.test(payloadUuid)) return res.status(400).json({ error: 'Valid payload_uuid required.' });
+  const { data: request, error } = await admin
+    .from('attribute_purchase_requests')
+    .select('*')
+    .eq('payload_uuid', payloadUuid)
+    .eq('user_id', user.id)
+    .single();
+  if (error || !request) return res.status(404).json({ error: 'Attribute Store payment request not found.' });
+  if (['paid', 'failed', 'rejected', 'expired'].includes(request.status)) {
+    if (request.status === 'paid') await ensureAttributeEntitlements(admin, request);
+    return res.status(200).json({ status: request.status, item_ids: request.item_ids || [], tx_hash: request.tx_hash || null, error: request.failure_reason || null });
+  }
+  const result = await resolveAttributePayment(admin, request);
+  const row = result.request || request;
+  return res.status(200).json({
+    status: result.kind === 'pending' ? 'pending' : row.status || result.kind,
+    phase: result.phase || null,
+    item_ids: row.item_ids || [],
+    tx_hash: row.tx_hash || null,
+    error: result.error || row.failure_reason || null
+  });
+}
+
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
   if (!['GET', 'POST'].includes(req.method)) {
@@ -346,6 +374,9 @@ export default async function handler(req, res) {
 
   try {
     const { admin, user } = await requireUser(req);
+    if (String(req.query?.commerce || '').toLowerCase() === 'attribute-store') {
+      return await handleAttributeStoreStatus(req, res, admin, user);
+    }
 
     if (req.method === 'POST') {
       const lookupId = String(req.body?.payload_uuid || '');

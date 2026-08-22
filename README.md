@@ -1,16 +1,26 @@
+# ATM Town v235.12 — Commerce + Horde Survival + Neon Racer
+
+Current build adds permanent server-verified Mainnet Attribute Store checkout plumbing (ATM/RLUSD/XRP), removes the redundant ownership filter, adds ATM Neon Racer to the previously unused Racing Cabinet, adds Invisibility/Juggernaut/Inferno vending powers, and adds multiplayer Horde player damage/down/revive survival. World-event/payment reward infrastructure remains Testnet unless explicitly designated as Mainnet commerce.
+
+See `docs/V235.12-COMMERCE-HORDE-SURVIVAL-NEON-RACER.md` and run `supabase/ATM-Town-v235.12-Attribute-Commerce.sql` before testing real Attribute Store purchases. No launch prices are inserted by this patch.
+
+---
+
 # ATM Town
 
 ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/JavaScript, Supabase Realtime, LiveKit voice, and XRPL/Xaman account/payment features.
 
 ## Current version
 
-**v235.11.8 — Mobile Store Layout Rebuild**
+**v235.12 — Commerce + Horde Survival + Neon Racer**
 
-This build preserves v235.9.4 Horde Nightfall and adds the first monetization foundation to the Locker. A signed-in player's verified Xaman-linked XRPL wallet is scanned for the **You Are ATM** collection (`rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H`, Taxon `1`). Explicitly mapped metadata traits unlock their matching in-game equipment while the NFT remains in that wallet. Starter characters remain free; other former development-grant cosmetics are now store-locked pending direct checkout in the next commerce phase.
+This build keeps the owned-assets-only Locker and You Are ATM NFT entitlements, removes the redundant Store ownership dropdown, and adds server-verified permanent Attribute Store purchases for **ATM, RLUSD, and XRP on XRPL Mainnet**. Prices remain server-authoritative in Supabase; no launch prices are inserted automatically. Cash/card remains a future checkout rail.
 
-The existing vending Jetpack remains available as temporary time. A verified You Are ATM `Back: Jetpack` trait now grants permanent Jetpack access while the Jetpack is equipped.
+The Horde now has player survival: normal players are downed after two hits, Juggernaut raises the threshold to five while active, downed sprites fall sideways and cannot move/shoot/interact, and nearby teammates can revive them. New vending test powers add Invisibility, Juggernaut, and Inferno/fire damage.
 
-The Locker is now owned-assets-only, and a new character-catalog Attribute Store sits below the Locker button. See `docs/V235.11-ATTRIBUTE-STORE.md` for store behavior, cart rules, payment policy, and test checklist. The v235.10 NFT mapping remains documented in `docs/V235.10-YOU-ARE-ATM-ENTITLEMENTS.md`.
+The previously unused Racing Cabinet now launches **ATM Neon Racer**, a three-lane arcade game. No existing arcade game was replaced.
+
+See `docs/V235.12-COMMERCE-HORDE-SURVIVAL-NEON-RACER.md` for behavior and testing, and run `supabase/ATM-Town-v235.12-Attribute-Commerce.sql` before testing Attribute Store checkout.
 
 ## Project structure
 
@@ -111,4 +121,4 @@ npm run audit:assets
 
 ## Deployment
 
-Apply the v235.11.8 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.
+Apply the v235.12 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.

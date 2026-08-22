@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.12: removes redundant Store ownership filtering, adds server-verified Mainnet attribute checkout plumbing, Neon Racer, three combat vending powers, and Horde down/revive survival.
  * v235.11.8: rebuilds the mobile Attribute Store as a flex-column app layout with compact list cards and a static cart CTA, eliminating catalog/card horizontal overflow.
  * v235.11.6: moves payment selection into a dedicated checkout sheet so mobile checkout never shares width with the scrolling catalog.
  * v235.11.4: stabilizes login/Enter Town state and prevents deploy-time service-worker reloads from interrupting active gameplay.
@@ -47,10 +48,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.118,
-    version: 'v235.11.8',
-    name: 'Mobile Store Layout Rebuild',
-    title: 'ATM Town v235.11.8 — Mobile Store Layout Rebuild'
+    number: 235.12,
+    version: 'v235.12',
+    name: 'Commerce + Horde Survival + Neon Racer',
+    title: 'ATM Town v235.12 — Commerce + Horde Survival + Neon Racer'
   });
 
   const MAPS = Object.freeze({
@@ -159,7 +160,7 @@
     ])
   });
 
-  // v235.11.8 Attribute Store commerce policy.
+  // v235.12 Attribute Store commerce policy.
   // Store purchases are real-value MAINNET commerce. World-event rewards remain
   // isolated on XRPL Testnet and are not changed by this configuration.
   // The merchant destination intentionally matches the existing Magnet Can
@@ -167,7 +168,7 @@
   // routed/swapped server-side without changing the player-facing CASH/CRYPTO UI.
   const ATTRIBUTE_STORE = Object.freeze({
     baseCurrency: 'USD',
-    checkoutEnabled: false,
+    checkoutEnabled: true,
     purchaseNetwork: 'mainnet',
     merchantAddress: 'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB',
     defaultUsdPrice: null,
