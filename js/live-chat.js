@@ -1,4 +1,4 @@
-/* ATM Town v235.7.2 keyboard-coupled HUD + live chat integration
+/* ATM Town v235.12.1 keyboard-coupled HUD + live chat text-size settings
  * Overhead speech bubbles keep their short lifetime in game-core.
  * This module keeps chat messages for the current browser play session and
  * loads the last 10 minutes of authenticated server history on room join.
@@ -9,6 +9,8 @@
   const MAX_SESSION_MESSAGES = 200;
   const PREVIEW_LIFETIME_MS = 5_000;
   const PREVIEW_LIMIT = 2;
+  const TEXT_SIZE_KEY = 'atm_live_chat_text_size_v1';
+  const TEXT_SIZES = new Set(['small', 'normal', 'large', 'xlarge']);
   const state = {
     room: '',
     messages: [],
@@ -16,6 +18,8 @@
     open: false,
     unread: 0,
     recentLoadedFor: '',
+    textSize: 'normal',
+    settingsOpen: false,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -78,6 +82,27 @@
     if (toggle) toggle.setAttribute('aria-label', state.unread ? `Open live chat, ${state.unread} unread` : 'Open live chat');
   }
 
+  function applyTextSize(size, { persist = false } = {}) {
+    const next = TEXT_SIZES.has(String(size || '').toLowerCase()) ? String(size).toLowerCase() : 'normal';
+    state.textSize = next;
+    const panel = $('liveChatPanel');
+    if (panel) panel.dataset.textSize = next;
+    document.querySelectorAll('[data-live-chat-text-size]').forEach((button) => {
+      const active = button.dataset.liveChatTextSize === next;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    if (persist) { try { localStorage.setItem(TEXT_SIZE_KEY, next); } catch (_) {} }
+  }
+
+  function setSettingsOpen(open) {
+    state.settingsOpen = Boolean(open);
+    const menu = $('liveChatSettings');
+    const button = $('liveChatSettingsButton');
+    if (menu) menu.hidden = !state.settingsOpen;
+    if (button) button.setAttribute('aria-expanded', state.settingsOpen ? 'true' : 'false');
+  }
+
   function renderPreview() {
     const log = $('chatLog');
     if (!log) return;
@@ -138,6 +163,7 @@
 
   function setOpen(open) {
     state.open = Boolean(open);
+    if (!state.open) setSettingsOpen(false);
     const panel = $('liveChatPanel');
     const toggle = $('chatToggle');
     if (panel) { panel.classList.toggle('open', state.open); panel.setAttribute('aria-hidden', state.open ? 'false' : 'true'); }
@@ -211,8 +237,25 @@
   }
 
   function bind() {
+    try { applyTextSize(localStorage.getItem(TEXT_SIZE_KEY) || 'normal'); } catch (_) { applyTextSize('normal'); }
     $('chatToggle')?.addEventListener('click', () => setOpen(!state.open));
     $('liveChatClose')?.addEventListener('click', () => setOpen(false));
+
+    const settingsButton = $('liveChatSettingsButton');
+    settingsButton?.addEventListener('pointerdown', (event) => event.preventDefault(), { passive: false });
+    settingsButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      setSettingsOpen(!state.settingsOpen);
+    });
+    document.querySelectorAll('[data-live-chat-text-size]').forEach((button) => {
+      button.addEventListener('pointerdown', (event) => event.preventDefault(), { passive: false });
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        applyTextSize(button.dataset.liveChatTextSize, { persist: true });
+        setSettingsOpen(false);
+        requestAnimationFrame(() => { const list = $('liveChatMessages'); if (list) list.scrollTop = list.scrollHeight; });
+      });
+    });
     $('chatInput')?.addEventListener('focus', () => {
       if (state.open) {
         syncPanelToVisualViewport();
@@ -258,7 +301,9 @@
       restoreLiveChatFocus();
     }, { capture: true });
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && state.open) setOpen(false);
+      if (event.key !== 'Escape' || !state.open) return;
+      if (state.settingsOpen) setSettingsOpen(false);
+      else setOpen(false);
     });
     global.visualViewport?.addEventListener('resize', syncPanelToVisualViewport);
     global.visualViewport?.addEventListener('scroll', syncPanelToVisualViewport);

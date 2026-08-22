@@ -1,4 +1,4 @@
-/* ATM Town v235.12 — Horde Survival + Power-Up Combat
+/* ATM Town v235.12.1 — Horde Survival + Power-Up Combat polish
  *
  * The Horde uses one elected room combat authority over Supabase
  * Realtime. That authority alone advances zombie AI/HP/deaths and broadcasts
@@ -927,9 +927,29 @@
   }
 
   function drawPlayerEffects(ctx,player={}){
-    if(!isZombieEvent()||state.phase!=='active')return;const x=Number(player.x),y=Number(player.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;
-    if(player.fireActive&&!player.downed){const now=performance.now();ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<8;i++){const phase=now*.006+i*.83;const fx=x+Math.sin(phase*1.7)*18+(i%2?8:-8),fy=y+24-(i%4)*14-Math.abs(Math.sin(phase))*18;const r=5+Math.abs(Math.sin(phase*1.3))*5;const g=ctx.createRadialGradient(fx,fy,1,fx,fy,r*2);g.addColorStop(0,'rgba(255,245,125,.95)');g.addColorStop(.42,'rgba(255,111,28,.82)');g.addColorStop(1,'rgba(255,35,10,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(fx,fy,r*2,0,Math.PI*2);ctx.fill();}ctx.restore();}
-    if(player.downed){ctx.save();ctx.textAlign='center';ctx.font='1000 10px system-ui';ctx.fillStyle='#ff8ea1';ctx.strokeStyle='rgba(0,0,0,.75)';ctx.lineWidth=3;ctx.strokeText('DOWN · REVIVE',x,y-58);ctx.fillText('DOWN · REVIVE',x,y-58);ctx.restore();}
+    const x=Number(player.x),y=Number(player.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;
+
+    // Inferno is a vending power, not a Horde-only visual. Keep the flames
+    // visible anywhere the player can be drawn; Horde mode only adds damage.
+    if(player.fireActive&&!player.downed){
+      const now=performance.now();ctx.save();ctx.globalCompositeOperation='lighter';
+      for(let i=0;i<10;i++){
+        const phase=now*.006+i*.73;
+        const fx=x+Math.sin(phase*1.7)*18+(i%2?8:-8);
+        const fy=y+25-(i%5)*12-Math.abs(Math.sin(phase))*19;
+        const r=5+Math.abs(Math.sin(phase*1.3))*5;
+        const g=ctx.createRadialGradient(fx,fy,1,fx,fy,r*2.25);
+        g.addColorStop(0,'rgba(255,248,150,.98)');
+        g.addColorStop(.34,'rgba(255,155,42,.92)');
+        g.addColorStop(.68,'rgba(255,66,15,.72)');
+        g.addColorStop(1,'rgba(255,25,8,0)');
+        ctx.fillStyle=g;ctx.beginPath();ctx.arc(fx,fy,r*2.25,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Down/revive messaging only belongs to an active Horde event.
+    if(isZombieEvent()&&state.phase==='active'&&player.downed){ctx.save();ctx.textAlign='center';ctx.font='1000 10px system-ui';ctx.fillStyle='#ff8ea1';ctx.strokeStyle='rgba(0,0,0,.75)';ctx.lineWidth=3;ctx.strokeText('DOWN · REVIVE',x,y-58);ctx.fillText('DOWN · REVIVE',x,y-58);ctx.restore();}
   }
   function isActive(){return isActiveTown();}
   function controllerOwnsRightStick() { return isActiveTown(); }

@@ -167,6 +167,7 @@ const requiredFiles = [
   'lib/attribute-store.js',
   'supabase/ATM-Town-v235.12-Attribute-Commerce.sql',
   'docs/V235.12-COMMERCE-HORDE-SURVIVAL-NEON-RACER.md',
+  'docs/V235.12.1-ARCADE-POWER-CHAT-POLISH.md',
   'api/embedded-wallet.js',
   'api/world-time.js',
   'lib/atm-pay.js',
@@ -206,8 +207,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.12'")) errors.push('Missing v235.12 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Commerce + Horde Survival + Neon Racer'")) errors.push('Missing v235.12 display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.12.1'")) errors.push('Missing v235.12.1 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Arcade + Power + Chat Polish'")) errors.push('Missing v235.12.1 display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -316,7 +317,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.12'")) errors.push('js/config.js is not marked v235.12.');
+if (!configSource.includes("version: 'v235.12.1'")) errors.push('js/config.js is not marked v235.12.1.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -392,7 +393,7 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.12") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js')) errors.push('v235.12 PWA shell cache/module registration is missing.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.12.1") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js') || !serviceWorkerSource.includes('/js/live-chat.js')) errors.push('v235.12.1 PWA shell cache/module registration is missing.');
 if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
 if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
 if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');
@@ -461,8 +462,8 @@ if (!gameRuntimeParts[0].includes("'equipment:jetpack':{traitTypes:['Back'],valu
 if (!gameRuntimeParts[0].includes("if(item.ownership==='development')return Object.freeze({...item,rarity:mapping?'You Are ATM / Store':'Store',ownership:'store'") || !gameRuntimeParts[0].includes('].map(atmMonetizeCatalogItem));')) errors.push('v235.10 development cosmetics are not converted into store-locked inventory.');
 if (!gameRuntimeParts[0].includes('function lockerAttributeRuleMatches') || !gameRuntimeParts[0].includes("label:matches.length>1?'NFT OWNED ×'+matches.length:'NFT OWNED'") || !gameRuntimeParts[0].includes("label:'VERIFYING NFT'")) errors.push('v235.10 metadata-backed Locker entitlement verification is incomplete.');
 if (!gameRuntimeParts[0].includes('window.atmLockerPermanentJetpackEquipped') || !gameRuntimeParts[0].includes("permanent?'NFT OWNED · PERMANENT'")) errors.push('v235.10 permanent NFT Jetpack entitlement is missing.');
-if (!html.includes('id="lockerYouAreAtmCount"') || !html.includes('id="lockerNftUnlockCount"') || !html.includes('LOCKER v7 · OWNED ASSETS ONLY · v235.12')) errors.push('v235.12 Locker ownership UI markers are missing.');
-if (!html.includes('id="attributeStoreButton"') || !html.includes('id="attributeStorePanel"') || !html.includes('id="attributeStoreCharacters"') || !html.includes('ATTRIBUTE STORE v2 · v235.12')) errors.push('v235.12 Attribute Store UI markers are missing.');
+if (!html.includes('id="lockerYouAreAtmCount"') || !html.includes('id="lockerNftUnlockCount"') || !html.includes('LOCKER v7 · OWNED ASSETS ONLY · v235.12.1')) errors.push('v235.12.1 Locker ownership UI markers are missing.');
+if (!html.includes('id="attributeStoreButton"') || !html.includes('id="attributeStorePanel"') || !html.includes('id="attributeStoreCharacters"') || !html.includes('ATTRIBUTE STORE v2 · v235.12.1')) errors.push('v235.12.1 Attribute Store UI markers are missing.');
 if (!html.includes('id="attributeStorePaymentCategories"') || !html.includes('id="attributeStoreCryptoAssets"') || !html.includes('XRPL MAINNET') || !html.includes('World-event funding and rewards remain on Testnet')) errors.push('v235.12 CASH/CRYPTO payment UI markers are missing.');
 if (!html.includes('id="attributeStoreCheckoutSheet"') || !html.includes('id="attributeStoreCheckoutReviewButton"') || !html.includes('id="attributeStoreCheckoutBackButton"')) errors.push('v235.12 dedicated checkout sheet controls are missing.');
 if (!html.includes('.attributeStoreCheckoutSheet{position:absolute;inset:0') || !html.includes('contain:inline-size') || !html.includes('.attributeStoreCryptoAssets[hidden],.attributeStoreCashInfo[hidden]{display:none!important}') || !html.includes('.attributeStorePaymentCategories,.attributeStoreCryptoAssets{display:flex!important;flex-direction:column')) errors.push('v235.12 checkout width containment/mobile stacking is missing.');
@@ -493,6 +494,11 @@ if (!gameRuntimeParts[0].includes("'neon-racer':{panel:'neonRacerPanel',label:'N
 if (!gameRuntimeParts[0].includes('invisibility:0,juggernaut:0,fire:0') || !html.includes('data-buy-power="invisibility"') || !html.includes('data-buy-power="juggernaut"') || !html.includes('data-buy-power="fire"')) errors.push('v235.12 vending power-up catalog is missing Invisibility, Juggernaut, or Inferno.');
 if (!zombieOutbreakSource.includes('BASE_PLAYER_HITS = 2') || !zombieOutbreakSource.includes('JUGGERNAUT_PLAYER_HITS = 5') || !zombieOutbreakSource.includes("kind === 'player_hit'") || !zombieOutbreakSource.includes("kind === 'revive'") || !zombieOutbreakSource.includes('FIRE_DAMAGE_RADIUS') || !zombieOutbreakSource.includes('p.downed || p.invisible')) errors.push('v235.12 Horde damage/down/revive/power interactions are incomplete.');
 if (!gameRuntimeParts[0].includes("type:'horde-revive'") || !gameRuntimeParts[0].includes('Math.PI/2') || !gameRuntimeParts[0].includes("WAIT FOR A REVIVE")) errors.push('v235.12 sideways downed-player and teammate revive interaction is incomplete.');
+if (!gameRuntimeParts[0].includes('suppressShadow=false') || !gameRuntimeParts[0].includes('downed?null:activity,downed') || !gameRuntimeParts[0].includes('if(!suppressShadow)')) errors.push('v235.12.1 downed-player shadow suppression is missing.');
+if (!zombieOutbreakSource.includes('Inferno is a vending power, not a Horde-only visual') || !zombieOutbreakSource.includes("if(player.fireActive&&!player.downed)")) errors.push('v235.12.1 Inferno must render outside The Horde.');
+if (!gameRuntimeParts[0].includes('Remote invisibility is complete') || !gameRuntimeParts[0].includes('if(remoteInvisible)continue') || !gameRuntimeParts[0].includes('_invisibleStepCarry') || !gameRuntimeParts[0].includes("spawnFootstepEffect(p.drawX,p.drawY")) errors.push('v235.12.1 remote Invisibility body suppression/footprints are incomplete.');
+if (!liveChatSource.includes("TEXT_SIZE_KEY = 'atm_live_chat_text_size_v1'") || !liveChatSource.includes('data-live-chat-text-size') || !html.includes('id="liveChatSettingsButton"') || !html.includes('id="liveChatSettings"') || !html.includes('data-text-size="xlarge"')) errors.push('v235.12.1 Live Chat text-size settings are incomplete.');
+if (!gameRuntimeSource.includes('MOBILE_VIEW=Object.freeze({w:560,h:820})') || !gameRuntimeSource.includes('DESKTOP_VIEW=Object.freeze({w:900,h:520})') || !html.includes('#neonRacerCanvas[data-orientation="portrait"]{aspect-ratio:560/820}') || !html.includes('width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important')) errors.push('v235.12.1 Neon Racer aspect-ratio-preserving mobile layout is missing.');
 
 if (!zombieOutbreakSource.includes('const MAX_AIM_OFFSET = 40 * Math.PI / 180') || !zombieOutbreakSource.includes('movementOverride') || !zombieOutbreakSource.includes("movementMode === 'backpedal' ? -1 : 1")) errors.push('v235.8 ±40° aim/facing or backpedal animation contract is missing.');
 if (!zombieOutbreakSource.includes('rapidMaxRange()') || !zombieOutbreakSource.includes('range * .88') || !zombieOutbreakSource.includes('const speed = 5400 + random() * 2200')) errors.push('v235.8 Rapid Micro must retain map-edge range, extreme-distance-only falloff, and ultra-fast micro-streak visuals.');
@@ -842,10 +848,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.12 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.12.1 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.12 build validation passed.');
+console.log('ATM Town v235.12.1 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

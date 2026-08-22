@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12',name:ATM_CONFIG?.build?.name||'Commerce + Horde Survival + Neon Racer'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.1',name:ATM_CONFIG?.build?.name||'Arcade + Power + Chat Polish'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2162,6 +2162,7 @@ function getGalleryPlayerRenderMetrics(item){
       bottom:item.p.drawY+20,
       draw(){
         drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
       }
     };
   }
@@ -2175,7 +2176,8 @@ function getGalleryPlayerRenderMetrics(item){
     top:player.y-52,
     bottom:player.y+20,
     draw(){
-      drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',1,bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);
+      drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);
+      window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
     }
   };
 }
@@ -2186,7 +2188,7 @@ function galleryOccluderAppliesToPlayer(piece,m){
 function drawGalleryPlayersAndOccluders(){
   const playerItems=[];
   for(const [id,p] of remotePlayers){
-    if(p.map!=='gallery') continue;
+    if(p.map!=='gallery'||p?.powers?.invisibility) continue;
     playerItems.push({depth:p.drawY+20,type:'remote',p});
   }
   playerItems.push({depth:player.y+20,type:'local'});
@@ -2350,9 +2352,9 @@ function buildArcadeForegroundPieces(){
   console.log('ATM Token Arcade foreground objects loaded:',arcadeForegroundPieces.length);
 }
 function getArcadePlayerRenderMetrics(item){
-  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);}};
+  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
   const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0;
-  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',1,bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);}};
+  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
 }
 function arcadeOccluderAppliesToPlayer(piece,m){
   if(!(m.right>=piece.x&&m.left<=piece.x+piece.w&&m.bottom>=piece.y&&m.top<=piece.y+piece.h))return false;
@@ -2360,7 +2362,7 @@ function arcadeOccluderAppliesToPlayer(piece,m){
 }
 function drawArcadePlayersAndOccluders(){
   const playerItems=[];
-  for(const [id,p] of remotePlayers){if(p.map!=='arcade')continue;playerItems.push({depth:p.drawY+20,type:'remote',p});}
+  for(const [id,p] of remotePlayers){if(p.map!=='arcade'||p?.powers?.invisibility)continue;playerItems.push({depth:p.drawY+20,type:'remote',p});}
   playerItems.push({depth:player.y+20,type:'local'});playerItems.sort((a,b)=>a.depth-b.depth);
   for(const item of playerItems){const metrics=getArcadePlayerRenderMetrics(item);metrics.draw();for(const piece of arcadeForegroundPieces){if(arcadeOccluderAppliesToPlayer(piece,metrics))drawStaticOccluder(piece.canvas,piece.x,piece.y,piece.w,piece.h);}}
 }
@@ -2484,9 +2486,9 @@ function buildLoungeForegroundPieces(){
   console.log('Community Lounge foreground objects loaded:',loungeForegroundPieces.length);
 }
 function getLoungePlayerRenderMetrics(item){
-  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);}};
+  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
   const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0;
-  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',1,bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);}};
+  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
 }
 function loungeOccluderAppliesToPlayer(piece,m){
   if(!(m.right>=piece.x&&m.left<=piece.x+piece.w&&m.bottom>=piece.y&&m.top<=piece.y+piece.h))return false;
@@ -2494,7 +2496,7 @@ function loungeOccluderAppliesToPlayer(piece,m){
 }
 function drawLoungePlayersAndOccluders(){
   const playerItems=[];
-  for(const [id,p] of remotePlayers){if(p.map!=='lounge')continue;playerItems.push({depth:p.drawY+20,type:'remote',p});}
+  for(const [id,p] of remotePlayers){if(p.map!=='lounge'||p?.powers?.invisibility)continue;playerItems.push({depth:p.drawY+20,type:'remote',p});}
   playerItems.push({depth:player.y+20,type:'local'});playerItems.sort((a,b)=>a.depth-b.depth);
   for(const item of playerItems){const metrics=getLoungePlayerRenderMetrics(item);metrics.draw();for(const piece of loungeForegroundPieces){if(loungeOccluderAppliesToPlayer(piece,metrics))drawStaticOccluder(piece.canvas,piece.x,piece.y,piece.w,piece.h);}}
 }
@@ -3146,8 +3148,27 @@ function updateRemoteInterpolation(){
   const now=Date.now();
   for(const [id,p] of remotePlayers){
     if(now-p.lastSeen>12000){remotePlayers.delete(id);continue;}
+    const beforeX=Number(p.drawX),beforeY=Number(p.drawY);
     p.drawX+=(p.x-p.drawX)*.22;
     p.drawY+=(p.y-p.drawY)*.22;
+
+    // v235.12.1 invisibility is asymmetric by design: the player using it can
+    // still see a faint self, while everybody else sees only moving footprints.
+    // Generate those footprints locally from the already-synchronized remote
+    // movement so we do not add another realtime packet type.
+    const remoteInvisible=!!p?.powers?.invisibility;
+    const remoteDowned=!!p?.zombieCombat?.downed;
+    const remoteAirborne=(Number(p.jump)||0)>1||!!p.jetpackActive;
+    const travel=(Number.isFinite(beforeX)&&Number.isFinite(beforeY))?Math.hypot(p.drawX-beforeX,p.drawY-beforeY):0;
+    if(remoteInvisible&&!remoteDowned&&!remoteAirborne&&p.map===currentMap&&travel>.01){
+      p._invisibleStepCarry=(Number(p._invisibleStepCarry)||0)+travel;
+      while(p._invisibleStepCarry>=28){
+        spawnFootstepEffect(p.drawX,p.drawY,p.dir||'down','rgba(188,243,255,.36)',.92);
+        p._invisibleStepCarry-=28;
+      }
+    }else if(!remoteInvisible||remoteDowned||remoteAirborne||p.map!==currentMap){
+      p._invisibleStepCarry=0;
+    }
   }
 }
 const JUMP_DIRECTIONAL_ACCEL=1450;
@@ -3757,7 +3778,7 @@ function drawPlayerNameplate(x,labelBottom,name,activity=null){
   ctx.restore();
 }
 
-function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,characterId='classic',jetpackActive=false,jetpackThrusting=false,jetpackEquipped=false,equipmentLoadout=null,activity=null){
+function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,characterId='classic',jetpackActive=false,jetpackThrusting=false,jetpackEquipped=false,equipmentLoadout=null,activity=null,suppressShadow=false){
   // Jetpack flight uses the directional idle frame. All other jumps freeze on
   // one directional walking-step frame so the legs are posed but not animated.
   if(jetpackActive){frame=1;bob=0;}
@@ -3813,9 +3834,11 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
     const drawX=Math.round(x-spriteAnchorX*spriteScale);
     const drawY=Math.round(visualFootY-spriteAnchorY*spriteScale);
 
-    const shadowScale=1-Math.min(.46,(jumpAmount/Math.max(1,currentJumpHeight()))*.46);
-    ctx.fillStyle='rgba(3,10,14,.24)';ctx.beginPath();
-    ctx.ellipse(Math.round(x),groundFootY-1,Math.max(14,Math.round(Math.max(26,dw*.50)*shadowScale)),Math.max(4,9*shadowScale),0,0,Math.PI*2);ctx.fill();
+    if(!suppressShadow){
+      const shadowScale=1-Math.min(.46,(jumpAmount/Math.max(1,currentJumpHeight()))*.46);
+      ctx.fillStyle='rgba(3,10,14,.24)';ctx.beginPath();
+      ctx.ellipse(Math.round(x),groundFootY-1,Math.max(14,Math.round(Math.max(26,dw*.50)*shadowScale)),Math.max(4,9*shadowScale),0,0,Math.PI*2);ctx.fill();
+    }
 
     if(jetpackThrusting&&jetpackEquipped&&visualDir==='down'){
       const hiddenNozzle={x:138,y:268};
@@ -3933,6 +3956,7 @@ function getHQPlayerRenderMetrics(item){
       bottom:item.p.drawY+20,
       draw(){
         drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
       }
     };
   }
@@ -3948,7 +3972,8 @@ function getHQPlayerRenderMetrics(item){
     top:player.y-52,
     bottom:player.y+20,
     draw(){
-      drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',1,bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);
+      drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);
+      window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
     }
   };
 }
@@ -3959,7 +3984,7 @@ function hqOccluderAppliesToPlayer(piece,m){
 function drawHQPlayersAndOccluders(){
   const playerItems=[];
   for(const [id,p] of remotePlayers){
-    if(p.map!=='hq') continue;
+    if(p.map!=='hq'||p?.powers?.invisibility) continue;
     playerItems.push({depth:p.drawY+20,type:'remote',p});
   }
   playerItems.push({depth:player.y+20,type:'local'});
@@ -3980,7 +4005,7 @@ function drawHQPlayersAndOccluders(){
 function drawHordePlayerSprite({x,y,dir,frame,name='',alpha=1,bob=0,jump=0,character='classic',jetpackActive=false,jetpack=false,jetpackEquipped=false,loadout=null,activity=null,downed=false}){
   ctx.save();
   if(downed){const pivotY=y+20;ctx.translate(x,pivotY);ctx.rotate(Math.PI/2);ctx.translate(-x,-pivotY);}
-  drawPlayerSprite(x,y,dir,frame,downed?'':name,alpha,bob,jump,character,jetpackActive,jetpack,jetpackEquipped,loadout,downed?null:activity);
+  drawPlayerSprite(x,y,dir,frame,downed?'':name,alpha,bob,jump,character,jetpackActive,jetpack,jetpackEquipped,loadout,downed?null:activity,downed);
   ctx.restore();
   if(downed&&name)drawPlayerNameplate(x,y-55,name,{label:'DOWN'});
 }
@@ -4030,8 +4055,12 @@ function drawDepthScene(t){
         }
       }else if(item.type==='remote'){
         const remoteDowned=!!item.p?.zombieCombat?.downed,remoteInvisible=!!item.p?.powers?.invisibility;
-        drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name,alpha:remoteInvisible?.28:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
-        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:remoteInvisible,local:false});
+        // Remote invisibility is complete: no body, nameplate, shadow, weapon,
+        // jetpack flame, Inferno aura, or other reveal. Footprints are emitted
+        // from synchronized movement in updateRemoteInterpolation().
+        if(remoteInvisible)continue;
+        drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name,alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
         if(!remoteDowned)window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
       }else if(item.type==='bot'){
         const bot=item.bot;
@@ -4043,7 +4072,7 @@ function drawDepthScene(t){
         const amount=onStairs?0.75:2.0;
         const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*amount:0;
         const localDowned=window.ATMZombieOutbreak?.isLocalDowned?.()===true;
-        drawHordePlayerSprite({x:player.x,y:player.y,dir:player.dir,frame:player.frame,name:'',alpha:powerUps.invisibility>0?.28:1,bob,jump:jumpLift(),character:selectedCharacter,jetpackActive:jetpackState.active,jetpack:jetpackState.thrusting,jetpackEquipped:canUseJetpack(),loadout:window.atmActiveLoadout||null,downed:localDowned});
+        drawHordePlayerSprite({x:player.x,y:player.y,dir:player.dir,frame:player.frame,name:'',alpha:(powerUps.invisibility>0 ? .28 : 1),bob,jump:jumpLift(),character:selectedCharacter,jetpackActive:jetpackState.active,jetpack:jetpackState.thrusting,jetpackEquipped:canUseJetpack(),loadout:window.atmActiveLoadout||null,downed:localDowned});
         window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:localDowned,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
       }
     }

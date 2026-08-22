@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.12.1: polishes Neon Racer mobile proportions, removes downed-player shadows, makes Inferno visible outside Horde, makes remote Invisibility bodyless with footprints only, and adds persistent Live Chat text sizing.
  * v235.12: removes redundant Store ownership filtering, adds server-verified Mainnet attribute checkout plumbing, Neon Racer, three combat vending powers, and Horde down/revive survival.
  * v235.11.8: rebuilds the mobile Attribute Store as a flex-column app layout with compact list cards and a static cart CTA, eliminating catalog/card horizontal overflow.
  * v235.11.6: moves payment selection into a dedicated checkout sheet so mobile checkout never shares width with the scrolling catalog.
@@ -48,10 +49,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.12,
-    version: 'v235.12',
-    name: 'Commerce + Horde Survival + Neon Racer',
-    title: 'ATM Town v235.12 — Commerce + Horde Survival + Neon Racer'
+    number: 235.121,
+    version: 'v235.12.1',
+    name: 'Arcade + Power + Chat Polish',
+    title: 'ATM Town v235.12.1 — Arcade + Power + Chat Polish'
   });
 
   const MAPS = Object.freeze({

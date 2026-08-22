@@ -1,8 +1,10 @@
-# ATM Town v235.12 — Commerce + Horde Survival + Neon Racer
+# ATM Town v235.12.1 — Arcade + Power + Chat Polish
 
-Current build adds permanent server-verified Mainnet Attribute Store checkout plumbing (ATM/RLUSD/XRP), removes the redundant ownership filter, adds ATM Neon Racer to the previously unused Racing Cabinet, adds Invisibility/Juggernaut/Inferno vending powers, and adds multiplayer Horde player damage/down/revive survival. World-event/payment reward infrastructure remains Testnet unless explicitly designated as Mainnet commerce.
+Current build polishes the v235.12 systems without changing commerce networks or Horde rules: Neon Racer now preserves intentional portrait/landscape proportions instead of stretching, downed Horde players lose the standing foot shadow, Inferno flames render outside The Horde, remote Invisibility hides the entire player visual while leaving moving footprints, and Live Chat adds persistent text-size settings.
 
-See `docs/V235.12-COMMERCE-HORDE-SURVIVAL-NEON-RACER.md` and run `supabase/ATM-Town-v235.12-Attribute-Commerce.sql` before testing real Attribute Store purchases. No launch prices are inserted by this patch.
+The v235.12 commerce foundation remains unchanged: Attribute Store ATM/RLUSD/XRP purchases are Mainnet, world-event funding/rewards remain Testnet, and the same `supabase/ATM-Town-v235.12-Attribute-Commerce.sql` schema is still used. No new SQL is required for v235.12.1.
+
+See `docs/V235.12.1-ARCADE-POWER-CHAT-POLISH.md` for behavior and testing.
 
 ---
 
@@ -12,7 +14,15 @@ ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/Java
 
 ## Current version
 
-**v235.12 — Commerce + Horde Survival + Neon Racer**
+**v235.12.1 — Arcade + Power + Chat Polish**
+
+### v235.12.1 polish
+
+- **Neon Racer:** mobile uses an authored portrait logical view and desktop keeps landscape; the canvas is centered at its intrinsic aspect ratio instead of being non-uniformly stretched to the modal.
+- **Horde downed visual:** the standing foot shadow is suppressed whenever the player sprite is rotated into the downed pose.
+- **Inferno:** fire visuals render anywhere the active player is visible; zombie damage remains Horde-only.
+- **Invisibility:** the local user keeps the faint ghost self for control feedback, while remote clients draw no body, nameplate, shadow, weapon, jetpack flame, or Inferno aura. Remote movement generates footprints from synchronized position updates.
+- **Live Chat:** a header cog opens Small / Normal / Large / XL message text sizing. The choice is stored locally and does not change the composer/HUD sizing.
 
 This build keeps the owned-assets-only Locker and You Are ATM NFT entitlements, removes the redundant Store ownership dropdown, and adds server-verified permanent Attribute Store purchases for **ATM, RLUSD, and XRP on XRPL Mainnet**. Prices remain server-authoritative in Supabase; no launch prices are inserted automatically. Cash/card remains a future checkout rail.
 

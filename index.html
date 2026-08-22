@@ -1145,6 +1145,39 @@ body.atm-soft-keyboard-device.live-chat-open.atm-keyboard-open #liveChatPanel.op
 body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #quest,body.neon-racer-open #mini,body.neon-racer-open #hint,body.neon-racer-open #powerHud,body.neon-racer-open #lockerButton,body.neon-racer-open #attributeStoreButton,body.neon-racer-open #musicToggle{visibility:hidden!important;pointer-events:none!important}
 @media(max-width:760px){#neonRacerPanel{padding:4px}#neonRacerCard{height:calc(var(--vv-height,100dvh) - 8px);border-radius:14px}.neonRacerHeader{padding:7px}.neonRacerLogo{width:34px;height:34px}.neonRacerBrand h2{font-size:14px}.neonRacerBrand span{display:none}.neonRacerStat{min-width:48px;padding:4px}.neonRacerStat span{font-size:6px}.neonRacerStat strong{font-size:10px}#neonRacerClose{width:34px;height:34px}.neonRacerFooter{padding:7px}.neonRacerSteer{min-height:62px}}
 
+
+
+/* ===== v235.12.1: Arcade + power + chat polish ===== */
+/* Live Chat keeps its current keyboard-coupled layout; the settings popover only
+   changes message/name typography and persists the player's choice. */
+#liveChatPanel{--live-chat-body-size:12px;--live-chat-name-size:10px;--live-chat-time-size:8px;position:fixed}
+#liveChatPanel[data-text-size="small"]{--live-chat-body-size:10px;--live-chat-name-size:9px;--live-chat-time-size:7px}
+#liveChatPanel[data-text-size="normal"]{--live-chat-body-size:12px;--live-chat-name-size:10px;--live-chat-time-size:8px}
+#liveChatPanel[data-text-size="large"]{--live-chat-body-size:15px;--live-chat-name-size:12px;--live-chat-time-size:9px}
+#liveChatPanel[data-text-size="xlarge"]{--live-chat-body-size:18px;--live-chat-name-size:14px;--live-chat-time-size:10px}
+.liveChatHeaderActions{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+#liveChatSettingsButton{width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(88,241,230,.18);border-radius:11px;background:rgba(88,241,230,.065);color:#dffffc;font:1000 17px/1 system-ui;touch-action:manipulation}
+#liveChatSettingsButton[aria-expanded="true"]{border-color:rgba(88,241,230,.56);background:rgba(88,241,230,.14);box-shadow:0 0 0 2px rgba(88,241,230,.07)}
+.liveChatSettings{position:absolute;z-index:4;top:58px;right:10px;width:min(286px,calc(100% - 20px));padding:11px;border:1px solid rgba(88,241,230,.30);border-radius:14px;background:rgba(4,18,27,.98);box-shadow:0 18px 42px rgba(0,0,0,.46);backdrop-filter:blur(12px)}
+.liveChatSettings[hidden]{display:none!important}.liveChatSettingsTitle{margin:0 0 8px;color:#8fb5bf;font:1000 9px/1 system-ui;letter-spacing:.16em}.liveChatTextSizeChoices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.liveChatTextSizeChoices button{min-width:0;padding:9px 5px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:rgba(255,255,255,.045);color:#d7edf2;font:900 9px/1 system-ui;touch-action:manipulation}.liveChatTextSizeChoices button.active,.liveChatTextSizeChoices button[aria-pressed="true"]{border-color:#58f1e6;background:rgba(88,241,230,.14);color:#eaffff}
+.liveChatMessageHeader strong{font-size:var(--live-chat-name-size)!important}.liveChatMessageHeader time{font-size:var(--live-chat-time-size)!important}.liveChatMessageBody{font-size:var(--live-chat-body-size)!important;line-height:1.38!important}
+@media(max-width:600px){#liveChatSettingsButton,#liveChatClose{width:34px;height:34px}.liveChatSettings{top:51px;right:8px}.liveChatTextSizeChoices button{padding:9px 3px;font-size:8px}}
+
+/* Neon Racer uses two authored logical views instead of non-uniformly stretching
+   one landscape bitmap into a portrait phone. Canvas intrinsic ratio is now
+   preserved and centered inside the stage. */
+.neonRacerStage{display:grid!important;place-items:center!important;overflow:hidden!important;background:radial-gradient(circle at 50% 45%,rgba(88,241,230,.055),transparent 56%),#030913!important}
+#neonRacerCanvas{width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important;image-rendering:pixelated;touch-action:none}
+#neonRacerCanvas[data-orientation="landscape"]{aspect-ratio:900/520}
+#neonRacerCanvas[data-orientation="portrait"]{aspect-ratio:560/820}
+@media(max-width:760px){
+  #neonRacerCard{grid-template-rows:auto minmax(0,1fr) auto!important}
+  .neonRacerStage{padding:4px 6px!important}
+  #neonRacerCanvas{max-width:calc(100% - 4px)!important;max-height:calc(100% - 4px)!important}
+  body.neon-racer-open .arcadeGamePresence{right:7px;top:56px;width:112px;max-height:104px;padding:4px;background:rgba(3,15,22,.72)}
+  body.neon-racer-open .arcadeGamePresenceTitle{display:none}
+}
+
 </style>
 </head>
 <body class="access-flow-open">
@@ -1259,7 +1292,7 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
         </div>
       </section>
     </main>
-    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Refresh XRPL to verify You Are ATM attribute entitlements.</div><div class="lockerFooterVersion">LOCKER v7 · OWNED ASSETS ONLY · v235.12</div></footer>
+    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Refresh XRPL to verify You Are ATM attribute entitlements.</div><div class="lockerFooterVersion">LOCKER v7 · OWNED ASSETS ONLY · v235.12.1</div></footer>
   </div>
 </div>
 
@@ -1291,7 +1324,7 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
         <div class="attributeStoreCheckoutNote" id="attributeStoreCheckoutNote">Crypto checkout becomes available automatically when every cart item has a launch price. Permanent ownership is granted only after server-side Mainnet verification. Cash/card remains coming soon.</div>
       </section>
     </div>
-    <footer class="attributeStoreFooter"><span id="attributeStoreStatus">Attribute Store ready.</span><strong>ATTRIBUTE STORE v2 · v235.12</strong></footer>
+    <footer class="attributeStoreFooter"><span id="attributeStoreStatus">Attribute Store ready.</span><strong>ATTRIBUTE STORE v2 · v235.12.1</strong></footer>
   </div>
 </div>
 
@@ -1446,7 +1479,8 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
   </div>
 </div>
 <div aria-hidden="true" aria-labelledby="liveChatTitle" id="liveChatPanel" role="dialog">
-  <header class="liveChatHeader"><div class="liveChatHeaderText"><strong id="liveChatTitle">ATM TOWN LIVE</strong><span>Session chat · recent messages load when you join online</span></div><button aria-label="Close live chat" id="liveChatClose" type="button">×</button></header>
+  <header class="liveChatHeader"><div class="liveChatHeaderText"><strong id="liveChatTitle">ATM TOWN LIVE</strong><span>Session chat · recent messages load when you join online</span></div><div class="liveChatHeaderActions"><button aria-controls="liveChatSettings" aria-expanded="false" aria-label="Live chat settings" id="liveChatSettingsButton" type="button">⚙</button><button aria-label="Close live chat" id="liveChatClose" type="button">×</button></div></header>
+  <div class="liveChatSettings" hidden id="liveChatSettings"><div class="liveChatSettingsTitle">TEXT SIZE</div><div aria-label="Live chat text size" class="liveChatTextSizeChoices" role="group"><button aria-pressed="false" data-live-chat-text-size="small" type="button">Small</button><button aria-pressed="true" data-live-chat-text-size="normal" type="button">Normal</button><button aria-pressed="false" data-live-chat-text-size="large" type="button">Large</button><button aria-pressed="false" data-live-chat-text-size="xlarge" type="button">XL</button></div></div>
   <div class="liveChatBody"><div class="liveChatMessages" id="liveChatMessages"></div><div id="liveChatEmpty">No messages yet. Say something to the town.</div></div>
   <div id="liveChatComposerSlot"></div>
 </div>
