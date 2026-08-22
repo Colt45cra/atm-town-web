@@ -563,7 +563,7 @@ body.locker-modal-open #controls{visibility:hidden!important}body.locker-modal-o
 @media(max-width:430px){.lockerHeaderActions #lockerRefreshButton{font-size:0;width:38px;height:38px}.lockerHeaderActions #lockerRefreshButton::after{content:'↻';font-size:18px}.lockerSlot{flex-basis:86px}.lockerItemGrid,.lockerInventoryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.lockerItemName{font-size:9px}.lockerItemCard{min-height:139px}.lockerItemBadge{font-size:6px}.lockerSourceNote{font-size:9px}}
 
 
-/* ===== v235.11.6: Character Attribute Store + hard-bounded mobile CASH/CRYPTO payment rails ===== */
+/* ===== v235.11.7: Character Attribute Store + hard-bounded mobile CASH/CRYPTO payment rails ===== */
 #attributeStoreButton{position:fixed;right:8px;top:209px;z-index:7;display:flex;align-items:center;gap:4px;padding:6px 8px;border:1px solid rgba(112,249,200,.42);border-radius:10px;background:linear-gradient(145deg,rgba(20,39,51,.96),rgba(6,19,28,.96));color:#fff;font:1000 8px system-ui;letter-spacing:.09em;box-shadow:0 7px 20px rgba(0,0,0,.24);pointer-events:auto;touch-action:manipulation;backdrop-filter:blur(8px)}
 #attributeStoreButton:active{transform:scale(.96)}#attributeStoreButton .attributeStoreButtonIcon{font-size:14px;line-height:1}#attributeStoreButtonCount{display:none;position:absolute;right:-5px;top:-6px;min-width:16px;height:16px;padding:0 4px;place-items:center;border:2px solid #07151f;border-radius:999px;background:#ff4fa3;color:#fff;font:1000 8px/1 system-ui}#attributeStoreButton.hasItems #attributeStoreButtonCount{display:grid}
 body.access-flow-open #attributeStoreButton,body.directory-open #attributeStoreButton,body.vending-modal-open #attributeStoreButton,body.locker-modal-open #attributeStoreButton,body.sky-run-open #attributeStoreButton,body.platform-panic-open #attributeStoreButton,body.ring-rumble-open #attributeStoreButton,body.flappy-jetpack-open #attributeStoreButton,body.atm-darts-open #attributeStoreButton{display:none!important}
@@ -579,7 +579,7 @@ body.attribute-store-open #controls,body.attribute-store-open #hudSocialRail,bod
 @media(max-width:430px){.attributeStoreGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.attributeStoreShowLabel{font-size:0}.attributeStoreShowLabel select{font-size:7px}.attributeStorePaymentCategories{grid-template-columns:repeat(2,minmax(0,1fr))}.attributeStoreCryptoAssets{grid-template-columns:repeat(3,minmax(0,1fr))}.attributeStoreCharacter{min-width:70px}.attributeStoreCharacter small{display:none}}
 
 
-/* ===== v235.11.6: dedicated checkout sheet; payment controls never share catalog width ===== */
+/* ===== v235.11.7: dedicated checkout sheet; payment controls never share catalog width ===== */
 .attributeStoreBody,.attributeStoreCatalog,.attributeStoreCart{min-width:0;max-width:100%}
 .attributeStoreCart{grid-template-rows:auto minmax(0,1fr) auto auto}
 .attributeStoreReviewButton{width:100%;min-width:0;min-height:42px;margin-top:9px;border:1px solid rgba(88,241,230,.36);border-radius:10px;background:linear-gradient(90deg,rgba(88,241,230,.14),rgba(112,249,200,.08));color:#bffffa;font:1000 9px system-ui;letter-spacing:.07em;touch-action:manipulation}
@@ -600,6 +600,28 @@ body.attribute-store-open #controls,body.attribute-store-open #hudSocialRail,bod
 .attributeStoreCheckoutNote{min-width:0;max-width:100%;margin:0;padding:0 14px 12px;background:rgba(2,10,16,.92);color:#799da6;font-size:8px;line-height:1.45;text-align:center;overflow-wrap:anywhere}
 @media(max-width:760px){#attributeStorePanel{padding:6px}#attributeStoreCard{width:100%;max-width:100%;height:calc(var(--vv-height,100dvh) - 12px)}.attributeStoreBody{width:100%;max-width:100%;min-width:0;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;overflow:hidden}.attributeStoreCatalog{width:100%;max-width:100%;min-width:0;overflow:hidden}.attributeStoreGrid{width:100%;max-width:100%;min-width:0;overflow-x:hidden}.attributeStoreCart{width:100%;max-width:100%;min-width:0;overflow:hidden;padding:8px}.attributeStoreCartItems,.attributeStoreCartTotal{display:none}.attributeStoreReviewButton{min-height:44px;margin-top:3px}.attributeStoreCheckoutCard{width:100%;max-width:100%;min-width:0;border:0}.attributeStoreCheckoutHeader{padding:11px 12px}.attributeStoreCheckoutHeader h3{font-size:16px}.attributeStoreCheckoutScroll{width:100%;max-width:100%;min-width:0;padding:10px}.attributeStoreCheckoutSection{width:100%;max-width:100%;min-width:0;padding:10px}.attributeStorePaymentCategories,.attributeStoreCryptoAssets{display:flex!important;flex-direction:column;align-items:stretch;width:100%;max-width:100%;min-width:0;gap:8px}.attributeStorePaymentCategory,.attributeStoreCryptoAsset{display:block;flex:0 0 auto;width:100%;max-width:100%;min-width:0;min-height:48px}.attributeStoreCheckoutActions{grid-template-columns:1fr;padding:9px 10px}.attributeStoreCheckoutActions button{min-height:48px}.attributeStoreCheckoutBack{order:2}.attributeStoreCheckoutActions #attributeStoreCheckoutButton{order:1}.attributeStorePayment small{display:block}.attributeStoreFooter{min-width:0;max-width:100%}}
 @media(max-width:430px){.attributeStoreCheckoutSummaryRow{grid-template-columns:34px minmax(0,1fr) auto}.attributeStoreCheckoutSummaryRow img,.attributeStoreCheckoutSummaryRow .fallback{width:32px;height:34px}.attributeStoreCheckoutScroll{padding:8px}.attributeStoreCheckoutSection{padding:9px}.attributeStorePaymentCategory,.attributeStoreCryptoAsset{min-height:46px}}
+
+/* ===== v235.11.7: mobile Store width lock + inset cart action bar =====
+   The mobile catalog can scroll internally, but it is never allowed to establish
+   the width of the cart/checkout CTA. The cart is pinned with left/right insets
+   instead of width:100%, so Review Payment always fits the visible Store card. */
+@media(max-width:760px){
+  #attributeStorePanel{overflow:hidden}
+  #attributeStoreCard{width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;min-width:0!important;overflow:hidden!important}
+  .attributeStoreBody{position:relative!important;display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+  .attributeStoreCatalog{height:100%!important;width:100%!important;max-width:100%!important;min-width:0!important;padding:8px 8px 92px!important;overflow:hidden!important}
+  .attributeStoreGrid{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;overscroll-behavior-x:none}
+  .attributeStoreItem{width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+  .attributeStoreItemAction{width:100%!important;max-width:100%!important;min-width:0!important}
+  .attributeStoreCart{position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:26!important;width:auto!important;max-width:none!important;min-width:0!important;margin:0!important;padding:8px 10px!important;border-left:0!important;border-top:1px solid rgba(112,249,200,.24)!important;background:linear-gradient(180deg,rgba(3,17,25,.98),rgba(2,11,17,.995))!important;box-shadow:0 -12px 28px rgba(0,0,0,.32)!important;overflow:hidden!important}
+  .attributeStoreCartHeader{width:100%!important;min-width:0!important;padding:0 0 7px!important}
+  .attributeStoreCartHeader button{display:none!important}
+  .attributeStoreReviewButton{display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;left:auto!important;right:auto!important;width:auto!important;max-width:none!important;min-width:0!important;margin:0!important;padding:0 12px!important;min-height:48px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+}
+@supports(width:100dvw){@media(max-width:760px){#attributeStoreCard{width:calc(100dvw - 12px)!important;max-width:calc(100dvw - 12px)!important}}}
+@media(max-width:520px){.attributeStoreGrid{grid-template-columns:minmax(0,1fr)!important}}
+@media(min-width:521px) and (max-width:760px){.attributeStoreGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
 
 /* ===== v184: ATM Sky Run cabinet + tap zone refinements ===== */
 #skyRunPanel{position:fixed;inset:0;z-index:9200;display:none;align-items:center;justify-content:center;padding:12px;background:rgba(2,7,12,.9);backdrop-filter:blur(8px)}
@@ -992,7 +1014,7 @@ body.atm-soft-keyboard-device.live-chat-open.atm-keyboard-open #liveChatPanel.op
         </div>
       </section>
     </main>
-    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Refresh XRPL to verify You Are ATM attribute entitlements.</div><div class="lockerFooterVersion">LOCKER v7 · OWNED ASSETS ONLY · v235.11.6</div></footer>
+    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Refresh XRPL to verify You Are ATM attribute entitlements.</div><div class="lockerFooterVersion">LOCKER v7 · OWNED ASSETS ONLY · v235.11.7</div></footer>
   </div>
 </div>
 
@@ -1024,7 +1046,7 @@ body.atm-soft-keyboard-device.live-chat-open.atm-keyboard-open #liveChatPanel.op
         <div class="attributeStoreCheckoutNote" id="attributeStoreCheckoutNote">Browse and build your cart now. Live checkout will turn on after prices and permanent server-side purchase entitlements are configured.</div>
       </section>
     </div>
-    <footer class="attributeStoreFooter"><span id="attributeStoreStatus">Attribute Store ready.</span><strong>ATTRIBUTE STORE v1.4 · v235.11.6</strong></footer>
+    <footer class="attributeStoreFooter"><span id="attributeStoreStatus">Attribute Store ready.</span><strong>ATTRIBUTE STORE v1.5 · v235.11.7</strong></footer>
   </div>
 </div>
 
