@@ -21,11 +21,12 @@
   };
 
   const PROPS = Object.freeze({
-    atm_machine: { id: 'atm_machine', label: 'Arcade ATM', src: 'assets/world-events/prop-hunt/atm_machine.png', scale: 1, shadow: 16, anchorX: 0.5 },
-    bench: { id: 'bench', label: 'Bench', src: 'assets/world-events/prop-hunt/bench.png', scale: 0.9, shadow: 22, anchorX: 0.5 },
-    news_board: { id: 'news_board', label: 'ATM Town News Board', src: 'assets/world-events/prop-hunt/news_board.png', scale: 0.56, shadow: 34, anchorX: 0.5 },
-    street_lamp: { id: 'street_lamp', label: 'Street Lamp', src: 'assets/world-events/prop-hunt/street_lamp.png', scale: 0.66, shadow: 15, anchorX: 0.25 },
-    upgrade_board: { id: 'upgrade_board', label: 'Upgrade Board', src: 'assets/world-events/prop-hunt/upgrade_board.png', scale: 0.68, shadow: 18, anchorX: 0.5 },
+    town_directory: { id: 'town_directory', label: 'Town Directory Kiosk', src: 'assets/maps/town/foreground/day/assets_05_00.webp', scale: 0.84, shadow: 18, anchorX: 0.5 },
+    token_market_board: { id: 'token_market_board', label: 'Token Market Board', src: 'assets/maps/town/foreground/day/assets_06_00.webp', scale: 0.82, shadow: 18, anchorX: 0.5 },
+    atm_vend_blue: { id: 'atm_vend_blue', label: 'ATM Vend Machine', src: 'assets/maps/town/foreground/day/assets_08_00.webp', scale: 0.88, shadow: 16, anchorX: 0.5 },
+    atm_vend_green: { id: 'atm_vend_green', label: 'ATM Vend Machine', src: 'assets/maps/town/foreground/day/assets_09_00.webp', scale: 0.88, shadow: 16, anchorX: 0.5 },
+    street_lamp: { id: 'street_lamp', label: 'Street Lamp', src: 'assets/maps/town/foreground/day/assets_11_00.webp', scale: 0.82, shadow: 18, anchorX: 0.34 },
+    bench: { id: 'bench', label: 'Bench', src: 'assets/maps/town/foreground/day/assets_18_00.webp', scale: 0.92, shadow: 24, anchorX: 0.5 },
   });
   const PROP_IDS = Object.freeze(Object.keys(PROPS));
   const propImageCache = new Map();
@@ -41,6 +42,7 @@
     return image;
   }
   for (const id of PROP_IDS) ensurePropImage(id);
+
 
 
   function nowMs() {
@@ -165,23 +167,18 @@
     if (document.getElementById('atmPropHuntHud')) return;
     const style = document.createElement('style');
     style.textContent = `
-      #atmPropHuntHud{position:fixed;z-index:88;right:max(14px,env(safe-area-inset-right));top:max(132px,calc(env(safe-area-inset-top) + 120px));width:min(280px,calc(100vw - 28px));display:none;font-family:system-ui,-apple-system,sans-serif;pointer-events:none;filter:drop-shadow(0 12px 24px rgba(0,0,0,.35))}
+      #atmPropHuntHud{position:fixed;z-index:88;right:max(12px,env(safe-area-inset-right));top:max(86px,calc(env(safe-area-inset-top) + 76px));width:min(220px,calc(100vw - 24px));display:none;font-family:system-ui,-apple-system,sans-serif;pointer-events:none;filter:drop-shadow(0 10px 20px rgba(0,0,0,.32))}
       #atmPropHuntHud.visible{display:block}
-      #atmPropHuntHud .card{background:rgba(5,18,26,.92);border:1px solid rgba(255,214,102,.35);border-radius:16px;padding:12px 14px;color:#f7fbff;backdrop-filter:blur(10px)}
-      #atmPropHuntHud .eyebrow{font-size:11px;font-weight:950;letter-spacing:.12em;color:#ffd166}
-      #atmPropHuntHud .title{font-size:18px;font-weight:1000;margin-top:2px}
-      #atmPropHuntHud .role{font-size:12px;font-weight:900;color:#9de7ff;margin-top:4px}
-      #atmPropHuntHud .desc{font-size:12px;line-height:1.45;color:#c8d8df;margin-top:6px}
-      #atmPropHuntHud .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-      #atmPropHuntHud .fact{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 9px}
-      #atmPropHuntHud .fact b{display:block;font-size:13px;color:#fff}
-      #atmPropHuntHud .fact span{font-size:10px;color:#93afba}
-      @media(max-width:720px){#atmPropHuntHud{top:max(118px,calc(env(safe-area-inset-top) + 104px));width:min(250px,calc(100vw - 22px))}}
+      #atmPropHuntHud .card{background:rgba(5,18,26,.92);border:1px solid rgba(255,214,102,.35);border-radius:14px;padding:10px 12px;color:#f7fbff;backdrop-filter:blur(10px)}
+      #atmPropHuntHud .eyebrow{font-size:10px;font-weight:950;letter-spacing:.12em;color:#ffd166}
+      #atmPropHuntHud .title{font-size:14px;font-weight:1000;margin-top:2px;line-height:1.25}
+      #atmPropHuntHud .desc{font-size:11px;line-height:1.4;color:#c8d8df;margin-top:5px}
+      @media(max-width:720px){#atmPropHuntHud{top:max(72px,calc(env(safe-area-inset-top) + 60px));width:min(196px,calc(100vw - 18px))}}
     `;
     document.head.appendChild(style);
     const hud = document.createElement('div');
     hud.id = 'atmPropHuntHud';
-    hud.innerHTML = '<div class="card"><div class="eyebrow">WORLD EVENT · PROP HUNT</div><div class="title"></div><div class="role"></div><div class="desc"></div><div class="facts"></div></div>';
+    hud.innerHTML = '<div class="card"><div class="eyebrow">PROP HUNT RESULT</div><div class="title"></div><div class="desc"></div></div>';
     document.body.appendChild(hud);
   }
 
@@ -189,31 +186,12 @@
     installUi();
     const hud = document.getElementById('atmPropHuntHud');
     if (!hud) return;
-    if (!isPropHuntEvent()) { hud.classList.remove('visible'); return; }
+    if (!isPropHuntEvent() || state.phase !== 'completed') { hud.classList.remove('visible'); return; }
     const title = hud.querySelector('.title');
-    const role = hud.querySelector('.role');
     const desc = hud.querySelector('.desc');
-    const facts = hud.querySelector('.facts');
-    const phase = roundPhase();
-    const remaining = remainingHiders();
-    const hunter = participantEntry(hunterId());
-    if (title) {
-      if (state.phase === 'announced') title.textContent = `Round begins in ${secondsLabel(Date.parse(state.event?.starts_at || '') - nowMs())}`;
-      else if (phase === 'hide') title.textContent = `Hide! ${secondsLabel(hideRemainingMs())}`;
-      else if (phase === 'hunt') title.textContent = `Hunt live · ${secondsLabel(huntRemainingMs())}`;
-      else title.textContent = winnerEntry() ? `${winnerEntry()?.name || 'A player'} wins!` : 'Round complete';
-    }
-    if (role) role.textContent = `ROLE · ${localRole().toUpperCase()}`;
-    if (desc) desc.textContent = roleDescription();
-    if (facts) {
-      const winner = winnerEntry();
-      facts.innerHTML = `
-        <div class="fact"><b>${escapeHtml(String(remaining.length))}</b><span>props remaining</span></div>
-        <div class="fact"><b>${escapeHtml(hunter?.name || 'Hunter')}</b><span>current hunter</span></div>
-        <div class="fact"><b>${escapeHtml(phase === 'hide' ? 'HIDE' : phase === 'hunt' ? 'HUNT' : state.phase.toUpperCase())}</b><span>round phase</span></div>
-        <div class="fact"><b>${winner ? escapeHtml(winner.name) : '—'}</b><span>winner</span></div>
-      `;
-    }
+    const winner = winnerEntry();
+    if (title) title.textContent = winner ? `${winner.name} wins Prop Hunt` : 'Prop Hunt complete';
+    if (desc) desc.textContent = winner ? `${winner.name} was the final prop found and wins the round.` : 'The Prop Hunt round has ended.';
     hud.classList.add('visible');
   }
 
@@ -361,11 +339,13 @@
     ctx.ellipse(Math.round(x), baseY + 1, Math.max(12, Math.round(Number(definition.shadow || 18))), 6, 0, 0, Math.PI * 2);
     ctx.fill();
     if (isLocal) {
-      ctx.strokeStyle = 'rgba(255,214,102,.65)';
+      ctx.strokeStyle = 'rgba(102,247,189,.42)';
       ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
       ctx.beginPath();
-      ctx.arc(Math.round(x), Math.round(baseY - drawH * 0.48), Math.max(30, Math.round(Math.max(drawW, drawH) * 0.36)), 0, Math.PI * 2);
+      ctx.arc(Math.round(x), Math.round(baseY - 12), Math.max(16, Math.round(Math.max(drawW * 0.22, 14))), 0, Math.PI * 2);
       ctx.stroke();
+      ctx.setLineDash([]);
     }
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(image, drawX, drawY, drawW, drawH);

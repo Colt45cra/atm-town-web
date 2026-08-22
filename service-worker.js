@@ -1,4 +1,4 @@
-/* ATM Town v235.12.5 PWA service worker
+/* ATM Town v235.12.6 PWA service worker
  * - App shell is precached for fast relaunch.
  * - Same-origin game assets use stale-while-revalidate so repeat loads are fast
  *   without permanently pinning old art/chunks after a deploy.
@@ -6,7 +6,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v235.12.5';
+const BUILD_CACHE = 'atm-town-shell-v235.12.6';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = ASSET_CACHE;
 const CACHE_PREFIX = 'atm-town-';
@@ -26,11 +26,12 @@ const SHELL = [
   '/js/world-events.js',
   '/js/zombie-outbreak.js',
   '/js/prop-hunt.js',
-  '/assets/world-events/prop-hunt/atm_machine.png',
-  '/assets/world-events/prop-hunt/bench.png',
-  '/assets/world-events/prop-hunt/news_board.png',
-  '/assets/world-events/prop-hunt/street_lamp.png',
-  '/assets/world-events/prop-hunt/upgrade_board.png',
+  '/assets/maps/town/foreground/day/assets_05_00.webp',
+  '/assets/maps/town/foreground/day/assets_06_00.webp',
+  '/assets/maps/town/foreground/day/assets_08_00.webp',
+  '/assets/maps/town/foreground/day/assets_09_00.webp',
+  '/assets/maps/town/foreground/day/assets_11_00.webp',
+  '/assets/maps/town/foreground/day/assets_18_00.webp',
   '/js/hud-layout.js',
   '/js/live-chat.js',
   '/js/runtime/game-core.js',

@@ -1,20 +1,20 @@
-# ATM Town v235.12.5 — Prop Hunt Seeker Hotfix
+# ATM Town v235.12.6 — Prop Hunt Polish + Horde Darkness
 
-This change-files-only hotfix fixes the Prop Hunt startup crash shown as `Uncaught ReferenceError: id is not defined` and updates the round flow so every found prop becomes an additional seeker.
+This change-files-only build polishes the new Prop Hunt event and intensifies The Horde nightfall visibility rules.
 
-## v235.12.5 changes
+## v235.12.6 changes
 
-- Fixes the remote-player render bug that referenced an out-of-scope `id` while Prop Hunt hooks were active.
-- Preserves the remote player's session id in the depth-render item and passes that exact id into the Prop Hunt disguise renderer.
-- A tagged prop now immediately returns to their normal character and becomes a **Seeker**.
-- The original hunter plus every found prop can use **TAG** on remaining hidden props.
-- The hunt continues until the final hidden prop is actually tagged.
-- The **last prop found wins**, matching the intended event rule.
-- Keeps the real ATM Town map-item disguise assets from v235.12.4.
-- Bumps the PWA shell cache to `atm-town-shell-v235.12.5`.
-- No SQL is required.
+- Removes the oversized live-round Prop Hunt center card so the event UI no longer covers the player or half the screen during gameplay.
+- Keeps the normal top world-event banner as the primary live Prop Hunt HUD.
+- Keeps only a compact completion-result card for Prop Hunt after the round ends.
+- Replaces cropped scene-fragment disguises with **verified full standalone ATM Town prop assets** already used in the town map.
+- Current Prop Hunt disguise pool now uses full map props such as the town directory kiosk, token market board, ATM vending machines, a street lamp, and a bench.
+- Deepens **The Horde** blackout so visibility is now focused on the player’s illuminated circle plus the authored street-lamp light pools.
+- Tightens the player vision radius during Horde Nightfall and increases the blackout strength outside lit zones.
+- Bumps the PWA shell cache to `atm-town-shell-v235.12.6`.
+- No SQL is required for this polish build.
 
-See `docs/V235.12.5-PROP-HUNT-SEEKER-HOTFIX.md` for testing.
+See `docs/V235.12.6-PROP-HUNT-POLISH-HORDE-DARKNESS.md` for testing.
 
 ## Previous release notes
 

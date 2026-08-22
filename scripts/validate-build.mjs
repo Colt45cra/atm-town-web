@@ -149,11 +149,12 @@ const requiredFiles = [
   'js/world-events.js',
   'js/zombie-outbreak.js',
   'js/prop-hunt.js',
-  'assets/world-events/prop-hunt/atm_machine.png',
-  'assets/world-events/prop-hunt/bench.png',
-  'assets/world-events/prop-hunt/news_board.png',
-  'assets/world-events/prop-hunt/street_lamp.png',
-  'assets/world-events/prop-hunt/upgrade_board.png',
+  'assets/maps/town/foreground/day/assets_05_00.webp',
+  'assets/maps/town/foreground/day/assets_06_00.webp',
+  'assets/maps/town/foreground/day/assets_08_00.webp',
+  'assets/maps/town/foreground/day/assets_09_00.webp',
+  'assets/maps/town/foreground/day/assets_11_00.webp',
+  'assets/maps/town/foreground/day/assets_18_00.webp',
   'lib/world-events.js',
   'lib/world-event-money-rain-points.js',
   'supabase/ATM-Town-v235.sql',
@@ -175,7 +176,7 @@ const requiredFiles = [
   'docs/V235.12-COMMERCE-HORDE-SURVIVAL-NEON-RACER.md',
   'docs/V235.12.1-ARCADE-POWER-CHAT-POLISH.md',
   'docs/V235.12.2-FLIGHT-FX-ANCHOR-HOTFIX.md',
-  'docs/V235.12.5-PROP-HUNT-SEEKER-HOTFIX.md',
+  'docs/V235.12.6-PROP-HUNT-POLISH-HORDE-DARKNESS.md',
   'api/embedded-wallet.js',
   'api/world-time.js',
   'lib/atm-pay.js',
@@ -215,8 +216,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.12.5'")) errors.push('Missing v235.12.5 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Prop Hunt Seeker Hotfix'")) errors.push('Missing v235.12.5 display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.12.6'")) errors.push('Missing v235.12.6 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Prop Hunt Polish + Horde Darkness'")) errors.push('Missing v235.12.6 display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -325,7 +326,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.12.5'")) errors.push('js/config.js is not marked v235.12.5.');
+if (!configSource.includes("version: 'v235.12.6'")) errors.push('js/config.js is not marked v235.12.6.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -402,7 +403,7 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.12.5") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/prop-hunt.js') || !serviceWorkerSource.includes('/assets/world-events/prop-hunt/news_board.png') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js') || !serviceWorkerSource.includes('/js/live-chat.js')) errors.push('v235.12.5 PWA shell cache/module registration is missing.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.12.6") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/prop-hunt.js') || !serviceWorkerSource.includes('/assets/maps/town/foreground/day/assets_05_00.webp') || !serviceWorkerSource.includes('/assets/maps/town/foreground/day/assets_18_00.webp') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js') || !serviceWorkerSource.includes('/js/live-chat.js')) errors.push('v235.12.6 PWA shell cache/module registration is missing.');
 if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
 if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
 if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');
@@ -456,12 +457,14 @@ if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsS
 if (!worldEventsServerSource.includes("const ZOMBIE_EVENT_TYPE = 'zombie_outbreak'") || !worldEventsServerSource.includes('buildZombieOutbreakManifest(seed)') || !worldEventsServerSource.includes('startZombieOutbreak')) errors.push('v235.8 server Zombie Outbreak launch/manifest is incomplete.');
 if (!worldTimeApiSource.includes("action === 'start-zombie-outbreak'") || !worldEventsClientSource.includes('/api/world-time?action=start-zombie-outbreak')) errors.push('v235.8 Zombie Outbreak is not wired through the existing World Event API/client.');
 if (!worldEventsClientSource.includes('START THE HORDE') || !worldEventsClientSource.includes('R · Rapid') || !worldEventsClientSource.includes('S · Spread')) errors.push('v235.9.2 HQ World Event control panel is missing The Horde launch/weapon guidance.');
-if (!worldTimeApiSource.includes("action === 'start-prop-hunt'") || !worldTimeApiSource.includes("action === 'tag-prop-hunt'") || !worldEventsClientSource.includes('START PROP HUNT')) errors.push('v235.12.5 Prop Hunt World Event API/control-panel bridge is missing.');
-if (!worldEventsServerSource.includes('PROP_HUNT_EVENT_TYPE') || !worldEventsServerSource.includes('startPropHunt') || !worldEventsServerSource.includes('tagPropHuntPlayer')) errors.push('v235.12.5 Prop Hunt server orchestration is missing.');
-if (!propHuntSource.includes('drawPlayerOverride') || !propHuntSource.includes('nearestTarget') || !propHuntSource.includes('assets/world-events/prop-hunt/news_board.png') || !gameRuntimeParts[0].includes('window.ATMPropHunt?.drawPlayerOverride') || !gameRuntimeParts[0].includes('window.ATMPropHunt?.nearestTarget')) errors.push('v235.12.5 Prop Hunt gameplay/render integration is missing.');
-if (!gameRuntimeParts[0].includes("items.push({depth:p.drawY+20,type:'remote',id:String(id),p})") || !gameRuntimeParts[0].includes('sessionId:item.id')) errors.push('v235.12.5 Prop Hunt remote-player id scoping hotfix is missing.');
-if (!propHuntSource.includes("if (isFound(state.localId)) return 'seeker'") || !propHuntSource.includes('isSeeker(state.localId)') || !worldEventsServerSource.includes('seeker_session_id') || !worldEventsServerSource.includes('Only a Prop Hunt seeker can tag hidden props.')) errors.push('v235.12.5 found-prop-to-seeker flow is incomplete.');
-if (!worldEventsServerSource.includes('The final prop actually found wins the round') || !worldEventsServerSource.includes('winnerSessionId = targetSessionId')) errors.push('v235.12.5 last-prop-found winner rule is missing.');
+if (!worldTimeApiSource.includes("action === 'start-prop-hunt'") || !worldTimeApiSource.includes("action === 'tag-prop-hunt'") || !worldEventsClientSource.includes('START PROP HUNT')) errors.push('v235.12.6 Prop Hunt World Event API/control-panel bridge is missing.');
+if (!worldEventsServerSource.includes('PROP_HUNT_EVENT_TYPE') || !worldEventsServerSource.includes('startPropHunt') || !worldEventsServerSource.includes('tagPropHuntPlayer')) errors.push('v235.12.6 Prop Hunt server orchestration is missing.');
+if (!propHuntSource.includes('drawPlayerOverride') || !propHuntSource.includes('nearestTarget') || !propHuntSource.includes('assets/maps/town/foreground/day/assets_05_00.webp') || !propHuntSource.includes('assets/maps/town/foreground/day/assets_18_00.webp') || !gameRuntimeParts[0].includes('window.ATMPropHunt?.drawPlayerOverride') || !gameRuntimeParts[0].includes('window.ATMPropHunt?.nearestTarget')) errors.push('v235.12.6 Prop Hunt gameplay/render integration is missing.');
+if (!gameRuntimeParts[0].includes("items.push({depth:p.drawY+20,type:'remote',id:String(id),p})") || !gameRuntimeParts[0].includes('sessionId:item.id')) errors.push('v235.12.6 Prop Hunt remote-player id scoping hotfix is missing.');
+if (!propHuntSource.includes("if (isFound(state.localId)) return 'seeker'") || !propHuntSource.includes('isSeeker(state.localId)') || !worldEventsServerSource.includes('seeker_session_id') || !worldEventsServerSource.includes('Only a Prop Hunt seeker can tag hidden props.')) errors.push('v235.12.6 found-prop-to-seeker flow is incomplete.');
+if (!worldEventsServerSource.includes('The final prop actually found wins the round') || !worldEventsServerSource.includes('winnerSessionId = targetSessionId')) errors.push('v235.12.6 last-prop-found winner rule is missing.');
+if (!propHuntSource.includes("state.phase !== 'completed'") || !propHuntSource.includes('PROP HUNT RESULT') || !propHuntSource.includes('Town Directory Kiosk')) errors.push('v235.12.6 Prop Hunt compact UI / full-prop polish is missing.');
+if (!gameRuntimeParts[0].includes('const HORDE_NIGHTFALL={fadeInPerSecond:1.9,fadeOutPerSecond:.72,visionInner:66,visionOuter:172,darkness:.965};') || !gameRuntimeParts[0].includes("target.globalCompositeOperation='destination-out'") || !gameRuntimeParts[0].includes('street lamps. The blackout is drawn first')) errors.push('v235.12.6 Horde darkness overhaul is missing.');
 // v235.9.3 Horde sprite grounding + full playable-character walk cycle.
 if (!zombieOutbreakSource.includes('const WALK_ANIM_FPS = 8') || !zombieOutbreakSource.includes('const PLAYER_GROUND_FOOT_OFFSET = 34')) errors.push('v235.9.3 Horde playable-character animation/grounding constants are missing.');
 if (!zombieOutbreakSource.includes('const frame = z.moving ? Math.floor(z.animClock) % 3 : 1') || !zombieOutbreakSource.includes('groundFootY = Math.round(z.y + PLAYER_GROUND_FOOT_OFFSET - bob)')) errors.push('v235.9.3 Horde sprites are not using the full 3-frame cycle and playable-character foot anchor.');
@@ -866,10 +869,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.12.5 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.12.6 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.12.5 build validation passed.');
+console.log('ATM Town v235.12.6 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

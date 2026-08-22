@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.5',name:ATM_CONFIG?.build?.name||'Prop Hunt Seeker Hotfix'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.6',name:ATM_CONFIG?.build?.name||'Prop Hunt Polish + Horde Darkness'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -778,7 +778,7 @@ function getTownNightAlpha(timeMs=0){
 // v235.9.4 Horde Nightfall: The Horde temporarily overrides the normal shared
 // day/night cycle while the local player is outdoors in the active shared event.
 // The fade is visual-only and does not mutate the server clock or event state.
-const HORDE_NIGHTFALL={fadeInPerSecond:1.6,fadeOutPerSecond:.72,visionInner:92,visionOuter:285,darkness:.78};
+const HORDE_NIGHTFALL={fadeInPerSecond:1.9,fadeOutPerSecond:.72,visionInner:66,visionOuter:172,darkness:.965};
 let hordeNightfallAlpha=0;
 let hordeNightfallLastAt=0;
 function hordeNightfallActive(){
@@ -812,14 +812,23 @@ function drawHordeVisionDarkness(target=ctx,cameraX=cam.x,cameraY=cam.y){
   const cx=player.x,cy=player.y-18;
   const inner=HORDE_NIGHTFALL.visionInner,outer=HORDE_NIGHTFALL.visionOuter;
   const maxDark=HORDE_NIGHTFALL.darkness*intensity;
-  const gradient=target.createRadialGradient(cx,cy,inner,cx,cy,outer);
-  gradient.addColorStop(0,'rgba(1,3,8,0)');
-  gradient.addColorStop(.42,`rgba(1,3,8,${(maxDark*.12).toFixed(3)})`);
-  gradient.addColorStop(.72,`rgba(1,3,8,${(maxDark*.48).toFixed(3)})`);
-  gradient.addColorStop(1,`rgba(1,3,8,${maxDark.toFixed(3)})`);
+  // Draw a near-black veil across the whole view, then carve out only the
+  // player's local vision circle. Street-lamp illumination is rendered after
+  // this blackout so lamps and the player bubble become the only reliable
+  // sources of visibility during The Horde.
   target.save();
-  target.fillStyle=gradient;
+  target.fillStyle=`rgba(1,3,8,${maxDark.toFixed(3)})`;
   target.fillRect(cameraX-4,cameraY-4,viewW+8,viewH+8);
+  target.globalCompositeOperation='destination-out';
+  const reveal=target.createRadialGradient(cx,cy,inner,cx,cy,outer);
+  reveal.addColorStop(0,'rgba(0,0,0,1)');
+  reveal.addColorStop(.34,'rgba(0,0,0,.96)');
+  reveal.addColorStop(.62,'rgba(0,0,0,.55)');
+  reveal.addColorStop(1,'rgba(0,0,0,0)');
+  target.fillStyle=reveal;
+  target.beginPath();
+  target.arc(cx,cy,outer,0,Math.PI*2);
+  target.fill();
   target.restore();
 }
 
@@ -5580,9 +5589,9 @@ function loop(t){
   drawDepthScene(t);
   window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
   drawWorldAliveOverlay(t);
-  // Horde Nightfall restricts visibility around the local player. Authored
-  // street-light illumination is rendered after the darkness so lit areas can
-  // still pierce the blackout, with a synchronized failing-grid flicker.
+  // Horde Nightfall restricts visibility to the player bubble and authored
+  // street lamps. The blackout is drawn first, then the street-light layer
+  // restores only the intentionally lit zones with a synchronized grid flicker.
   if(currentMap==='town'){
     drawHordeVisionDarkness(ctx,snappedCamX,snappedCamY);
     drawTownLightOverlay(ctx,getHordeStreetLightAlpha(getSharedTownTimeMs()));
