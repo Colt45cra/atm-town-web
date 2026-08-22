@@ -305,6 +305,8 @@
       spawn_offset_ms: Number(def.spawn_offset_ms || 0),
       dead: false, hitFlash: 0,
       dir: 'down', moving: false, animClock: 0, attackCooldown: 0, fireFxTimer: 0,
+      avoidSign: (Number(def.id) % 2 ? 1 : -1), avoidTimer: 0, stuckTimer: 0,
+      lastNavX: Number(def.x), lastNavY: Number(def.y),
     };
   }
 
@@ -380,24 +382,109 @@
   }
   function zombieAttackPlayer(zombie,target){if(!target?.id)return;const hitId=`${state.eventId}:${zombie.id}:${++state.netHitSeq}`;if(target.id===state.localId)applyLocalPlayerHit(hitId);emitNetwork('player_hit',{targetId:target.id,zombieId:zombie.id,hitId});}
 
+  function rotateVector(x, y, angle) {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    return [x * c - y * s, x * s + y * c];
+  }
+
+  function zombiePathClear(zombie, dx, dy, distance) {
+    if (typeof state.isBlocked !== 'function') return true;
+    const mag = Math.hypot(dx, dy);
+    if (mag <= .0001) return false;
+    dx /= mag; dy /= mag;
+    const sideX = -dy, sideY = dx;
+    const bodyRadius = Math.max(6, Math.min(13, Number(zombie.hitRadius || DEFAULT_HORDE_HIT_RADIUS) * .34));
+    const maxDistance = Math.max(8, Number(distance) || 0);
+    const probeStep = 12;
+    for (let d = 8; d <= maxDistance; d += probeStep) {
+      const px = zombie.x + dx * d, py = zombie.y + dy * d;
+      if (state.isBlocked(px, py) || state.isBlocked(px + sideX * bodyRadius, py + sideY * bodyRadius) || state.isBlocked(px - sideX * bodyRadius, py - sideY * bodyRadius)) return false;
+    }
+    return true;
+  }
+
+  function chooseZombieSteering(zombie, target, dt) {
+    const desiredX = (target.x - zombie.x) / Math.max(.001, target.d);
+    const desiredY = (target.y - zombie.y) / Math.max(.001, target.d);
+    const lookAhead = Math.max(34, Math.min(92, zombie.speed * .72 + 30, target.d - PLAYER_ATTACK_DISTANCE * .45));
+    zombie.avoidTimer = Math.max(0, Number(zombie.avoidTimer || 0) - dt);
+
+    // Use the direct line whenever the route ahead is open. When a wall/building
+    // blocks that line, hold a deterministic side for a short time so a zombie
+    // follows the obstacle edge instead of oscillating left/right every frame.
+    if (zombiePathClear(zombie, desiredX, desiredY, lookAhead)) {
+      zombie.avoidTimer = 0;
+      return [desiredX, desiredY];
+    }
+
+    if (!zombie.avoidTimer) zombie.avoidTimer = .72;
+    let sign = Number(zombie.avoidSign) >= 0 ? 1 : -1;
+    if (Number(zombie.stuckTimer || 0) > .42) {
+      sign *= -1;
+      zombie.avoidSign = sign;
+      zombie.avoidTimer = 1.05;
+      zombie.stuckTimer = 0;
+    }
+
+    const degrees = [28, 46, 64, 82, 102, 122, 145];
+    const candidates = [];
+    for (const deg of degrees) {
+      candidates.push(sign * deg, -sign * deg);
+    }
+    candidates.push(180);
+
+    let best = null, bestScore = -Infinity;
+    for (const deg of candidates) {
+      const angle = deg * Math.PI / 180;
+      const [sx, sy] = rotateVector(desiredX, desiredY, angle);
+      const probe = deg === 180 ? 34 : lookAhead * (Math.abs(deg) >= 100 ? .68 : .9);
+      if (!zombiePathClear(zombie, sx, sy, probe)) continue;
+      const alignment = sx * desiredX + sy * desiredY;
+      const sidePreference = Math.sign(deg || sign) === sign ? .12 : 0;
+      const nx = zombie.x + sx * 26, ny = zombie.y + sy * 26;
+      const progress = target.d - Math.hypot(target.x - nx, target.y - ny);
+      const score = alignment * 1.35 + progress * .055 + sidePreference;
+      if (score > bestScore) { bestScore = score; best = [sx, sy]; }
+    }
+
+    if (best) return best;
+    zombie.avoidSign = -sign;
+    return rotateVector(desiredX, desiredY, sign * Math.PI * .5);
+  }
+
   function moveZombie(zombie, dt) {
     if (zombie.dead || !spawned(zombie)) return;
     zombie.attackCooldown=Math.max(0,Number(zombie.attackCooldown||0)-dt);zombie.fireFxTimer=Math.max(0,Number(zombie.fireFxTimer||0)-dt);
     const target = nearestTargetForZombie(zombie);
     if (!target) { zombie.moving = false; zombie.animClock = 0; return; }
     if (target.d < PLAYER_ATTACK_DISTANCE) { zombie.moving = false; zombie.animClock = 0;if(zombie.attackCooldown<=0){zombie.attackCooldown=.9+Math.random()*.28;zombieAttackPlayer(zombie,target);}return; }
-    const dx = (target.x - zombie.x) / target.d, dy = (target.y - zombie.y) / target.d;
+
+    const [dx, dy] = chooseZombieSteering(zombie, target, dt);
     zombie.dir = nearestFacingForVector(dx, dy);
     const step = zombie.speed * dt;
+    const beforeX = zombie.x, beforeY = zombie.y;
     const nx = zombie.x + dx * step, ny = zombie.y + dy * step;
     const blocked = typeof state.isBlocked === 'function' ? state.isBlocked : null;
     let moved = false;
-    if (!blocked || !blocked(nx, zombie.y)) { zombie.x = nx; moved = true; }
-    else if (!blocked || !blocked(zombie.x - dy * step * .7, zombie.y)) { zombie.x -= dy * step * .7; moved = true; }
-    if (!blocked || !blocked(zombie.x, ny)) { zombie.y = ny; moved = true; }
-    else if (!blocked || !blocked(zombie.x, zombie.y + dx * step * .7)) { zombie.y += dx * step * .7; moved = true; }
-    zombie.moving = moved;
-    if (moved) zombie.animClock += dt * WALK_ANIM_FPS;
+
+    // Prefer a full diagonal step, then gracefully slide one axis when the mask
+    // edge clips the zombie footprint. This keeps wall-following smooth around
+    // planters, buildings, stairs and other authored collision shapes.
+    if (!blocked || (!blocked(nx, ny) && zombiePathClear(zombie, dx, dy, Math.max(8, step + 5)))) {
+      zombie.x = nx; zombie.y = ny; moved = true;
+    } else {
+      const xOk = !blocked || !blocked(nx, zombie.y);
+      const yOk = !blocked || !blocked(zombie.x, ny);
+      if (xOk) { zombie.x = nx; moved = true; }
+      if (yOk) { zombie.y = ny; moved = true; }
+    }
+
+    const traveled = Math.hypot(zombie.x - beforeX, zombie.y - beforeY);
+    if (traveled < Math.max(.12, step * .16)) zombie.stuckTimer = Number(zombie.stuckTimer || 0) + dt;
+    else zombie.stuckTimer = Math.max(0, Number(zombie.stuckTimer || 0) - dt * 2.5);
+    zombie.lastNavX = zombie.x; zombie.lastNavY = zombie.y;
+    zombie.moving = moved && traveled > .04;
+    if (zombie.moving) zombie.animClock += dt * WALK_ANIM_FPS;
     else zombie.animClock = 0;
   }
 

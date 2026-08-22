@@ -1,20 +1,21 @@
-# ATM Town v235.12.7 — Horde Visibility Hotfix
+# ATM Town v235.12.8 — Prop Sync + Horde Navigation
 
-This change-files-only hotfix corrects The Horde nightfall pass from v235.12.6. The previous blackout was too aggressive and used a canvas erase operation that could remove the already-rendered player/world inside the intended vision bubble.
+This change-files-only build fixes the remaining Prop Hunt visual-sync issues and upgrades The Horde so zombies steer around authored map obstacles instead of repeatedly walking straight into them.
 
-## v235.12.7 changes
+## v235.12.8 changes
 
-- Fixes the Horde player disappearing inside the light circle.
-- Replaces the destructive `destination-out` blackout carve with a normal transparent-center radial darkness overlay.
-- Enlarges the readable player vision area so nearby enemies, pavement, props, and the local character can be identified.
-- Keeps areas outside the player vision circle very dark.
-- Keeps authored street-lamp illumination visible over the blackout.
-- Reduces the forced Horde night-map mix so the event no longer stacks a fully dark night map underneath an almost-black overlay.
-- Keeps the v235.12.6 Prop Hunt UI/full-prop fixes unchanged.
-- Bumps the PWA shell cache to `atm-town-shell-v235.12.7`.
+- Prop Hunt full-object disguises now render at their **authored world-map size** instead of being reduced to ~82–92% scale.
+- Each player now broadcasts the exact Prop Hunt disguise they are currently rendering, tied to the active event id.
+- Remote clients prefer that matching-event disguise state, preventing two players from seeing the same hidden player as different props because of a stale roster/session-id race.
+- Keeps the server-generated Prop Hunt assignment as the authoritative fallback.
+- The Horde now uses obstacle-aware steering with forward collision probes, persistent left/right wall-following, wider-angle escape choices, and stuck detection.
+- Zombies continue targeting players, but can route around buildings, planters, walls and other collision-mask obstacles instead of repeatedly pushing straight at them.
+- Horde movement remains synchronized through the existing elected-authority snapshot system, so all clients still see the same zombie positions.
+- Keeps the v235.12.7 Horde visibility behavior.
+- Bumps the PWA shell cache to `atm-town-shell-v235.12.8`.
 - No SQL is required.
 
-See `docs/V235.12.7-HORDE-VISIBILITY-HOTFIX.md` for testing.
+See `docs/V235.12.8-PROP-SYNC-HORDE-NAVIGATION.md` for testing.
 
 ## Previous release notes
 

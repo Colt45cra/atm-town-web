@@ -21,12 +21,12 @@
   };
 
   const PROPS = Object.freeze({
-    town_directory: { id: 'town_directory', label: 'Town Directory Kiosk', src: 'assets/maps/town/foreground/day/assets_05_00.webp', scale: 0.84, shadow: 18, anchorX: 0.5 },
-    token_market_board: { id: 'token_market_board', label: 'Token Market Board', src: 'assets/maps/town/foreground/day/assets_06_00.webp', scale: 0.82, shadow: 18, anchorX: 0.5 },
-    atm_vend_blue: { id: 'atm_vend_blue', label: 'ATM Vend Machine', src: 'assets/maps/town/foreground/day/assets_08_00.webp', scale: 0.88, shadow: 16, anchorX: 0.5 },
-    atm_vend_green: { id: 'atm_vend_green', label: 'ATM Vend Machine', src: 'assets/maps/town/foreground/day/assets_09_00.webp', scale: 0.88, shadow: 16, anchorX: 0.5 },
-    street_lamp: { id: 'street_lamp', label: 'Street Lamp', src: 'assets/maps/town/foreground/day/assets_11_00.webp', scale: 0.82, shadow: 18, anchorX: 0.34 },
-    bench: { id: 'bench', label: 'Bench', src: 'assets/maps/town/foreground/day/assets_18_00.webp', scale: 0.92, shadow: 24, anchorX: 0.5 },
+    town_directory: { id: 'town_directory', label: 'Town Directory Kiosk', src: 'assets/maps/town/foreground/day/assets_05_00.webp', scale: 1.0, shadow: 20, anchorX: 0.5 },
+    token_market_board: { id: 'token_market_board', label: 'Token Market Board', src: 'assets/maps/town/foreground/day/assets_06_00.webp', scale: 1.0, shadow: 20, anchorX: 0.5 },
+    atm_vend_blue: { id: 'atm_vend_blue', label: 'ATM Vend Machine', src: 'assets/maps/town/foreground/day/assets_08_00.webp', scale: 1.0, shadow: 18, anchorX: 0.5 },
+    atm_vend_green: { id: 'atm_vend_green', label: 'ATM Vend Machine', src: 'assets/maps/town/foreground/day/assets_09_00.webp', scale: 1.0, shadow: 18, anchorX: 0.5 },
+    street_lamp: { id: 'street_lamp', label: 'Street Lamp', src: 'assets/maps/town/foreground/day/assets_11_00.webp', scale: 1.0, shadow: 20, anchorX: 0.34 },
+    bench: { id: 'bench', label: 'Bench', src: 'assets/maps/town/foreground/day/assets_18_00.webp', scale: 1.0, shadow: 26, anchorX: 0.5 },
   });
   const PROP_IDS = Object.freeze(Object.keys(PROPS));
   const propImageCache = new Map();
@@ -121,6 +121,16 @@
   function assignedPropId(sessionId) {
     const raw = String(state.event?.prop_assignments?.[String(sessionId || '')] || '');
     return PROPS[raw] ? raw : PROP_IDS[Math.abs(hashCode(String(sessionId || ''))) % PROP_IDS.length];
+  }
+  function resolvedActorPropId(sessionId, networkState = null) {
+    const remoteEventId = String(networkState?.eventId || '');
+    const remotePropId = String(networkState?.propId || '');
+    // The server assignment remains authoritative, but each player also sends
+    // the exact disguise they are rendering. Preferring that matching-event
+    // value guarantees remote clients cannot accidentally display a different
+    // prop for the same player because of a stale roster/session-id race.
+    if (remoteEventId && remoteEventId === String(state.event?.id || '') && PROPS[remotePropId]) return remotePropId;
+    return assignedPropId(sessionId);
   }
   function hashCode(text) {
     let out = 0;
@@ -356,8 +366,18 @@
     const sessionId = String(actor.sessionId || '');
     if (!sessionId || !isPropHuntEvent() || state.phase !== 'active' || String(actor.map || '') !== 'town') return false;
     if (!isHider(sessionId) || isFound(sessionId)) return false;
-    drawPropShape(ctx, assignedPropId(sessionId), Number(actor.x || 0), Number(actor.y || 0), Number(actor.jumpAmount || 0), Number(actor.alpha ?? 1), !!actor.isLocal);
+    drawPropShape(ctx, resolvedActorPropId(sessionId, actor.propHunt), Number(actor.x || 0), Number(actor.y || 0), Number(actor.jumpAmount || 0), Number(actor.alpha ?? 1), !!actor.isLocal);
     return true;
+  }
+
+  function getBroadcastState() {
+    if (!isPropHuntEvent() || state.phase !== 'active' || !state.localId || !isParticipant(state.localId)) return null;
+    const role = localRole();
+    return {
+      eventId: String(state.event?.id || ''),
+      role,
+      propId: role === 'prop' ? assignedPropId(state.localId) : '',
+    };
   }
 
   function getHudState() {
@@ -383,6 +403,7 @@
     nearestTarget,
     tagTarget,
     getHudState,
+    getBroadcastState,
     getRole: localRole,
     getAssignedPropLabel: (sessionId) => PROPS[assignedPropId(sessionId)]?.label || 'Prop',
   });
