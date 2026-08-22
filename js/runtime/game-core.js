@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.1',name:ATM_CONFIG?.build?.name||'Arcade + Power + Chat Polish'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.2',name:ATM_CONFIG?.build?.name||'Flight FX Anchor Hotfix'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2162,7 +2162,7 @@ function getGalleryPlayerRenderMetrics(item){
       bottom:item.p.drawY+20,
       draw(){
         drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
-        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
       }
     };
   }
@@ -2177,7 +2177,7 @@ function getGalleryPlayerRenderMetrics(item){
     bottom:player.y+20,
     draw(){
       drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);
-      window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
+      window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
     }
   };
 }
@@ -2352,9 +2352,9 @@ function buildArcadeForegroundPieces(){
   console.log('ATM Token Arcade foreground objects loaded:',arcadeForegroundPieces.length);
 }
 function getArcadePlayerRenderMetrics(item){
-  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
+  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
   const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0;
-  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
+  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
 }
 function arcadeOccluderAppliesToPlayer(piece,m){
   if(!(m.right>=piece.x&&m.left<=piece.x+piece.w&&m.bottom>=piece.y&&m.top<=piece.y+piece.h))return false;
@@ -2486,9 +2486,9 @@ function buildLoungeForegroundPieces(){
   console.log('Community Lounge foreground objects loaded:',loungeForegroundPieces.length);
 }
 function getLoungePlayerRenderMetrics(item){
-  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
+  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
   const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0;
-  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
+  return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
 }
 function loungeOccluderAppliesToPlayer(piece,m){
   if(!(m.right>=piece.x&&m.left<=piece.x+piece.w&&m.bottom>=piece.y&&m.top<=piece.y+piece.h))return false;
@@ -3956,7 +3956,7 @@ function getHQPlayerRenderMetrics(item){
       bottom:item.p.drawY+20,
       draw(){
         drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
-        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
       }
     };
   }
@@ -3973,7 +3973,7 @@ function getHQPlayerRenderMetrics(item){
     bottom:player.y+20,
     draw(){
       drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);
-      window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
+      window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
     }
   };
 }
@@ -4060,7 +4060,7 @@ function drawDepthScene(t){
         // from synchronized movement in updateRemoteInterpolation().
         if(remoteInvisible)continue;
         drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name,alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
-        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
         if(!remoteDowned)window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
       }else if(item.type==='bot'){
         const bot=item.bot;
@@ -4073,7 +4073,7 @@ function drawDepthScene(t){
         const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*amount:0;
         const localDowned=window.ATMZombieOutbreak?.isLocalDowned?.()===true;
         drawHordePlayerSprite({x:player.x,y:player.y,dir:player.dir,frame:player.frame,name:'',alpha:(powerUps.invisibility>0 ? .28 : 1),bob,jump:jumpLift(),character:selectedCharacter,jetpackActive:jetpackState.active,jetpack:jetpackState.thrusting,jetpackEquipped:canUseJetpack(),loadout:window.atmActiveLoadout||null,downed:localDowned});
-        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,downed:localDowned,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
+        window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:localDowned,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
       }
     }
   }else if(currentMap==='hq'){
@@ -4091,11 +4091,14 @@ function drawChatBubbles(){
   const now=Date.now();
   for(let i=chatBubbles.length-1;i>=0;i--){
     const b=chatBubbles[i];if(now>b.expires){chatBubbles.splice(i,1);continue;}if(b.map!==currentMap)continue;
-    let bx=b.x,by=b.y;if(b.id!==playerId&&remotePlayers.has(b.id)){const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;}else if(b.id===playerId){bx=player.x;by=player.y;}
+    let bx=b.x,by=b.y,bubbleLift=0;if(b.id!==playerId&&remotePlayers.has(b.id)){const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;bubbleLift=Math.max(0,Number(p.jump||0));}else if(b.id===playerId){bx=player.x;by=player.y;bubbleLift=Math.max(0,Number(jumpLift()||0));}
+    // Proximity is a ground-plane distance, while the visual bubble anchor follows
+    // the rendered player upward during jumping / jetpack flight.
     if(Math.hypot(player.x-bx,player.y-by)>420&&b.id!==playerId)continue;
+    const bubbleY=by-bubbleLift;
     ctx.save();ctx.font='700 11px system-ui';const lines=canvasTextLines(String(b.message||'').slice(0,140),220,3),lineH=14;
     const width=Math.min(240,Math.max(60,...lines.map(line=>ctx.measureText(line).width))+18),height=lines.length*lineH+12;
-    const left=cam.x+7,right=cam.x+W/zoom-7;let cx=bx;if(right>left+width)cx=Math.max(left+width/2,Math.min(right-width/2,bx));const top=Math.max(cam.y+7,by-78-height);
+    const left=cam.x+7,right=cam.x+W/zoom-7;let cx=bx;if(right>left+width)cx=Math.max(left+width/2,Math.min(right-width/2,bx));const top=Math.max(cam.y+7,bubbleY-78-height);
     roundedRectPath(cx-width/2,top,width,height,8);ctx.fillStyle='rgba(5,18,26,.94)';ctx.fill();ctx.strokeStyle='#58f1e6';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';lines.forEach((line,index)=>ctx.fillText(line,cx,top+6+index*lineH));ctx.restore();
   }
 }

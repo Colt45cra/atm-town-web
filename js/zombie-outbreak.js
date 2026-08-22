@@ -1,4 +1,4 @@
-/* ATM Town v235.12.1 — Horde Survival + Power-Up Combat polish
+/* ATM Town v235.12.2 — Flight FX Anchor Hotfix
  *
  * The Horde uses one elected room combat authority over Supabase
  * Realtime. That authority alone advances zombie AI/HP/deaths and broadcasts
@@ -928,15 +928,17 @@
 
   function drawPlayerEffects(ctx,player={}){
     const x=Number(player.x),y=Number(player.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;
+    const jumpAmount=Math.max(0,Number(player.jumpAmount??player.jump??0)||0);
+    const visualY=y-jumpAmount;
 
-    // Inferno is a vending power, not a Horde-only visual. Keep the flames
-    // visible anywhere the player can be drawn; Horde mode only adds damage.
+    // Inferno is a vending power, not a Horde-only visual. It is player-attached,
+    // so its anchor follows the rendered body upward during jumps and jetpack flight.
     if(player.fireActive&&!player.downed){
       const now=performance.now();ctx.save();ctx.globalCompositeOperation='lighter';
       for(let i=0;i<10;i++){
         const phase=now*.006+i*.73;
         const fx=x+Math.sin(phase*1.7)*18+(i%2?8:-8);
-        const fy=y+25-(i%5)*12-Math.abs(Math.sin(phase))*19;
+        const fy=visualY+25-(i%5)*12-Math.abs(Math.sin(phase))*19;
         const r=5+Math.abs(Math.sin(phase*1.3))*5;
         const g=ctx.createRadialGradient(fx,fy,1,fx,fy,r*2.25);
         g.addColorStop(0,'rgba(255,248,150,.98)');
