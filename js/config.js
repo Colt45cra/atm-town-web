@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v235.11.2: groups Attribute Store checkout into CASH or CRYPTO and pins XRPL commerce to Mainnet.
+ * v235.11.3: keeps CASH/CRYPTO checkout fully inside the mobile Attribute Store viewport.
  * v235.11: adds the character-catalog Attribute Store foundation and makes the Locker owned-assets-only.
  * v235.10: connects verified You Are ATM issuer/taxon NFT attributes to Locker entitlements and store-locks non-starter cosmetics for monetization.
  * v235.9.4: forces Horde Nightfall outdoors, adds a limited local vision radius, and synchronizes a flickering street-light illumination layer while preserving v235.9.3 Horde grounding/animation.
@@ -44,10 +44,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.111,
-    version: 'v235.11.2',
-    name: 'Attribute Store UX + Vending Input Guard',
-    title: 'ATM Town v235.11.2 — Attribute Store UX + Vending Input Guard'
+    number: 235.113,
+    version: 'v235.11.3',
+    name: 'Attribute Store Mobile Payment Fit + Vending Guard',
+    title: 'ATM Town v235.11.3 — Attribute Store Mobile Payment Fit + Vending Guard'
   });
 
   const MAPS = Object.freeze({
@@ -156,7 +156,7 @@
     ])
   });
 
-  // v235.11.2 Attribute Store commerce policy.
+  // v235.11.3 Attribute Store commerce policy.
   // Store purchases are real-value MAINNET commerce. World-event rewards remain
   // isolated on XRPL Testnet and are not changed by this configuration.
   // The merchant destination intentionally matches the existing Magnet Can

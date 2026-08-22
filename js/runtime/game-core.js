@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.11.2',name:ATM_CONFIG?.build?.name||'Attribute Store UX + Vending Input Guard'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.11.3',name:ATM_CONFIG?.build?.name||'Attribute Store Mobile Payment Fit + Vending Guard'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -6310,7 +6310,7 @@ document.querySelectorAll('.lockerDirection').forEach(button=>button.addEventLis
 document.getElementById('lockerPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='lockerPanel')lockerClose();});
 window.addEventListener('resize',()=>{if(lockerState.open)lockerDrawPreview();},{passive:true});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&lockerState.open){event.preventDefault();lockerClose();}});
-// ===== v235.11.2 Character Attribute Store payment rails =====
+// ===== v235.11.3 Character Attribute Store payment rails =====
 const ATM_ATTRIBUTE_STORE_CART_KEY='atm_attribute_store_cart_v1';
 const ATM_ATTRIBUTE_STORE_CONFIG=ATM_CONFIG?.attributeStore||Object.freeze({baseCurrency:'USD',checkoutEnabled:false,purchaseNetwork:'mainnet',merchantAddress:'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB',defaultUsdPrice:null,prices:Object.freeze({}),paymentCategories:Object.freeze([{id:'cash',label:'CASH',rail:'CARD',currency:'USD'},{id:'crypto',label:'CRYPTO',rail:'XRPL',network:'mainnet'}]),cryptoAssets:Object.freeze([{id:'atm',label:'ATM',type:'issued',currency:'ATM',issuer:'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ'},{id:'rlusd',label:'RLUSD',type:'issued',currency:'524C555344000000000000000000000000000000',issuer:'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De'},{id:'xrp',label:'XRP',type:'native',currency:'XRP',issuer:null}])});
 let attributeStoreState={open:false,characterId:'classic',filter:'all',show:'buyable',paymentCategory:'crypto',cryptoAsset:'atm',cart:safeJsonParse(safeStorageGet(ATM_ATTRIBUTE_STORE_CART_KEY,'[]'),[])};

@@ -4,7 +4,7 @@ ATM Town is a browser-based multiplayer social game built with HTML5 Canvas/Java
 
 ## Current version
 
-**v235.11.2 — Attribute Store UX + Vending Input Guard**
+**v235.11.3 — Attribute Store Mobile Payment Fit + Vending Guard**
 
 This build preserves v235.9.4 Horde Nightfall and adds the first monetization foundation to the Locker. A signed-in player's verified Xaman-linked XRPL wallet is scanned for the **You Are ATM** collection (`rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H`, Taxon `1`). Explicitly mapped metadata traits unlock their matching in-game equipment while the NFT remains in that wallet. Starter characters remain free; other former development-grant cosmetics are now store-locked pending direct checkout in the next commerce phase.
 
@@ -40,6 +40,15 @@ docs/                    Architecture, asset policy, changelog and testing docs
 See `docs/ASSET-POLICY.md`.
 
 
+
+### v235.11.3 mobile payment fit
+
+- Keeps the Attribute Store payment controls fully inside the mobile viewport.
+- CASH / CRYPTO now share the available width evenly instead of allowing a payment button to overflow off-screen.
+- ATM / RLUSD / XRP likewise share one bounded row on mobile.
+- The v235.11.2 persistent Store close button and vending open-gesture guard are preserved.
+- Store crypto remains XRPL Mainnet; world-event funding/rewards remain Testnet.
+
 ### v235.11.2 store UX + vending input fix
 
 - Attribute Store has an always-visible close button pinned to the upper-right.
@@ -65,4 +74,4 @@ npm run audit:assets
 
 ## Deployment
 
-Apply the v235.11.2 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.
+Apply the v235.11.3 change files to the repository root, preserving all folders and paths. Do not flatten `/assets`, `/api`, `/js`, `/docs`, or `/scripts`.
