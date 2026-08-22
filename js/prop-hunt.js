@@ -110,8 +110,11 @@
   function localRole() {
     if (!isPropHuntEvent() || !state.localId || !isParticipant(state.localId)) return 'spectator';
     if (isHunter(state.localId)) return 'hunter';
-    if (isFound(state.localId)) return 'found';
+    if (isFound(state.localId)) return 'seeker';
     return 'prop';
+  }
+  function isSeeker(sessionId) {
+    return isHunter(sessionId) || isFound(sessionId);
   }
   function assignedPropId(sessionId) {
     const raw = String(state.event?.prop_assignments?.[String(sessionId || '')] || '');
@@ -151,7 +154,10 @@
       if (phase === 'hunt') return 'Stay hidden. If you are the last prop left, you win.';
       return 'You are a disguised prop.';
     }
-    if (role === 'found') return 'You were found. You can spectate while the round finishes.';
+    if (role === 'seeker') {
+      if (phase === 'hunt') return 'You were found. You are now a Seeker — help tag the remaining props.';
+      return 'You were found and joined the Seeker team.';
+    }
     return 'You are spectating this Prop Hunt round.';
   }
 
@@ -219,7 +225,7 @@
     const role = localRole();
     if (role === 'hunter') global.ATMWorldEvents?.toast?.('🕵️ YOU ARE THE HUNTER', 3200);
     else if (role === 'prop') global.ATMWorldEvents?.toast?.(`📦 YOU ARE A ${String(PROPS[assignedPropId(state.localId)]?.label || 'PROP').toUpperCase()}`, 3400);
-    else if (role === 'found') global.ATMWorldEvents?.toast?.('👀 YOU WERE FOUND · SPECTATE THE ROUND', 2600);
+    else if (role === 'seeker') global.ATMWorldEvents?.toast?.('🕵️ YOU WERE FOUND · NOW YOU ARE A SEEKER', 3000);
   }
   function maybeToastPhaseChange() {
     if (!isPropHuntEvent()) return;
@@ -265,7 +271,7 @@
   }
 
   function nearestTarget() {
-    if (!isPropHuntEvent() || state.phase !== 'active' || roundPhase() !== 'hunt' || !isHunter(state.localId) || state.localMap !== 'town') return null;
+    if (!isPropHuntEvent() || state.phase !== 'active' || roundPhase() !== 'hunt' || !isSeeker(state.localId) || state.localMap !== 'town') return null;
     let best = null;
     let bestDistance = TAG_RADIUS;
     const now = Date.now();
@@ -304,7 +310,7 @@
         method: 'POST',
         body: JSON.stringify({
           event_id: state.event.id,
-          hunter_session_id: state.localId,
+          seeker_session_id: state.localId,
           target_session_id: target.remoteId,
           map: state.localMap,
           x: state.localX,
@@ -384,7 +390,7 @@
       winnerName: winnerEntry()?.name || '',
       phase,
       phaseLabel: phase === 'hide' ? `HIDE · ${secondsLabel(hideRemainingMs())}` : phase === 'hunt' ? `HUNT · ${secondsLabel(huntRemainingMs())}` : String(state.phase || '').toUpperCase(),
-      roleLabel: localRole() === 'hunter' ? 'HUNTER' : localRole() === 'prop' ? 'PROP' : localRole() === 'found' ? 'FOUND' : 'SPECTATOR',
+      roleLabel: localRole() === 'hunter' ? 'HUNTER' : localRole() === 'seeker' ? 'SEEKER' : localRole() === 'prop' ? 'PROP' : 'SPECTATOR',
     };
   }
 

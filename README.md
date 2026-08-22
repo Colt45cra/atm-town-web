@@ -1,20 +1,23 @@
-# ATM Town v235.12.4 — Map-Asset Prop Hunt
+# ATM Town v235.12.5 — Prop Hunt Seeker Hotfix
 
-This change-files-only build upgrades Prop Hunt so disguised players no longer use generic placeholder shapes. Instead, Prop Hunt now uses **real artwork cropped from actual ATM Town map items** such as the bench, arcade ATM, street lamp, ATM Town News board, and Character Upgrades board.
+This change-files-only hotfix fixes the Prop Hunt startup crash shown as `Uncaught ReferenceError: id is not defined` and updates the round flow so every found prop becomes an additional seeker.
 
-## v235.12.4 changes
+## v235.12.5 changes
 
-- Keeps the synchronized Prop Hunt world event added in v235.12.3.
-- Replaces generic placeholder prop silhouettes with **actual ATM Town map-item art**.
-- Adds packaged prop assets under `assets/world-events/prop-hunt/`.
-- Preloads and renders those map props for both the local player and remote players during active Prop Hunt rounds.
-- Updates the World Event Control panel copy to reflect real in-map disguises.
-- Bumps the PWA shell cache to `atm-town-shell-v235.12.4` so installed clients refresh the new Prop Hunt prop assets.
+- Fixes the remote-player render bug that referenced an out-of-scope `id` while Prop Hunt hooks were active.
+- Preserves the remote player's session id in the depth-render item and passes that exact id into the Prop Hunt disguise renderer.
+- A tagged prop now immediately returns to their normal character and becomes a **Seeker**.
+- The original hunter plus every found prop can use **TAG** on remaining hidden props.
+- The hunt continues until the final hidden prop is actually tagged.
+- The **last prop found wins**, matching the intended event rule.
+- Keeps the real ATM Town map-item disguise assets from v235.12.4.
+- Bumps the PWA shell cache to `atm-town-shell-v235.12.5`.
 - No SQL is required.
 
-See `docs/V235.12.4-MAP-ASSET-PROP-HUNT.md` for implementation and testing.
+See `docs/V235.12.5-PROP-HUNT-SEEKER-HOTFIX.md` for testing.
 
 ## Previous release notes
+
 
 
 **v235.12.1 — Arcade + Power + Chat Polish**

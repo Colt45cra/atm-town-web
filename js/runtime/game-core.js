@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.4',name:ATM_CONFIG?.build?.name||'Map-Asset Prop Hunt'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.5',name:ATM_CONFIG?.build?.name||'Prop Hunt Seeker Hotfix'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -4018,7 +4018,7 @@ function drawDepthScene(t){
     for(const piece of townForegroundPieces) if(townForegroundNearView(piece,160)) items.push({depth:piece.depth,type:'townpiece',piece});
     for(const [id,p] of remotePlayers){
       if(p.map!==currentMap)continue;
-      items.push({depth:p.drawY+20,type:'remote',p});
+      items.push({depth:p.drawY+20,type:'remote',id:String(id),p});
     }
     for(const bot of townBots){
       items.push({depth:bot.drawY+20,type:'bot',bot});
@@ -4059,7 +4059,7 @@ function drawDepthScene(t){
         // jetpack flame, Inferno aura, or other reveal. Footprints are emitted
         // from synchronized movement in updateRemoteInterpolation().
         if(remoteInvisible)continue;
-        const propOverride=window.ATMPropHunt?.drawPlayerOverride?.(ctx,{sessionId:id,isLocal:false,map:item.p.map,x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,alpha:.92,name:item.p.name})===true;
+        const propOverride=window.ATMPropHunt?.drawPlayerOverride?.(ctx,{sessionId:item.id,isLocal:false,map:item.p.map,x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,alpha:.92,name:item.p.name})===true;
         if(!propOverride){
           drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name,alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
           window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
