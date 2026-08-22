@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v235.12.2: anchors Inferno flames and overhead chat bubbles to the airborne player during jumps and jetpack flight.
+ * v235.12.4: upgrades Prop Hunt so disguised players use real ATM Town map-item artwork instead of generic placeholder props.
  * v235.12.1: polishes Neon Racer mobile proportions, removes downed-player shadows, makes Inferno visible outside Horde, makes remote Invisibility bodyless with footprints only, and adds persistent Live Chat text sizing.
  * v235.12: removes redundant Store ownership filtering, adds server-verified Mainnet attribute checkout plumbing, Neon Racer, three combat vending powers, and Horde down/revive survival.
  * v235.11.8: rebuilds the mobile Attribute Store as a flex-column app layout with compact list cards and a static cart CTA, eliminating catalog/card horizontal overflow.
@@ -51,9 +51,9 @@
 
   const BUILD = Object.freeze({
     number: 235.122,
-    version: 'v235.12.2',
-    name: 'Flight FX Anchor Hotfix',
-    title: 'ATM Town v235.12.2 — Flight FX Anchor Hotfix'
+    version: 'v235.12.4',
+    name: 'Map-Asset Prop Hunt',
+    title: 'ATM Town v235.12.4 — Map-Asset Prop Hunt'
   });
 
   const MAPS = Object.freeze({

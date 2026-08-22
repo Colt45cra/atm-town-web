@@ -148,6 +148,12 @@ const requiredFiles = [
   'lib/payload-money-rain.js',
   'js/world-events.js',
   'js/zombie-outbreak.js',
+  'js/prop-hunt.js',
+  'assets/world-events/prop-hunt/atm_machine.png',
+  'assets/world-events/prop-hunt/bench.png',
+  'assets/world-events/prop-hunt/news_board.png',
+  'assets/world-events/prop-hunt/street_lamp.png',
+  'assets/world-events/prop-hunt/upgrade_board.png',
   'lib/world-events.js',
   'lib/world-event-money-rain-points.js',
   'supabase/ATM-Town-v235.sql',
@@ -169,6 +175,7 @@ const requiredFiles = [
   'docs/V235.12-COMMERCE-HORDE-SURVIVAL-NEON-RACER.md',
   'docs/V235.12.1-ARCADE-POWER-CHAT-POLISH.md',
   'docs/V235.12.2-FLIGHT-FX-ANCHOR-HOTFIX.md',
+  'docs/V235.12.4-MAP-ASSET-PROP-HUNT.md',
   'api/embedded-wallet.js',
   'api/world-time.js',
   'lib/atm-pay.js',
@@ -199,7 +206,7 @@ const gameRuntimeParts = await Promise.all([
 ]);
 const gameRuntimeSource = gameRuntimeParts.join('\n');
 const runtimeSource = `${html}\n${gameRuntimeSource}`;
-const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/pwa.js', 'js/people-hub.js', 'js/world-events.js', 'js/zombie-outbreak.js', 'js/hud-layout.js', 'js/live-chat.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/neon-racer.js', 'js/runtime/darts.js'];
+const expectedOrder = ['js/config.js', 'js/maps.js', 'js/interactions.js', 'js/world-streaming.js', 'js/bootstrap.js', 'js/wallet/embedded-wallet.js', 'js/pwa.js', 'js/people-hub.js', 'js/world-events.js', 'js/zombie-outbreak.js', 'js/prop-hunt.js', 'js/hud-layout.js', 'js/live-chat.js', 'js/runtime/game-core.js', 'js/runtime/sky-run.js', 'js/runtime/platform-panic.js', 'js/runtime/ring-rumble.js', 'js/runtime/flappy-jetpack.js', 'js/runtime/neon-racer.js', 'js/runtime/darts.js'];
 let previousIndex = -1;
 for (const script of expectedOrder) {
   const index = html.indexOf(`<script src="${script}"></script>`);
@@ -208,8 +215,8 @@ for (const script of expectedOrder) {
   previousIndex = index;
 }
 
-if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.12.2'")) errors.push('Missing v235.12.2 display build marker.');
-if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Flight FX Anchor Hotfix'")) errors.push('Missing v235.12.2 display fallback.');
+if (!runtimeSource.includes("version:ATM_CONFIG?.build?.version||'v235.12.4'")) errors.push('Missing v235.12.4 display build marker.');
+if (!runtimeSource.includes("name:ATM_CONFIG?.build?.name||'Map-Asset Prop Hunt'")) errors.push('Missing v235.12.4 display fallback.');
 if (!runtimeSource.includes("add('local',player.x,player.y,jumpLift(),tradeBeaconState")) errors.push('Trade Beacon is not anchored to local airborne lift.');
 if (!runtimeSource.includes("p.jump||0,p.tradeBeacon")) errors.push('Trade Beacon is not anchored to remote airborne lift.');
 if (!runtimeSource.includes("route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]")) errors.push('Fuzzy collision-safe patrol route is missing.');
@@ -318,7 +325,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
-if (!configSource.includes("version: 'v235.12.2'")) errors.push('js/config.js is not marked v235.12.2.');
+if (!configSource.includes("version: 'v235.12.4'")) errors.push('js/config.js is not marked v235.12.4.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
 const registrySandbox = { window: {} };
@@ -339,6 +346,7 @@ const worldTimeApiSource = await readFile(path.join(root, 'api', 'world-time.js'
 const worldEventsSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.sql'), 'utf8');
 const zombieOutbreakSource = await readFile(path.join(root, 'js', 'zombie-outbreak.js'), 'utf8');
 const zombieOutbreakSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v235.8-Zombie-Outbreak.sql'), 'utf8');
+const propHuntSource = await readFile(path.join(root, 'js', 'prop-hunt.js'), 'utf8');
 const embeddedWalletApiSource = await readFile(path.join(root, 'api', 'embedded-wallet.js'), 'utf8');
 const atmPaySource = await readFile(path.join(root, 'lib', 'atm-pay.js'), 'utf8');
 const testnetRpcSource = await readFile(path.join(root, 'lib', 'xrpl-testnet-rpc.js'), 'utf8');
@@ -394,7 +402,7 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.12.2") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js') || !serviceWorkerSource.includes('/js/live-chat.js')) errors.push('v235.12.2 PWA shell cache/module registration is missing.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.12.4") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/prop-hunt.js') || !serviceWorkerSource.includes('/assets/world-events/prop-hunt/news_board.png') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js') || !serviceWorkerSource.includes('/js/live-chat.js')) errors.push('v235.12.4 PWA shell cache/module registration is missing.');
 if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
 if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
 if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');
@@ -448,6 +456,9 @@ if (!worldEventsServerSource.includes('normalizeSponsorChoice') || !worldEventsS
 if (!worldEventsServerSource.includes("const ZOMBIE_EVENT_TYPE = 'zombie_outbreak'") || !worldEventsServerSource.includes('buildZombieOutbreakManifest(seed)') || !worldEventsServerSource.includes('startZombieOutbreak')) errors.push('v235.8 server Zombie Outbreak launch/manifest is incomplete.');
 if (!worldTimeApiSource.includes("action === 'start-zombie-outbreak'") || !worldEventsClientSource.includes('/api/world-time?action=start-zombie-outbreak')) errors.push('v235.8 Zombie Outbreak is not wired through the existing World Event API/client.');
 if (!worldEventsClientSource.includes('START THE HORDE') || !worldEventsClientSource.includes('R · Rapid') || !worldEventsClientSource.includes('S · Spread')) errors.push('v235.9.2 HQ World Event control panel is missing The Horde launch/weapon guidance.');
+if (!worldTimeApiSource.includes("action === 'start-prop-hunt'") || !worldTimeApiSource.includes("action === 'tag-prop-hunt'") || !worldEventsClientSource.includes('START PROP HUNT')) errors.push('v235.12.4 Prop Hunt World Event API/control-panel bridge is missing.');
+if (!worldEventsServerSource.includes('PROP_HUNT_EVENT_TYPE') || !worldEventsServerSource.includes('startPropHunt') || !worldEventsServerSource.includes('tagPropHuntPlayer')) errors.push('v235.12.4 Prop Hunt server orchestration is missing.');
+if (!propHuntSource.includes('drawPlayerOverride') || !propHuntSource.includes('nearestTarget') || !propHuntSource.includes('assets/world-events/prop-hunt/news_board.png') || !gameRuntimeParts[0].includes('window.ATMPropHunt?.drawPlayerOverride') || !gameRuntimeParts[0].includes('window.ATMPropHunt?.nearestTarget')) errors.push('v235.12.4 Prop Hunt gameplay/render integration is missing.');
 // v235.9.3 Horde sprite grounding + full playable-character walk cycle.
 if (!zombieOutbreakSource.includes('const WALK_ANIM_FPS = 8') || !zombieOutbreakSource.includes('const PLAYER_GROUND_FOOT_OFFSET = 34')) errors.push('v235.9.3 Horde playable-character animation/grounding constants are missing.');
 if (!zombieOutbreakSource.includes('const frame = z.moving ? Math.floor(z.animClock) % 3 : 1') || !zombieOutbreakSource.includes('groundFootY = Math.round(z.y + PLAYER_GROUND_FOOT_OFFSET - bob)')) errors.push('v235.9.3 Horde sprites are not using the full 3-frame cycle and playable-character foot anchor.');
@@ -463,8 +474,8 @@ if (!gameRuntimeParts[0].includes("'equipment:jetpack':{traitTypes:['Back'],valu
 if (!gameRuntimeParts[0].includes("if(item.ownership==='development')return Object.freeze({...item,rarity:mapping?'You Are ATM / Store':'Store',ownership:'store'") || !gameRuntimeParts[0].includes('].map(atmMonetizeCatalogItem));')) errors.push('v235.10 development cosmetics are not converted into store-locked inventory.');
 if (!gameRuntimeParts[0].includes('function lockerAttributeRuleMatches') || !gameRuntimeParts[0].includes("label:matches.length>1?'NFT OWNED ×'+matches.length:'NFT OWNED'") || !gameRuntimeParts[0].includes("label:'VERIFYING NFT'")) errors.push('v235.10 metadata-backed Locker entitlement verification is incomplete.');
 if (!gameRuntimeParts[0].includes('window.atmLockerPermanentJetpackEquipped') || !gameRuntimeParts[0].includes("permanent?'NFT OWNED · PERMANENT'")) errors.push('v235.10 permanent NFT Jetpack entitlement is missing.');
-if (!html.includes('id="lockerYouAreAtmCount"') || !html.includes('id="lockerNftUnlockCount"') || !html.includes('LOCKER v7 · OWNED ASSETS ONLY · v235.12.2')) errors.push('v235.12.2 Locker ownership UI markers are missing.');
-if (!html.includes('id="attributeStoreButton"') || !html.includes('id="attributeStorePanel"') || !html.includes('id="attributeStoreCharacters"') || !html.includes('ATTRIBUTE STORE v2 · v235.12.2')) errors.push('v235.12.2 Attribute Store UI markers are missing.');
+if (!html.includes('id="lockerYouAreAtmCount"') || !html.includes('id="lockerNftUnlockCount"') || !html.includes('LOCKER v7 · OWNED ASSETS ONLY · v235.12.4')) errors.push('v235.12.4 Locker ownership UI markers are missing.');
+if (!html.includes('id="attributeStoreButton"') || !html.includes('id="attributeStorePanel"') || !html.includes('id="attributeStoreCharacters"') || !html.includes('ATTRIBUTE STORE v2 · v235.12.4')) errors.push('v235.12.4 Attribute Store UI markers are missing.');
 if (!html.includes('id="attributeStorePaymentCategories"') || !html.includes('id="attributeStoreCryptoAssets"') || !html.includes('XRPL MAINNET') || !html.includes('World-event funding and rewards remain on Testnet')) errors.push('v235.12 CASH/CRYPTO payment UI markers are missing.');
 if (!html.includes('id="attributeStoreCheckoutSheet"') || !html.includes('id="attributeStoreCheckoutReviewButton"') || !html.includes('id="attributeStoreCheckoutBackButton"')) errors.push('v235.12 dedicated checkout sheet controls are missing.');
 if (!html.includes('.attributeStoreCheckoutSheet{position:absolute;inset:0') || !html.includes('contain:inline-size') || !html.includes('.attributeStoreCryptoAssets[hidden],.attributeStoreCashInfo[hidden]{display:none!important}') || !html.includes('.attributeStorePaymentCategories,.attributeStoreCryptoAssets{display:flex!important;flex-direction:column')) errors.push('v235.12 checkout width containment/mobile stacking is missing.');
@@ -852,10 +863,10 @@ try {
 }
 
 if (errors.length) {
-  console.error(`ATM Town v235.12.2 build validation failed with ${errors.length} issue(s):`);
+  console.error(`ATM Town v235.12.4 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log('ATM Town v235.12.2 build validation passed.');
+console.log('ATM Town v235.12.4 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);

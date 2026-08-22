@@ -6,7 +6,9 @@ import {
   resolveMoneyRainSponsor,
   startFundedMoneyRain,
   startMoneyRain,
+  startPropHunt,
   startZombieOutbreak,
+  tagPropHuntPlayer,
   WORLD_EVENT_ACTIONS,
 } from '../lib/world-events.js';
 import {
@@ -60,6 +62,8 @@ export default async function handler(req, res) {
       const { admin, user } = await requireUser(req);
       if (action === 'start-money-rain') return res.status(200).json(await startMoneyRain(admin, user, req.body || {}));
       if (action === 'start-zombie-outbreak') return res.status(200).json(await startZombieOutbreak(admin, user, req.body || {}));
+      if (action === 'start-prop-hunt') return res.status(200).json(await startPropHunt(admin, user, req.body || {}));
+      if (action === 'tag-prop-hunt') return res.status(200).json(await tagPropHuntPlayer(admin, user, req.body || {}));
       if (action === 'claim-money-rain') return res.status(200).json(await claimMoneyPickup(admin, user, req.body || {}));
     }
 

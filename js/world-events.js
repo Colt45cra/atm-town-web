@@ -84,6 +84,7 @@
   }
   function isMoneyRainEvent(event = state.event) { return event?.type === 'money_rain'; }
   function isZombieEvent(event = state.event) { return event?.type === 'zombie_outbreak'; }
+  function isPropHuntEvent(event = state.event) { return event?.type === 'prop_hunt'; }
   function optimisticPoints() {
     if (!state.event || !state.claiming.size) return 0;
     const byId = new Map((state.event.pickups || []).map((pickup) => [Number(pickup.id), pickup]));
@@ -163,6 +164,7 @@
     if (!incoming) {
       state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = ''; state.lastPhase = 'none';
       global.ATMZombieOutbreak?.syncEvent?.(null, 'none');
+      global.ATMPropHunt?.syncEvent?.(null, 'none');
       renderHud(); renderControlPanel();
       global.dispatchEvent(new CustomEvent('atm:world-event-state', { detail: { event: null, phase: 'none', serverOffsetMs: state.serverOffsetMs, reason } }));
       return;
@@ -186,10 +188,14 @@
     } else if (isZombieEvent(incoming) && incoming.id !== oldId) {
       state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = incoming.id;
       toast(`🧟 Zombie Outbreak triggered by ${sponsorLabel(incoming)}!`, 4200);
+    } else if (isPropHuntEvent(incoming) && incoming.id !== oldId) {
+      state.claimed.clear(); state.claiming.clear(); state.myScore = 0; state.myPickups = 0; state.lastEventId = incoming.id;
+      toast(`📦 Prop Hunt triggered by ${sponsorLabel(incoming)}!`, 4200);
     }
 
     const phase = eventPhase(incoming);
     global.ATMZombieOutbreak?.syncEvent?.(incoming, phase);
+    global.ATMPropHunt?.syncEvent?.(incoming, phase);
     if (phase !== oldPhase && incoming.id === oldId) {
       if (isMoneyRainEvent(incoming)) {
         if (phase === 'active') toast(`💸 MONEY RAIN provided by ${sponsorLabel(incoming)}!`, 4200);
@@ -207,6 +213,12 @@
         if (phase === 'completed') {
           const kills = Number(global.ATMZombieOutbreak?.getStats?.().kills || 0);
           toast(`🧟 Outbreak contained · ${kills} local kill${kills === 1 ? '' : 's'}`, 4800);
+        }
+      } else if (isPropHuntEvent(incoming)) {
+        if (phase === 'active') toast('📦 PROP HUNT · THE ROUND IS LIVE', 4200);
+        if (phase === 'completed') {
+          const winner = Array.isArray(incoming.participants) ? incoming.participants.find((row) => String(row?.session_id || '') === String(incoming.winner_session_id || '')) : null;
+          toast(winner ? `🏆 Prop Hunt winner · ${winner.name}` : '📦 Prop Hunt complete', 4600);
         }
       }
     }
@@ -256,6 +268,28 @@
       return;
     }
 
+    if (isPropHuntEvent(event)) {
+      const propHud = global.ATMPropHunt?.getHudState?.() || {};
+      const phaseText = propHud.phaseLabel || (phase === 'announced' ? `IN ${secondsLabel(starts - now)}` : phase === 'active' ? `· ${secondsLabel(ends - now)} LEFT` : 'COMPLETE');
+      if (icon) icon.textContent = '📦';
+      if (phase === 'announced') {
+        title.textContent = `📦 PROP HUNT ${phaseText}`;
+        meta.textContent = `Triggered by ${providedBy} · one hunter · everyone else becomes a prop`;
+        score.textContent = 'GET READY';
+      } else if (phase === 'active') {
+        title.textContent = `📦 PROP HUNT · ${phaseText}`;
+        meta.textContent = `${Number(event.remaining_prop_count || propHud.remainingCount || 0)} prop${Number(event.remaining_prop_count || propHud.remainingCount || 0) === 1 ? '' : 's'} left · hunter ${propHud.hunterName || 'Hunter'}`;
+        score.textContent = `YOU ${propHud.roleLabel || 'PLAYER'}`;
+      } else {
+        const winner = propHud.winnerName || (Array.isArray(event.participants) ? event.participants.find((row) => String(row?.session_id || '') === String(event.winner_session_id || ''))?.name : '');
+        title.textContent = '📦 PROP HUNT COMPLETE';
+        meta.textContent = `Triggered by ${providedBy}${winner ? ` · winner ${winner}` : ''}`;
+        score.textContent = winner ? `WINNER ${winner.toUpperCase()}` : 'ROUND OVER';
+      }
+      hud.classList.add('show');
+      return;
+    }
+
     if (icon) icon.textContent = '💸';
     if (phase === 'announced') {
       title.textContent = `💸 MONEY RAIN IN ${secondsLabel(starts - now)}`;
@@ -296,8 +330,29 @@
     status.style.color = color;
   }
 
+  function onlineParticipantRoster() {
+    const rows = global.ATMGamePeople?.snapshot?.()?.online || [];
+    const seen = new Set();
+    const roster = [];
+    for (const row of rows) {
+      const sessionId = String(row?.session_id || '').trim();
+      if (!sessionId || seen.has(sessionId)) continue;
+      seen.add(sessionId);
+      roster.push({ session_id: sessionId, name: String(row?.name || 'ATM Player').slice(0, 30), character_id: String(row?.character_id || 'classic').slice(0, 40) });
+      if (roster.length >= 12) break;
+    }
+    return roster;
+  }
+
+  function currentPropHuntPayload() {
+    if (!state.controlContext) throw new Error('Open the ATM Command Core again before starting Prop Hunt.');
+    const participants = onlineParticipantRoster();
+    if (participants.length < 2) throw new Error('At least 2 players must be online to start Prop Hunt.');
+    return { ...state.controlContext, participants };
+  }
+
   function currentLaunchPayload() {
-    if (!state.controlContext) throw new Error('Open the ATM Command Core again before starting Money Rain.');
+    if (!state.controlContext) throw new Error('Open the ATM Command Core again before starting a World Event.');
     const sponsorLabelValue = String(state.sponsorLabel || '').trim();
     if (state.sponsorMode === 'brand' && sponsorLabelValue.length < 2) throw new Error('Enter the project or brand name to display.');
     return { ...state.controlContext, sponsor_mode: state.sponsorMode, sponsor_label: sponsorLabelValue };
@@ -314,6 +369,11 @@
     if (event && phase !== 'completed') {
       if (isZombieEvent(event)) {
         activeBlock = `<div class="atmWorldEventPreview"><strong>🧟 The Horde is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Triggered by <b>${escapeHtml(sponsorLabel(event))}</b>.</div><div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until The Horde begins. Get outside.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining · Gutter, Handy Man, and Beast Man are live.`}</div></div>`;
+      } else if (isPropHuntEvent(event)) {
+        const hideEnds = Date.parse(event.hide_ends_at || event.starts_at);
+        const livePhase = nowMs() < hideEnds ? 'hide' : 'hunt';
+        const participantCount = Array.isArray(event.participants) ? event.participants.length : 0;
+        activeBlock = `<div class="atmWorldEventPreview"><strong>📦 Prop Hunt is ${phase === 'announced' ? 'starting' : livePhase === 'hide' ? 'hide phase live' : 'hunt phase live'}</strong><div>Triggered by <b>${escapeHtml(sponsorLabel(event))}</b>.</div><div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until props transform.` : livePhase === 'hide' ? `${secondsLabel(hideEnds - nowMs())} remaining to hide.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining · ${Number(event.remaining_prop_count || 0)} props still hidden.`}</div><div style="margin-top:7px;color:#66f7bd">${participantCount} player${participantCount === 1 ? '' : 's'} in this round · one hunter and the rest become map props.</div></div>`;
       } else {
         const reward = event.reward_settlement ? `<div style="margin-top:7px;color:#66f7bd;font-weight:850">Prize pool: ${escapeHtml(event.reward_pool_xrp)} Testnet XRP · you keep exactly what you collect.</div>` : '';
         activeBlock = `<div class="atmWorldEventPreview"><strong>💸 Money Rain is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Money Rain provided by <b>${escapeHtml(sponsorLabel(event))}</b>.</div>${reward}<div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until drops begin.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining.`}</div></div>`;
@@ -321,6 +381,10 @@
     } else if (event && phase === 'completed' && isZombieEvent(event)) {
       const kills = Number(global.ATMZombieOutbreak?.getStats?.().kills || 0);
       activeBlock = `<div class="atmWorldEventPreview"><strong>Last The Horde event</strong><div style="color:#afcbd2">Combat preview complete · ${kills} local kill${kills === 1 ? '' : 's'}. The Horde enemy art is now live, including tougher Beast Men. Enemy health and kills are still synchronized through the current event authority model.</div></div>`;
+    } else if (event && phase === 'completed' && isPropHuntEvent(event)) {
+      const winner = Array.isArray(event.participants) ? event.participants.find((row) => String(row?.session_id || '') === String(event.winner_session_id || '')) : null;
+      const foundCount = Array.isArray(event.found_session_ids) ? event.found_session_ids.length : 0;
+      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Prop Hunt result</strong><div style="color:#afcbd2">${winner ? `<b>${escapeHtml(winner.name)}</b> won the round.` : 'Round complete.'} ${foundCount} prop${foundCount === 1 ? '' : 's'} were found before the round ended.</div></div>`;
     } else if (event && phase === 'completed' && event.leaders?.length) {
       const rewardEvent = Boolean(event.reward_settlement);
       const settlement = String(event.settlement_status || '');
@@ -338,10 +402,11 @@
     const draft = state.fundingDraft;
     const pendingFunding = draft ? `<div class="atmWorldEventFunding"><div class="atmWorldEventEyebrow">PAYLOAD · TESTNET FUNDING</div><div class="atmWorldEventFundingRow"><span>Prize pool</span><b>${escapeHtml(draft.pool_xrp)} XRP</b></div><div class="atmWorldEventFundingRow"><span>Total funding required</span><b>${escapeHtml(draft.funding_required_xrp)} XRP</b></div><div class="atmWorldEventFundingRow"><span>Status</span><b>${draft.tx_hash ? 'SIGNED / CHECKING XRPL' : 'AWAITING AUTHORIZATION'}</b></div><div class="atmWorldEventFundingNote">The extra funding above the prize pool covers the campaign wallet reserve, worst-case payout fees and safety buffer. Payload automatically returns unused campaign XRP to your ATM Town Testnet wallet after settlement. The campaign address stays hidden from the normal game flow.</div></div>` : '';
     const primaryText = draft ? (draft.tx_hash ? 'CHECK FUNDING & START' : `AUTHORIZE & FUND ${escapeHtml(draft.funding_required_xrp)} XRP`) : 'PREPARE PAYLOAD MONEY RAIN';
-    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch synchronized ATM Town events from the Command Core. Money Rain uses server-authoritative collection; The Horde is the synchronized combat event with shared enemy spawns, synchronized fire effects, and escalating enemy types.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>🧟 THE HORDE · WORLD EVENT</strong><div>Start a 15-second global countdown, then survive 90 seconds in the outdoor town. Gutter and Handy Man fill the pack while Beast Man is much harder to kill.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>±40°</b><span>body-facing fire cone</span></div><div class="atmWorldEventFact"><b>Backpedal</b><span>aim owns body facing</span></div><div class="atmWorldEventFact"><b>R · Rapid</b><span>map-edge power weapon</span></div><div class="atmWorldEventFact"><b>S · Spread</b><span>close-range power weapon</span></div></div><div class="atmWorldEventSponsorHint">This phase does not award XRP/ATM and does not use authoritative PvP hit registration. It is structured so combat authority can move to a realtime server later without replacing the controls/weapons.</div></div><button class="atmWorldEventBtn" id="atmZombieEventStart" type="button" style="background:linear-gradient(90deg,#ff7f98,#ffb266);color:#2b0911" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START THE HORDE'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>💸 PAYLOAD MONEY RAIN · TESTNET</strong><div>Choose the prize pool before the event. The 1,000 game points divide that pool exactly, so every collectible has a deterministic XRP value. First place is only a rank — every collector receives what they actually picked up.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>exact reward basis</span></div><div class="atmWorldEventFact"><b>Testnet XRP</b><span>Payload v0.2.1</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled && !draft ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div><label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">TESTNET XRP PRIZE POOL</label><input class="atmWorldEventPoolInput" id="atmWorldEventPoolInput" type="text" inputmode="decimal" maxlength="10" placeholder="0.100" value="${escapeHtml(state.poolXrp)}" ${sponsorDisabled || draft ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">0.001–5 XRP in 0.001 XRP increments. For the first live test, 0.100 XRP is plenty.</div></div>${pendingFunding}<div style="font-size:12px;color:#66f7bd;font-weight:850">ONE PASSKEY / RECOVERY AUTHORIZATION FUNDS THE CAMPAIGN. ATM TOWN NEVER SENDS YOUR WALLET SEED TO PAYLOAD.</div></div><button class="atmWorldEventBtn" id="atmWorldEventPayloadAction" type="button" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : primaryText}</button>${!draft ? `<button class="atmWorldEventBtn" id="atmWorldEventPreviewStart" type="button" style="margin-top:9px;background:#173746;color:#dff7fb" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>START PREVIEW · NO XRP</button>` : ''}<div class="atmWorldEventStatus" id="atmWorldEventStatus" style="color:${escapeHtml(state.panelStatusColor)}">${escapeHtml(state.panelStatus)}</div>`;
+    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch synchronized ATM Town events from the Command Core. Money Rain uses server-authoritative collection; The Horde is the synchronized combat event with shared enemy spawns, synchronized fire effects, and escalating enemy types.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>🧟 THE HORDE · WORLD EVENT</strong><div>Start a 15-second global countdown, then survive 90 seconds in the outdoor town. Gutter and Handy Man fill the pack while Beast Man is much harder to kill.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>±40°</b><span>body-facing fire cone</span></div><div class="atmWorldEventFact"><b>Backpedal</b><span>aim owns body facing</span></div><div class="atmWorldEventFact"><b>R · Rapid</b><span>map-edge power weapon</span></div><div class="atmWorldEventFact"><b>S · Spread</b><span>close-range power weapon</span></div></div><div class="atmWorldEventSponsorHint">This phase does not award XRP/ATM and does not use authoritative PvP hit registration. It is structured so combat authority can move to a realtime server later without replacing the controls/weapons.</div></div><button class="atmWorldEventBtn" id="atmZombieEventStart" type="button" style="background:linear-gradient(90deg,#ff7f98,#ffb266);color:#2b0911" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START THE HORDE'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>📦 PROP HUNT · WORLD EVENT</strong><div>Everyone in the current online lobby snapshot joins the round. One player stays normal as the hunter while every other participant is disguised using real ATM Town map props like benches, arcade ATMs, street lamps, the news board, and upgrade kiosks.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>15 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>20 sec</b><span>hide phase</span></div><div class="atmWorldEventFact"><b>120 sec</b><span>hunt phase</span></div><div class="atmWorldEventFact"><b>Last prop</b><span>standing wins</span></div></div><div class="atmWorldEventSponsorHint">The hunter uses ACTION near a disguised player to tag them. The round ends as soon as only one hidden prop remains. Participants can be in different maps when the countdown starts, but the disguises themselves now use cropped artwork from the actual town map.</div></div><button class="atmWorldEventBtn" id="atmPropHuntStart" type="button" style="margin-top:9px;background:linear-gradient(90deg,#ffd166,#69f6bd);color:#062029" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START PROP HUNT'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>💸 PAYLOAD MONEY RAIN · TESTNET</strong><div>Choose the prize pool before the event. The 1,000 game points divide that pool exactly, so every collectible has a deterministic XRP value. First place is only a rank — every collector receives what they actually picked up.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>exact reward basis</span></div><div class="atmWorldEventFact"><b>Testnet XRP</b><span>Payload v0.2.1</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>PROJECT / BRAND</button></div><input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${brandActive && !sponsorDisabled && !draft ? '' : 'disabled'}><div class="atmWorldEventSponsorHint">${brandActive ? `Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”` : 'Players will see your ATM Town name / @handle as the provider.'}</div><label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">TESTNET XRP PRIZE POOL</label><input class="atmWorldEventPoolInput" id="atmWorldEventPoolInput" type="text" inputmode="decimal" maxlength="10" placeholder="0.100" value="${escapeHtml(state.poolXrp)}" ${sponsorDisabled || draft ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">0.001–5 XRP in 0.001 XRP increments. For the first live test, 0.100 XRP is plenty.</div></div>${pendingFunding}<div style="font-size:12px;color:#66f7bd;font-weight:850">ONE PASSKEY / RECOVERY AUTHORIZATION FUNDS THE CAMPAIGN. ATM TOWN NEVER SENDS YOUR WALLET SEED TO PAYLOAD.</div></div><button class="atmWorldEventBtn" id="atmWorldEventPayloadAction" type="button" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : primaryText}</button>${!draft ? `<button class="atmWorldEventBtn" id="atmWorldEventPreviewStart" type="button" style="margin-top:9px;background:#173746;color:#dff7fb" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>START PREVIEW · NO XRP</button>` : ''}<div class="atmWorldEventStatus" id="atmWorldEventStatus" style="color:${escapeHtml(state.panelStatusColor)}">${escapeHtml(state.panelStatus)}</div>`;
 
 
     body.querySelector('#atmZombieEventStart')?.addEventListener('click', startZombieOutbreakPreview);
+    body.querySelector('#atmPropHuntStart')?.addEventListener('click', startPropHuntEvent);
     body.querySelector('#atmWorldEventPayloadAction')?.addEventListener('click', () => {
       if (!state.fundingDraft) preparePayloadMoneyRain();
       else if (state.fundingDraft.tx_hash) checkPayloadFundingAndStart({ wait: true });
@@ -523,6 +588,27 @@
       global.dispatchEvent(new CustomEvent('atm:world-event-triggered', { detail: { event_id: String(data?.event?.id || ''), type: 'zombie_outbreak' } }));
     } catch (error) {
       setPanelStatus(error?.message || 'Zombie Outbreak could not start.', '#ff9fb1');
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function startPropHuntEvent() {
+    const button = document.getElementById('atmPropHuntStart');
+    try {
+      if (button) button.disabled = true;
+      setPanelStatus('Preparing the synchronized Prop Hunt round…');
+      if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to start a World Event.');
+      const launch = currentPropHuntPayload();
+      const data = await global.atmApiWithAuth('/api/world-time?action=start-prop-hunt', {
+        method: 'POST',
+        body: JSON.stringify(launch),
+      });
+      applyState(data, 'local-start');
+      closeControlPanel();
+      toast('📦 Prop Hunt starting across the lobby!', 4200);
+      global.dispatchEvent(new CustomEvent('atm:world-event-triggered', { detail: { event_id: String(data?.event?.id || ''), type: 'prop_hunt' } }));
+    } catch (error) {
+      setPanelStatus(error?.message || 'Prop Hunt could not start.', '#ff9fb1');
       if (button) button.disabled = false;
     }
   }
@@ -747,6 +833,7 @@
     drawGround,
     drawAir,
     toast,
+    applyExternalState: (data, reason = 'external') => applyState(data, reason),
     getState: () => ({ event: state.event, phase: eventPhase(), myScore: state.myScore, myPickups: state.myPickups, serverOffsetMs: state.serverOffsetMs }),
   });
 })(window);

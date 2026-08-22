@@ -1,19 +1,21 @@
-# ATM Town v235.12.2 — Flight FX Anchor Hotfix
+# ATM Town v235.12.4 — Map-Asset Prop Hunt
 
-This change-files-only hotfix is based on v235.12.1. It fixes two player-attached visuals during jumping and jetpack flight without changing combat, movement, Store commerce, Live Chat history, or world-event reward rails.
+This change-files-only build upgrades Prop Hunt so disguised players no longer use generic placeholder shapes. Instead, Prop Hunt now uses **real artwork cropped from actual ATM Town map items** such as the bench, arcade ATM, street lamp, ATM Town News board, and Character Upgrades board.
 
-## v235.12.2 changes
+## v235.12.4 changes
 
-- Inferno now uses the same airborne lift value as the rendered player, so the fire stays wrapped around the character instead of remaining on the ground.
-- The fix is applied to both the local player and synchronized remote players on every map render path that already supports the effect.
-- Short overhead chat bubbles now follow the sender vertically while jumping or flying.
-- Chat visibility distance still uses ground-plane player distance, so a high jetpack lift does not incorrectly hide a nearby player's message.
-- PWA shell cache is bumped to `atm-town-shell-v235.12.2` so existing installs refresh the fixed runtime after deploy.
+- Keeps the synchronized Prop Hunt world event added in v235.12.3.
+- Replaces generic placeholder prop silhouettes with **actual ATM Town map-item art**.
+- Adds packaged prop assets under `assets/world-events/prop-hunt/`.
+- Preloads and renders those map props for both the local player and remote players during active Prop Hunt rounds.
+- Updates the World Event Control panel copy to reflect real in-map disguises.
+- Bumps the PWA shell cache to `atm-town-shell-v235.12.4` so installed clients refresh the new Prop Hunt prop assets.
 - No SQL is required.
 
-See `docs/V235.12.2-FLIGHT-FX-ANCHOR-HOTFIX.md` for testing.
+See `docs/V235.12.4-MAP-ASSET-PROP-HUNT.md` for implementation and testing.
 
 ## Previous release notes
+
 
 **v235.12.1 — Arcade + Power + Chat Polish**
 
