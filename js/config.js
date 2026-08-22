@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v235.11.5: hard-bounds the Attribute Store mobile payment controls so CASH/CRYPTO and ATM/RLUSD/XRP always fit the viewport.
+ * v235.11.6: moves payment selection into a dedicated checkout sheet so mobile checkout never shares width with the scrolling catalog.
  * v235.11.4: stabilizes login/Enter Town state and prevents deploy-time service-worker reloads from interrupting active gameplay.
  * v235.11.3: keeps CASH/CRYPTO checkout fully inside the mobile Attribute Store viewport.
  * v235.11: adds the character-catalog Attribute Store foundation and makes the Locker owned-assets-only.
@@ -46,10 +46,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.114,
-    version: 'v235.11.5',
-    name: 'Entry Session Stability + Mobile Store',
-    title: 'ATM Town v235.11.5 — Mobile Checkout Fit + Entry Stability'
+    number: 235.116,
+    version: 'v235.11.6',
+    name: 'Checkout UX Rebuild + Entry Stability',
+    title: 'ATM Town v235.11.6 — Dedicated Checkout UX + Entry Stability'
   });
 
   const MAPS = Object.freeze({
@@ -158,7 +158,7 @@
     ])
   });
 
-  // v235.11.5 Attribute Store commerce policy.
+  // v235.11.6 Attribute Store commerce policy.
   // Store purchases are real-value MAINNET commerce. World-event rewards remain
   // isolated on XRPL Testnet and are not changed by this configuration.
   // The merchant destination intentionally matches the existing Magnet Can
