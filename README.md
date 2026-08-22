@@ -1,20 +1,20 @@
-# ATM Town v235.12.6 — Prop Hunt Polish + Horde Darkness
+# ATM Town v235.12.7 — Horde Visibility Hotfix
 
-This change-files-only build polishes the new Prop Hunt event and intensifies The Horde nightfall visibility rules.
+This change-files-only hotfix corrects The Horde nightfall pass from v235.12.6. The previous blackout was too aggressive and used a canvas erase operation that could remove the already-rendered player/world inside the intended vision bubble.
 
-## v235.12.6 changes
+## v235.12.7 changes
 
-- Removes the oversized live-round Prop Hunt center card so the event UI no longer covers the player or half the screen during gameplay.
-- Keeps the normal top world-event banner as the primary live Prop Hunt HUD.
-- Keeps only a compact completion-result card for Prop Hunt after the round ends.
-- Replaces cropped scene-fragment disguises with **verified full standalone ATM Town prop assets** already used in the town map.
-- Current Prop Hunt disguise pool now uses full map props such as the town directory kiosk, token market board, ATM vending machines, a street lamp, and a bench.
-- Deepens **The Horde** blackout so visibility is now focused on the player’s illuminated circle plus the authored street-lamp light pools.
-- Tightens the player vision radius during Horde Nightfall and increases the blackout strength outside lit zones.
-- Bumps the PWA shell cache to `atm-town-shell-v235.12.6`.
-- No SQL is required for this polish build.
+- Fixes the Horde player disappearing inside the light circle.
+- Replaces the destructive `destination-out` blackout carve with a normal transparent-center radial darkness overlay.
+- Enlarges the readable player vision area so nearby enemies, pavement, props, and the local character can be identified.
+- Keeps areas outside the player vision circle very dark.
+- Keeps authored street-lamp illumination visible over the blackout.
+- Reduces the forced Horde night-map mix so the event no longer stacks a fully dark night map underneath an almost-black overlay.
+- Keeps the v235.12.6 Prop Hunt UI/full-prop fixes unchanged.
+- Bumps the PWA shell cache to `atm-town-shell-v235.12.7`.
+- No SQL is required.
 
-See `docs/V235.12.6-PROP-HUNT-POLISH-HORDE-DARKNESS.md` for testing.
+See `docs/V235.12.7-HORDE-VISIBILITY-HOTFIX.md` for testing.
 
 ## Previous release notes
 

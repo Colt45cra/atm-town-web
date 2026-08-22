@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v235.12.6: shrinks live Prop Hunt UI, switches disguises to full standalone town props, and deepens Horde nightfall darkness so only the player vision bubble and street lamps stay visible.
+ * v235.12.7: fixes Horde Nightfall visibility so the player and nearby map stay readable inside the light circle while darkness remains strong outside player/street-lamp illumination.
  * v235.12.1: polishes Neon Racer mobile proportions, removes downed-player shadows, makes Inferno visible outside Horde, makes remote Invisibility bodyless with footprints only, and adds persistent Live Chat text sizing.
  * v235.12: removes redundant Store ownership filtering, adds server-verified Mainnet attribute checkout plumbing, Neon Racer, three combat vending powers, and Horde down/revive survival.
  * v235.11.8: rebuilds the mobile Attribute Store as a flex-column app layout with compact list cards and a static cart CTA, eliminating catalog/card horizontal overflow.
@@ -51,9 +51,9 @@
 
   const BUILD = Object.freeze({
     number: 235.122,
-    version: 'v235.12.6',
-    name: 'Prop Hunt Polish + Horde Darkness',
-    title: 'ATM Town v235.12.6 — Prop Hunt Polish + Horde Darkness'
+    version: 'v235.12.7',
+    name: 'Horde Visibility Hotfix',
+    title: 'ATM Town v235.12.7 — Horde Visibility Hotfix'
   });
 
   const MAPS = Object.freeze({

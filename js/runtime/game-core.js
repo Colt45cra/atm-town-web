@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.6',name:ATM_CONFIG?.build?.name||'Prop Hunt Polish + Horde Darkness'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.12.7',name:ATM_CONFIG?.build?.name||'Horde Visibility Hotfix'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -778,7 +778,7 @@ function getTownNightAlpha(timeMs=0){
 // v235.9.4 Horde Nightfall: The Horde temporarily overrides the normal shared
 // day/night cycle while the local player is outdoors in the active shared event.
 // The fade is visual-only and does not mutate the server clock or event state.
-const HORDE_NIGHTFALL={fadeInPerSecond:1.9,fadeOutPerSecond:.72,visionInner:66,visionOuter:172,darkness:.965};
+const HORDE_NIGHTFALL={fadeInPerSecond:1.7,fadeOutPerSecond:.72,visionInner:112,visionOuter:278,darkness:.92,nightMix:.74};
 let hordeNightfallAlpha=0;
 let hordeNightfallLastAt=0;
 function hordeNightfallActive(){
@@ -812,23 +812,21 @@ function drawHordeVisionDarkness(target=ctx,cameraX=cam.x,cameraY=cam.y){
   const cx=player.x,cy=player.y-18;
   const inner=HORDE_NIGHTFALL.visionInner,outer=HORDE_NIGHTFALL.visionOuter;
   const maxDark=HORDE_NIGHTFALL.darkness*intensity;
-  // Draw a near-black veil across the whole view, then carve out only the
-  // player's local vision circle. Street-lamp illumination is rendered after
-  // this blackout so lamps and the player bubble become the only reliable
-  // sources of visibility during The Horde.
+  // Important: this stays source-over. The previous destination-out approach
+  // erased already-rendered world/player pixels from the main canvas, which is
+  // why the local character disappeared inside the supposed vision circle.
+  // A transparent-center radial veil keeps the player and nearby map readable
+  // while still pushing everything outside the vision bubble toward black.
+  const gradient=target.createRadialGradient(cx,cy,inner,cx,cy,outer);
+  gradient.addColorStop(0,'rgba(1,3,8,0)');
+  gradient.addColorStop(.34,`rgba(1,3,8,${(maxDark*.08).toFixed(3)})`);
+  gradient.addColorStop(.62,`rgba(1,3,8,${(maxDark*.50).toFixed(3)})`);
+  gradient.addColorStop(.84,`rgba(1,3,8,${(maxDark*.82).toFixed(3)})`);
+  gradient.addColorStop(1,`rgba(1,3,8,${maxDark.toFixed(3)})`);
   target.save();
-  target.fillStyle=`rgba(1,3,8,${maxDark.toFixed(3)})`;
+  target.globalCompositeOperation='source-over';
+  target.fillStyle=gradient;
   target.fillRect(cameraX-4,cameraY-4,viewW+8,viewH+8);
-  target.globalCompositeOperation='destination-out';
-  const reveal=target.createRadialGradient(cx,cy,inner,cx,cy,outer);
-  reveal.addColorStop(0,'rgba(0,0,0,1)');
-  reveal.addColorStop(.34,'rgba(0,0,0,.96)');
-  reveal.addColorStop(.62,'rgba(0,0,0,.55)');
-  reveal.addColorStop(1,'rgba(0,0,0,0)');
-  target.fillStyle=reveal;
-  target.beginPath();
-  target.arc(cx,cy,outer,0,Math.PI*2);
-  target.fill();
   target.restore();
 }
 
@@ -5576,7 +5574,7 @@ function loop(t){
   pollGamepad(t);
   const dt=Math.min((t-last)/1000,.033);last=t;update(dt);
   updateHordeNightfall(t);
-  currentTownNightAlpha=Math.max(getTownNightAlpha(getSharedTownTimeMs()),hordeNightfallAlpha);
+  currentTownNightAlpha=Math.max(getTownNightAlpha(getSharedTownTimeMs()),hordeNightfallAlpha*HORDE_NIGHTFALL.nightMix);
   ctx.clearRect(0,0,W,H);
   const snappedCamX=Math.round(cam.x*zoom*DPR)/(zoom*DPR);
   const snappedCamY=Math.round(cam.y*zoom*DPR)/(zoom*DPR);
