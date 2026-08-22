@@ -322,7 +322,7 @@ resize();
 requestAnimationFrame(()=>{resize();requestAnimationFrame(resize);});
 setTimeout(resize,100);setTimeout(resize,400);setTimeout(resize,1000);
 
-const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.11.3',name:ATM_CONFIG?.build?.name||'Attribute Store Mobile Payment Fit + Vending Guard'});
+const ATM_DISPLAY_BUILD=Object.freeze({version:ATM_CONFIG?.build?.version||'v235.11.4',name:ATM_CONFIG?.build?.name||'Entry Session Stability + Mobile Store'});
 console.info(`ATM Town build ${ATM_DISPLAY_BUILD.version} — ${ATM_DISPLAY_BUILD.name}`);
 const initialMapLabel=document.getElementById('mapLabel');
 if(initialMapLabel)initialMapLabel.textContent='ATM TOWN · '+ATM_DISPLAY_BUILD.version;
@@ -2517,6 +2517,20 @@ const ATM_SUPABASE_URL='https://xnyjurertwohlqczaeux.supabase.co';
 const ATM_SUPABASE_KEY='sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD';
 let authSession=null;
 let playerAccount=null;
+// v235.11.4 entry stability: once the player has deliberately entered the
+// town, late auth/passkey callbacks must never reopen the access flow over
+// live gameplay. The flag is intentionally page-session only.
+let townEntryActive=false;
+let townEntryInProgress=false;
+let passkeySignInInProgress=false;
+function hideTownAccessFlow(){
+  const panel=document.getElementById('multiplayerPanel');
+  if(panel)panel.style.display='none';
+  const overlay=document.getElementById('landingOverlay');
+  if(overlay)overlay.style.display='none';
+  document.body.classList.remove('access-flow-open');
+}
+window.atmTownEntryIsActive=()=>townEntryActive;
 let walletPollTimer=null;
 let walletPollPayloadUuid='';
 let walletResumeAttempts=0;
@@ -2609,6 +2623,9 @@ function applyKnownAccountPresentation(){
 }
 async function openKnownAccountProfile(){
   if(!authSession?.user)return false;
+  // A late duplicate passkey/auth completion can arrive after multiplayer has
+  // already opened. Never put the entry UI back on top of an active town.
+  if(townEntryActive){hideTownAccessFlow();return true;}
   if(!playerAccount)await loadPlayerAccount();
   applyKnownAccountPresentation();
   if(window.atmShowFlowScreen)window.atmShowFlowScreen('profile');
@@ -2625,7 +2642,20 @@ async function initializeIdentity(){
     await window.ATMPWA?.onAuthChanged?.(Boolean(authSession?.user));
     resumePendingXamanLink();
     resumePendingMagnetPayment();
-    client.auth.onAuthStateChange(async(_event,session)=>{window.ATMEmbeddedWallet?.resetForAuthChange?.();authSession=session||null;await loadPlayerAccount();if(authSession?.user)await window.ATMPay?.refresh?.();await window.ATMPWA?.onAuthChanged?.(Boolean(authSession?.user));resumePendingXamanLink();resumePendingMagnetPayment();});
+    client.auth.onAuthStateChange((_event,session)=>{
+      // Keep the Supabase auth callback synchronous. Follow-up profile/API work
+      // is deferred so a token refresh cannot re-enter the auth lock or race the
+      // access flow while the player is entering the town.
+      window.ATMEmbeddedWallet?.resetForAuthChange?.();
+      authSession=session||null;
+      setTimeout(async()=>{
+        await loadPlayerAccount();
+        if(authSession?.user)await window.ATMPay?.refresh?.();
+        await window.ATMPWA?.onAuthChanged?.(Boolean(authSession?.user));
+        resumePendingXamanLink();
+        resumePendingMagnetPayment();
+      },0);
+    });
   }catch(error){
     document.getElementById('identityLoading').style.display='none';document.getElementById('identityGuest').style.display='block';
     setIdentityStatus('Account service unavailable. Guest play still works.','error');
@@ -2644,7 +2674,12 @@ async function sendEmailLogin(){
   finally{btn.disabled=false;btn.innerHTML='<span class="identityBtnIcon">✉</span>SEND VERIFICATION EMAIL';}
 }
 async function signInWithPasskey(){
-  const btn=document.getElementById('passkeyLoginBtn');if(btn){btn.disabled=true;btn.textContent='WAITING…';}
+  if(passkeySignInInProgress)return false;
+  passkeySignInInProgress=true;
+  const btn=document.getElementById('passkeyLoginBtn');
+  const landingBtn=document.getElementById('landingLoginBtn');
+  if(btn){btn.disabled=true;btn.textContent='WAITING…';}
+  if(landingBtn){landingBtn.disabled=true;landingBtn.setAttribute('aria-busy','true');}
   try{
     setIdentityStatus('Opening your device passkey…');
     const client=await getSupabaseClient();const {data,error}=await client.auth.signInWithPasskey();if(error)throw error;
@@ -2652,10 +2687,14 @@ async function signInWithPasskey(){
     await loadPlayerAccount();
     await window.ATMPay?.refresh?.();
     setIdentityStatus('Passkey sign-in complete.','ok');
-    await openKnownAccountProfile();
+    if(!townEntryActive)await openKnownAccountProfile();
     return true;
   }catch(error){setIdentityStatus(error.message||'No ATM Town passkey was found on this device. Use Sign Up to verify your email.','error');return false;}
-  finally{if(btn){btn.disabled=false;btn.innerHTML='<span class="identityBtnIcon">⌁</span>USE PASSKEY';}}
+  finally{
+    passkeySignInInProgress=false;
+    if(btn){btn.disabled=false;btn.innerHTML='<span class="identityBtnIcon">⌁</span>USE PASSKEY';}
+    if(landingBtn){landingBtn.disabled=false;landingBtn.removeAttribute('aria-busy');}
+  }
 }
 async function registerPasskey(){
   if(!authSession?.user){setIdentityStatus('Sign in by email before adding a passkey.','error');return;}
@@ -2742,7 +2781,9 @@ function resumePendingXamanLink(){
   if(returnedUuid)savePendingXamanLink({payload_uuid:returnedUuid,returned_at:new Date().toISOString()});
   const pending=readPendingXamanLink();if(!pending)return;
   try{localStorage.setItem('atm_signup_pending','1');}catch(_error){}
-  if(window.atmShowFlowScreen)window.atmShowFlowScreen('signup');
+  // Resume the wallet check in the background during gameplay. A stale or
+  // slow Xaman return must not reopen the landing/signup flow over the town.
+  if(!townEntryActive&&window.atmShowFlowScreen)window.atmShowFlowScreen('signup');
   setXamanLinkBar('Checking whether the Xaman request was signed…','waiting');
   if(!authSession?.access_token){
     if(walletResumeAttempts++<20)setTimeout(resumePendingXamanLink,400);
@@ -2783,7 +2824,10 @@ function showBubble(id,name,message,x,y,map,meta={}){chatBubbles.push({id,name,m
 async function connectMultiplayer(){
   const panel=document.getElementById('multiplayerPanel');
   const button=document.getElementById('joinOnline');
+  if(townEntryInProgress)return;
+  if(townEntryActive&&onlineMode){hideTownAccessFlow();return;}
   if(button.disabled)return;
+  townEntryInProgress=true;
   const statusEl=document.getElementById('loginStatus');
   const nameInput=document.getElementById('displayName');
   const roomInput=document.getElementById('roomName');
@@ -2798,11 +2842,13 @@ async function connectMultiplayer(){
     statusEl.textContent='Enter a display name first.';
     statusEl.style.color='#ffd166';
     nameInput.focus();
+    townEntryInProgress=false;
     return;
   }
   if(!url||!key){
     statusEl.textContent='Supabase connection details are missing.';
     statusEl.style.color='#ff8fa8';
+    townEntryInProgress=false;
     return;
   }
   button.disabled=true;
@@ -2818,6 +2864,7 @@ async function connectMultiplayer(){
     button.disabled=false;
     button.textContent='RETRY JOIN';
     button.style.opacity='1';
+    townEntryInProgress=false;
     return;
   }
 
@@ -2918,7 +2965,13 @@ async function connectMultiplayer(){
 
     statusEl.textContent='Connected. Entering ATM Town...';
     statusEl.style.color='#7cf7bd';
-    panel.style.display='none';const overlay=document.getElementById('landingOverlay');if(overlay)overlay.style.display='none';document.body.classList.remove('access-flow-open');
+    townEntryActive=true;
+    hideTownAccessFlow();
+    // Do not leave this control permanently disabled. If an OS/browser restore
+    // ever exposes the profile screen, it remains recoverable instead of dead.
+    button.disabled=false;
+    button.textContent='Enter Town Online';
+    button.style.opacity='1';
   }catch(err){
     onlineMode=false;
     statusEl.textContent=(err&&err.message)?err.message:'Unable to connect. Please try again.';
@@ -2926,6 +2979,8 @@ async function connectMultiplayer(){
     button.disabled=false;
     button.textContent='RETRY JOIN';
     button.style.opacity='1';
+  }finally{
+    townEntryInProgress=false;
   }
 }
 function broadcastState(force=false){
@@ -3027,8 +3082,11 @@ let lastMultiplayerResumeAt=0;
 async function resumeMultiplayerConnection(){
   const openingPanel=document.getElementById('multiplayerPanel');
   const accessOverlay=document.getElementById('landingOverlay');
+  // If the browser restores stale access-flow DOM after the player entered,
+  // repair it immediately instead of trapping gameplay behind a disabled page.
+  if(townEntryActive&&accessOverlay&&getComputedStyle(accessOverlay).display!=='none')hideTownAccessFlow();
   // Keep the access flow open until the player deliberately starts.
-  if((openingPanel&&getComputedStyle(openingPanel).display!=='none')||(accessOverlay&&getComputedStyle(accessOverlay).display!=='none'))return;
+  if(!townEntryActive&&((openingPanel&&getComputedStyle(openingPanel).display!=='none')||(accessOverlay&&getComputedStyle(accessOverlay).display!=='none')))return;
   if(document.hidden||multiplayerResumeInProgress)return;
   const now=Date.now();
   if(now-lastMultiplayerResumeAt<1200)return;
@@ -4024,7 +4082,7 @@ if(characterPickerEl){
 function selectCharacter(characterId){const requested=ALLOWED_CHARACTERS.includes(characterId)?characterId:'classic';if(window.atmLockerCanSelectCharacter&&!window.atmLockerCanSelectCharacter(requested)){window.atmLockerOpenForLockedCharacter?.(requested);return false;}selectedCharacter=(CHARACTER_SPRITES[requested]||CHARACTER_SHEETS[requested])?requested:'classic';document.querySelectorAll('.characterChoice').forEach(button=>button.classList.toggle('selected',button.dataset.character===selectedCharacter));updateEntryProgress(3,authSession?.user?[1,2]:[2]);window.atmLockerCharacterChanged?.(selectedCharacter);return true;}
 document.querySelectorAll('.characterChoice').forEach(button=>button.addEventListener('click',()=>selectCharacter(button.dataset.character)));
 selectCharacter(savedMp.character||'classic');
-const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);joinOnlineButton.addEventListener('pointerup',e=>{if(e.pointerType==='touch'){e.preventDefault();connectMultiplayer();}});document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));document.getElementById('multiplayerPanel').style.display='none';const overlay=document.getElementById('landingOverlay');if(overlay)overlay.style.display='none';document.body.classList.remove('access-flow-open');if(authSession?.user){getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
+const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();if(authSession?.user){getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
 
 const keys={};
 function isTextEntryTarget(target){
@@ -5495,7 +5553,10 @@ requestAnimationFrame(loop);
     }
   }
   function show(name){
-    if(!overlay)return;document.body.classList.add('access-flow-open');currentScreen=name;shell.dataset.screen=name;overlay.style.display='block';overlay.querySelectorAll('.flowScreen').forEach(s=>s.classList.toggle('active',s.dataset.flowScreen===name));
+    if(!overlay)return;
+    // Ignore late duplicate login/auth callbacks once gameplay has started.
+    if(townEntryActive){hideTownAccessFlow();return;}
+    document.body.classList.add('access-flow-open');currentScreen=name;shell.dataset.screen=name;overlay.style.display='block';overlay.querySelectorAll('.flowScreen').forEach(s=>s.classList.toggle('active',s.dataset.flowScreen===name));
     if(name==='character'){applyEntryMode('signed');updateCharacterSummary();setTimeout(()=>selectedButton()?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}),40);}
     if(name==='profile')updateCharacterSummary();
     const first=name==='signup'?document.getElementById('identityEmail'):name==='profile'?document.getElementById('displayName'):null;if(first)setTimeout(()=>{try{first.focus({preventScroll:true});}catch(_){first.focus();}},80);
@@ -6310,7 +6371,7 @@ document.querySelectorAll('.lockerDirection').forEach(button=>button.addEventLis
 document.getElementById('lockerPanel')?.addEventListener('pointerdown',event=>{if(event.target.id==='lockerPanel')lockerClose();});
 window.addEventListener('resize',()=>{if(lockerState.open)lockerDrawPreview();},{passive:true});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&lockerState.open){event.preventDefault();lockerClose();}});
-// ===== v235.11.3 Character Attribute Store payment rails =====
+// ===== v235.11.4 Character Attribute Store payment rails =====
 const ATM_ATTRIBUTE_STORE_CART_KEY='atm_attribute_store_cart_v1';
 const ATM_ATTRIBUTE_STORE_CONFIG=ATM_CONFIG?.attributeStore||Object.freeze({baseCurrency:'USD',checkoutEnabled:false,purchaseNetwork:'mainnet',merchantAddress:'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB',defaultUsdPrice:null,prices:Object.freeze({}),paymentCategories:Object.freeze([{id:'cash',label:'CASH',rail:'CARD',currency:'USD'},{id:'crypto',label:'CRYPTO',rail:'XRPL',network:'mainnet'}]),cryptoAssets:Object.freeze([{id:'atm',label:'ATM',type:'issued',currency:'ATM',issuer:'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ'},{id:'rlusd',label:'RLUSD',type:'issued',currency:'524C555344000000000000000000000000000000',issuer:'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De'},{id:'xrp',label:'XRP',type:'native',currency:'XRP',issuer:null}])});
 let attributeStoreState={open:false,characterId:'classic',filter:'all',show:'buyable',paymentCategory:'crypto',cryptoAsset:'atm',cart:safeJsonParse(safeStorageGet(ATM_ATTRIBUTE_STORE_CART_KEY,'[]'),[])};

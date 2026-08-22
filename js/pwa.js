@@ -6,7 +6,7 @@
   const STANDALONE=()=>Boolean(global.matchMedia?.('(display-mode: standalone)')?.matches||navigator.standalone===true);
   const seenPingIds=new Set();
   const hadServiceWorkerController=Boolean(navigator.serviceWorker?.controller);
-  let reloadingForServiceWorkerUpdate=false;
+  let serviceWorkerUpdateReady=false;
   let deferredInstallPrompt=null;
   let registration=null;
   let state={
@@ -174,11 +174,12 @@
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
-      // Only reload for an actual update of an already-controlled ATM Town.
-      // First-time installs do not need an extra reload.
-      if(!hadServiceWorkerController||reloadingForServiceWorkerUpdate)return;
-      reloadingForServiceWorkerUpdate=true;
-      global.location.reload();
+      // v235.11.4: never hard-reload an active game when a deploy installs a
+      // new service worker. The new worker controls the next navigation, while
+      // the current town session keeps its already-loaded, version-consistent JS.
+      if(!hadServiceWorkerController||serviceWorkerUpdateReady)return;
+      serviceWorkerUpdateReady=true;
+      global.dispatchEvent(new CustomEvent('atm:pwa-update-ready'));
     });
     navigator.serviceWorker.addEventListener('message',(event)=>{
       const data=event.data||{};

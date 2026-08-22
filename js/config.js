@@ -1,5 +1,6 @@
 /*
  * ATM Town runtime configuration
+ * v235.11.4: stabilizes login/Enter Town state and prevents deploy-time service-worker reloads from interrupting active gameplay.
  * v235.11.3: keeps CASH/CRYPTO checkout fully inside the mobile Attribute Store viewport.
  * v235.11: adds the character-catalog Attribute Store foundation and makes the Locker owned-assets-only.
  * v235.10: connects verified You Are ATM issuer/taxon NFT attributes to Locker entitlements and store-locks non-starter cosmetics for monetization.
@@ -44,10 +45,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.113,
-    version: 'v235.11.3',
-    name: 'Attribute Store Mobile Payment Fit + Vending Guard',
-    title: 'ATM Town v235.11.3 — Attribute Store Mobile Payment Fit + Vending Guard'
+    number: 235.114,
+    version: 'v235.11.4',
+    name: 'Entry Session Stability + Mobile Store',
+    title: 'ATM Town v235.11.4 — Entry Session Stability + Mobile Store'
   });
 
   const MAPS = Object.freeze({
@@ -156,7 +157,7 @@
     ])
   });
 
-  // v235.11.3 Attribute Store commerce policy.
+  // v235.11.4 Attribute Store commerce policy.
   // Store purchases are real-value MAINNET commerce. World-event rewards remain
   // isolated on XRPL Testnet and are not changed by this configuration.
   // The merchant destination intentionally matches the existing Magnet Can
