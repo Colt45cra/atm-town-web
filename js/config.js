@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v235.11.7: hard-locks the mobile Store/cart to the visible card width and turns the cart into an inset bottom action bar so Review Payment can never inherit catalog overflow.
+ * v235.11.8: rebuilds the mobile Attribute Store as a flex-column app layout with compact list cards and a static cart CTA, eliminating catalog/card horizontal overflow.
  * v235.11.6: moves payment selection into a dedicated checkout sheet so mobile checkout never shares width with the scrolling catalog.
  * v235.11.4: stabilizes login/Enter Town state and prevents deploy-time service-worker reloads from interrupting active gameplay.
  * v235.11.3: keeps CASH/CRYPTO checkout fully inside the mobile Attribute Store viewport.
@@ -47,10 +47,10 @@
   const TILE_SIZE = 48;
 
   const BUILD = Object.freeze({
-    number: 235.117,
-    version: 'v235.11.7',
-    name: 'Mobile Store Width Lock + Checkout UX',
-    title: 'ATM Town v235.11.7 — Mobile Store Width Lock + Checkout UX'
+    number: 235.118,
+    version: 'v235.11.8',
+    name: 'Mobile Store Layout Rebuild',
+    title: 'ATM Town v235.11.8 — Mobile Store Layout Rebuild'
   });
 
   const MAPS = Object.freeze({
@@ -159,7 +159,7 @@
     ])
   });
 
-  // v235.11.7 Attribute Store commerce policy.
+  // v235.11.8 Attribute Store commerce policy.
   // Store purchases are real-value MAINNET commerce. World-event rewards remain
   // isolated on XRPL Testnet and are not changed by this configuration.
   // The merchant destination intentionally matches the existing Magnet Can

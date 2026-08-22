@@ -623,6 +623,232 @@ body.attribute-store-open #controls,body.attribute-store-open #hudSocialRail,bod
 @media(min-width:521px) and (max-width:760px){.attributeStoreGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 
 
+
+/* ===== v235.11.8: mobile Attribute Store layout rebuild =====
+   Mobile Store layout is a simple flex column:
+   fixed header/tabs/filters, independently scrolling catalog, static cart CTA.
+   Product cards become compact list cards and never use percentage widths. */
+@media(max-width:760px){
+  #attributeStorePanel{
+    padding:6px!important;
+    overflow:hidden!important;
+  }
+  #attributeStoreCard{
+    display:flex!important;
+    flex-direction:column!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    height:calc(var(--vv-height,100dvh) - 12px)!important;
+    max-height:calc(var(--vv-height,100dvh) - 12px)!important;
+    margin:0!important;
+    overflow:hidden!important;
+  }
+  .attributeStoreHeader,
+  .attributeStoreCharacters,
+  .attributeStoreToolbar,
+  .attributeStoreFooter{
+    flex:0 0 auto!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .attributeStoreBody{
+    position:relative!important;
+    flex:1 1 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .attributeStoreCatalog{
+    flex:1 1 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:8px!important;
+    overflow:hidden!important;
+  }
+  .attributeStoreCatalogHeader{
+    flex:0 0 auto!important;
+    min-width:0!important;
+    padding:0 2px 8px!important;
+  }
+  .attributeStoreGrid{
+    flex:1 1 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:8px!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0 0 8px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .attributeStoreItem{
+    flex:0 0 auto!important;
+    align-self:stretch!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:10px!important;
+    display:grid!important;
+    grid-template-columns:86px minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto 42px!important;
+    column-gap:10px!important;
+    row-gap:4px!important;
+    overflow:hidden!important;
+    border-radius:14px!important;
+  }
+  .attributeStoreItemArt{
+    grid-column:1!important;
+    grid-row:1 / 4!important;
+    width:86px!important;
+    height:86px!important;
+    min-width:86px!important;
+    max-width:86px!important;
+    align-self:center!important;
+    justify-self:start!important;
+    overflow:hidden!important;
+  }
+  .attributeStoreItemArt img{
+    display:block!important;
+    width:82px!important;
+    height:82px!important;
+    max-width:82px!important;
+    max-height:82px!important;
+    object-fit:contain!important;
+  }
+  .attributeStoreItemArt .fallback{
+    font-size:34px!important;
+  }
+  .attributeStoreItemName{
+    grid-column:2!important;
+    grid-row:1!important;
+    min-width:0!important;
+    padding-right:64px!important;
+    align-self:end!important;
+    font-size:11px!important;
+    line-height:1.2!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+  .attributeStoreItemMeta{
+    grid-column:2!important;
+    grid-row:2!important;
+    min-width:0!important;
+    font-size:7px!important;
+    line-height:1.25!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+  .attributeStoreItemPrice{
+    grid-column:2!important;
+    grid-row:3!important;
+    min-width:0!important;
+    align-self:start!important;
+    font-size:10px!important;
+    line-height:1.2!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+  .attributeStoreItemAction{
+    grid-column:1 / -1!important;
+    grid-row:4!important;
+    display:block!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:42px!important;
+    margin:2px 0 0!important;
+    padding:0 10px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:9px!important;
+  }
+  .attributeStoreItemBadge{
+    top:8px!important;
+    right:8px!important;
+    max-width:58px!important;
+    font-size:6px!important;
+  }
+  .attributeStoreCart{
+    position:static!important;
+    flex:0 0 auto!important;
+    display:block!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:9px 10px 10px!important;
+    border-left:0!important;
+    border-top:1px solid rgba(112,249,200,.24)!important;
+    background:linear-gradient(180deg,rgba(3,17,25,.985),rgba(2,11,17,.995))!important;
+    box-shadow:0 -10px 24px rgba(0,0,0,.22)!important;
+    overflow:hidden!important;
+  }
+  .attributeStoreCartHeader{
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    padding:0 0 7px!important;
+  }
+  .attributeStoreCartHeader button,
+  .attributeStoreCartItems,
+  .attributeStoreCartTotal{
+    display:none!important;
+  }
+  .attributeStoreReviewButton{
+    position:static!important;
+    display:block!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:48px!important;
+    margin:0!important;
+    padding:0 12px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+}
+@media(max-width:390px){
+  .attributeStoreItem{
+    grid-template-columns:76px minmax(0,1fr)!important;
+    column-gap:9px!important;
+    padding:9px!important;
+  }
+  .attributeStoreItemArt{
+    width:76px!important;
+    height:80px!important;
+    min-width:76px!important;
+    max-width:76px!important;
+  }
+  .attributeStoreItemArt img{
+    width:74px!important;
+    height:78px!important;
+    max-width:74px!important;
+    max-height:78px!important;
+  }
+  .attributeStoreItemName{padding-right:56px!important;font-size:10px!important}
+  .attributeStoreItemBadge{max-width:52px!important}
+}
+
+
 /* ===== v184: ATM Sky Run cabinet + tap zone refinements ===== */
 #skyRunPanel{position:fixed;inset:0;z-index:9200;display:none;align-items:center;justify-content:center;padding:12px;background:rgba(2,7,12,.9);backdrop-filter:blur(8px)}
 #skyRunPanel.open{display:flex}
@@ -1014,7 +1240,7 @@ body.atm-soft-keyboard-device.live-chat-open.atm-keyboard-open #liveChatPanel.op
         </div>
       </section>
     </main>
-    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Refresh XRPL to verify You Are ATM attribute entitlements.</div><div class="lockerFooterVersion">LOCKER v7 · OWNED ASSETS ONLY · v235.11.7</div></footer>
+    <footer class="lockerFooter"><div id="lockerStatus">Locker ready. Refresh XRPL to verify You Are ATM attribute entitlements.</div><div class="lockerFooterVersion">LOCKER v7 · OWNED ASSETS ONLY · v235.11.8</div></footer>
   </div>
 </div>
 
@@ -1046,7 +1272,7 @@ body.atm-soft-keyboard-device.live-chat-open.atm-keyboard-open #liveChatPanel.op
         <div class="attributeStoreCheckoutNote" id="attributeStoreCheckoutNote">Browse and build your cart now. Live checkout will turn on after prices and permanent server-side purchase entitlements are configured.</div>
       </section>
     </div>
-    <footer class="attributeStoreFooter"><span id="attributeStoreStatus">Attribute Store ready.</span><strong>ATTRIBUTE STORE v1.5 · v235.11.7</strong></footer>
+    <footer class="attributeStoreFooter"><span id="attributeStoreStatus">Attribute Store ready.</span><strong>ATTRIBUTE STORE v1.6 · v235.11.8</strong></footer>
   </div>
 </div>
 
