@@ -92,6 +92,8 @@
     hitInvulnerableUntil: 0,
     netHitSeq: 0,
     seenHitIds: new Set(),
+    navPlansRemaining: 0,
+    navBudgetRefillAt: 0,
   };
 
   function isZombieEvent(event = state.event) { return event?.type === EVENT_TYPE; }
@@ -307,6 +309,8 @@
       dir: 'down', moving: false, animClock: 0, attackCooldown: 0, fireFxTimer: 0,
       avoidSign: (Number(def.id) % 2 ? 1 : -1), avoidTimer: 0, stuckTimer: 0,
       lastNavX: Number(def.x), lastNavY: Number(def.y),
+      navPath: [], navIndex: 0, navTargetX: Number(def.x), navTargetY: Number(def.y),
+      navRepathAt: 0, navFailUntil: 0,
     };
   }
 
@@ -403,6 +407,214 @@
     return true;
   }
 
+
+  const HORDE_NAV_GRID = 52;
+  const HORDE_NAV_MAX_NODES = 620;
+  const HORDE_NAV_REPATH_MS = 900;
+  const HORDE_NAV_TARGET_DRIFT = 96;
+
+  function zombieNavCellFromWorld(x, y) {
+    const bounds = state.mapBounds || { minX: 0, minY: 0, maxX: 3120, maxY: 4320 };
+    return {
+      gx: Math.round((Number(x) - Number(bounds.minX || 0)) / HORDE_NAV_GRID),
+      gy: Math.round((Number(y) - Number(bounds.minY || 0)) / HORDE_NAV_GRID),
+    };
+  }
+  function zombieNavWorldFromCell(gx, gy) {
+    const bounds = state.mapBounds || { minX: 0, minY: 0 };
+    return {
+      x: Number(bounds.minX || 0) + gx * HORDE_NAV_GRID,
+      y: Number(bounds.minY || 0) + gy * HORDE_NAV_GRID,
+    };
+  }
+  function zombieNavCellKey(gx, gy) { return `${gx},${gy}`; }
+  function zombieNavWalkable(gx, gy) {
+    const bounds = state.mapBounds;
+    const p = zombieNavWorldFromCell(gx, gy);
+    if (bounds) {
+      const pad = 18;
+      if (p.x < Number(bounds.minX) + pad || p.x > Number(bounds.maxX) - pad || p.y < Number(bounds.minY) + pad || p.y > Number(bounds.maxY) - pad) return false;
+    }
+    if (typeof state.isBlocked !== 'function') return true;
+    // obstacleAtFootprint already checks the authored collision footprint, so a
+    // single world-space query here is intentionally cheaper than probing many
+    // pixels per A* node.
+    return !state.isBlocked(p.x, p.y);
+  }
+  function zombieNavNearestWalkable(cell, radius = 3) {
+    if (zombieNavWalkable(cell.gx, cell.gy)) return cell;
+    for (let r = 1; r <= radius; r += 1) {
+      for (let oy = -r; oy <= r; oy += 1) {
+        for (let ox = -r; ox <= r; ox += 1) {
+          if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;
+          const gx = cell.gx + ox, gy = cell.gy + oy;
+          if (zombieNavWalkable(gx, gy)) return { gx, gy };
+        }
+      }
+    }
+    return null;
+  }
+  function heapPush(heap, node) {
+    heap.push(node);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (heap[p].f <= node.f) break;
+      heap[i] = heap[p]; i = p;
+    }
+    heap[i] = node;
+  }
+  function heapPop(heap) {
+    if (!heap.length) return null;
+    const root = heap[0], last = heap.pop();
+    if (!heap.length) return root;
+    let i = 0;
+    while (true) {
+      let left = i * 2 + 1, right = left + 1;
+      if (left >= heap.length) break;
+      let child = right < heap.length && heap[right].f < heap[left].f ? right : left;
+      if (heap[child].f >= last.f) break;
+      heap[i] = heap[child]; i = child;
+    }
+    heap[i] = last;
+    return root;
+  }
+  function reconstructZombieNavPath(cameFrom, nodes, goalKey) {
+    const cells = [];
+    let key = goalKey;
+    for (let guard = 0; key && guard < 256; guard += 1) {
+      const node = nodes.get(key);
+      if (!node) break;
+      cells.push({ gx: node.gx, gy: node.gy });
+      key = cameFrom.get(key) || '';
+    }
+    cells.reverse();
+    return cells.map((cell) => zombieNavWorldFromCell(cell.gx, cell.gy));
+  }
+  function simplifyZombieNavPath(zombie, points) {
+    if (!Array.isArray(points) || !points.length) return [];
+    const simplified = [];
+    let fromX = zombie.x, fromY = zombie.y;
+    let index = 0;
+    while (index < points.length) {
+      let chosen = index;
+      for (let probe = points.length - 1; probe >= index; probe -= 1) {
+        const p = points[probe], dx = p.x - fromX, dy = p.y - fromY;
+        const distance = Math.hypot(dx, dy);
+        if (distance <= 1 || zombiePathClear({ ...zombie, x: fromX, y: fromY }, dx, dy, distance)) { chosen = probe; break; }
+      }
+      const point = points[chosen];
+      simplified.push(point);
+      fromX = point.x; fromY = point.y;
+      index = chosen + 1;
+    }
+    return simplified;
+  }
+  function planZombieRoute(zombie, target, nowMs) {
+    if (typeof state.isBlocked !== 'function' || state.navPlansRemaining <= 0) return false;
+    if (nowMs < Number(zombie.navFailUntil || 0)) return false;
+    state.navPlansRemaining -= 1;
+
+    const start = zombieNavNearestWalkable(zombieNavCellFromWorld(zombie.x, zombie.y), 2);
+    const goal = zombieNavNearestWalkable(zombieNavCellFromWorld(target.x, target.y), 3);
+    if (!start || !goal) {
+      zombie.navFailUntil = nowMs + 700;
+      return false;
+    }
+    const startKey = zombieNavCellKey(start.gx, start.gy), goalKey = zombieNavCellKey(goal.gx, goal.gy);
+    if (startKey === goalKey) { zombie.navPath = []; zombie.navIndex = 0; return false; }
+
+    // Keep searches local to the zombie/target corridor. This prevents one
+    // blocked zombie from scanning the entire 3120x4320 map and causing frame
+    // spikes when the full 60-zombie Horde is active.
+    const marginCells = 9;
+    const minGX = Math.min(start.gx, goal.gx) - marginCells, maxGX = Math.max(start.gx, goal.gx) + marginCells;
+    const minGY = Math.min(start.gy, goal.gy) - marginCells, maxGY = Math.max(start.gy, goal.gy) + marginCells;
+    const open = [], nodes = new Map(), cameFrom = new Map(), bestG = new Map(), closed = new Set();
+    const heuristic = (gx, gy) => Math.hypot(goal.gx - gx, goal.gy - gy);
+    const startNode = { gx: start.gx, gy: start.gy, g: 0, f: heuristic(start.gx, start.gy) };
+    nodes.set(startKey, startNode); bestG.set(startKey, 0); heapPush(open, startNode);
+    const dirs = [[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.414],[-1,1,1.414],[1,-1,1.414],[-1,-1,1.414]];
+    let visited = 0, foundKey = '';
+    while (open.length && visited < HORDE_NAV_MAX_NODES) {
+      const current = heapPop(open); if (!current) break;
+      const key = zombieNavCellKey(current.gx, current.gy);
+      if (closed.has(key)) continue;
+      closed.add(key); visited += 1;
+      if (key === goalKey || Math.hypot(goal.gx - current.gx, goal.gy - current.gy) <= 1) { foundKey = key; break; }
+      for (const [ox, oy, cost] of dirs) {
+        const gx = current.gx + ox, gy = current.gy + oy;
+        if (gx < minGX || gx > maxGX || gy < minGY || gy > maxGY || !zombieNavWalkable(gx, gy)) continue;
+        // Never cut diagonally through the corner of two collision cells.
+        if (ox && oy && (!zombieNavWalkable(current.gx + ox, current.gy) || !zombieNavWalkable(current.gx, current.gy + oy))) continue;
+        const nextKey = zombieNavCellKey(gx, gy);
+        if (closed.has(nextKey)) continue;
+        const g = current.g + cost;
+        if (g >= Number(bestG.get(nextKey) ?? Infinity)) continue;
+        bestG.set(nextKey, g); cameFrom.set(nextKey, key);
+        const node = { gx, gy, g, f: g + heuristic(gx, gy) * 1.08 };
+        nodes.set(nextKey, node); heapPush(open, node);
+      }
+    }
+    if (!foundKey) {
+      zombie.navPath = []; zombie.navIndex = 0; zombie.navFailUntil = nowMs + 900;
+      return false;
+    }
+    const path = simplifyZombieNavPath(zombie, reconstructZombieNavPath(cameFrom, nodes, foundKey));
+    zombie.navPath = path;
+    zombie.navIndex = 0;
+    zombie.navTargetX = target.x; zombie.navTargetY = target.y;
+    zombie.navRepathAt = nowMs + HORDE_NAV_REPATH_MS + (Number(zombie.id || 0) % 7) * 55;
+    zombie.navFailUntil = 0;
+    return path.length > 0;
+  }
+
+  function zombieRouteDirection(zombie, target, dt) {
+    const nowMs = performance.now();
+    const directX = (target.x - zombie.x) / Math.max(.001, target.d);
+    const directY = (target.y - zombie.y) / Math.max(.001, target.d);
+    const lookAhead = Math.max(46, Math.min(118, zombie.speed * .9 + 34, target.d - PLAYER_ATTACK_DISTANCE * .35));
+    const directClear = zombiePathClear(zombie, directX, directY, lookAhead);
+
+    // As soon as the target becomes directly reachable again, abandon the
+    // detour. Zombies only spend pathfinding CPU while an actual obstruction
+    // separates them from their target.
+    if (directClear && target.d < 260) {
+      zombie.navPath = []; zombie.navIndex = 0;
+      return [directX, directY];
+    }
+
+    const drift = Math.hypot(target.x - Number(zombie.navTargetX || target.x), target.y - Number(zombie.navTargetY || target.y));
+    const pathMissing = !Array.isArray(zombie.navPath) || zombie.navIndex >= zombie.navPath.length;
+    const stale = nowMs >= Number(zombie.navRepathAt || 0) || drift > HORDE_NAV_TARGET_DRIFT || Number(zombie.stuckTimer || 0) > .5;
+    if ((!directClear || !pathMissing) && (pathMissing || stale)) planZombieRoute(zombie, target, nowMs);
+
+    if (Array.isArray(zombie.navPath) && zombie.navIndex < zombie.navPath.length) {
+      // Skip waypoints that are already reached, then aggressively shortcut to
+      // later waypoints when line of sight opens. This produces smooth routes
+      // around buildings instead of grid-like zigzags.
+      while (zombie.navIndex < zombie.navPath.length) {
+        const p = zombie.navPath[zombie.navIndex];
+        if (Math.hypot(p.x - zombie.x, p.y - zombie.y) > 24) break;
+        zombie.navIndex += 1;
+      }
+      for (let i = zombie.navPath.length - 1; i > zombie.navIndex; i -= 1) {
+        const p = zombie.navPath[i], dx = p.x - zombie.x, dy = p.y - zombie.y, d = Math.hypot(dx, dy);
+        if (d > 1 && zombiePathClear(zombie, dx, dy, d)) { zombie.navIndex = i; break; }
+      }
+      const p = zombie.navPath[zombie.navIndex];
+      if (p) {
+        const [dx, dy, mag] = norm(p.x - zombie.x, p.y - zombie.y);
+        if (mag > .001) return [dx, dy];
+      }
+    }
+
+    // If the frame's route-planning budget is already used, retain the local
+    // edge-following steering as a cheap fallback instead of freezing or
+    // hammering the wall until another A* slot becomes available.
+    return chooseZombieSteering(zombie, target, dt);
+  }
+
   function chooseZombieSteering(zombie, target, dt) {
     const desiredX = (target.x - zombie.x) / Math.max(.001, target.d);
     const desiredY = (target.y - zombie.y) / Math.max(.001, target.d);
@@ -459,7 +671,7 @@
     if (!target) { zombie.moving = false; zombie.animClock = 0; return; }
     if (target.d < PLAYER_ATTACK_DISTANCE) { zombie.moving = false; zombie.animClock = 0;if(zombie.attackCooldown<=0){zombie.attackCooldown=.9+Math.random()*.28;zombieAttackPlayer(zombie,target);}return; }
 
-    const [dx, dy] = chooseZombieSteering(zombie, target, dt);
+    const [dx, dy] = zombieRouteDirection(zombie, target, dt);
     zombie.dir = nearestFacingForVector(dx, dy);
     const step = zombie.speed * dt;
     const beforeX = zombie.x, beforeY = zombie.y;
@@ -480,8 +692,10 @@
     }
 
     const traveled = Math.hypot(zombie.x - beforeX, zombie.y - beforeY);
-    if (traveled < Math.max(.12, step * .16)) zombie.stuckTimer = Number(zombie.stuckTimer || 0) + dt;
-    else zombie.stuckTimer = Math.max(0, Number(zombie.stuckTimer || 0) - dt * 2.5);
+    if (traveled < Math.max(.12, step * .16)) {
+      zombie.stuckTimer = Number(zombie.stuckTimer || 0) + dt;
+      if (zombie.stuckTimer > .42) zombie.navRepathAt = 0;
+    } else zombie.stuckTimer = Math.max(0, Number(zombie.stuckTimer || 0) - dt * 2.5);
     zombie.lastNavX = zombie.x; zombie.lastNavY = zombie.y;
     zombie.moving = moved && traveled > .04;
     if (zombie.moving) zombie.animClock += dt * WALK_ANIM_FPS;
@@ -811,6 +1025,15 @@
     // One elected town player is authoritative for all zombie movement/HP/deaths.
     // Everyone else only interpolates compact snapshots from that authority.
     if (isAuthority()) {
+      // Route planning is deliberately throttled. At most two coarse A* routes
+      // are created per 120ms slice; everyone else keeps following an existing
+      // route or uses cheap edge steering until a planning slot opens. That
+      // prevents a wall encounter by a large pack from turning into a CPU spike.
+      const navNow = performance.now();
+      if (navNow >= Number(state.navBudgetRefillAt || 0)) {
+        state.navPlansRemaining = 2;
+        state.navBudgetRefillAt = navNow + 120;
+      } else state.navPlansRemaining = 0;
       for (const zombie of state.zombies) {
         moveZombie(zombie, dt);
         zombie.netX = zombie.x; zombie.netY = zombie.y;

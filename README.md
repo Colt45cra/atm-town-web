@@ -1,21 +1,21 @@
-# ATM Town v235.12.8 — Prop Sync + Horde Navigation
+# ATM Town v235.12.10 — Authoritative Prop Sync + Horde Pathfinding
 
-This change-files-only build fixes the remaining Prop Hunt visual-sync issues and upgrades The Horde so zombies steer around authored map obstacles instead of repeatedly walking straight into them.
+This replacement build includes the v235.12.9 authoritative Prop Hunt disguise fix **plus** a stronger Horde navigation system so zombies choose routes around collision instead of repeatedly pushing into walls.
 
-## v235.12.8 changes
+## v235.12.10 changes
 
-- Prop Hunt full-object disguises now render at their **authored world-map size** instead of being reduced to ~82–92% scale.
-- Each player now broadcasts the exact Prop Hunt disguise they are currently rendering, tied to the active event id.
-- Remote clients prefer that matching-event disguise state, preventing two players from seeing the same hidden player as different props because of a stale roster/session-id race.
-- Keeps the server-generated Prop Hunt assignment as the authoritative fallback.
-- The Horde now uses obstacle-aware steering with forward collision probes, persistent left/right wall-following, wider-angle escape choices, and stuck detection.
-- Zombies continue targeting players, but can route around buildings, planters, walls and other collision-mask obstacles instead of repeatedly pushing straight at them.
-- Horde movement remains synchronized through the existing elected-authority snapshot system, so all clients still see the same zombie positions.
-- Keeps the v235.12.7 Horde visibility behavior.
-- Bumps the PWA shell cache to `atm-town-shell-v235.12.8`.
+- Keeps the **server-backed Prop Hunt assignment as the only disguise source of truth** so every client renders the same prop for each participant.
+- Replaces the Horde's primarily reactive wall steering with **coarse A* route planning** when a direct route is blocked.
+- Zombies use the existing authored town collision map to find walkable routes around buildings, walls, planters, and other collision shapes.
+- Planned routes are simplified into longer line-of-sight waypoints so zombie movement stays natural instead of looking grid-based.
+- Zombies reuse a route instead of recalculating every frame and repath when the target moves substantially or the zombie becomes stuck.
+- Pathfinding is **throttled to two route calculations per 120ms slice**, preventing a 60-zombie pileup from creating a large CPU spike.
+- Cheap edge-following remains as a fallback while a zombie is waiting for a pathfinding slot.
+- Keeps the Horde darkness/visibility hotfix and all Prop Hunt seeker rules from the prior builds.
+- Bumps the PWA shell cache to `atm-town-shell-v235.12.10`.
 - No SQL is required.
 
-See `docs/V235.12.8-PROP-SYNC-HORDE-NAVIGATION.md` for testing.
+See `docs/V235.12.10-AUTHORITATIVE-PROP-SYNC-HORDE-PATHFINDING.md` for testing.
 
 ## Previous release notes
 

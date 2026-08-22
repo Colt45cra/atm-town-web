@@ -122,14 +122,12 @@
     const raw = String(state.event?.prop_assignments?.[String(sessionId || '')] || '');
     return PROPS[raw] ? raw : PROP_IDS[Math.abs(hashCode(String(sessionId || ''))) % PROP_IDS.length];
   }
-  function resolvedActorPropId(sessionId, networkState = null) {
-    const remoteEventId = String(networkState?.eventId || '');
-    const remotePropId = String(networkState?.propId || '');
-    // The server assignment remains authoritative, but each player also sends
-    // the exact disguise they are rendering. Preferring that matching-event
-    // value guarantees remote clients cannot accidentally display a different
-    // prop for the same player because of a stale roster/session-id race.
-    if (remoteEventId && remoteEventId === String(state.event?.id || '') && PROPS[remotePropId]) return remotePropId;
+  function resolvedActorPropId(sessionId, _networkState = null) {
+    // IMPORTANT: prop identity has exactly one source of truth: the assignment
+    // stored on the server-backed world event. Never let a player's realtime
+    // heartbeat override the disguise, because two clients can receive those
+    // heartbeats at different moments and render different props for the same
+    // participant. Local and remote rendering both call this same resolver.
     return assignedPropId(sessionId);
   }
   function hashCode(text) {
@@ -372,11 +370,12 @@
 
   function getBroadcastState() {
     if (!isPropHuntEvent() || state.phase !== 'active' || !state.localId || !isParticipant(state.localId)) return null;
-    const role = localRole();
+    // Role may still ride with normal player presence for UI/debugging, but prop
+    // identity intentionally does NOT. Every client reads prop identity from the
+    // shared server event assignment instead.
     return {
       eventId: String(state.event?.id || ''),
-      role,
-      propId: role === 'prop' ? assignedPropId(state.localId) : '',
+      role: localRole(),
     };
   }
 

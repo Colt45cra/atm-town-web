@@ -1,6 +1,6 @@
 /*
  * ATM Town runtime configuration
- * v235.12.8: scales Prop Hunt disguises to their authored map size, synchronizes the exact disguise each player is rendering, and adds obstacle-aware Horde navigation.
+ * v235.12.10: keeps authoritative Prop Hunt disguise sync and adds throttled coarse-route Horde pathfinding so zombies choose routes around collision instead of wall-jittering.
  * v235.12.1: polishes Neon Racer mobile proportions, removes downed-player shadows, makes Inferno visible outside Horde, makes remote Invisibility bodyless with footprints only, and adds persistent Live Chat text sizing.
  * v235.12: removes redundant Store ownership filtering, adds server-verified Mainnet attribute checkout plumbing, Neon Racer, three combat vending powers, and Horde down/revive survival.
  * v235.11.8: rebuilds the mobile Attribute Store as a flex-column app layout with compact list cards and a static cart CTA, eliminating catalog/card horizontal overflow.
@@ -51,9 +51,9 @@
 
   const BUILD = Object.freeze({
     number: 235.122,
-    version: 'v235.12.8',
-    name: 'Prop Sync + Horde Navigation',
-    title: 'ATM Town v235.12.8 — Prop Sync + Horde Navigation'
+    version: 'v235.12.10',
+    name: 'Authoritative Prop Sync + Horde Pathfinding',
+    title: 'ATM Town v235.12.10 — Authoritative Prop Sync + Horde Pathfinding'
   });
 
   const MAPS = Object.freeze({
