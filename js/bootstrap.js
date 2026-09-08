@@ -94,6 +94,42 @@
     if (buildVersion) buildVersion.textContent = config.build.version;
   }
 
+  // Relocate the ATM Town Directory to the former Upgrades Kiosk interaction hotspot.
+  // The town interaction mask stays unchanged; only the semantic destination moves.
+  function relocateTownDirectoryHotspot() {
+    if (typeof TOWN_MISC_ZONES === 'undefined' || !Array.isArray(TOWN_MISC_ZONES)) return;
+
+    const oldDirectory = TOWN_MISC_ZONES.find((zone) => zone.id === 'townInfoHub');
+    const upgradesKiosk = TOWN_MISC_ZONES.find((zone) => zone.id === 'upgradesKiosk');
+    if (!oldDirectory || !upgradesKiosk) return;
+
+    oldDirectory.id = 'townInfoHubRetired';
+    oldDirectory.name = '';
+    oldDirectory.text = '';
+
+    upgradesKiosk.id = 'townInfoHub';
+    upgradesKiosk.name = 'ATM TOWN DIRECTORY';
+    upgradesKiosk.text = 'Open the ATM Town directory to view the full town map and major landmarks.';
+
+    const originalTownInteractionThing = global.townInteractionThing;
+    if (typeof originalTownInteractionThing === 'function') {
+      global.townInteractionThing = function relocatedTownInteractionThing(typeFilter = '') {
+        const zone = originalTownInteractionThing(typeFilter);
+        return zone && zone.id === 'townInfoHubRetired' ? null : zone;
+      };
+    }
+
+    const originalDirectoryLocationData = global.directoryLocationData;
+    if (typeof originalDirectoryLocationData === 'function') {
+      global.directoryLocationData = function relocatedDirectoryLocationData(mapName) {
+        return originalDirectoryLocationData(mapName).filter((item) =>
+          item && item.zone && item.name !== 'Upgrades Kiosk'
+        );
+      };
+    }
+  }
+
   applyBuildIdentity();
+  global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
   global.loadSupabaseLibrary().catch(() => {});
 })(window);
