@@ -12,6 +12,7 @@
   const CACHE_LIMIT=180;
   const ART_CACHE='atm-nft-art-v1';
   const ART_CACHE_LIMIT=220;
+  const BEACON_IMAGE_TIMEOUT_MS=2600;
   const GATEWAY_PRIORITY=['w3s.link','nftstorage.link','dweb.link','gateway.pinata.cloud','ipfs.io'];
   const memoryArtUrls=new Map();
   const artFetches=new Map();
@@ -190,25 +191,53 @@
     if(generation===lockerState.nftHydrationGeneration){lockerEnforceEquipmentOwnership();if(lockerState.open)lockerRender();}
   };
 
-  // Trade beacons now use the same persistent local artwork cache as the Locker.
-  tradeBeaconSetImage=function tradeBeaconSetImageWithPersistentCache(host,candidates,alt='XRPL NFT'){
+  // Showcase must never depend on CORS fetch succeeding. Prefer an already-cached
+  // blob, then fall back to normal <img> gateway loading while caching in background.
+  tradeBeaconSetImage=function tradeBeaconSetImageStable(host,candidates,alt='XRPL NFT'){
     const tokenId=String(tradeBeaconState?.tokenId||alt||'').toUpperCase();
-    let cancelled=false;
+    const list=prioritizedCandidates(candidates).slice(0,5);
+    let cancelled=false,index=0,timer=0,settled=false;
     host.textContent='';
     const loading=document.createElement('div');loading.className='tradeBeaconFallback';loading.textContent='◈';host.appendChild(loading);
-    resolveArtUrl(tokenId,candidates).then(src=>{
-      if(cancelled||!src)return;
+    const clearTimer=()=>{if(timer){clearTimeout(timer);timer=0;}};
+    const showFallback=()=>{if(cancelled||settled)return;settled=true;clearTimer();host.textContent='';const f=document.createElement('div');f.className='tradeBeaconFallback';f.textContent='◈';host.appendChild(f);};
+    const tryRemote=()=>{
+      if(cancelled||settled)return;
+      clearTimer();
+      if(index>=list.length){showFallback();return;}
+      const src=list[index++];
       const img=document.createElement('img');
       img.alt=alt;img.referrerPolicy='no-referrer';img.loading='eager';img.decoding='async';
-      img.addEventListener('load',()=>{if(!cancelled){host.textContent='';host.appendChild(img);}},{once:true});
+      const stillCurrent=()=>!cancelled&&!settled;
+      img.addEventListener('load',()=>{
+        if(!stillCurrent())return;
+        settled=true;clearTimer();host.textContent='';host.appendChild(img);
+        fetchAndCacheArt(tokenId,[src]).catch(()=>{});
+      },{once:true});
+      img.addEventListener('error',()=>{if(stillCurrent())tryRemote();},{once:true});
+      timer=setTimeout(()=>{if(stillCurrent())tryRemote();},BEACON_IMAGE_TIMEOUT_MS);
       img.src=src;
-    });
-    return ()=>{cancelled=true;};
+    };
+    (async()=>{
+      for(const src of list){
+        const local=await blobUrlFromCachedArt(tokenId,src);
+        if(cancelled||settled)return;
+        if(local){
+          const img=document.createElement('img');img.alt=alt;img.loading='eager';img.decoding='async';
+          img.addEventListener('load',()=>{if(cancelled||settled)return;settled=true;clearTimer();host.textContent='';host.appendChild(img);},{once:true});
+          img.addEventListener('error',()=>{if(!cancelled&&!settled)tryRemote();},{once:true});
+          img.src=local;return;
+        }
+      }
+      tryRemote();
+    })();
+    return ()=>{cancelled=true;clearTimer();};
   };
 
-  // Existing Locker rendering can stay untouched. Observe NFT artwork as it is
-  // inserted, replace it with an on-device Blob immediately when available, and
-  // persist the first successful gateway response for later Locker/PWA sessions.
+  // Locker artwork: never swap the src of an image that has already rendered.
+  // That source swapping caused the visible flash/glitch while scrolling. Use a
+  // cached blob only when it is available immediately; otherwise leave the normal
+  // browser image alone and warm the persistent cache after a successful load.
   const observer=new MutationObserver(records=>{
     for(const record of records){
       for(const node of record.addedNodes){
@@ -216,13 +245,20 @@
         const images=node.matches?.('img')?[node]:[...(node.querySelectorAll?.('img')||[])];
         for(const img of images){
           if(img.dataset.atmNftCacheBound==='1')continue;
-          const raw=String(img.currentSrc||img.src||'');
+          const raw=String(img.getAttribute('src')||img.currentSrc||img.src||'');
           if(!raw||raw.startsWith('blob:')||raw.startsWith('data:'))continue;
           if(!/(ipfs|w3s\.link|nftstorage\.link|dweb\.link|pinata|gateway)/i.test(raw))continue;
           img.dataset.atmNftCacheBound='1';
           const card=img.closest?.('[data-nftoken-id],[data-token-id],.lockerNftCard,.nftCard');
           const tokenId=String(card?.dataset?.nftokenId||card?.dataset?.tokenId||img.alt||raw).toUpperCase();
-          resolveArtUrl(tokenId,[raw]).then(local=>{if(local&&img.isConnected&&img.src!==local)img.src=local;});
+          blobUrlFromCachedArt(tokenId,raw).then(local=>{
+            if(!local||!img.isConnected)return;
+            // Replace only if the remote artwork has not painted yet.
+            if(!(img.complete&&img.naturalWidth>0))img.src=local;
+          });
+          const warm=()=>{fetchAndCacheArt(tokenId,[raw]).catch(()=>{});};
+          if(img.complete&&img.naturalWidth>0)warm();
+          else img.addEventListener('load',warm,{once:true});
         }
       }
     }
@@ -230,7 +266,7 @@
   try{observer.observe(document.documentElement,{childList:true,subtree:true});}catch(_e){}
 
   global.ATMNftPerformance=Object.freeze({
-    version:'1.1.0',
+    version:'1.1.1',
     clearMetadataCache(){try{global.localStorage.removeItem(CACHE_KEY);}catch(_error){}},
     async clearArtworkCache(){
       for(const url of memoryArtUrls.values()){try{URL.revokeObjectURL(url);}catch(_e){}}
