@@ -1,10 +1,9 @@
-import { setCors, requireUser } from '../lib/auth.js';
+import { setCors, requireUser, publicOriginForRequest } from '../lib/auth.js';
 
 const XAMAN_API_BASE = 'https://xumm.app/api/v1/platform';
-const ATM_TOWN_RETURN_URL = 'https://atm-town-web.vercel.app/?xaman_return=1&payload={id}';
 
 function cleanCredential(value) {
-  return String(value || '').trim().replace(/^['"]|['"]$/g, '').trim();
+  return String(value || '').trim().replace(/^["']|["']$/g, '').trim();
 }
 async function readJson(response) {
   const text = await response.text();
@@ -50,14 +49,15 @@ export default async function handler(req, res) {
       throw Object.assign(new Error('The Xaman application connected to ATM Town is disabled.'), { status: 502 });
     }
 
+    const returnUrl = `${publicOriginForRequest(req)}/?xaman_return=1&payload={id}`;
     const payloadResponse = await fetch(`${XAMAN_API_BASE}/payload`, {
       method: 'POST', headers, cache: 'no-store',
       body: JSON.stringify({
         txjson: { TransactionType: 'SignIn' },
         options: {
           return_url: {
-            app: ATM_TOWN_RETURN_URL,
-            web: ATM_TOWN_RETURN_URL
+            app: returnUrl,
+            web: returnUrl
           }
         }
       })
