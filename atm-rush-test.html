@@ -13,9 +13,9 @@
 .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.card{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(9px);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.28)}
 .title{padding:10px 13px}.title b{display:block;font-size:15px;letter-spacing:.11em}.title span{font-size:11px;color:var(--muted)}
 .stats{display:flex;gap:7px}.stat{min-width:72px;padding:9px 10px;text-align:center}.stat strong{display:block;font-size:16px}.stat small{font-size:9px;color:var(--muted);letter-spacing:.08em}
-.bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.hint{padding:9px 11px;font-size:11px;color:var(--muted);max-width:310px}.hint b{color:#fff}
+.bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.hint{padding:9px 11px;font-size:11px;color:var(--muted);max-width:340px}.hint b{color:#fff}
 #joy{position:relative;width:122px;height:122px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(3,8,17,.38);pointer-events:auto;touch-action:none}.joyRing{position:absolute;inset:21px;border:1px solid rgba(255,255,255,.12);border-radius:50%}.joyKnob{position:absolute;left:39px;top:39px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.86);box-shadow:0 3px 16px rgba(0,0,0,.3);transform:translate(0,0)}
-#jump{width:92px;height:92px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,49,95,.76);color:#fff;font-weight:900;letter-spacing:.06em;pointer-events:auto;touch-action:none;box-shadow:0 8px 26px rgba(255,49,95,.18)}
+#jump{display:none!important}
 .controls{display:flex;align-items:flex-end;gap:14px;pointer-events:none}.controls>*{pointer-events:auto}
 #overlay{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(rgba(1,4,10,.72),rgba(1,4,10,.88));z-index:10;padding:22px}.modal{width:min(520px,100%);padding:24px;text-align:center;background:rgba(6,13,28,.94);border:1px solid rgba(255,255,255,.14);border-radius:24px;box-shadow:0 30px 90px rgba(0,0,0,.5)}.modal h1{margin:0 0 6px;font-size:clamp(28px,7vw,48px);letter-spacing:.04em}.modal .sub{color:var(--cyan);font-size:12px;letter-spacing:.16em;font-weight:800}.modal p{color:#bed0df;line-height:1.5;font-size:14px}.features{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:16px 0;text-align:left}.features div{padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.055);font-size:11px;color:#dbe8f2}.features b{color:#fff}.go{appearance:none;border:0;border-radius:14px;padding:14px 22px;width:100%;font-weight:950;letter-spacing:.08em;background:linear-gradient(90deg,#ff315f,#ff934d);color:#fff;font-size:15px;box-shadow:0 12px 30px rgba(255,49,95,.22)}
 #toast{position:fixed;left:50%;top:19%;transform:translate(-50%,-12px);opacity:0;transition:.18s;z-index:8;padding:9px 14px;border-radius:999px;background:rgba(3,8,17,.82);border:1px solid rgba(255,255,255,.14);font-weight:900;font-size:12px;letter-spacing:.08em;pointer-events:none;white-space:nowrap}#toast.on{opacity:1;transform:translate(-50%,0)}
@@ -35,8 +35,8 @@
   </div>
   <div class="bottom">
     <div class="controls"><div id="joy"><div class="joyRing"></div><div class="joyKnob" id="joyKnob"></div></div></div>
-    <div class="card hint"><b>Desktop:</b> WASD / arrows + Space. <b>Mobile:</b> joystick + JUMP. Run upward to the finish.</div>
-    <button id="jump">JUMP</button>
+    <div class="card hint"><b>Desktop:</b> WASD / arrows + Space. <b>Mobile:</b> move with the joystick and tap anywhere else on the screen with your other finger to jump.</div>
+    <button id="jump" aria-hidden="true" tabindex="-1">JUMP</button>
   </div>
 </div>
 <div id="toast"></div>
@@ -48,4 +48,5 @@
 </div></div>
 <script src="/js/atm-rush-test.js"></script>
 <script src="/js/atm-rush-direction-patch.js"></script>
+<script src="/js/atm-rush-tap-jump-patch.js"></script>
 </body></html>
