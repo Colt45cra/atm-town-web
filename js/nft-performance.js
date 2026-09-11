@@ -1,17 +1,20 @@
 /* ATM Town XRPL NFT performance hotfix.
- * Keeps ledger ownership authoritative while caching presentation metadata locally,
- * hydrating more efficiently, and preventing stalled IPFS artwork from leaving
- * Trade Beacons stuck forever.
+ * Keeps ledger ownership authoritative while caching presentation metadata and
+ * artwork locally, hydrating more efficiently, and preventing stalled IPFS
+ * artwork from leaving Trade Beacons stuck forever.
  */
 (function installAtmNftPerformance(global){
   'use strict';
 
   const CACHE_KEY='atm_nft_metadata_cache_v2';
   const SUCCESS_TTL_MS=7*24*60*60*1000;
-  const FAILURE_TTL_MS=10*60*1000;
+  const FAILURE_TTL_MS=2*60*1000;
   const CACHE_LIMIT=180;
-  const BEACON_IMAGE_TIMEOUT_MS=2400;
+  const ART_CACHE='atm-nft-art-v1';
+  const ART_CACHE_LIMIT=220;
   const GATEWAY_PRIORITY=['w3s.link','nftstorage.link','dweb.link','gateway.pinata.cloud','ipfs.io'];
+  const memoryArtUrls=new Map();
+  const artFetches=new Map();
 
   function readCache(){
     try{
@@ -52,6 +55,81 @@
     }
     writeCache(cache);
   }
+
+  function artKey(tokenId,src){
+    const safeId=String(tokenId||'').toUpperCase().replace(/[^A-F0-9]/g,'').slice(0,64)||'UNKNOWN';
+    let tail='';
+    try{tail=btoa(unescape(encodeURIComponent(String(src||'')))).replace(/[^A-Za-z0-9]/g,'').slice(-48);}catch(_e){}
+    return new URL(`/__atm_nft_art__/${safeId}/${tail||'image'}`,location.origin).toString();
+  }
+  async function getArtCache(){
+    if(!('caches' in global))return null;
+    try{return await caches.open(ART_CACHE);}catch(_e){return null;}
+  }
+  async function trimArtCache(cache){
+    if(!cache)return;
+    try{
+      const keys=await cache.keys();
+      if(keys.length>ART_CACHE_LIMIT)await Promise.all(keys.slice(0,keys.length-ART_CACHE_LIMIT).map(req=>cache.delete(req)));
+    }catch(_e){}
+  }
+  async function blobUrlFromCachedArt(tokenId,src){
+    const key=artKey(tokenId,src);
+    if(memoryArtUrls.has(key))return memoryArtUrls.get(key);
+    const cache=await getArtCache();
+    if(!cache)return '';
+    try{
+      const hit=await cache.match(key);if(!hit)return '';
+      const blob=await hit.blob();if(!blob||!blob.size)return '';
+      const url=URL.createObjectURL(blob);memoryArtUrls.set(key,url);return url;
+    }catch(_e){return '';}
+  }
+  async function fetchAndCacheArt(tokenId,candidates){
+    const list=prioritizedCandidates(candidates).slice(0,5);
+    for(const src of list){
+      const key=artKey(tokenId,src);
+      if(memoryArtUrls.has(key))return memoryArtUrls.get(key);
+      const pending=artFetches.get(key);
+      if(pending){const url=await pending;if(url)return url;continue;}
+      const task=(async()=>{
+        const cache=await getArtCache();
+        if(cache){
+          try{
+            const hit=await cache.match(key);
+            if(hit){const blob=await hit.blob();if(blob?.size){const url=URL.createObjectURL(blob);memoryArtUrls.set(key,url);return url;}}
+          }catch(_e){}
+        }
+        try{
+          const controller=new AbortController();
+          const timer=setTimeout(()=>controller.abort(),6500);
+          let response;
+          try{response=await fetch(src,{mode:'cors',credentials:'omit',cache:'force-cache',signal:controller.signal});}
+          finally{clearTimeout(timer);}
+          if(!response?.ok)return '';
+          const contentType=String(response.headers.get('content-type')||'').toLowerCase();
+          if(contentType&&!contentType.startsWith('image/')&&!contentType.includes('octet-stream'))return '';
+          const blob=await response.blob();if(!blob?.size)return '';
+          if(cache){
+            try{
+              await cache.put(key,new Response(blob,{headers:{'Content-Type':blob.type||'image/*','Cache-Control':'public, max-age=31536000, immutable'}}));
+              trimArtCache(cache);
+            }catch(_e){}
+          }
+          const url=URL.createObjectURL(blob);memoryArtUrls.set(key,url);return url;
+        }catch(_e){return '';}
+      })();
+      artFetches.set(key,task);
+      const url=await task.finally(()=>artFetches.delete(key));
+      if(url)return url;
+    }
+    return '';
+  }
+  async function resolveArtUrl(tokenId,candidates){
+    const list=prioritizedCandidates(candidates);
+    for(const src of list){const cached=await blobUrlFromCachedArt(tokenId,src);if(cached)return cached;}
+    return fetchAndCacheArt(tokenId,list);
+  }
+
   function refreshActiveBeacon(nft){
     try{
       const tokenId=lockerNftTokenId(nft);
@@ -64,8 +142,6 @@
     }catch(_error){}
   }
 
-  // Batch visual updates instead of rebuilding the entire NFT grid after every
-  // individual metadata request completes.
   lockerNftScheduleRender=function lockerNftScheduleRenderFast(){
     clearTimeout(lockerNftRenderTimer);
     lockerNftRenderTimer=setTimeout(()=>{
@@ -83,14 +159,8 @@
       const missing={status:'missing',name:'',description:'',image_url:'',image_candidates:[],attributes:[]};
       lockerState.nftMetadata.set(tokenId,missing);putCached(tokenId,uri,missing);lockerNftScheduleRender();return;
     }
-
     const cached=getCached(tokenId,uri);
-    if(cached){
-      lockerState.nftMetadata.set(tokenId,cached);
-      refreshActiveBeacon(nft);
-      return;
-    }
-
+    if(cached){lockerState.nftMetadata.set(tokenId,cached);refreshActiveBeacon(nft);return;}
     lockerState.nftMetadataLoading.add(tokenId);lockerNftScheduleRender();
     try{
       const data=await apiWithAuth('/api/xrpl-nft-metadata',{method:'POST',body:JSON.stringify({nftoken_id:tokenId,uri})});
@@ -117,45 +187,58 @@
         await lockerLoadNftMetadata(nft);
       }
     }));
-    if(generation===lockerState.nftHydrationGeneration){
-      lockerEnforceEquipmentOwnership();
-      if(lockerState.open)lockerRender();
-    }
+    if(generation===lockerState.nftHydrationGeneration){lockerEnforceEquipmentOwnership();if(lockerState.open)lockerRender();}
   };
 
-  // A gateway can leave an <img> pending without ever firing error. Use a fresh
-  // image element for each attempt so a late event from a timed-out request can
-  // never interfere with the next gateway candidate.
-  tradeBeaconSetImage=function tradeBeaconSetImageWithTimeout(host,candidates,alt='XRPL NFT'){
-    const list=prioritizedCandidates(candidates).slice(0,4);
-    let index=0,timer=0,settled=false;
-    const clearTimer=()=>{if(timer){clearTimeout(timer);timer=0;}};
-    const fallback=()=>{
-      if(settled)return;
-      settled=true;clearTimer();host.textContent='';
-      const f=document.createElement('div');f.className='tradeBeaconFallback';f.textContent='◈';host.appendChild(f);
-    };
-    const tryNext=()=>{
-      if(settled)return;
-      clearTimer();
-      if(index>=list.length){fallback();return;}
-      const src=list[index++];
+  // Trade beacons now use the same persistent local artwork cache as the Locker.
+  tradeBeaconSetImage=function tradeBeaconSetImageWithPersistentCache(host,candidates,alt='XRPL NFT'){
+    const tokenId=String(tradeBeaconState?.tokenId||alt||'').toUpperCase();
+    let cancelled=false;
+    host.textContent='';
+    const loading=document.createElement('div');loading.className='tradeBeaconFallback';loading.textContent='◈';host.appendChild(loading);
+    resolveArtUrl(tokenId,candidates).then(src=>{
+      if(cancelled||!src)return;
       const img=document.createElement('img');
       img.alt=alt;img.referrerPolicy='no-referrer';img.loading='eager';img.decoding='async';
-      host.textContent='';host.appendChild(img);
-      const stillCurrent=()=>host.firstChild===img;
-      img.addEventListener('load',()=>{if(!stillCurrent()||settled)return;settled=true;clearTimer();},{once:true});
-      img.addEventListener('error',()=>{if(stillCurrent()&&!settled)tryNext();},{once:true});
-      timer=setTimeout(()=>{if(stillCurrent()&&!settled)tryNext();},BEACON_IMAGE_TIMEOUT_MS);
+      img.addEventListener('load',()=>{if(!cancelled){host.textContent='';host.appendChild(img);}},{once:true});
       img.src=src;
-    };
-    if(!list.length){fallback();return;}
-    tryNext();
+    });
+    return ()=>{cancelled=true;};
   };
 
+  // Existing Locker rendering can stay untouched. Observe NFT artwork as it is
+  // inserted, replace it with an on-device Blob immediately when available, and
+  // persist the first successful gateway response for later Locker/PWA sessions.
+  const observer=new MutationObserver(records=>{
+    for(const record of records){
+      for(const node of record.addedNodes){
+        if(!(node instanceof Element))continue;
+        const images=node.matches?.('img')?[node]:[...(node.querySelectorAll?.('img')||[])];
+        for(const img of images){
+          if(img.dataset.atmNftCacheBound==='1')continue;
+          const raw=String(img.currentSrc||img.src||'');
+          if(!raw||raw.startsWith('blob:')||raw.startsWith('data:'))continue;
+          if(!/(ipfs|w3s\.link|nftstorage\.link|dweb\.link|pinata|gateway)/i.test(raw))continue;
+          img.dataset.atmNftCacheBound='1';
+          const card=img.closest?.('[data-nftoken-id],[data-token-id],.lockerNftCard,.nftCard');
+          const tokenId=String(card?.dataset?.nftokenId||card?.dataset?.tokenId||img.alt||raw).toUpperCase();
+          resolveArtUrl(tokenId,[raw]).then(local=>{if(local&&img.isConnected&&img.src!==local)img.src=local;});
+        }
+      }
+    }
+  });
+  try{observer.observe(document.documentElement,{childList:true,subtree:true});}catch(_e){}
+
   global.ATMNftPerformance=Object.freeze({
-    version:'1.0.1',
+    version:'1.1.0',
     clearMetadataCache(){try{global.localStorage.removeItem(CACHE_KEY);}catch(_error){}},
-    cachedEntries(){return Object.keys(readCache()).length;}
+    async clearArtworkCache(){
+      for(const url of memoryArtUrls.values()){try{URL.revokeObjectURL(url);}catch(_e){}}
+      memoryArtUrls.clear();
+      try{if('caches' in global)await caches.delete(ART_CACHE);}catch(_e){}
+    },
+    cachedEntries(){return Object.keys(readCache()).length;},
+    async cachedArtworkEntries(){try{const cache=await getArtCache();return cache?(await cache.keys()).length:0;}catch(_e){return 0;}},
+    resolveArtwork:resolveArtUrl
   });
 })(window);
