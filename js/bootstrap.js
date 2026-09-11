@@ -132,7 +132,7 @@
   function loadNftPerformancePatch() {
     if (global.ATMNftPerformance || document.querySelector('script[data-atm-nft-performance]')) return;
     const script = document.createElement('script');
-    script.src = '/js/nft-performance.js?v=1.0.0';
+    script.src = '/js/nft-performance.js?v=1.0.1';
     script.async = false;
     script.dataset.atmNftPerformance = '1';
     script.onerror = () => script.remove();
