@@ -21,7 +21,7 @@ const punchers=[{side:'l',x:70,y:5520,w:165,h:82,period:2.2,phase:0,reach:250},{
 const crushers=[{y:4450,gapX:450,gap:190,period:2.5,phase:0},{y:2180,gapX:330,gap:175,period:2.25,phase:1.2},{y:1580,gapX:585,gap:175,period:2.05,phase:.4}];
 const fans=[{x:200,y:4030,r:82,dir:1},{x:700,y:4030,r:82,dir:-1},{x:165,y:1950,r:72,dir:1},{x:735,y:1950,r:72,dir:-1}];
 const holes=[{x:95,y:4700,w:250,h:170},{x:555,y:4700,w:250,h:170},{x:340,y:3970,w:220,h:180},{x:70,y:3350,w:250,h:160},{x:580,y:3350,w:250,h:160},{x:340,y:2500,w:220,h:170},{x:90,y:1120,w:235,h:160},{x:575,y:1120,w:235,h:160}];
-const rollers=[];const rollerLanes=[{minY:5750,maxY:6250,rate:1.05,seed:.2},{minY:3650,maxY:4200,rate:.86,seed:1.1},{minY:2350,maxY:2900,rate:.72,seed:2.2},{minY:720,maxY:1320,rate:.58,seed:.6}];let rollerClock=0,rollerSeq=0;const confetti=[];
+const rollers=[];const rollerLanes=[{minY:5750,maxY:6250,rate:2.10,seed:.2},{minY:3650,maxY:4200,rate:1.72,seed:1.1},{minY:2350,maxY:2900,rate:1.44,seed:2.2},{minY:720,maxY:1320,rate:1.16,seed:.6}];let rollerClock=0,rollerSeq=0;const confetti=[];
 function resize(){CW=innerWidth;CH=innerHeight;const d=DPR();canvas.width=Math.round(CW*d);canvas.height=Math.round(CH*d);canvas.style.width=CW+'px';canvas.style.height=CH+'px';ctx.setTransform(d,0,0,d,0,0);viewW=900;viewH=900*(CH/CW);scale=CW/viewW;}
 addEventListener('resize',resize,{passive:true});resize();
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}function overlapCircleRect(cx,cy,r,o){const qx=clamp(cx,o.x,o.x+o.w),qy=clamp(cy,o.y,o.y+o.h);return (cx-qx)**2+(cy-qy)**2<r*r}function fmt(s){const m=Math.floor(s/60),ss=(s%60).toFixed(1).padStart(4,'0');return `${m}:${ss}`}
