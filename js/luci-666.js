@@ -12,9 +12,11 @@
   const LUCI_ID='bot-luci';
   const TALK_RADIUS=92;
   const AWARENESS_RADIUS=210;
+  const AWARENESS_RESET_RADIUS=300;
   const DIALOGUE_LEASH=190;
-  const BECKON_MS=4200;
+  const BECKON_MS=6200;
   const BECKON_COOLDOWN_MS=45000;
+  const OUTSIDE_RESET_MS=1200;
   const ISSUER='rhvf9fe6PP3GC8Bku2Ug7iQPjPDxYZfrxN';
 
   const state={
@@ -22,6 +24,8 @@
     beckonUntil:0,
     nextBeckonAt:0,
     seenInsideAwareness:false,
+    outsideAwarenessSince:0,
+    beckonLine:'',
     answered:new Set(),
     answerId:'welcome'
   };
@@ -144,9 +148,13 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   }
 
   function triggerBeckon(now){
-    state.beckonUntil=now+BECKON_MS;state.nextBeckonAt=now+BECKON_COOLDOWN_MS;
+    if(state.beckonUntil>now)return;
     const lines=['Hey, LightBringer… got a second?','Come here. I’ve got 6 $666 for visitors.','You there — want to know why everything is sixes?','Hold up, traveler. Let Luci bring you the light.'];
-    const node=document.getElementById('luci666Beckon');if(node){node.textContent=lines[Math.floor(Math.random()*lines.length)];node.style.display='block';}
+    state.beckonLine=lines[Math.floor(Math.random()*lines.length)];
+    state.beckonUntil=now+BECKON_MS;
+    state.nextBeckonAt=now+BECKON_COOLDOWN_MS;
+    const node=document.getElementById('luci666Beckon');
+    if(node){node.textContent=state.beckonLine;node.style.display='block';}
   }
 
   function placeBeckon(){
@@ -156,19 +164,31 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       const sx=(luci.x-cam.x)*zoom,sy=(luci.y-64-cam.y)*zoom;
       const px=rect.left+(sx/Math.max(1,W))*rect.width,py=rect.top+(sy/Math.max(1,H))*rect.height;
       node.style.left=`${px}px`;node.style.top=`${py}px`;
+      if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
     }catch(_error){}
   }
 
   function tick(){
     ensureUi();const now=Date.now(),distance=distanceToLuci(),luci=getLuci();
     if(state.open){
+      state.outsideAwarenessSince=0;
       if(!inTown()||distance>DIALOGUE_LEASH)closeDialogue();else facePlayer(luci);
     }else if(inTown()&&distance<=AWARENESS_RADIUS){
+      state.outsideAwarenessSince=0;
       if(!state.seenInsideAwareness&&now>=state.nextBeckonAt)triggerBeckon(now);
       state.seenInsideAwareness=true;
-    }else if(distance>AWARENESS_RADIUS+70){state.seenInsideAwareness=false;}
-    if(now<state.beckonUntil&&!state.open&&inTown()){facePlayer(luci);placeBeckon();}
-    else{const node=document.getElementById('luci666Beckon');if(node)node.style.display='none';}
+    }else if(!inTown()||distance>AWARENESS_RESET_RADIUS){
+      if(!state.outsideAwarenessSince)state.outsideAwarenessSince=now;
+      if(now-state.outsideAwarenessSince>=OUTSIDE_RESET_MS){
+        state.seenInsideAwareness=false;
+        state.outsideAwarenessSince=0;
+      }
+    }
+    if(now<state.beckonUntil&&!state.open&&inTown()){
+      facePlayer(luci);placeBeckon();
+    }else{
+      const node=document.getElementById('luci666Beckon');if(node)node.style.display='none';
+    }
     requestAnimationFrame(tick);
   }
 
