@@ -149,20 +149,9 @@
     document.body.appendChild(script);
   }
 
-  function loadPasskeyDomainMigration() {
-    if (global.ATMPasskeyDomainMigration || document.querySelector('script[data-atm-passkey-domain-migration]')) return;
-    const script = document.createElement('script');
-    script.src = '/js/passkey-domain-migration.js?v=1.0.0';
-    script.async = false;
-    script.dataset.atmPasskeyDomainMigration = '1';
-    script.onerror = () => script.remove();
-    document.body.appendChild(script);
-  }
-
   applyBuildIdentity();
   global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
   global.addEventListener('load', loadNftPerformancePatch, { once: true });
   global.addEventListener('load', loadLuci666Npc, { once: true });
-  global.addEventListener('load', loadPasskeyDomainMigration, { once: true });
   global.loadSupabaseLibrary().catch(() => {});
 })(window);
