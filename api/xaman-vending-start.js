@@ -27,6 +27,10 @@ const UNIT_PRICE = 100;
 const MAX_QUANTITY = 99;
 const PAYMENT_WINDOW_MINUTES = 30;
 const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
+const LUCI_666_CURRENCY = '666';
+const LUCI_666_ISSUER = 'rhvf9fe6PP3GC8Bku2Ug7iQPjPDxYZfrxN';
+const LUCI_666_TRUST_LIMIT = '10000000';
+const TF_SET_NO_RIPPLE = 0x00020000;
 
 async function verifyDestinationTrustline() {
   const response = await fetch(XRPL_RPC_URL, {
@@ -115,6 +119,108 @@ async function cancelXamanPayload(payloadUuid) {
   }
 }
 
+async function checkLuci666Trustline(wallet) {
+  const response = await fetch(XRPL_RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify({
+      method: 'account_lines',
+      params: [{
+        account: wallet,
+        peer: LUCI_666_ISSUER,
+        ledger_index: 'validated',
+        limit: 400
+      }]
+    })
+  });
+  const payload = await readJson(response);
+  if (!response.ok) {
+    throw Object.assign(new Error('The XRPL server could not check your $666 trustline.'), { status: 502 });
+  }
+  const result = payload?.result || {};
+  if (result.status === 'error' || result.error) {
+    const detail = String(result.error || '');
+    if (detail === 'actNotFound') return false;
+    throw Object.assign(new Error(result.error_message || detail || 'The XRPL trustline check failed.'), { status: 502 });
+  }
+  return Array.isArray(result.lines) && result.lines.some(line =>
+    String(line?.currency || '') === LUCI_666_CURRENCY && String(line?.account || '') === LUCI_666_ISSUER
+  );
+}
+
+async function createLuci666TrustlinePayload(wallet) {
+  const response = await fetch(`${XAMAN_API_BASE}/payload`, {
+    method: 'POST',
+    headers: xamanHeaders(),
+    cache: 'no-store',
+    body: JSON.stringify({
+      txjson: {
+        TransactionType: 'TrustSet',
+        Account: wallet,
+        Flags: TF_SET_NO_RIPPLE,
+        LimitAmount: {
+          currency: LUCI_666_CURRENCY,
+          issuer: LUCI_666_ISSUER,
+          value: LUCI_666_TRUST_LIMIT
+        }
+      },
+      options: {
+        submit: true,
+        expire: 10,
+        force_network: 'MAINNET'
+      },
+      custom_meta: {
+        identifier: `atm-town-luci-666-trustline:${wallet}`,
+        instruction: 'Create the $666 trustline required to receive Luci’s 6 $666 ATM Town welcome gift.'
+      }
+    })
+  });
+  const created = await readJson(response);
+  if (!response.ok || !created?.uuid || !created?.next?.always) {
+    throw xamanError(created, 'Xaman rejected the $666 trustline request');
+  }
+  return created;
+}
+
+async function handleLuci666Trustline(req, res) {
+  const { admin, user } = await requireUser(req);
+  const { data: account, error } = await admin
+    .from('player_accounts')
+    .select('wallet_address')
+    .eq('user_id', user.id)
+    .single();
+  if (error) throw error;
+
+  const wallet = String(account?.wallet_address || '').trim();
+  if (!XRPL_ADDRESS.test(wallet)) {
+    throw Object.assign(new Error('Link and verify a Xaman wallet in ATM Town before creating the $666 trustline.'), { status: 409 });
+  }
+
+  const hasTrustline = await checkLuci666Trustline(wallet);
+  if (req.method === 'GET' || hasTrustline) {
+    return res.status(200).json({
+      network: 'mainnet',
+      wallet,
+      currency: LUCI_666_CURRENCY,
+      issuer: LUCI_666_ISSUER,
+      has_trustline: hasTrustline
+    });
+  }
+
+  const created = await createLuci666TrustlinePayload(wallet);
+  return res.status(201).json({
+    network: 'mainnet',
+    wallet,
+    currency: LUCI_666_CURRENCY,
+    issuer: LUCI_666_ISSUER,
+    has_trustline: false,
+    payload_uuid: created.uuid,
+    deeplink: created.next.always,
+    qr_png: created.refs?.qr_png || null,
+    expires_in_minutes: 10
+  });
+}
 
 async function handleAttributeStoreGet(req, res) {
   const mode = String(req.query?.mode || 'catalog').toLowerCase();
@@ -215,7 +321,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (String(req.query?.commerce || '').toLowerCase() === 'attribute-store') {
+    const commerce = String(req.query?.commerce || '').toLowerCase();
+    if (commerce === 'luci-666-trustline') {
+      return await handleLuci666Trustline(req, res);
+    }
+    if (commerce === 'attribute-store') {
       if (req.method === 'GET') return await handleAttributeStoreGet(req, res);
       return await handleAttributeStoreStart(req, res);
     }
@@ -288,7 +398,7 @@ export default async function handler(req, res) {
       payment_method: 'xaman-payload-webhook'
     });
   } catch (error) {
-    console.error('ATM Town Magnet payment start failed:', error);
+    console.error('ATM Town Xaman flow failed:', error);
     sendError(res, error);
   }
 }
