@@ -10,8 +10,38 @@
     throw new Error('ATM Town bootstrap could not start because js/config.js was not loaded first.');
   }
 
-  const CANONICAL_AUTH_REDIRECT = 'https://atmtown.fun';
+  const CANONICAL_AUTH_REDIRECT = 'https://www.atmtown.fun/?signup_return=1';
   let supabaseLibraryPromise = null;
+
+  function resumeSignupReturnIntent() {
+    let url;
+    try {
+      url = new URL(global.location.href);
+    } catch (_error) {
+      return;
+    }
+    if (url.searchParams.get('signup_return') !== '1') return;
+
+    try {
+      global.localStorage.setItem('atm_signup_pending', '1');
+    } catch (_error) {}
+
+    let attempts = 0;
+    const reopenSignup = () => {
+      attempts += 1;
+      if (typeof global.atmShowFlowScreen === 'function') {
+        global.atmShowFlowScreen('signup');
+        try {
+          const cleanUrl = new URL(global.location.href);
+          cleanUrl.searchParams.delete('signup_return');
+          global.history.replaceState(global.history.state, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+        } catch (_error) {}
+        return;
+      }
+      if (attempts < 160) global.setTimeout(reopenSignup, 50);
+    };
+    reopenSignup();
+  }
 
   function enforceCanonicalEmailAuthRedirect(library) {
     if (!library || typeof library.createClient !== 'function' || library.__atmCanonicalAuthRedirectPatched) {
@@ -193,6 +223,7 @@
   }
 
   applyBuildIdentity();
+  resumeSignupReturnIntent();
   global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
   global.addEventListener('load', loadNftPerformancePatch, { once: true });
   global.addEventListener('load', loadLuci666Npc, { once: true });
