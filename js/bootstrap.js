@@ -139,8 +139,19 @@
     document.body.appendChild(script);
   }
 
+  function loadLuci666Npc() {
+    if (global.ATMLuci666 || document.querySelector('script[data-atm-luci-666]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/luci-666.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmLuci666 = '1';
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+  }
+
   applyBuildIdentity();
   global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
   global.addEventListener('load', loadNftPerformancePatch, { once: true });
+  global.addEventListener('load', loadLuci666Npc, { once: true });
   global.loadSupabaseLibrary().catch(() => {});
 })(window);
