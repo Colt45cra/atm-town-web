@@ -91,9 +91,20 @@
     return true;
   }
 
+  function loadTrustlineGate(){
+    if(global.ATMLuci666Trustline||document.querySelector('script[data-atm-luci-666-trustline]'))return;
+    const script=document.createElement('script');
+    script.src='/js/luci-666-trustline.js?v=1.0.0';
+    script.async=false;
+    script.dataset.atmLuci666Trustline='1';
+    script.onerror=()=>script.remove();
+    document.body.appendChild(script);
+  }
+
   function apply(){
     installDialogueLayout();
     installQuestionScrollPersistence();
+    loadTrustlineGate();
 
     const node=document.getElementById('luci666Beckon');
     if(!node)return false;
@@ -120,6 +131,7 @@
 
   function install(){
     installDialogueLayout();
+    loadTrustlineGate();
     if(apply()&&installQuestionScrollPersistence())return;
     const observer=new MutationObserver(()=>{
       const beckonReady=apply();
