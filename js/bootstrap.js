@@ -10,10 +10,53 @@
     throw new Error('ATM Town bootstrap could not start because js/config.js was not loaded first.');
   }
 
+  const CANONICAL_AUTH_REDIRECT = 'https://atmtown.fun';
   let supabaseLibraryPromise = null;
 
+  function enforceCanonicalEmailAuthRedirect(library) {
+    if (!library || typeof library.createClient !== 'function' || library.__atmCanonicalAuthRedirectPatched) {
+      return library;
+    }
+
+    const originalCreateClient = library.createClient.bind(library);
+    const wrappedCreateClient = (...args) => {
+      const client = originalCreateClient(...args);
+      const auth = client?.auth;
+
+      if (auth && typeof auth.signInWithOtp === 'function' && !auth.__atmCanonicalAuthRedirectPatched) {
+        const originalSignInWithOtp = auth.signInWithOtp.bind(auth);
+        auth.signInWithOtp = (credentials = {}) => {
+          if (!credentials || typeof credentials !== 'object' || !credentials.email) {
+            return originalSignInWithOtp(credentials);
+          }
+          return originalSignInWithOtp({
+            ...credentials,
+            options: {
+              ...(credentials.options || {}),
+              emailRedirectTo: CANONICAL_AUTH_REDIRECT
+            }
+          });
+        };
+        try {
+          Object.defineProperty(auth, '__atmCanonicalAuthRedirectPatched', { value: true });
+        } catch (_error) {}
+      }
+
+      return client;
+    };
+
+    try {
+      library.createClient = wrappedCreateClient;
+      Object.defineProperty(library, '__atmCanonicalAuthRedirectPatched', { value: true });
+    } catch (_error) {
+      return library;
+    }
+
+    return library;
+  }
+
   global.loadSupabaseLibrary = function loadSupabaseLibrary() {
-    if (global.supabase) return Promise.resolve(global.supabase);
+    if (global.supabase) return Promise.resolve(enforceCanonicalEmailAuthRedirect(global.supabase));
     if (supabaseLibraryPromise) return supabaseLibraryPromise;
 
     const sources = config.supabaseCdnSources;
@@ -21,7 +64,7 @@
       let index = 0;
       const tryNext = () => {
         if (global.supabase) {
-          resolve(global.supabase);
+          resolve(enforceCanonicalEmailAuthRedirect(global.supabase));
           return;
         }
         if (index >= sources.length) {
@@ -33,7 +76,7 @@
         script.async = true;
         script.crossOrigin = 'anonymous';
         script.referrerPolicy = 'no-referrer';
-        script.onload = () => global.supabase ? resolve(global.supabase) : tryNext();
+        script.onload = () => global.supabase ? resolve(enforceCanonicalEmailAuthRedirect(global.supabase)) : tryNext();
         script.onerror = () => {
           script.remove();
           tryNext();
