@@ -9,7 +9,7 @@
 
   if(global.ATMLuci666Trustline)return;
 
-  const API='/api/luci-666-trustline';
+  const API='/api/xaman-vending-start?commerce=luci-666-trustline';
   const ISSUER='rhvf9fe6PP3GC8Bku2Ug7iQPjPDxYZfrxN';
   const POLL_MS=2500;
   const POLL_TIMEOUT_MS=120000;
