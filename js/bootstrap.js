@@ -142,9 +142,19 @@
   function loadLuci666Npc() {
     if (global.ATMLuci666 || document.querySelector('script[data-atm-luci-666]')) return;
     const script = document.createElement('script');
-    script.src = '/js/luci-666.js?v=1.0.0';
+    script.src = '/js/luci-666.js?v=1.0.1';
     script.async = false;
     script.dataset.atmLuci666 = '1';
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+  }
+
+  function loadPasskeyDomainMigration() {
+    if (global.ATMPasskeyDomainMigration || document.querySelector('script[data-atm-passkey-domain-migration]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/passkey-domain-migration.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmPasskeyDomainMigration = '1';
     script.onerror = () => script.remove();
     document.body.appendChild(script);
   }
@@ -153,5 +163,6 @@
   global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
   global.addEventListener('load', loadNftPerformancePatch, { once: true });
   global.addEventListener('load', loadLuci666Npc, { once: true });
+  global.addEventListener('load', loadPasskeyDomainMigration, { once: true });
   global.loadSupabaseLibrary().catch(() => {});
 })(window);
