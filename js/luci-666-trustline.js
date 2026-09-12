@@ -62,11 +62,15 @@
 
     if(state.hasTrustline){
       trust.classList.remove('visible');
-      claim.disabled=false;
+      if(claim.dataset.luciTrustlineLocked==='1'){
+        claim.disabled=false;
+        delete claim.dataset.luciTrustlineLocked;
+      }
       if(state.checked)setStatus('$666 trustline verified. You can claim your welcome gift.');
       return;
     }
 
+    claim.dataset.luciTrustlineLocked='1';
     claim.disabled=true;
     trust.classList.add('visible');
     trust.disabled=state.checking;
