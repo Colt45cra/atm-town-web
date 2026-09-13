@@ -232,11 +232,22 @@
     document.body.appendChild(script);
   }
 
+  function loadLuci666HorizontalQuestions() {
+    if (global.ATMLuci666HorizontalQuestions || document.querySelector('script[data-atm-luci-666-horizontal-questions]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/luci-666-horizontal-questions.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmLuci666HorizontalQuestions = '1';
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+  }
+
   applyBuildIdentity();
   resumeSignupReturnIntent();
   global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
   global.addEventListener('load', loadNftPerformancePatch, { once: true });
   global.addEventListener('load', loadLuci666Npc, { once: true });
   global.addEventListener('load', loadLuci666BeckonUx, { once: true });
+  global.addEventListener('load', loadLuci666HorizontalQuestions, { once: true });
   global.loadSupabaseLibrary().catch(() => {});
 })(window);
