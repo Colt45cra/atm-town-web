@@ -262,6 +262,16 @@
     document.body.appendChild(script);
   }
 
+  function loadAtmEcosystemGuide() {
+    if (global.ATMAtmGuide || document.querySelector('script[data-atm-ecosystem-guide]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/atm-ecosystem-guide.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmEcosystemGuide = '1';
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+  }
+
   function loadLuciRuntime() {
     loadLuci666Npc();
     loadLuci666BeckonUx();
@@ -269,7 +279,10 @@
 
   function loadProjectNpcRuntime() {
     loadLuciRuntime();
-    loadNpcDialogueStandard(loadMiracle111Npc);
+    loadNpcDialogueStandard(() => {
+      loadMiracle111Npc();
+      loadAtmEcosystemGuide();
+    });
   }
 
   applyBuildIdentity();
