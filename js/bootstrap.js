@@ -272,6 +272,16 @@
     document.body.appendChild(script);
   }
 
+  function loadFuzzyXrpNpc() {
+    if (global.ATMFuzzyXrp || document.querySelector('script[data-atm-fuzzy-xrp]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/fuzzy-xrp.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmFuzzyXrp = '1';
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+  }
+
   function loadLuciRuntime() {
     loadLuci666Npc();
     loadLuci666BeckonUx();
@@ -282,6 +292,7 @@
     loadNpcDialogueStandard(() => {
       loadMiracle111Npc();
       loadAtmEcosystemGuide();
+      loadFuzzyXrpNpc();
     });
   }
 
