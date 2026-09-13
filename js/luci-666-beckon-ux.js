@@ -10,6 +10,7 @@
   if(global.ATMLuci666BeckonUx)return;
 
   const POLL_MS=700;
+  const GIFT_QUESTION_THRESHOLD=3;
   const giftState={resolving:false,mode:'idle',lastCheck:0,coin:null,pickupBusy:false,pickupAttempted:false};
   let lastOrdinaryAnswer='';
 
@@ -29,13 +30,14 @@
   }
 
   function installStyles(){
-    if(document.querySelector('style[data-luci-666-world-ui-v4]'))return;
+    if(document.querySelector('style[data-luci-666-world-ui-v5]'))return;
     document.querySelector('style[data-luci-666-world-ui]')?.remove();
     document.querySelector('style[data-luci-666-world-ui-v3]')?.remove();
+    document.querySelector('style[data-luci-666-world-ui-v4]')?.remove();
     document.querySelector('style[data-luci-666-horizontal-questions]')?.remove();
 
     const style=document.createElement('style');
-    style.dataset.luci666WorldUiV4='1';
+    style.dataset.luci666WorldUiV5='1';
     style.textContent=`
 #luci666Panel{position:fixed!important;inset:0!important;display:none;background:transparent!important;padding:0!important;pointer-events:none!important;z-index:9750!important}
 #luci666Panel.open{display:block!important}
@@ -52,8 +54,10 @@
 #luci666Card .luci666Questions::-webkit-scrollbar{display:none!important}
 #luci666Card .luci666Question{box-sizing:border-box!important;flex:0 0 clamp(152px,36vw,210px)!important;width:auto!important;min-width:0!important;height:49px!important;min-height:49px!important;max-height:49px!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;padding:7px 10px!important;border-radius:10px!important;background:rgba(20,39,50,.96)!important;font-size:9px!important;line-height:1.18!important;white-space:normal!important;text-align:left!important;scroll-snap-align:start!important;pointer-events:auto!important;touch-action:pan-x!important;-webkit-user-select:none!important;user-select:none!important}
 #luci666Card .luci666Question.asked{border-color:rgba(255,209,102,.48)!important;color:#ffe2a0!important}
-#luci666Card .luci666Question.reward{display:none!important;flex:0 0 205px!important;color:#ffe08d!important;background:linear-gradient(90deg,rgba(255,78,78,.24),rgba(255,209,102,.16))!important;border-color:rgba(255,209,102,.5)!important}
-#luci666Card .luci666Question.reward.luciGiftUnlocked{display:flex!important}
+/* The source reward question stays hidden. A dedicated prompt is shown below the carousel instead. */
+#luci666Card .luci666Question.reward{display:none!important}
+#luci666GiftPrompt{position:fixed;left:50%;bottom:max(54px,calc(env(safe-area-inset-bottom) + 38px));transform:translateX(-50%);z-index:9785;display:none;align-items:center;justify-content:center;width:min(390px,calc(100vw - 28px));min-height:42px;padding:8px 14px;border:1px solid rgba(255,209,102,.58);border-radius:12px;background:linear-gradient(90deg,rgba(99,29,35,.97),rgba(76,59,28,.97));box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 18px rgba(255,209,102,.08);color:#ffe29a;font:1000 10px/1.15 system-ui;text-align:center;pointer-events:auto;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+#luci666GiftPrompt.visible{display:flex}
 #luci666WorldSpeech{position:fixed;z-index:9790;display:none;width:min(285px,72vw);max-width:285px;padding:10px 11px 9px;border:1px solid rgba(255,103,103,.55);border-radius:14px;background:rgba(29,9,14,.95);color:#fff3f0;box-shadow:0 14px 38px rgba(0,0,0,.5),0 0 24px rgba(255,77,77,.1);transform:translate(-50%,-100%);transform-origin:50% 100%;pointer-events:auto}
 #luci666WorldSpeech:after{content:'';position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border:8px solid transparent;border-top-color:rgba(255,103,103,.55);border-bottom:0}
 #luci666WorldSpeech .luciWorldName{color:#ff8c76;font:1000 8px/1 system-ui;letter-spacing:.12em;margin-bottom:5px}
@@ -74,6 +78,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   #luci666Card .luci666Body{height:59px!important;padding:5px!important}
   #luci666Card .luci666Questions{height:49px!important;min-height:49px!important;gap:6px!important}
   #luci666Card .luci666Question{flex-basis:clamp(145px,44vw,190px)!important;height:47px!important;min-height:47px!important;max-height:47px!important;font-size:8.7px!important;padding:6px 9px!important}
+  #luci666GiftPrompt{bottom:max(108px,calc(env(safe-area-inset-bottom) + 92px));width:min(330px,calc(100vw - 40px));min-height:40px;font-size:9.5px}
   #luci666WorldSpeech{width:min(310px,82vw);max-width:310px;padding:9px 10px}
   #luci666WorldSpeech .luciWorldText{font-size:10px;line-height:1.38}
   #luci666PrivateCoin{width:38px;height:38px;font-size:14px}
@@ -96,6 +101,20 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       speech.innerHTML='<div class="luciWorldName">LUCI</div><div class="luciWorldText" id="luci666WorldText"></div><div class="luciWorldActions" id="luci666WorldActions"></div>';
       document.body.appendChild(speech);
     }
+    if(!document.getElementById('luci666GiftPrompt')){
+      const prompt=document.createElement('button');
+      prompt.type='button';
+      prompt.id='luci666GiftPrompt';
+      prompt.textContent='I’m ready for my welcome gift.';
+      prompt.setAttribute('aria-label','Tell Luci you are ready for your welcome gift');
+      for(const type of ['pointerdown','pointerup'])prompt.addEventListener(type,event=>event.stopPropagation(),{passive:true});
+      prompt.addEventListener('click',event=>{
+        event.stopPropagation();
+        const source=document.querySelector('#luci666Questions .luci666Question.reward');
+        source?.click();
+      });
+      document.body.appendChild(prompt);
+    }
     if(!document.getElementById('luci666PrivateCoin')){
       const coin=document.createElement('button');
       coin.type='button';coin.id='luci666PrivateCoin';coin.setAttribute('aria-label','Pick up Luci’s 6 $666 welcome reward');coin.textContent='6';
@@ -113,8 +132,8 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
 
   function installQuestionBehavior(){
     const host=document.getElementById('luci666Questions');
-    if(!host||host.dataset.worldCarouselV4==='1')return !!host;
-    host.dataset.worldCarouselV4='1';
+    if(!host||host.dataset.worldCarouselV5==='1')return !!host;
+    host.dataset.worldCarouselV5='1';
 
     // Stop game-level handlers only after the event reaches the carousel.
     // No preventDefault: native horizontal panning must remain available.
@@ -126,15 +145,13 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     return true;
   }
 
-  function syncGiftUnlock(){
-    const host=document.getElementById('luci666Questions');if(!host)return;
-    const reward=host.querySelector('.luci666Question.reward');if(!reward)return;
+  function syncGiftPrompt(){
+    const prompt=document.getElementById('luci666GiftPrompt');
+    const host=document.getElementById('luci666Questions');
+    if(!prompt||!host){return;}
     const asked=host.querySelectorAll('.luci666Question.asked:not(.reward)').length;
-    const unlocked=asked>=2||reward.classList.contains('asked')||giftSelected();
-    const hasClass=reward.classList.contains('luciGiftUnlocked');
-    if(hasClass!==unlocked)reward.classList.toggle('luciGiftUnlocked',unlocked);
-    const label='I’m ready for my welcome gift.';
-    if(unlocked&&reward.textContent!==label)reward.textContent=label;
+    const visible=panelOpen()&&asked>=GIFT_QUESTION_THRESHOLD&&!giftSelected();
+    prompt.classList.toggle('visible',visible);
   }
 
   function speechText(message){
@@ -241,7 +258,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   }
 
   function apply(){
-    ensureWorldUi();loadTrustlineGate();applyBeckonSizing();installQuestionBehavior();syncGiftUnlock();
+    ensureWorldUi();loadTrustlineGate();applyBeckonSizing();installQuestionBehavior();syncGiftPrompt();
     if(panelOpen()){
       // Remove the old modal marker immediately; Luci is now a HUD interaction.
       document.body.classList.remove('luci-666-open');
@@ -251,7 +268,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   }
 
   function tick(){
-    ensureWorldUi();installQuestionBehavior();syncGiftUnlock();
+    ensureWorldUi();installQuestionBehavior();syncGiftPrompt();
     if(panelOpen()){
       document.body.classList.remove('luci-666-open');
       positionSpeech();
@@ -259,6 +276,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     }else{
       lastOrdinaryAnswer='';
       document.getElementById('luci666WorldSpeech')?.style.setProperty('display','none');
+      document.getElementById('luci666GiftPrompt')?.classList.remove('visible');
     }
     positionCoin();global.requestAnimationFrame(tick);
   }
