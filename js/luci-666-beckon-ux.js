@@ -1,8 +1,8 @@
 /*
  * Luci $666 in-world conversation UX.
- * Keeps ATM Town visible while talking: questions live in a compact left rail,
- * Luci answers in a world-anchored speech bubble, and the reward becomes a
- * local/private pickup that only the speaking player can see.
+ * ATM Town stays visible while talking: Luci answers over his character,
+ * questions live in a bottom horizontal carousel, and the welcome reward is a
+ * local/private pickup visible only to the speaking player.
  */
 (function installLuciWorldConversation(global){
   'use strict';
@@ -26,7 +26,7 @@
   function loadTrustlineGate(){
     if(global.ATMLuci666Trustline||document.querySelector('script[data-atm-luci-666-trustline]'))return;
     const script=document.createElement('script');
-    script.src='/js/luci-666-trustline.js?v=1.0.1';
+    script.src='/js/luci-666-trustline.js?v=1.0.2';
     script.async=false;
     script.dataset.atmLuci666Trustline='1';
     script.onerror=()=>script.remove();
@@ -34,28 +34,136 @@
   }
 
   function installStyles(){
-    if(document.querySelector('style[data-luci-666-world-ui]'))return;
-    const style=document.createElement('style');
-    style.dataset.luci666WorldUi='1';
-    style.textContent=`
-/* Keep the game visible. The old full-screen dialogue card becomes a small question rail. */
-#luci666Panel{background:transparent!important;padding:0!important;align-items:initial!important;justify-content:initial!important;pointer-events:none!important;z-index:9750!important}
-#luci666Panel.open{display:block!important}
-#luci666Card{position:absolute!important;left:10px!important;top:max(66px,calc(env(safe-area-inset-top) + 54px))!important;bottom:max(82px,calc(env(safe-area-inset-bottom) + 70px))!important;width:clamp(178px,24vw,238px)!important;height:auto!important;max-height:none!important;display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;overflow:hidden!important;border:1px solid rgba(255,96,96,.42)!important;border-radius:15px!important;background:rgba(11,18,24,.90)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;box-shadow:0 15px 44px rgba(0,0,0,.52)!important;pointer-events:auto!important}
-#luci666Card .luci666Header{padding:8px 8px 7px!important;gap:6px!important;border-bottom:1px solid rgba(255,255,255,.08)!important;background:linear-gradient(180deg,rgba(55,14,23,.95),rgba(25,15,20,.88))!important}
-#luci666Card .luci666Avatar{width:30px!important;height:32px!important}
-#luci666Card .luci666Eyebrow,#luci666Card .luci666Header small{display:none!important}
-#luci666Card .luci666Header h2{margin:0!important;font-size:12px!important;line-height:1.05!important;white-space:nowrap!important}
-#luci666Card .luci666Close{width:29px!important;height:29px!important;flex-basis:29px!important;border-radius:8px!important;font-size:18px!important;line-height:1!important}
-#luci666Card .luci666Body{min-height:0!important;overflow:hidden!important;padding:7px!important;display:block!important}
-#luci666Card .luci666Answer,#luci666Card .luci666Footer{display:none!important}
-#luci666Card .luci666Questions{height:100%!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;display:grid!important;grid-template-columns:1fr!important;align-content:start!important;gap:6px!important;padding:0 2px 8px 0!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:thin!important}
-#luci666Card .luci666Question{min-height:38px!important;padding:7px 8px!important;border-radius:9px!important;font-size:9px!important;line-height:1.22!important;background:rgba(20,39,50,.94)!important;box-shadow:none!important}
-#luci666Card .luci666Question.reward{grid-column:auto!important;display:none;background:linear-gradient(90deg,rgba(255,78,78,.25),rgba(255,209,102,.17))!important;color:#ffe08d!important;border-color:rgba(255,209,102,.5)!important}
-#luci666Card .luci666Question.reward.luciGiftUnlocked{display:block!important}
+    if(document.querySelector('style[data-luci-666-world-ui-v3]'))return;
+    document.querySelector('style[data-luci-666-world-ui]')?.remove();
+    document.querySelector('style[data-luci-666-horizontal-questions]')?.remove();
 
-/* Luci speaks in the world, not in the menu. */
-#luci666WorldSpeech{position:fixed;z-index:9760;display:none;width:min(285px,54vw);max-width:285px;padding:10px 11px 9px;border:1px solid rgba(255,103,103,.55);border-radius:14px;background:rgba(29,9,14,.95);color:#fff3f0;box-shadow:0 14px 38px rgba(0,0,0,.5),0 0 24px rgba(255,77,77,.1);transform:translate(-50%,-100%);transform-origin:50% 100%;pointer-events:auto}
+    const style=document.createElement('style');
+    style.dataset.luci666WorldUiV3='1';
+    style.textContent=`
+#luci666Panel{
+  background:transparent!important;
+  padding:0!important;
+  align-items:initial!important;
+  justify-content:initial!important;
+  pointer-events:none!important;
+  z-index:9750!important;
+}
+#luci666Panel.open{display:block!important}
+
+/* The question picker is a bottom carousel, never a side rail. */
+#luci666Card{
+  position:fixed!important;
+  left:50%!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:max(102px,calc(env(safe-area-inset-bottom) + 86px))!important;
+  transform:translateX(-50%)!important;
+  width:min(760px,calc(100vw - 18px))!important;
+  height:94px!important;
+  min-height:94px!important;
+  max-height:94px!important;
+  display:grid!important;
+  grid-template-rows:31px 63px!important;
+  overflow:hidden!important;
+  border:1px solid rgba(255,96,96,.44)!important;
+  border-radius:14px!important;
+  background:rgba(8,17,23,.92)!important;
+  backdrop-filter:blur(12px)!important;
+  -webkit-backdrop-filter:blur(12px)!important;
+  box-shadow:0 13px 38px rgba(0,0,0,.5)!important;
+  pointer-events:auto!important;
+  z-index:9780!important;
+}
+#luci666Card .luci666Header{
+  height:31px!important;
+  min-height:31px!important;
+  padding:3px 6px 3px 8px!important;
+  gap:5px!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+  background:linear-gradient(90deg,rgba(60,13,22,.96),rgba(20,18,24,.94))!important;
+}
+#luci666Card .luci666Identity{gap:5px!important;min-width:0!important}
+#luci666Card .luci666Avatar{width:23px!important;height:25px!important}
+#luci666Card .luci666Eyebrow,#luci666Card .luci666Header small{display:none!important}
+#luci666Card .luci666Header h2{margin:0!important;font-size:10px!important;line-height:1!important;white-space:nowrap!important}
+#luci666Card .luci666Close{
+  width:25px!important;height:25px!important;flex:0 0 25px!important;
+  border-radius:7px!important;font-size:16px!important;line-height:1!important;
+  touch-action:manipulation!important;
+}
+#luci666Card .luci666Body{
+  height:63px!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  padding:6px!important;
+  display:block!important;
+}
+#luci666Card .luci666Answer,#luci666Card .luci666Footer{display:none!important}
+#luci666Card .luci666Questions{
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:51px!important;
+  min-height:51px!important;
+  display:flex!important;
+  flex-flow:row nowrap!important;
+  align-items:stretch!important;
+  align-content:initial!important;
+  gap:7px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding:0 3px 2px!important;
+  pointer-events:auto!important;
+  touch-action:pan-x!important;
+  overscroll-behavior-x:contain!important;
+  overscroll-behavior-y:none!important;
+  -webkit-overflow-scrolling:touch!important;
+  scroll-snap-type:x proximity!important;
+  scrollbar-width:none!important;
+}
+#luci666Card .luci666Questions::-webkit-scrollbar{display:none!important}
+#luci666Card .luci666Question{
+  box-sizing:border-box!important;
+  flex:0 0 clamp(152px,36vw,210px)!important;
+  width:auto!important;
+  min-width:0!important;
+  height:49px!important;
+  min-height:49px!important;
+  max-height:49px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  padding:7px 10px!important;
+  border-radius:10px!important;
+  background:rgba(20,39,50,.96)!important;
+  font-size:9px!important;
+  line-height:1.18!important;
+  white-space:normal!important;
+  text-align:left!important;
+  scroll-snap-align:start!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+#luci666Card .luci666Question.asked{border-color:rgba(255,209,102,.48)!important;color:#ffe2a0!important}
+#luci666Card .luci666Question.reward{
+  display:none!important;
+  flex:0 0 205px!important;
+  color:#ffe08d!important;
+  background:linear-gradient(90deg,rgba(255,78,78,.24),rgba(255,209,102,.16))!important;
+  border-color:rgba(255,209,102,.5)!important;
+}
+#luci666Card .luci666Question.reward.luciGiftUnlocked{display:flex!important}
+
+/* Luci's answer stays in-world over Luci. */
+#luci666WorldSpeech{
+  position:fixed;z-index:9790;display:none;width:min(285px,72vw);max-width:285px;
+  padding:10px 11px 9px;border:1px solid rgba(255,103,103,.55);border-radius:14px;
+  background:rgba(29,9,14,.95);color:#fff3f0;
+  box-shadow:0 14px 38px rgba(0,0,0,.5),0 0 24px rgba(255,77,77,.1);
+  transform:translate(-50%,-100%);transform-origin:50% 100%;pointer-events:auto;
+}
 #luci666WorldSpeech:after{content:'';position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border:8px solid transparent;border-top-color:rgba(255,103,103,.55);border-bottom:0}
 #luci666WorldSpeech .luciWorldName{color:#ff8c76;font:1000 8px/1 system-ui;letter-spacing:.12em;margin-bottom:5px}
 #luci666WorldSpeech .luciWorldText{font:800 11px/1.4 system-ui;color:#fff3f0}
@@ -63,19 +171,27 @@
 #luci666WorldSpeech .luciWorldAction{min-height:34px;padding:0 9px;border:1px solid rgba(255,209,102,.55);border-radius:9px;background:linear-gradient(90deg,#52262a,#5b4827);color:#ffe8a5;font:1000 8px system-ui}
 #luci666WorldSpeech .luciWorldAction.secondary{border-color:rgba(130,220,255,.42);background:#12323d;color:#d9f8ff}
 
-/* Private reward pickup. It is never broadcast into multiplayer state. */
+/* Private reward pickup. It is never broadcast to multiplayer state. */
 #luci666PrivateCoin{position:fixed;z-index:9650;display:none;width:42px;height:42px;border-radius:50%;place-items:center;background:radial-gradient(circle at 35% 28%,#fff5a8 0 12%,#ffd45f 22%,#f29a27 55%,#9b4719 78%,#4b1c13 100%);border:2px solid rgba(255,231,135,.92);box-shadow:0 8px 18px rgba(0,0,0,.5),0 0 22px rgba(255,187,64,.62);color:#562316;font:1000 16px/1 system-ui;text-shadow:0 1px rgba(255,255,255,.45);transform:translate(-50%,-78%);transform-origin:50% 100%;pointer-events:auto;cursor:pointer;animation:luciCoinBob .9s ease-in-out infinite alternate}
 #luci666PrivateCoin.visible{display:grid}
 #luci666PrivateCoin:after{content:'6 $666';position:absolute;top:43px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:3px 6px;border-radius:7px;background:rgba(13,16,20,.88);color:#ffe39a;font:1000 7px system-ui;border:1px solid rgba(255,209,102,.3)}
 @keyframes luciCoinBob{from{margin-top:0;filter:brightness(1)}to{margin-top:-6px;filter:brightness(1.15)}}
 
-/* Keep the passive beckon stable and readable while approaching. */
 #luci666Beckon{transition:none!important;scale:1!important;text-wrap:balance!important;contain:layout style paint!important}
 
 @media(max-width:600px){
-  #luci666Card{left:6px!important;top:max(58px,calc(env(safe-area-inset-top) + 48px))!important;bottom:max(78px,calc(env(safe-area-inset-bottom) + 66px))!important;width:clamp(150px,42vw,190px)!important;border-radius:12px!important}
-  #luci666Card .luci666Question{min-height:36px!important;font-size:8.5px!important;padding:6px 7px!important}
-  #luci666WorldSpeech{width:min(225px,56vw);max-width:225px;padding:9px 10px}
+  #luci666Card{
+    bottom:max(160px,calc(env(safe-area-inset-bottom) + 144px))!important;
+    width:calc(100vw - 12px)!important;
+    height:88px!important;min-height:88px!important;max-height:88px!important;
+    grid-template-rows:29px 59px!important;
+    border-radius:12px!important;
+  }
+  #luci666Card .luci666Header{height:29px!important;min-height:29px!important}
+  #luci666Card .luci666Body{height:59px!important;padding:5px!important}
+  #luci666Card .luci666Questions{height:49px!important;min-height:49px!important;gap:6px!important}
+  #luci666Card .luci666Question{flex-basis:clamp(145px,44vw,190px)!important;height:47px!important;min-height:47px!important;max-height:47px!important;font-size:8.7px!important;padding:6px 9px!important}
+  #luci666WorldSpeech{width:min(310px,82vw);max-width:310px;padding:9px 10px}
   #luci666WorldSpeech .luciWorldText{font-size:10px;line-height:1.38}
   #luci666PrivateCoin{width:38px;height:38px;font-size:14px}
 }
@@ -126,15 +242,25 @@
 
   function installQuestionBehavior(){
     const host=document.getElementById('luci666Questions');
-    if(!host||host.dataset.worldRail==='1')return !!host;
-    host.dataset.worldRail='1';
-    let savedScrollTop=0;
-    let restorePending=false;
-    host.addEventListener('pointerdown',()=>{savedScrollTop=host.scrollTop;restorePending=true;},{passive:true,capture:true});
-    host.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){savedScrollTop=host.scrollTop;restorePending=true;}},{capture:true});
+    if(!host||host.dataset.worldCarousel==='1')return !!host;
+    host.dataset.worldCarousel='1';
+
+    // Let the question button receive its native click first, then stop the
+    // event before ATM Town's document/canvas controls can interpret it.
+    for(const type of ['pointerdown','pointerup','click']){
+      host.addEventListener(type,(event)=>{
+        if(event.target?.closest?.('.luci666Question'))event.stopPropagation();
+      });
+    }
+
     const observer=new MutationObserver(()=>{
       unlockGiftQuestion();
-      if(restorePending)global.requestAnimationFrame(()=>{host.scrollTop=savedScrollTop;restorePending=false;});
+      global.requestAnimationFrame(()=>{
+        const selected=host.querySelector('.luci666Question.asked:last-of-type');
+        if(selected){
+          try{selected.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}catch(_error){}
+        }
+      });
     });
     observer.observe(host,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     unlockGiftQuestion();
@@ -161,7 +287,12 @@
   function clearActions(){const host=document.getElementById('luci666WorldActions');if(host)host.textContent='';}
   function addAction(label,handler,secondary=false){
     const host=document.getElementById('luci666WorldActions');if(!host)return;
-    const button=document.createElement('button');button.type='button';button.className='luciWorldAction'+(secondary?' secondary':'');button.textContent=label;button.addEventListener('click',handler);host.appendChild(button);
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='luciWorldAction'+(secondary?' secondary':'');
+    button.textContent=label;
+    button.addEventListener('click',handler);
+    host.appendChild(button);
   }
 
   function syncOrdinaryAnswer(){
@@ -176,13 +307,20 @@
 
   async function resolveGiftState(force=false){
     if(!panelOpen()||!giftSelected()||giftState.resolving)return;
-    const now=Date.now();if(!force&&now-giftState.lastCheck<POLL_MS)return;
-    giftState.lastCheck=now;giftState.resolving=true;clearActions();
+    const now=Date.now();
+    if(!force&&now-giftState.lastCheck<POLL_MS)return;
+    giftState.lastCheck=now;
+    giftState.resolving=true;
+    clearActions();
     try{
       loadTrustlineGate();
-      let waits=0;while(!trustlineModule()&&waits<25){await new Promise(r=>setTimeout(r,80));waits++;}
+      let waits=0;
+      while(!trustlineModule()&&waits<25){await new Promise(r=>setTimeout(r,80));waits++;}
       const trust=trustlineModule();
-      if(!trust){speechText('Thanks for coming to speak with me. I cannot check your $666 trustline yet — give ATM Town a moment and try again.');return;}
+      if(!trust){
+        speechText('Thanks for coming to speak with me. I cannot check your $666 trustline yet — give ATM Town a moment and try again.');
+        return;
+      }
       const has=await trust.check();
       if(has||trust.state?.hasTrustline===true){
         giftState.mode='ready';
@@ -206,12 +344,15 @@
         try{await trust.create();}catch(_error){}
         giftState.lastCheck=0;
       });
-    }finally{giftState.resolving=false;}
+    }finally{
+      giftState.resolving=false;
+    }
   }
 
   function worldToScreen(x,y){
     try{
-      const canvas=document.getElementById('game'),rect=canvas?.getBoundingClientRect();
+      const canvas=document.getElementById('game');
+      const rect=canvas?.getBoundingClientRect();
       if(!rect||!Number.isFinite(x)||!Number.isFinite(y))return null;
       const sx=(x-cam.x)*zoom,sy=(y-cam.y)*zoom;
       return {x:rect.left+(sx/Math.max(1,W))*rect.width,y:rect.top+(sy/Math.max(1,H))*rect.height};
@@ -225,14 +366,19 @@
     const luci=global.ATMLuci666?.getLuci?.();
     const point=luci?worldToScreen(luci.x,luci.y-66):null;
     if(!point){speech.style.display='none';return;}
+
     speech.style.display='block';
-    const rail=document.getElementById('luci666Card')?.getBoundingClientRect();
-    const width=Math.max(180,speech.offsetWidth||220),half=width/2;
-    const minX=Math.max(half+8,rail?rail.right+half+8:half+8);
+    const width=Math.max(180,speech.offsetWidth||220);
+    const half=width/2;
+    const minX=half+8;
     const maxX=Math.max(minX,global.innerWidth-half-8);
     const x=Math.min(maxX,Math.max(minX,point.x));
-    const y=Math.min(global.innerHeight-12,Math.max(88,point.y));
-    speech.style.left=`${x}px`;speech.style.top=`${y}px`;
+
+    const card=document.getElementById('luci666Card')?.getBoundingClientRect();
+    const lowerLimit=card?Math.max(90,card.top-12):global.innerHeight-12;
+    const y=Math.min(lowerLimit,Math.max(88,point.y));
+    speech.style.left=`${x}px`;
+    speech.style.top=`${y}px`;
   }
 
   function spawnCoin(){
@@ -243,7 +389,7 @@
       const dx=player.x-luci.x,dy=player.y-luci.y,dist=Math.max(1,Math.hypot(dx,dy));
       giftState.coin={x:luci.x+(dx/dist)*42,y:luci.y+(dy/dist)*42,spawnedAt:Date.now()};
       giftState.pickupAttempted=false;
-      const coin=document.getElementById('luci666PrivateCoin');if(coin)coin.classList.add('visible');
+      document.getElementById('luci666PrivateCoin')?.classList.add('visible');
     }catch(_error){}
   }
 
@@ -252,7 +398,9 @@
     if(!coin||!giftState.coin){if(coin)coin.classList.remove('visible');return;}
     const point=worldToScreen(giftState.coin.x,giftState.coin.y-8);
     if(!point){coin.classList.remove('visible');return;}
-    coin.classList.add('visible');coin.style.left=`${point.x}px`;coin.style.top=`${point.y}px`;
+    coin.classList.add('visible');
+    coin.style.left=`${point.x}px`;
+    coin.style.top=`${point.y}px`;
     try{
       const d=Math.hypot(player.x-giftState.coin.x,player.y-giftState.coin.y);
       if(d<=28&&!giftState.pickupAttempted&&!giftState.pickupBusy)pickupCoin();
@@ -261,8 +409,10 @@
 
   async function pickupCoin(){
     if(!giftState.coin||giftState.pickupBusy)return;
-    giftState.pickupBusy=true;giftState.pickupAttempted=true;
-    speechText('That one’s yours, LightBringer. Picking it up now…');clearActions();
+    giftState.pickupBusy=true;
+    giftState.pickupAttempted=true;
+    speechText('That one’s yours, LightBringer. Picking it up now…');
+    clearActions();
     try{
       if(typeof global.ATMLuci666?.requestReward!=='function')throw new Error('The reward connection is not ready yet.');
       await global.ATMLuci666.requestReward();
@@ -280,18 +430,23 @@
     }catch(error){
       speechText(error?.message||'I couldn’t finish that pickup yet. Your coin is still yours.');
       addAction('TRY PICKUP AGAIN',()=>{giftState.pickupAttempted=false;pickupCoin();},true);
-    }finally{giftState.pickupBusy=false;}
+    }finally{
+      giftState.pickupBusy=false;
+    }
   }
 
   function observeDialogue(){
-    const panel=document.getElementById('luci666Panel'),answer=document.getElementById('luci666AnswerText'),claim=document.getElementById('luci666Claim');
+    const panel=document.getElementById('luci666Panel');
+    const answer=document.getElementById('luci666AnswerText');
+    const claim=document.getElementById('luci666Claim');
     if(!panel||!answer||!claim)return false;
     if(panel.dataset.worldDialogueObserver==='1')return true;
     panel.dataset.worldDialogueObserver='1';
     const observer=new MutationObserver(()=>{
       unlockGiftQuestion();
       if(panelOpen()){
-        if(giftSelected())resolveGiftState(true);else syncOrdinaryAnswer();
+        if(giftSelected())resolveGiftState(true);
+        else syncOrdinaryAnswer();
       }
     });
     observer.observe(panel,{attributes:true,subtree:true,childList:true,characterData:true,attributeFilter:['class']});
@@ -299,29 +454,45 @@
   }
 
   function apply(){
-    ensureWorldUi();loadTrustlineGate();applyBeckonSizing();installQuestionBehavior();observeDialogue();unlockGiftQuestion();syncOrdinaryAnswer();return true;
+    ensureWorldUi();
+    loadTrustlineGate();
+    applyBeckonSizing();
+    installQuestionBehavior();
+    observeDialogue();
+    unlockGiftQuestion();
+    syncOrdinaryAnswer();
+    return true;
   }
 
   function tick(){
     ensureWorldUi();
     if(panelOpen()){
       positionSpeech();
-      if(giftSelected())resolveGiftState();else syncOrdinaryAnswer();
-    }else document.getElementById('luci666WorldSpeech')?.style.setProperty('display','none');
+      if(giftSelected())resolveGiftState();
+      else syncOrdinaryAnswer();
+    }else{
+      document.getElementById('luci666WorldSpeech')?.style.setProperty('display','none');
+    }
     positionCoin();
     global.requestAnimationFrame(tick);
   }
 
   function install(){
     apply();
-    const observer=new MutationObserver(()=>{apply();if(observeDialogue()&&installQuestionBehavior())observer.disconnect();});
+    const observer=new MutationObserver(()=>{
+      apply();
+      if(observeDialogue()&&installQuestionBehavior())observer.disconnect();
+    });
     observer.observe(document.documentElement,{childList:true,subtree:true});
     global.setTimeout(()=>observer.disconnect(),20000);
     global.requestAnimationFrame(tick);
   }
 
   let resizeTimer=0;
-  global.addEventListener('resize',()=>{global.clearTimeout(resizeTimer);resizeTimer=global.setTimeout(apply,120);},{passive:true});
+  global.addEventListener('resize',()=>{
+    global.clearTimeout(resizeTimer);
+    resizeTimer=global.setTimeout(apply,120);
+  },{passive:true});
 
   global.ATMLuci666BeckonUx=Object.freeze({apply,resolveGiftState,spawnCoin,pickupCoin});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
