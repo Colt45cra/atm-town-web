@@ -210,6 +210,28 @@
     document.body.appendChild(script);
   }
 
+  function loadNpcDialogueStandard(onReady) {
+    if (global.ATMNpcDialogueStandard) {
+      if (typeof onReady === 'function') onReady();
+      return;
+    }
+    const existing = document.querySelector('script[data-atm-npc-dialogue-standard]');
+    if (existing) {
+      if (typeof onReady === 'function') existing.addEventListener('load', onReady, { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = '/js/npc-dialogue-standard.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmNpcDialogueStandard = '1';
+    script.onload = () => { if (typeof onReady === 'function') onReady(); };
+    script.onerror = () => {
+      script.remove();
+      if (typeof onReady === 'function') onReady();
+    };
+    document.body.appendChild(script);
+  }
+
   function loadLuci666Npc() {
     if (global.ATMLuci666 || document.querySelector('script[data-atm-luci-666]')) return;
     const script = document.createElement('script');
@@ -230,9 +252,24 @@
     document.body.appendChild(script);
   }
 
+  function loadMiracle111Npc() {
+    if (global.ATMMiracle111 || document.querySelector('script[data-atm-miracle-111]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/miracle-111.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmMiracle111 = '1';
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+  }
+
   function loadLuciRuntime() {
     loadLuci666Npc();
     loadLuci666BeckonUx();
+  }
+
+  function loadProjectNpcRuntime() {
+    loadLuciRuntime();
+    loadNpcDialogueStandard(loadMiracle111Npc);
   }
 
   applyBuildIdentity();
@@ -241,10 +278,10 @@
 
   if (document.readyState === 'complete') {
     loadNftPerformancePatch();
-    loadLuciRuntime();
+    loadProjectNpcRuntime();
   } else {
     global.addEventListener('load', loadNftPerformancePatch, { once: true });
-    global.addEventListener('load', loadLuciRuntime, { once: true });
+    global.addEventListener('load', loadProjectNpcRuntime, { once: true });
   }
 
   global.loadSupabaseLibrary().catch(() => {});
