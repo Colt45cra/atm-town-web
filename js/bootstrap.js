@@ -282,6 +282,16 @@
     document.body.appendChild(script);
   }
 
+  function loadTriskXrpNpc() {
+    if (global.ATMTriskXrp || document.querySelector('script[data-atm-trisk-xrp]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/trisk-xrp.js?v=1.0.0';
+    script.async = false;
+    script.dataset.atmTriskXrp = '1';
+    script.onerror = () => script.remove();
+    document.body.appendChild(script);
+  }
+
   function loadLuciRuntime() {
     loadLuci666Npc();
     loadLuci666BeckonUx();
@@ -293,6 +303,7 @@
       loadMiracle111Npc();
       loadAtmEcosystemGuide();
       loadFuzzyXrpNpc();
+      loadTriskXrpNpc();
     });
   }
 
