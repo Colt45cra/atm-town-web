@@ -167,8 +167,6 @@
     if (buildVersion) buildVersion.textContent = config.build.version;
   }
 
-  // Relocate the ATM Town Directory to the former Upgrades Kiosk interaction hotspot.
-  // The town interaction mask stays unchanged; only the semantic destination moves.
   function relocateTownDirectoryHotspot() {
     if (typeof TOWN_MISC_ZONES === 'undefined' || !Array.isArray(TOWN_MISC_ZONES)) return;
 
@@ -215,7 +213,7 @@
   function loadLuci666Npc() {
     if (global.ATMLuci666 || document.querySelector('script[data-atm-luci-666]')) return;
     const script = document.createElement('script');
-    script.src = '/js/luci-666.js?v=1.0.1';
+    script.src = '/js/luci-666.js?v=1.0.2';
     script.async = false;
     script.dataset.atmLuci666 = '1';
     script.onerror = () => script.remove();
@@ -225,29 +223,29 @@
   function loadLuci666BeckonUx() {
     if (global.ATMLuci666BeckonUx || document.querySelector('script[data-atm-luci-666-beckon-ux]')) return;
     const script = document.createElement('script');
-    script.src = '/js/luci-666-beckon-ux.js?v=2.0.0';
+    script.src = '/js/luci-666-beckon-ux.js?v=3.0.0';
     script.async = false;
     script.dataset.atmLuci666BeckonUx = '1';
     script.onerror = () => script.remove();
     document.body.appendChild(script);
   }
 
-  function loadLuci666HorizontalQuestions() {
-    if (global.ATMLuci666HorizontalQuestions || document.querySelector('script[data-atm-luci-666-horizontal-questions]')) return;
-    const script = document.createElement('script');
-    script.src = '/js/luci-666-horizontal-questions.js?v=1.0.0';
-    script.async = false;
-    script.dataset.atmLuci666HorizontalQuestions = '1';
-    script.onerror = () => script.remove();
-    document.body.appendChild(script);
+  function loadLuciRuntime() {
+    loadLuci666Npc();
+    loadLuci666BeckonUx();
   }
 
   applyBuildIdentity();
   resumeSignupReturnIntent();
   global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
-  global.addEventListener('load', loadNftPerformancePatch, { once: true });
-  global.addEventListener('load', loadLuci666Npc, { once: true });
-  global.addEventListener('load', loadLuci666BeckonUx, { once: true });
-  global.addEventListener('load', loadLuci666HorizontalQuestions, { once: true });
+
+  if (document.readyState === 'complete') {
+    loadNftPerformancePatch();
+    loadLuciRuntime();
+  } else {
+    global.addEventListener('load', loadNftPerformancePatch, { once: true });
+    global.addEventListener('load', loadLuciRuntime, { once: true });
+  }
+
   global.loadSupabaseLibrary().catch(() => {});
 })(window);
