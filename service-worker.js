@@ -1,12 +1,14 @@
-/* ATM Town v235.12.10 PWA service worker
+/* ATM Town v235.12.11 PWA service worker
  * - App shell is precached for fast relaunch.
  * - Same-origin game assets use stale-while-revalidate so repeat loads are fast
  *   without permanently pinning old art/chunks after a deploy.
+ * - Runtime JS is fetched network-first with HTTP cache bypass so a deploy never
+ *   mixes an old bootstrap with a new Luci conversation module.
  * - API/auth traffic is never cached.
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v235.12.10';
+const BUILD_CACHE = 'atm-town-shell-v235.12.11';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = ASSET_CACHE;
 const CACHE_PREFIX = 'atm-town-';
@@ -26,6 +28,10 @@ const SHELL = [
   '/js/world-events.js',
   '/js/zombie-outbreak.js',
   '/js/prop-hunt.js',
+  '/js/luci-666.js',
+  '/js/luci-666-beckon-ux.js',
+  '/js/luci-666-horizontal-questions.js',
+  '/js/luci-666-trustline.js',
   '/assets/maps/town/foreground/day/assets_05_00.webp',
   '/assets/maps/town/foreground/day/assets_06_00.webp',
   '/assets/maps/town/foreground/day/assets_08_00.webp',
@@ -77,7 +83,9 @@ function isCacheableResponse(response) {
 
 async function networkFirst(request) {
   try {
-    const response = await fetch(request);
+    const url = new URL(request.url);
+    const bypassHttpCache = url.pathname.endsWith('.js') || url.pathname === '/index.html';
+    const response = await fetch(request, bypassHttpCache ? { cache: 'no-store' } : undefined);
     if (isCacheableResponse(response)) {
       const cache = await caches.open(BUILD_CACHE);
       cache.put(request, response.clone()).catch(() => {});
@@ -130,9 +138,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.pathname.endsWith('.js') || url.pathname === '/index.html' || url.pathname.endsWith('.webmanifest')) {
-    // Build/runtime files must stay version-consistent after a deploy. Network
-    // first avoids mixing a new HTML shell with stale JavaScript from the prior
-    // PWA cache while still falling back offline.
     event.respondWith(networkFirst(request));
     return;
   }
