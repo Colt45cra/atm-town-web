@@ -175,11 +175,22 @@
     }catch(_error){return false;}
   }
 
+  function shouldOpenClaimPortalDirectly(){
+    return /Android/i.test(String(global.navigator?.userAgent||''));
+  }
+
   function openRewards(){
     ensureUi();
     if(!isTrustedClaimPortal()){
       const text=document.getElementById('atmGuideWorldText');
       if(text)text.textContent='The Genesis Rewards portal is temporarily unavailable. Please try again after the town configuration is updated.';
+      return;
+    }
+    if(shouldOpenClaimPortalDirectly()){
+      closeDialogue();
+      const popup=global.open(CLAIM_PORTAL_URL,'_blank');
+      if(popup){popup.opener=null;return;}
+      global.location.assign(CLAIM_PORTAL_URL);
       return;
     }
     closeDialogue();state.rewardsOpen=true;
