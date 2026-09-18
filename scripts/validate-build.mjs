@@ -327,6 +327,7 @@ const configPath = path.join(root, 'js', 'config.js');
 const mapsPath = path.join(root, 'js', 'maps.js');
 const configSource = await readFile(configPath, 'utf8');
 const mapsSource = await readFile(mapsPath, 'utf8');
+const atmGuideSource = await readFile(path.join(root, 'js', 'atm-ecosystem-guide.js'), 'utf8');
 if (!configSource.includes("version: 'v235.12.10'")) errors.push('js/config.js is not marked v235.12.10.');
 if (configSource.includes('unpkg.com')) errors.push('v234.1 must not retain the unpkg runtime fallback in browser configuration.');
 
@@ -339,6 +340,10 @@ const config = registrySandbox.window.ATM_TOWN_CONFIG;
 if (config.embeddedWallet?.network !== 'testnet') errors.push('Embedded wallet must remain Testnet-only in v234.');
 if ('rpcHttp' in (config.embeddedWallet || {}) || 'rpcHttpSources' in (config.embeddedWallet || {}) || 'rpcWs' in (config.embeddedWallet || {})) errors.push('v234.2.5 browser wallet config must not expose direct XRPL transport endpoints.');
 if (!String(config.embeddedWallet?.explorerTxBase || '').startsWith('https://testnet.xrpl.org/transactions/')) errors.push('Embedded wallet transaction explorer must remain on XRPL Testnet.');
+if (config.claimPortals?.genesisHolderRewards?.portalUrl !== 'https://payload-omega-gules.vercel.app/claim/genesis-holder-rewards-1-2') errors.push('Genesis Holder Rewards claim portal URL is missing or incorrect.');
+if (!String(config.claimPortals?.genesisHolderRewards?.portalUrl || '').startsWith('https://payload-omega-gules.vercel.app/claim/')) errors.push('Genesis Holder Rewards must use the trusted Payload claim origin.');
+if (!atmGuideSource.includes('LEARN ABOUT ATM') || !atmGuideSource.includes('CLAIM REWARD TOKENS')) errors.push('ATM Bot is missing its two first-choice actions.');
+if (!atmGuideSource.includes("url.hostname==='payload-omega-gules.vercel.app'") || !atmGuideSource.includes('id="atmRewardsFrame"')) errors.push('ATM Bot claim portal embed is missing its trusted-origin gate or iframe.');
 const embeddedWalletSource = await readFile(path.join(root, 'js', 'wallet', 'embedded-wallet.js'), 'utf8');
 const peopleHubSource = await readFile(path.join(root, 'js', 'people-hub.js'), 'utf8');
 const worldEventsClientSource = await readFile(path.join(root, 'js', 'world-events.js'), 'utf8');
@@ -404,7 +409,7 @@ if (!pwaSource.includes("action=player-ping") && !pwaSource.includes("authentica
 if (!peopleHubSource.includes('data-people-ping') || !peopleHubSource.includes('Money Rain starting') || !peopleHubSource.includes('Cache Game Data')) errors.push('v235.6 People Hub ping/PWA controls are missing.');
 if (!peopleHubSource.includes('overscroll-behavior:contain') || !peopleHubSource.includes('-webkit-overflow-scrolling:touch') || !peopleHubSource.includes('restorePageScroll(host,previousScroll)')) errors.push('v235.6.1 People Hub mobile scroll safeguards are missing.');
 if (!peopleHubSource.includes('rosterSignature(nextGame)!==previousSignature')) errors.push('v235.6.1 People Hub refresh loop still rebuilds unchanged rosters during touch scrolling.');
-if (!serviceWorkerSource.includes("atm-town-shell-v235.12.10") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/prop-hunt.js') || !serviceWorkerSource.includes('/assets/maps/town/foreground/day/assets_05_00.webp') || !serviceWorkerSource.includes('/assets/maps/town/foreground/day/assets_18_00.webp') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js') || !serviceWorkerSource.includes('/js/live-chat.js')) errors.push('v235.12.10 PWA shell cache/module registration is missing.');
+if (!serviceWorkerSource.includes("atm-town-shell-v235.12.12") || !serviceWorkerSource.includes('/js/zombie-outbreak.js') || !serviceWorkerSource.includes('/js/prop-hunt.js') || !serviceWorkerSource.includes('/assets/maps/town/foreground/day/assets_05_00.webp') || !serviceWorkerSource.includes('/assets/maps/town/foreground/day/assets_18_00.webp') || !serviceWorkerSource.includes('/js/runtime/neon-racer.js') || !serviceWorkerSource.includes('/js/live-chat.js') || !serviceWorkerSource.includes('/js/atm-ecosystem-guide.js')) errors.push('v235.12.12 PWA shell cache/module registration is missing.');
 if (!serviceWorkerSource.includes("'/js/live-chat.js'")) errors.push('v235.6.2 PWA shell does not precache the live-chat runtime.');
 if (!html.includes('id="liveChatPanel"') || !html.includes('id="chatToggle"') || !html.includes('id="chatUnreadBadge"')) errors.push('v235.6.2 live-chat panel/toggle UI is missing.');
 if (!html.includes('<script src="js/live-chat.js"></script>')) errors.push('v235.6.2 index is missing the persistent live-chat runtime.');

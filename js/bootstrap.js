@@ -265,7 +265,7 @@
   function loadAtmEcosystemGuide() {
     if (global.ATMAtmGuide || document.querySelector('script[data-atm-ecosystem-guide]')) return;
     const script = document.createElement('script');
-    script.src = '/js/atm-ecosystem-guide.js?v=1.0.0';
+    script.src = '/js/atm-ecosystem-guide.js?v=1.1.0';
     script.async = false;
     script.dataset.atmEcosystemGuide = '1';
     script.onerror = () => script.remove();

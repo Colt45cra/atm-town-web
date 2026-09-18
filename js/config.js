@@ -186,12 +186,21 @@
     ])
   });
 
+  const CLAIM_PORTALS = Object.freeze({
+    genesisHolderRewards: Object.freeze({
+      id: 'genesis-holder-rewards-1',
+      title: 'ALL THE MONEY Genesis Rewards',
+      portalUrl: 'https://payload-omega-gules.vercel.app/claim/genesis-holder-rewards-1-2'
+    })
+  });
+
   global.ATM_TOWN_CONFIG = Object.freeze({
     tileSize: TILE_SIZE,
     build: BUILD,
     maps: MAPS,
     supabaseCdnSources: SUPABASE_CDN_SOURCES,
     embeddedWallet: EMBEDDED_WALLET,
-    attributeStore: ATTRIBUTE_STORE
+    attributeStore: ATTRIBUTE_STORE,
+    claimPortals: CLAIM_PORTALS
   });
 })(window);

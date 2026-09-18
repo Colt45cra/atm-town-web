@@ -16,6 +16,8 @@
   const OUTSIDE_RESET_MS=1200;
   const NEXT_THRESHOLD=3;
   const ATM_ISSUER='raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ';
+  const CLAIM_PORTAL=global.ATM_TOWN_CONFIG?.claimPortals?.genesisHolderRewards||null;
+  const CLAIM_PORTAL_URL=String(CLAIM_PORTAL?.portalUrl||'');
 
   const state={
     open:false,
@@ -26,7 +28,9 @@
     beckonLine:'',
     answered:new Set(),
     answerId:'welcome',
-    ecosystemShown:false
+    ecosystemShown:false,
+    mode:'menu',
+    rewardsOpen:false
   };
 
   const QUESTIONS=Object.freeze([
@@ -122,6 +126,8 @@
 .atmGuideBody{height:63px;overflow:hidden;padding:6px}.atmGuideQuestions{box-sizing:border-box;width:100%;height:51px;display:flex;flex-flow:row nowrap;align-items:stretch;gap:7px;overflow-x:auto;overflow-y:hidden;padding:0 3px 2px;pointer-events:auto;touch-action:pan-x;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;scrollbar-width:none}.atmGuideQuestions::-webkit-scrollbar{display:none}.atmGuideQuestion{box-sizing:border-box;flex:0 0 clamp(152px,36vw,210px);height:49px;display:flex;align-items:center;justify-content:flex-start;padding:7px 10px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:var(--atm-npc-question,rgba(12,36,48,.97));color:#eefaff;font:900 9px/1.18 system-ui;text-align:left;scroll-snap-align:start;pointer-events:auto;touch-action:pan-x;-webkit-user-select:none;user-select:none}.atmGuideQuestion.asked{border-color:var(--atm-npc-accent-soft);color:var(--atm-npc-answered,#ffd166)}
 #atmGuideNextPrompt{position:fixed;left:50%;bottom:max(54px,calc(env(safe-area-inset-bottom) + 38px));transform:translateX(-50%);z-index:9785;display:none;align-items:center;justify-content:center;width:min(390px,calc(100vw - 28px));min-height:42px;padding:8px 14px;border:1px solid var(--atm-npc-accent-soft);border-radius:12px;background:linear-gradient(90deg,var(--atm-npc-reward-a),var(--atm-npc-reward-b));box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 18px rgba(255,79,163,.12);color:var(--atm-npc-reward-text,#fff);font:1000 10px/1.15 system-ui;text-align:center;pointer-events:auto;touch-action:manipulation}.visible#atmGuideNextPrompt{display:flex}
 #atmGuideWorldSpeech{position:fixed;z-index:9790;display:none;width:min(300px,76vw);max-width:300px;padding:10px 11px 9px;border:1px solid var(--atm-npc-accent-soft);border-radius:14px;background:var(--atm-npc-speech,rgba(5,26,35,.96));color:var(--atm-npc-speech-text,#efffff);box-shadow:0 14px 38px rgba(0,0,0,.5),0 0 24px rgba(88,241,230,.1);transform:translate(-50%,-100%);transform-origin:50% 100%;pointer-events:auto}#atmGuideWorldSpeech:after{content:'';position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border:8px solid transparent;border-top-color:var(--atm-npc-accent-soft);border-bottom:0}.atmGuideWorldName{color:var(--atm-npc-accent,#58f1e6);font:1000 8px/1 system-ui;letter-spacing:.12em;margin-bottom:5px}.atmGuideWorldText{font:800 11px/1.4 system-ui;color:var(--atm-npc-speech-text,#efffff)}
+.atmGuideQuestion.primaryChoice{flex-basis:clamp(190px,44vw,270px);justify-content:center;text-align:center;font-size:10px}.atmGuideQuestion.claimChoice{border-color:rgba(255,209,102,.72);background:linear-gradient(135deg,rgba(109,73,5,.98),rgba(160,35,90,.98));color:#fff7d6;box-shadow:0 0 18px rgba(255,209,102,.12)}.atmGuideQuestion.backChoice{flex-basis:130px;color:#9eeefa}
+#atmRewardsPanel{position:fixed;inset:0;z-index:22000;display:none;align-items:stretch;justify-content:center;padding:max(7px,env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) max(7px,env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));box-sizing:border-box;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:auto}#atmRewardsPanel.open{display:flex}.atmRewardsShell{position:relative;width:min(760px,100%);height:100%;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(255,205,56,.62);border-radius:18px;background:#08090b;box-shadow:0 24px 80px rgba(0,0,0,.72),0 0 30px rgba(255,205,56,.12)}.atmRewardsHeader{flex:0 0 auto;min-height:54px;display:flex;align-items:center;gap:10px;padding:8px 9px 8px 14px;border-bottom:1px solid rgba(255,255,255,.09);background:linear-gradient(90deg,#161108,#341021)}.atmRewardsHeading{min-width:0;flex:1}.atmRewardsEyebrow{color:#ffd166;font:1000 8px/1 system-ui;letter-spacing:.14em}.atmRewardsHeading h2{margin:4px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font:1000 14px/1 system-ui}.atmRewardsExternal,.atmRewardsClose{display:flex;align-items:center;justify-content:center;min-height:36px;border-radius:10px;font:1000 10px/1 system-ui;touch-action:manipulation}.atmRewardsExternal{padding:0 12px;border:1px solid rgba(255,209,102,.42);background:rgba(255,209,102,.12);color:#ffe29a;text-decoration:none}.atmRewardsClose{width:38px;flex:0 0 38px;border:1px solid rgba(255,255,255,.17);background:rgba(255,255,255,.08);color:#fff;font-size:20px}.atmRewardsFrameWrap{position:relative;min-height:0;flex:1;background:#09090b}.atmRewardsFrame{width:100%;height:100%;display:block;border:0;background:#09090b}.atmRewardsLoading{position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:#09090b;color:#ffd166;font:900 12px/1.4 system-ui;text-align:center;pointer-events:none}.atmRewardsLoading.loaded{display:none}body.atm-rewards-open{overflow:hidden}body.atm-rewards-open #controls,body.atm-rewards-open #hint,body.atm-rewards-open #hudSocialRail,body.atm-rewards-open #chatComposerDock{visibility:hidden!important;pointer-events:none!important}
 @media(max-width:600px){#atmGuideBeckon{width:min(238px,calc(100vw - 28px));min-width:min(238px,calc(100vw - 28px));max-width:min(238px,calc(100vw - 28px))}#atmGuideCard{bottom:max(160px,calc(env(safe-area-inset-bottom) + 144px));width:calc(100vw - 12px);height:88px;grid-template-rows:29px 59px;border-radius:12px}.atmGuideHeader{height:29px}.atmGuideBody{height:59px;padding:5px}.atmGuideQuestions{height:49px;gap:6px}.atmGuideQuestion{flex-basis:clamp(145px,44vw,190px);height:47px;font-size:8.7px;padding:6px 9px}#atmGuideNextPrompt{bottom:max(108px,calc(env(safe-area-inset-bottom) + 92px));width:min(330px,calc(100vw - 40px));min-height:40px;font-size:9.5px}#atmGuideWorldSpeech{width:min(310px,82vw);max-width:310px;padding:9px 10px}.atmGuideWorldText{font-size:10px;line-height:1.38}}
 `;
     document.head.appendChild(style);
@@ -143,7 +149,14 @@
 
     const beckon=document.createElement('div');beckon.id='atmGuideBeckon';beckon.setAttribute('aria-hidden','true');document.body.appendChild(beckon);
 
+    const rewards=document.createElement('section');
+    rewards.id='atmRewardsPanel';rewards.setAttribute('aria-hidden','true');rewards.setAttribute('aria-label','ATM Genesis Rewards claim portal');
+    rewards.innerHTML=`<div class="atmRewardsShell" role="dialog" aria-modal="true" aria-labelledby="atmRewardsTitle"><header class="atmRewardsHeader"><div class="atmRewardsHeading"><div class="atmRewardsEyebrow">PAYLOAD · HOLDER REWARDS</div><h2 id="atmRewardsTitle">${String(CLAIM_PORTAL?.title||'ATM Genesis Rewards')}</h2></div><a class="atmRewardsExternal" id="atmRewardsExternal" href="${CLAIM_PORTAL_URL}" target="_blank" rel="noopener noreferrer">OPEN ↗</a><button class="atmRewardsClose" id="atmRewardsClose" type="button" aria-label="Close rewards portal">×</button></header><div class="atmRewardsFrameWrap"><div class="atmRewardsLoading" id="atmRewardsLoading">Loading the secure Payload claim portal…</div><iframe class="atmRewardsFrame" id="atmRewardsFrame" title="ATM Genesis Rewards claim portal" referrerpolicy="no-referrer" allow="clipboard-write"></iframe></div></div>`;
+    document.body.appendChild(rewards);
+
     document.getElementById('atmGuideClose')?.addEventListener('click',closeDialogue);
+    document.getElementById('atmRewardsClose')?.addEventListener('click',closeRewards);
+    document.getElementById('atmRewardsFrame')?.addEventListener('load',()=>document.getElementById('atmRewardsLoading')?.classList.add('loaded'));
     const host=document.getElementById('atmGuideQuestions');
     for(const type of ['pointerdown','pointerup','click'])host?.addEventListener(type,event=>{if(event.target?.closest?.('.atmGuideQuestion'))event.stopPropagation();},{passive:type!=='click'});
 
@@ -151,14 +164,62 @@
     if(standard&&profile){
       for(const node of [panel,document.getElementById('atmGuideCard'),speech,prompt,beckon])standard.applyTheme(node,profile);
     }
+    document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(state.rewardsOpen)closeRewards();else if(state.open)closeDialogue();});
     renderQuestions();showAnswer('welcome');
+  }
+
+  function isTrustedClaimPortal(){
+    try{
+      const url=new URL(CLAIM_PORTAL_URL);
+      return url.protocol==='https:'&&url.hostname==='payload-omega-gules.vercel.app'&&url.pathname.startsWith('/claim/');
+    }catch(_error){return false;}
+  }
+
+  function openRewards(){
+    ensureUi();
+    if(!isTrustedClaimPortal()){
+      const text=document.getElementById('atmGuideWorldText');
+      if(text)text.textContent='The Genesis Rewards portal is temporarily unavailable. Please try again after the town configuration is updated.';
+      return;
+    }
+    closeDialogue();state.rewardsOpen=true;
+    const panel=document.getElementById('atmRewardsPanel');
+    const frame=document.getElementById('atmRewardsFrame');
+    const loading=document.getElementById('atmRewardsLoading');
+    loading?.classList.remove('loaded');
+    if(frame&&!frame.getAttribute('src'))frame.setAttribute('src',CLAIM_PORTAL_URL);
+    if(panel){panel.classList.add('open');panel.setAttribute('aria-hidden','false');}
+    document.body.classList.add('atm-rewards-open');
+  }
+
+  function closeRewards(){
+    state.rewardsOpen=false;
+    const panel=document.getElementById('atmRewardsPanel');
+    if(panel){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
+    document.body.classList.remove('atm-rewards-open');
+  }
+
+  function showLearnMenu(){
+    state.mode='learn';state.answerId='welcome';
+    const text=document.getElementById('atmGuideWorldText');
+    if(text)text.textContent='Ask me anything about ATM, the town, ATM Pay, the NFTs, or the XRPL tools. Swipe the choices below to explore.';
+    renderQuestions();syncNextPrompt();
+  }
+
+  function showFirstChoices(){
+    state.mode='menu';state.answerId='welcome';state.ecosystemShown=false;
+    const text=document.getElementById('atmGuideWorldText');
+    if(text)text.textContent='Welcome to ATM Town. Would you like to learn about ATM or claim your Genesis holder reward tokens?';
+    renderQuestions();syncNextPrompt();
   }
 
   function showAnswer(id){
     ensureUi();state.answerId=id;
     const text=document.getElementById('atmGuideWorldText');
     if(id==='welcome'){
-      if(text)text.textContent='Welcome to ATM Town. Around here, ATM means All The Money — but the idea is bigger than a ticker. You are all the money. Pick a question and I’ll show you how the town, the wallet, the collectibles, and the XRPL tools fit together.';
+      if(text)text.textContent=state.mode==='menu'
+        ?'Welcome to ATM Town. Would you like to learn about ATM or claim your Genesis holder reward tokens?'
+        :'Ask me anything about ATM, the town, ATM Pay, the NFTs, or the XRPL tools. Swipe the choices below to explore.';
     }else{
       const item=QUESTIONS.find(q=>q.id===id);
       if(item){state.answered.add(id);if(text)text.textContent=item.answer;}
@@ -168,9 +229,15 @@
 
   function renderQuestions(){
     const host=document.getElementById('atmGuideQuestions');if(!host)return;host.textContent='';
+    if(state.mode==='menu'){
+      const learn=document.createElement('button');learn.type='button';learn.className='atmGuideQuestion primaryChoice';learn.textContent='LEARN ABOUT ATM';learn.addEventListener('click',showLearnMenu);host.appendChild(learn);
+      const claim=document.createElement('button');claim.type='button';claim.className='atmGuideQuestion primaryChoice claimChoice';claim.textContent='CLAIM REWARD TOKENS';claim.addEventListener('click',openRewards);host.appendChild(claim);
+      return;
+    }
     const initial=['what','motto','town','pay','machine'];
     const followups=['token','xrpl','nfts','custody','community','future','price'];
     const visible=state.answered.size?initial.concat(followups):initial;
+    const back=document.createElement('button');back.type='button';back.className='atmGuideQuestion backChoice';back.textContent='← FIRST CHOICES';back.addEventListener('click',showFirstChoices);host.appendChild(back);
     for(const id of visible){
       const q=QUESTIONS.find(item=>item.id===id);if(!q)continue;
       const button=document.createElement('button');button.type='button';button.className='atmGuideQuestion'+(state.answered.has(id)?' asked':'');button.dataset.npcQuestion=id;button.textContent=q.label;button.addEventListener('click',()=>showAnswer(id));host.appendChild(button);
@@ -179,7 +246,7 @@
 
   function syncNextPrompt(){
     const prompt=document.getElementById('atmGuideNextPrompt');if(!prompt)return;
-    prompt.classList.toggle('visible',state.open&&state.answered.size>=NEXT_THRESHOLD&&!state.ecosystemShown);
+    prompt.classList.toggle('visible',state.open&&state.mode==='learn'&&state.answered.size>=NEXT_THRESHOLD&&!state.ecosystemShown);
   }
 
   function showEcosystem(){
@@ -191,7 +258,7 @@
 
   function openDialogue(){
     if(!inTown()||distanceToAtm()>TALK_RADIUS+18)return false;
-    ensureUi();state.open=true;state.beckonUntil=0;state.ecosystemShown=false;
+    ensureUi();state.open=true;state.beckonUntil=0;state.ecosystemShown=false;state.mode='menu';state.answerId='welcome';
     const panel=document.getElementById('atmGuidePanel');if(panel){panel.classList.add('open');panel.setAttribute('aria-hidden','false');}
     const beckon=document.getElementById('atmGuideBeckon');if(beckon)beckon.style.display='none';
     facePlayer(getAtmNpc());showAnswer(state.answerId||'welcome');syncNextPrompt();return true;
@@ -279,6 +346,6 @@
     };
   }catch(error){console.warn('ATM guide could not hook town bot movement.',error);}
 
-  global.ATMAtmGuide=Object.freeze({open:openDialogue,close:closeDialogue,getAtm:getAtmNpc,distance:distanceToAtm,issuer:ATM_ISSUER,questions:QUESTIONS});
+  global.ATMAtmGuide=Object.freeze({open:openDialogue,close:closeDialogue,openRewards,closeRewards,getAtm:getAtmNpc,distance:distanceToAtm,issuer:ATM_ISSUER,questions:QUESTIONS,claimPortalUrl:CLAIM_PORTAL_URL});
   ensureUi();requestAnimationFrame(tick);
 })(window);
