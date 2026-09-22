@@ -134,7 +134,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     if(button)button.disabled=true;if(status)status.textContent='Claiming 6 $666 from Payload…';
     try{
       if(typeof global.atmApiWithAuth!=='function')throw new Error('Sign in to ATM Town before claiming Luci’s reward.');
-      const result=await global.atmApiWithAuth('/api/reward-claim',{
+      const result=await global.atmApiWithAuth('/api/xaman-vending-start?commerce=luci-666-claim',{
         method:'POST',
         body:JSON.stringify({program:'luci-666-welcome'})
       });
