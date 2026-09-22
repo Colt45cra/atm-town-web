@@ -131,15 +131,21 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
 
   async function requestReward(){
     const button=document.getElementById('luci666Claim'),status=document.getElementById('luci666Status');
-    if(button)button.disabled=true;if(status)status.textContent='Checking reward connection…';
-    const detail={campaign:'luci-666-welcome',amount:'6',currency:'666',issuer:ISSUER};
-    let handled=false;
+    if(button)button.disabled=true;if(status)status.textContent='Claiming 6 $666 from Payload…';
     try{
-      const event=new CustomEvent('atm:luci-666-claim-request',{detail:{...detail,respond(result){handled=true;finishReward(result);}}});
-      global.dispatchEvent(event);
-    }catch(_error){}
-    await new Promise(resolve=>setTimeout(resolve,450));
-    if(!handled)finishReward({ok:false,pending:true,message:'Reward payout is ready for server connection, but no funded $666 sender is configured yet.'});
+      if(typeof global.atmApiWithAuth!=='function')throw new Error('Sign in to ATM Town before claiming Luci’s reward.');
+      const result=await global.atmApiWithAuth('/api/reward-claim',{
+        method:'POST',
+        body:JSON.stringify({program:'luci-666-welcome'})
+      });
+      finishReward({
+        ok:result?.ok===true,
+        pending:result?.pending===true,
+        message:result?.message||(result?.ok===true?'6 $666 sent and confirmed on XRPL. 🔥':'Reward claim is still processing.')
+      });
+    }catch(error){
+      finishReward({ok:false,message:error?.message||'Could not claim Luci’s $666 reward yet.'});
+    }
   }
   function finishReward(result={}){
     const button=document.getElementById('luci666Claim'),status=document.getElementById('luci666Status');
