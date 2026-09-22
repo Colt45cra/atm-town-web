@@ -9,6 +9,7 @@ import {
   xamanHeaders,
   xamanError
 } from '../lib/xaman-vending.js';
+import { payloadIntegrationRequest } from '../lib/payload-integration.js';
 import {
   ATTRIBUTE_STORE_DESTINATION,
   ATTRIBUTE_STORE_PAYMENT_WINDOW_MINUTES,
@@ -222,6 +223,77 @@ async function handleLuci666Trustline(req, res) {
   });
 }
 
+async function handleLuci666RewardClaim(req, res) {
+  const { admin, user } = await requireUser(req);
+  const { data: account, error } = await admin
+    .from('player_accounts')
+    .select('wallet_address')
+    .eq('user_id', user.id)
+    .single();
+  if (error) throw error;
+
+  // The embedded ATM Pay wallet is intentionally Testnet-only today. Mainnet
+  // NPC rewards therefore resolve the player's verified linked Xaman address
+  // server-side. A future Mainnet ATM Pay resolver can be added here without
+  // changing Luci or exposing a destination override to the browser.
+  const wallet = String(account?.wallet_address || '').trim();
+  if (!XRPL_ADDRESS.test(wallet)) {
+    throw Object.assign(new Error('Link and verify a Mainnet Xaman wallet in ATM Town before claiming Luci’s reward.'), { status: 409 });
+  }
+
+  if (!(await checkLuci666Trustline(wallet))) {
+    throw Object.assign(new Error('Create the $666 trustline before claiming Luci’s reward.'), { status: 409 });
+  }
+
+  const result = await payloadIntegrationRequest(
+    '/api/integrations/v1/reward-programs/luci-666-welcome/claim',
+    { walletAddress: wallet, externalUserId: user.id },
+    { timeoutMs: 30_000 },
+  );
+
+  const status = String(result?.status || '');
+  const amount = String(result?.amount || '6');
+  const currency = String(result?.currency || LUCI_666_CURRENCY);
+  const txHash = String(result?.txHash || '');
+  const alreadyClaimed = result?.alreadyClaimed === true;
+
+  if (status === 'success') {
+    return res.status(200).json({
+      ok: true,
+      status,
+      network: 'mainnet',
+      wallet,
+      amount,
+      currency,
+      issuer: LUCI_666_ISSUER,
+      already_claimed: alreadyClaimed,
+      tx_hash: txHash || null,
+      message: alreadyClaimed
+        ? `This wallet already claimed Luci’s ${amount} ${currency} welcome reward.`
+        : `${amount} ${currency} sent and confirmed on XRPL. 🔥`,
+    });
+  }
+
+  if (status === 'pending') {
+    return res.status(202).json({
+      ok: false,
+      pending: true,
+      status,
+      network: 'mainnet',
+      wallet,
+      amount,
+      currency,
+      issuer: LUCI_666_ISSUER,
+      tx_hash: txHash || null,
+      message: txHash
+        ? 'Your reward transaction was submitted and is waiting for XRPL validation.'
+        : 'Your reward claim is reserved and is still processing.',
+    });
+  }
+
+  throw Object.assign(new Error(result?.error || 'Payload could not complete Luci’s reward payment.'), { status: 502 });
+}
+
 async function handleAttributeStoreGet(req, res) {
   const mode = String(req.query?.mode || 'catalog').toLowerCase();
   if (mode === 'catalog') {
@@ -324,6 +396,10 @@ export default async function handler(req, res) {
     const commerce = String(req.query?.commerce || '').toLowerCase();
     if (commerce === 'luci-666-trustline') {
       return await handleLuci666Trustline(req, res);
+    }
+    if (commerce === 'luci-666-claim') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'POST required for Luci reward claims.' });
+      return await handleLuci666RewardClaim(req, res);
     }
     if (commerce === 'attribute-store') {
       if (req.method === 'GET') return await handleAttributeStoreGet(req, res);
