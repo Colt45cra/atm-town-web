@@ -138,11 +138,14 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
         method:'POST',
         body:JSON.stringify({program:'luci-666-welcome'})
       });
-      finishReward({
-        ok:result?.ok===true,
-        pending:result?.pending===true,
-        message:result?.message||(result?.ok===true?'6 $666 sent and confirmed on XRPL. 🔥':'Reward claim is still processing.')
-      });
+      const wallet=String(result?.wallet||'');
+      const walletType=String(result?.wallet_type||'xaman').toLowerCase()==='atm-pay'?'ATM Pay':'Xaman';
+      const txHash=String(result?.tx_hash||'');
+      const receipt=result?.ok===true
+        ? `${result?.amount||'6'} ${result?.currency||'$666'} sent to ${walletType} wallet ${wallet||'—'}.${txHash?` XRPL tx: ${txHash}`:''}`
+        : (result?.message||'Reward claim is still processing.');
+      finishReward({ok:result?.ok===true,pending:result?.pending===true,alreadyClaimed:result?.already_claimed===true,wallet,walletType,txHash,amount:String(result?.amount||'6'),currency:String(result?.currency||'$666'),message:receipt});
+      return { ...result, receipt };
     }catch(error){
       finishReward({ok:false,message:error?.message||'Could not claim Luci’s $666 reward yet.'});
     }
@@ -151,6 +154,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     const button=document.getElementById('luci666Claim'),status=document.getElementById('luci666Status');
     if(button)button.disabled=!!result.ok;
     if(status)status.textContent=result.ok?(result.message||'6 $666 sent and confirmed on XRPL. 🔥'):(result.message||'Could not claim the reward yet.');
+    global.dispatchEvent(new CustomEvent('atm:npc-reward-receipt',{detail:result}));
   }
 
   function triggerBeckon(now){
