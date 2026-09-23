@@ -118,7 +118,16 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     if(!document.getElementById('luci666PrivateCoin')){
       const coin=document.createElement('button');
       coin.type='button';coin.id='luci666PrivateCoin';coin.setAttribute('aria-label','Pick up Luci’s 6 $666 welcome reward');coin.textContent='6';
-      coin.addEventListener('click',pickupCoin);document.body.appendChild(coin);
+      // Mobile game input can swallow a synthetic click after a pointer gesture.
+      // Handle the pickup directly on pointer-up as well as click, and stop the
+      // event before the canvas/joystick handlers see it.
+      for(const type of ['pointerdown','pointerup','click']){
+        coin.addEventListener(type,event=>{
+          event.preventDefault();event.stopPropagation();
+          if(type!=='pointerdown')pickupCoin();
+        },{passive:false});
+      }
+      document.body.appendChild(coin);
     }
   }
 
@@ -240,7 +249,17 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     if(!coin||!giftState.coin){if(coin)coin.classList.remove('visible');return;}
     const point=worldToScreen(giftState.coin.x,giftState.coin.y-8);if(!point){coin.classList.remove('visible');return;}
     coin.classList.add('visible');coin.style.left=`${point.x}px`;coin.style.top=`${point.y}px`;
-    try{if(Math.hypot(player.x-giftState.coin.x,player.y-giftState.coin.y)<=28&&!giftState.pickupAttempted&&!giftState.pickupBusy)pickupCoin();}catch(_error){}
+    // Treat the reward like a real world pickup, not a precision hotspot.
+    // Player coordinates are anchored near the sprite's feet while the visual
+    // body extends well above them, so 28 world pixels was too strict on mobile.
+    try{
+      const px=Number(player?.x),py=Number(player?.y);
+      if(Number.isFinite(px)&&Number.isFinite(py)){
+        const dx=px-giftState.coin.x,dy=py-giftState.coin.y;
+        const closeEnough=Math.abs(dx)<=54&&Math.abs(dy)<=68;
+        if(closeEnough&&!giftState.pickupAttempted&&!giftState.pickupBusy)pickupCoin();
+      }
+    }catch(_error){}
   }
 
   async function pickupCoin(){
