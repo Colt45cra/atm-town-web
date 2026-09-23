@@ -197,6 +197,21 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     const now=Date.now();if(!force&&now-giftState.lastCheck<POLL_MS)return;
     giftState.lastCheck=now;giftState.resolving=true;clearActions();
     try{
+      // Payload is the source of truth. Never spawn a visual reward for a
+      // wallet whose one-time claim is already reserved/submitted/successful.
+      if(typeof global.ATMLuci666?.getRewardStatus==='function'){
+        const claim=await global.ATMLuci666.getRewardStatus();
+        if(claim?.already_claimed===true){
+          giftState.mode='claimed';giftState.coin=null;
+          document.getElementById('luci666PrivateCoin')?.classList.remove('visible');
+          const label=String(claim.wallet_label||claim.wallet_source||'linked wallet');
+          const wallet=String(claim.wallet||'');
+          const short=wallet.length>16?wallet.slice(0,8)+'…'+wallet.slice(-6):wallet;
+          const tx=claim.tx_hash?' XRPL transaction '+String(claim.tx_hash).slice(0,10)+'… is recorded.':'';
+          speechText(`You already claimed my 6 $666 welcome reward. It was sent to your ${label} ${short}.${tx}`);
+          return;
+        }
+      }
       loadTrustlineGate();
       let waits=0;while(!trustlineModule()&&waits<25){await new Promise(r=>setTimeout(r,80));waits++;}
       const trust=trustlineModule();
@@ -274,11 +289,19 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     giftState.pickupBusy=true;giftState.pickupAttempted=true;speechText('That one’s yours, LightBringer. Picking it up now…');clearActions();
     try{
       if(typeof global.ATMLuci666?.requestReward!=='function')throw new Error('The reward connection is not ready yet.');
-      await global.ATMLuci666.requestReward();await new Promise(r=>setTimeout(r,650));
-      const status=hiddenStatus();
-      const success=/sent and confirmed|validated|confirmed on xrpl|success/i.test(status)&&!/could not|no funded|not configured|pending/i.test(status);
-      if(success){giftState.coin=null;document.getElementById('luci666PrivateCoin')?.classList.remove('visible');speechText('There you go — 6 $666, confirmed. Be the Light. 🔥');}
-      else{speechText(status||'Your coin is reserved for you, but the $666 payout connection is not ready yet. It will stay here instead of pretending the send happened.');addAction('TRY PICKUP AGAIN',()=>{giftState.pickupAttempted=false;pickupCoin();},true);}
+      const result=await global.ATMLuci666.requestReward();
+      if(result?.ok===true){
+        giftState.coin=null;document.getElementById('luci666PrivateCoin')?.classList.remove('visible');
+        const label=String(result.wallet_label||result.wallet_source||'linked wallet');
+        const wallet=String(result.wallet||'');const short=wallet.length>16?wallet.slice(0,8)+'…'+wallet.slice(-6):wallet;
+        speechText(result.already_claimed===true
+          ? `You already claimed this welcome reward. Your 6 $666 went to ${label} ${short}.`
+          : `There you go — 6 $666 confirmed and sent to ${label} ${short}. Be the Light. 🔥`);
+      }else{
+        const status=result?.message||hiddenStatus();
+        speechText(status||'Your coin is reserved for you, but the $666 payout connection is not ready yet. It will stay here instead of pretending the send happened.');
+        addAction('TRY PICKUP AGAIN',()=>{giftState.pickupAttempted=false;pickupCoin();},true);
+      }
     }catch(error){speechText(error?.message||'I couldn’t finish that pickup yet. Your coin is still yours.');addAction('TRY PICKUP AGAIN',()=>{giftState.pickupAttempted=false;pickupCoin();},true);}
     finally{giftState.pickupBusy=false;}
   }

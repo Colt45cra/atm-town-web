@@ -129,6 +129,24 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     document.body.classList.remove('luci-666-open');
   }
 
+  async function getRewardStatus(){
+    if(typeof global.atmApiWithAuth!=='function')throw new Error('Sign in to ATM Town before checking Luci’s reward.');
+    return global.atmApiWithAuth('/api/xaman-vending-start?commerce=luci-666-claim-status',{method:'GET'});
+  }
+  function shortWallet(address){
+    const value=String(address||'');return value.length>16?value.slice(0,8)+'…'+value.slice(-6):value;
+  }
+  function showRewardReceipt(result){
+    const toast=document.getElementById('xrplPaymentToast');if(!toast)return;
+    const amount=String(result?.amount||'6'),currency=String(result?.currency||'$666').replace(/^\$/,'');
+    const label=String(result?.wallet_label||result?.wallet_source||'reward wallet');
+    const wallet=String(result?.wallet||'');
+    const hash=String(result?.tx_hash||'');
+    toast.className='visible success';
+    toast.textContent=`REWARD SENT · ${amount} ${currency} → ${label} ${shortWallet(wallet)}${hash?' · TX '+hash.slice(0,10)+'…':''}`;
+    global.clearTimeout(showRewardReceipt.timer);
+    showRewardReceipt.timer=global.setTimeout(()=>{toast.classList.remove('visible','success');},10000);
+  }
   async function requestReward(){
     const button=document.getElementById('luci666Claim'),status=document.getElementById('luci666Status');
     if(button)button.disabled=true;if(status)status.textContent='Claiming 6 $666 from Payload…';
@@ -143,8 +161,11 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
         pending:result?.pending===true,
         message:result?.message||(result?.ok===true?'6 $666 sent and confirmed on XRPL. 🔥':'Reward claim is still processing.')
       });
+      if(result?.ok===true)showRewardReceipt(result);
+      return result;
     }catch(error){
       finishReward({ok:false,message:error?.message||'Could not claim Luci’s $666 reward yet.'});
+      throw error;
     }
   }
   function finishReward(result={}){
@@ -224,6 +245,6 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     };
   }catch(error){console.warn('Luci 666 could not hook town bot movement.',error);}
 
-  global.ATMLuci666=Object.freeze({open:openDialogue,close:closeDialogue,getLuci,distance:distanceToLuci,issuer:ISSUER,questions:QUESTIONS,requestReward});
+  global.ATMLuci666=Object.freeze({open:openDialogue,close:closeDialogue,getLuci,distance:distanceToLuci,issuer:ISSUER,questions:QUESTIONS,getRewardStatus,requestReward,showRewardReceipt});
   ensureUi();requestAnimationFrame(tick);
 })(window);
