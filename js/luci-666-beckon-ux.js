@@ -11,7 +11,7 @@
 
   const POLL_MS=700;
   const GIFT_QUESTION_THRESHOLD=3;
-  const giftState={resolving:false,mode:'idle',lastCheck:0,coin:null,pickupBusy:false,pickupAttempted:false};
+  const giftState={resolving:false,mode:'idle',lastCheck:0,coin:null,pickupBusy:false,pickupAttempted:false,claimed:false,receipt:null};
   let lastOrdinaryAnswer='';
 
   function panelOpen(){return document.getElementById('luci666Panel')?.classList.contains('open')===true;}
@@ -192,8 +192,19 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   function trustlineModule(){return global.ATMLuci666Trustline||null;}
   function looksLikeMissingWallet(message){return /link and verify xaman|sign in to atm town|wallet.*before|no linked/i.test(String(message||''));}
 
+  function showReceipt(receipt={}){
+    giftState.claimed=true;giftState.receipt=receipt;giftState.coin=null;
+    document.getElementById('luci666PrivateCoin')?.classList.remove('visible');clearActions();
+    const walletType=receipt.walletType||'Xaman';
+    const wallet=receipt.wallet||'your linked wallet';
+    const amount=receipt.amount||'6',currency=receipt.currency||'$666';
+    const tx=receipt.txHash?\` XRPL tx: \${receipt.txHash}\`:'';
+    speechText(\`Already claimed — \${amount} \${currency} was sent to your \${walletType} wallet \${wallet}.\${tx}\`);
+  }
+
   async function resolveGiftState(force=false){
     if(!panelOpen()||!giftSelected()||giftState.resolving)return;
+    if(giftState.claimed){showReceipt(giftState.receipt||{});return;}
     const now=Date.now();if(!force&&now-giftState.lastCheck<POLL_MS)return;
     giftState.lastCheck=now;giftState.resolving=true;clearActions();
     try{
@@ -274,10 +285,12 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     giftState.pickupBusy=true;giftState.pickupAttempted=true;speechText('That one’s yours, LightBringer. Picking it up now…');clearActions();
     try{
       if(typeof global.ATMLuci666?.requestReward!=='function')throw new Error('The reward connection is not ready yet.');
-      await global.ATMLuci666.requestReward();await new Promise(r=>setTimeout(r,650));
+      const result=await global.ATMLuci666.requestReward();await new Promise(r=>setTimeout(r,250));
       const status=hiddenStatus();
-      const success=/sent and confirmed|validated|confirmed on xrpl|success/i.test(status)&&!/could not|no funded|not configured|pending/i.test(status);
-      if(success){giftState.coin=null;document.getElementById('luci666PrivateCoin')?.classList.remove('visible');speechText('There you go — 6 $666, confirmed. Be the Light. 🔥');}
+      const success=result?.ok===true||(/sent and confirmed|validated|confirmed on xrpl|success/i.test(status)&&!/could not|no funded|not configured|pending/i.test(status));
+      if(success){
+        showReceipt({wallet:result?.wallet,walletType:String(result?.wallet_type||'xaman').toLowerCase()==='atm-pay'?'ATM Pay':'Xaman',txHash:result?.tx_hash,amount:result?.amount||'6',currency:result?.currency||'$666'});
+      }
       else{speechText(status||'Your coin is reserved for you, but the $666 payout connection is not ready yet. It will stay here instead of pretending the send happened.');addAction('TRY PICKUP AGAIN',()=>{giftState.pickupAttempted=false;pickupCoin();},true);}
     }catch(error){speechText(error?.message||'I couldn’t finish that pickup yet. Your coin is still yours.');addAction('TRY PICKUP AGAIN',()=>{giftState.pickupAttempted=false;pickupCoin();},true);}
     finally{giftState.pickupBusy=false;}
@@ -320,7 +333,11 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   let resizeTimer=0;
   global.addEventListener('resize',()=>{global.clearTimeout(resizeTimer);resizeTimer=global.setTimeout(apply,120);},{passive:true});
 
-  global.ATMLuci666BeckonUx=Object.freeze({apply,resolveGiftState,spawnCoin,pickupCoin});
+  global.addEventListener('atm:npc-reward-receipt',event=>{
+    const detail=event?.detail||{};
+    if(detail.ok)showReceipt(detail);
+  });
+  global.ATMLuci666BeckonUx=Object.freeze({apply,resolveGiftState,spawnCoin,pickupCoin,showReceipt});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
 })(window);
