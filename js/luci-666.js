@@ -104,11 +104,13 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     const text=document.getElementById('luci666AnswerText');
     const claim=document.getElementById('luci666Claim');
     if(id==='welcome'){
-      if(text)text.textContent=state.rewardClaim?.already_claimed===true?claimedWelcome(state.rewardClaim):'Well, look who wandered into my corner of ATM Town. Pick a question, LightBringer. I deal in sixes — and I’ve got a one-time 6 $666 welcome gift for eligible visitors.';
+      if(text)text.textContent='Well, look who wandered into my corner of ATM Town. Pick a question, LightBringer. I deal in sixes — and I’ve got a one-time 6 $666 welcome gift for eligible visitors.';
+    }else if(id==='gift'&&state.rewardClaim?.already_claimed===true){
+      if(text)text.textContent=claimedWelcome(state.rewardClaim);
     }else if(item){
       state.answered.add(id);if(text)text.textContent=item.answer;
     }
-    if(claim)claim.classList.toggle('visible',id==='gift');
+    if(claim)claim.classList.toggle('visible',id==='gift'&&state.rewardClaim?.already_claimed!==true);
     renderQuestions();
   }
 
@@ -121,7 +123,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       const q=QUESTIONS.find(item=>item.id===id);if(!q)continue;
       const button=document.createElement('button');button.type='button';button.className='luci666Question'+(state.answered.has(id)?' asked':'');button.textContent=q.label;button.addEventListener('click',()=>showAnswer(id));host.appendChild(button);
     }
-    if(state.rewardClaim?.already_claimed!==true){const gift=QUESTIONS.find(q=>q.id==='gift');const button=document.createElement('button');button.type='button';button.className='luci666Question reward'+(state.answered.has('gift')?' asked':'');button.textContent=gift.label;button.addEventListener('click',()=>showAnswer('gift'));host.appendChild(button);}
+    if(state.answered.size>=3){const gift=QUESTIONS.find(q=>q.id==='gift');const button=document.createElement('button');button.type='button';button.className='luci666Question reward'+(state.answered.has('gift')?' asked':'');button.textContent="I'm ready for my welcome gift.";button.addEventListener('click',()=>showAnswer('gift'));host.appendChild(button);}
   }
 
   function openDialogue(){
@@ -143,7 +145,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     try{
       const claim=await getRewardStatus();
       state.rewardClaim=claim||null;
-      if(state.open&&claim?.already_claimed===true){state.answerId='welcome';showAnswer('welcome');}
+      if(state.open)renderQuestions();
     }catch(_error){}finally{state.rewardStatusLoading=false;}
   }
   async function getRewardStatus(){
