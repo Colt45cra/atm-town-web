@@ -5573,6 +5573,10 @@ function drawMini(){
 function loop(t){
   pollGamepad(t);
   const dt=Math.min((t-last)/1000,.033);last=t;update(dt);
+  // Luci's reward pickup must use the authoritative player coordinates from
+  // the game engine. The dynamically loaded NPC overlay cannot reliably read
+  // this file's top-level lexical player binding on every mobile browser.
+  window.ATMLuci666BeckonUx?.updatePlayerPosition?.(player.x,player.y,currentMap);
   updateHordeNightfall(t);
   currentTownNightAlpha=Math.max(getTownNightAlpha(getSharedTownTimeMs()),hordeNightfallAlpha*HORDE_NIGHTFALL.nightMix);
   ctx.clearRect(0,0,W,H);

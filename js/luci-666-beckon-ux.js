@@ -264,7 +264,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       if(Number.isFinite(px)&&Number.isFinite(py)){
         const dx=px-giftState.coin.x,dy=py-giftState.coin.y;
         const closeEnough=Math.abs(dx)<=110&&Math.abs(dy)<=125;
-        if(closeEnough&&!giftState.pickupAttempted&&!giftState.pickupBusy)pickupCoin();
+        if(closeEnough&&!giftState.pickupBusy)pickupCoin();
       }
     }catch(_error){}
   }
