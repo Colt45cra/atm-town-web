@@ -223,7 +223,7 @@ async function handleLuci666Trustline(req, res) {
   });
 }
 
-async function handleLuci666RewardClaim(req, res) {
+async function resolveLuciRewardWallet(req) {
   const { admin, user } = await requireUser(req);
   const { data: account, error } = await admin
     .from('player_accounts')
@@ -232,14 +232,39 @@ async function handleLuci666RewardClaim(req, res) {
     .single();
   if (error) throw error;
 
-  // The embedded ATM Pay wallet is intentionally Testnet-only today. Mainnet
-  // NPC rewards therefore resolve the player's verified linked Xaman address
-  // server-side. A future Mainnet ATM Pay resolver can be added here without
-  // changing Luci or exposing a destination override to the browser.
+  // Mainnet NPC rewards currently resolve to the verified Xaman-linked wallet.
+  // Keep the source explicit in API receipts so a future Mainnet ATM Pay
+  // resolver can switch this to atm_pay without changing the NPC UI contract.
   const wallet = String(account?.wallet_address || '').trim();
   if (!XRPL_ADDRESS.test(wallet)) {
     throw Object.assign(new Error('Link and verify a Mainnet Xaman wallet in ATM Town before claiming Luci’s reward.'), { status: 409 });
   }
+  return { admin, user, wallet, walletSource: 'xaman_linked', walletLabel: 'Xaman linked wallet' };
+}
+
+async function handleLuci666RewardStatus(req, res) {
+  const { user, wallet, walletSource, walletLabel } = await resolveLuciRewardWallet(req);
+  const path = '/api/integrations/v1/reward-programs/luci-666-welcome/claim?walletAddress=' + encodeURIComponent(wallet);
+  const result = await payloadIntegrationRequest(path, null, { method: 'GET', timeoutMs: 15_000 });
+  return res.status(200).json({
+    ok: true,
+    network: 'mainnet',
+    wallet,
+    wallet_source: walletSource,
+    wallet_label: walletLabel,
+    amount: String(result?.amount || '6'),
+    currency: String(result?.currency || LUCI_666_CURRENCY),
+    issuer: String(result?.issuer || LUCI_666_ISSUER),
+    already_claimed: result?.alreadyClaimed === true,
+    claim_status: result?.claimStatus || null,
+    tx_hash: result?.txHash || null,
+    eligible: result?.eligible === true,
+    external_user_id: user.id,
+  });
+}
+
+async function handleLuci666RewardClaim(req, res) {
+  const { user, wallet, walletSource, walletLabel } = await resolveLuciRewardWallet(req);
 
   if (!(await checkLuci666Trustline(wallet))) {
     throw Object.assign(new Error('Create the $666 trustline before claiming Luci’s reward.'), { status: 409 });
@@ -263,6 +288,8 @@ async function handleLuci666RewardClaim(req, res) {
       status,
       network: 'mainnet',
       wallet,
+      wallet_source: walletSource,
+      wallet_label: walletLabel,
       amount,
       currency,
       issuer: LUCI_666_ISSUER,
@@ -281,6 +308,8 @@ async function handleLuci666RewardClaim(req, res) {
       status,
       network: 'mainnet',
       wallet,
+      wallet_source: walletSource,
+      wallet_label: walletLabel,
       amount,
       currency,
       issuer: LUCI_666_ISSUER,
