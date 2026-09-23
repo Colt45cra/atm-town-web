@@ -208,7 +208,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
           const wallet=String(claim.wallet||'');
           const short=wallet.length>16?wallet.slice(0,8)+'…'+wallet.slice(-6):wallet;
           const tx=claim.tx_hash?' XRPL transaction '+String(claim.tx_hash).slice(0,10)+'… is recorded.':'';
-          speechText(`You already claimed my 6 $666 welcome reward. It was sent to your ${label} ${short}.${tx}`);
+          speechText(`Looks like you already claimed your tokens. Glad to see you back to learn more! Your 6 $666 was sent to your ${label} ${short}.${tx}`);
           return;
         }
       }
