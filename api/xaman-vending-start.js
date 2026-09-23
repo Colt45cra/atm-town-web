@@ -263,6 +263,7 @@ async function handleLuci666RewardClaim(req, res) {
       status,
       network: 'mainnet',
       wallet,
+      wallet_type: 'xaman',
       amount,
       currency,
       issuer: LUCI_666_ISSUER,
