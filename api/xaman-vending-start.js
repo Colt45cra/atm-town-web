@@ -426,6 +426,10 @@ export default async function handler(req, res) {
     if (commerce === 'luci-666-trustline') {
       return await handleLuci666Trustline(req, res);
     }
+    if (commerce === 'luci-666-claim-status') {
+      if (req.method !== 'GET') return res.status(405).json({ error: 'GET required for Luci reward status.' });
+      return await handleLuci666RewardStatus(req, res);
+    }
     if (commerce === 'luci-666-claim') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'POST required for Luci reward claims.' });
       return await handleLuci666RewardClaim(req, res);
