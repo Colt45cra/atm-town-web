@@ -245,7 +245,7 @@
   function loadLuci666BeckonUx() {
     if (global.ATMLuci666BeckonUx || document.querySelector('script[data-atm-luci-666-beckon-ux]')) return;
     const script = document.createElement('script');
-    script.src = '/js/luci-666-beckon-ux.js?v=3.1.0';
+    script.src = '/js/luci-666-beckon-ux.js?v=3.1.1';
     script.async = false;
     script.dataset.atmLuci666BeckonUx = '1';
     script.onerror = () => script.remove();
