@@ -129,6 +129,13 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       }
       document.body.appendChild(coin);
     }
+    const action=document.getElementById('action');
+    if(action&&action.dataset.luciRewardPickup!=='1'){
+      action.dataset.luciRewardPickup='1';
+      action.addEventListener('click',()=>{
+        if(giftState.coin&&!giftState.pickupBusy&&!giftState.pickupAttempted)pickupCoin();
+      },true);
+    }
   }
 
   function applyBeckonSizing(){
@@ -256,7 +263,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       const px=Number(player?.x),py=Number(player?.y);
       if(Number.isFinite(px)&&Number.isFinite(py)){
         const dx=px-giftState.coin.x,dy=py-giftState.coin.y;
-        const closeEnough=Math.abs(dx)<=54&&Math.abs(dy)<=68;
+        const closeEnough=Math.abs(dx)<=110&&Math.abs(dy)<=125;
         if(closeEnough&&!giftState.pickupAttempted&&!giftState.pickupBusy)pickupCoin();
       }
     }catch(_error){}
