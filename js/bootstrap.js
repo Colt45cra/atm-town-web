@@ -235,7 +235,7 @@
   function loadLuci666Npc() {
     if (global.ATMLuci666 || document.querySelector('script[data-atm-luci-666]')) return;
     const script = document.createElement('script');
-    script.src = '/js/luci-666.js?v=1.0.2';
+    script.src = '/js/luci-666.js?v=1.0.3';
     script.async = false;
     script.dataset.atmLuci666 = '1';
     script.onerror = () => script.remove();
