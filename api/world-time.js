@@ -20,6 +20,7 @@ import {
   relayMoneyRainFunding,
   verifyMoneyRainFundingTransaction,
 } from '../lib/payload-money-rain.js';
+import { createMainnetMoneyRainDraft, mainnetMoneyRainStatus, startMainnetMoneyRainFunding, checkMainnetMoneyRainXaman } from '../lib/payload-money-rain-mainnet.js';
 
 const PAYLOAD_MONEY_RAIN_ACTIONS = new Set([
   'payload-create-money-rain',
@@ -29,6 +30,10 @@ const PAYLOAD_MONEY_RAIN_ACTIONS = new Set([
   'payload-funding-verify',
   'payload-funding-status',
   'start-funded-money-rain',
+  'payload-mainnet-create',
+  'payload-mainnet-fund',
+  'payload-mainnet-xaman-status',
+  'payload-mainnet-funding-status',
 ]);
 
 function noStore(res) {
@@ -70,6 +75,19 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && PAYLOAD_MONEY_RAIN_ACTIONS.has(action)) {
       const { admin, user } = await requireUser(req);
       const body = req.body || {};
+
+      if (action === 'payload-mainnet-create') {
+        await assertMoneyRainLaunchContext(admin, body);
+        const { sponsor } = await resolveMoneyRainSponsor(admin, user, body);
+        return res.status(201).json(await createMainnetMoneyRainDraft(admin, user, { poolAmount: body.pool_amount, asset: body.asset, sponsorMode: sponsor.mode, sponsorLabel: sponsor.label }));
+      }
+
+      if (action === 'payload-mainnet-fund') return res.status(200).json(await startMainnetMoneyRainFunding(admin, user, body.draft_token));
+      if (action === 'payload-mainnet-xaman-status') return res.status(200).json(await checkMainnetMoneyRainXaman(admin, user, body.draft_token, body.payload_uuid));
+      if (action === 'payload-mainnet-funding-status') {
+        const status = await mainnetMoneyRainStatus(admin, user, body.draft_token);
+        return res.status(200).json({ funded: status.funded, state: status.state });
+      }
 
       if (action === 'payload-create-money-rain') {
         await assertMoneyRainLaunchContext(admin, body);
