@@ -6,7 +6,11 @@
     "taxon": null,
     "transferable": true,
     "royalty_bps": null,
-    "status": "awaiting_issuer_taxon_supply_and_royalty"
+    "status": "awaiting_dedicated_issuer_authorized_minter_taxon_supply_and_royalty",
+    "authorized_minter": null,
+    "minting_model": "authorized-minter",
+    "platform_minimum_primary_sale_bps": 2000,
+    "batch_split_status": "future-batchv1_1"
   },
   "defaults": {
     "price_xrp": "3",
