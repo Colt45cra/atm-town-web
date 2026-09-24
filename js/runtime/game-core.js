@@ -5692,6 +5692,7 @@ const ATM_YOU_ARE_ATM_COLLECTION=Object.freeze({
   issuer:'rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H',
   taxon:1
 });
+const ATM_ATTRIBUTE_NFT_COLLECTION=ATM_CONFIG?.attributeNftCollection||Object.freeze({enabled:false,name:'ATM Town Attributes',issuer:'',taxon:null,itemIdField:'item_id'});
 // Explicit trait aliases only. These intentionally avoid fuzzy cross-category
 // matching so an unrelated NFT trait cannot unlock the wrong in-game asset.
 const ATM_YOU_ARE_ATM_TRAIT_RULES=Object.freeze({
@@ -5991,6 +5992,9 @@ function lockerDecodeHexUri(hex){
 }
 function lockerNormalizeTrait(value){return String(value??'').trim().toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
 function lockerIsYouAreAtmNft(nft){return String(nft?.Issuer||'')===ATM_YOU_ARE_ATM_COLLECTION.issuer&&Number(nft?.NFTokenTaxon)===ATM_YOU_ARE_ATM_COLLECTION.taxon;}
+function lockerIsOfficialAttributeNft(nft){const cfg=ATM_ATTRIBUTE_NFT_COLLECTION;if(cfg?.enabled!==true||!String(cfg?.issuer||'').trim()||!Number.isFinite(Number(cfg?.taxon)))return false;return String(nft?.Issuer||'')===String(cfg.issuer)&&Number(nft?.NFTokenTaxon)===Number(cfg.taxon);}
+function lockerOfficialAttributeItemId(nft){if(!lockerIsOfficialAttributeNft(nft))return '';const meta=lockerNftMetadata(nft);if(!meta||meta.status!=='resolved')return '';const field=String(ATM_ATTRIBUTE_NFT_COLLECTION?.itemIdField||'item_id');const direct=meta?.[field]??meta?.properties?.[field]??meta?.properties?.item_id??meta?.item_id;return String(direct||'').trim();}
+function lockerOfficialAttributeMatches(item,nft){return String(item?.id||'')!==''&&lockerOfficialAttributeItemId(nft)===String(item.id);}
 function lockerYouAreAtmNfts(){return lockerState.nfts.filter(lockerIsYouAreAtmNft);}
 function lockerHasXrplMapping(item){
   const map=item?.xrpl;if(!map)return false;
@@ -6030,6 +6034,8 @@ function lockerXrplMappingPending(item){
 }
 function lockerOwnershipInfo(item){
   if(item?.ownership==='saved')return {owned:true,quantity:1,label:'SAVED BUILD',source:'saved'};
+  const officialMatches=lockerState.nfts.filter(nft=>lockerOfficialAttributeMatches(item,nft));
+  if(officialMatches.length)return {owned:true,quantity:officialMatches.length,label:officialMatches.length>1?'ATTRIBUTE NFT ×'+officialMatches.length:'ATTRIBUTE NFT',source:'attribute-nft',matches:officialMatches};
   if(lockerHasXrplMapping(item)){
     const matches=lockerState.nfts.filter(nft=>lockerNftMatches(item,nft));
     if(matches.length)return {owned:true,quantity:matches.length,label:matches.length>1?'NFT OWNED ×'+matches.length:'NFT OWNED',source:'xrpl',matches};
