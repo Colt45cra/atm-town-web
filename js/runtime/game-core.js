@@ -6456,7 +6456,7 @@ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&lockerState
 // ===== v235.12 Character Attribute Store + permanent Mainnet crypto checkout =====
 const ATM_ATTRIBUTE_STORE_CART_KEY='atm_attribute_store_cart_v1';
 const ATM_ATTRIBUTE_STORE_CONFIG=ATM_CONFIG?.attributeStore||Object.freeze({baseCurrency:'USD',checkoutEnabled:false,purchaseNetwork:'mainnet',merchantAddress:'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB',defaultUsdPrice:null,prices:Object.freeze({}),paymentCategories:Object.freeze([{id:'cash',label:'CASH',rail:'CARD',currency:'USD'},{id:'crypto',label:'CRYPTO',rail:'XRPL',network:'mainnet'}]),cryptoAssets:Object.freeze([{id:'atm',label:'ATM',type:'issued',currency:'ATM',issuer:'raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ'},{id:'rlusd',label:'RLUSD',type:'issued',currency:'524C555344000000000000000000000000000000',issuer:'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De'},{id:'xrp',label:'XRP',type:'native',currency:'XRP',issuer:null}])});
-let attributeStoreState={open:false,checkoutOpen:false,characterId:'classic',filter:'all',paymentCategory:'crypto',cryptoAsset:'atm',cart:safeJsonParse(safeStorageGet(ATM_ATTRIBUTE_STORE_CART_KEY,'[]'),[])};
+let attributeStoreState={open:false,checkoutOpen:false,characterId:'classic',filter:'all',paymentCategory:'crypto',cryptoAsset:String(ATM_ATTRIBUTE_STORE_CONFIG?.defaultCryptoAsset||'xrp'),cart:safeJsonParse(safeStorageGet(ATM_ATTRIBUTE_STORE_CART_KEY,'[]'),[])};
 let attributeStoreServerPrices=Object.create(null);
 let attributeStoreCommerceLoaded=false;
 let attributeStorePaymentPollTimer=null;
@@ -6470,7 +6470,7 @@ function attributeStoreItemCharacterIds(item){if(Array.isArray(item?.storeCharac
 function attributeStoreItemInCharacter(item,characterId){return item?.type==='equipment'&&attributeStoreItemCharacterIds(item).includes(characterId);}
 function attributeStoreItemIsCatalogProduct(item){return item?.type==='equipment'&&(item.ownership==='store'||item.ownership==='development'||item.ownership==='session'||lockerHasXrplMapping(item));}
 function attributeStorePrice(item,assetId='usd'){const server=attributeStoreServerPrices?.[item?.id]?.[assetId];const raw=server??(assetId==='usd'?(ATM_ATTRIBUTE_STORE_CONFIG?.prices?.[item.id]??item.storePriceUsd??ATM_ATTRIBUTE_STORE_CONFIG?.defaultUsdPrice):null);if(raw===null||raw===undefined||raw==='')return null;const value=Number(raw);return Number.isFinite(value)&&value>0?value:null;}
-function attributeStorePriceText(item){const price=attributeStorePrice(item,'usd');return price===null?'PRICE NOT SET':new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(price);}
+function attributeStorePriceText(item){const usd=attributeStorePrice(item,'usd');if(usd!==null)return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(usd);const xrp=attributeStorePrice(item,'xrp');return xrp===null?'PRICE NOT SET':attributeStoreAssetPriceText(xrp,'xrp');}
 function attributeStoreAssetPriceText(amount,assetId){if(amount===null||amount===undefined)return '—';if(assetId==='usd')return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(amount));return `${Number(amount).toLocaleString(undefined,{maximumFractionDigits:6})} ${String(assetId||'').toUpperCase()}`;}
 function attributeStoreCharacterName(characterId){return lockerCharacterName(characterId).toUpperCase();}
 function attributeStoreSetStatus(message,tone=''){const node=document.getElementById('attributeStoreStatus');if(!node)return;node.textContent=message||'';node.className=tone||'';}
