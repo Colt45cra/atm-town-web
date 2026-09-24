@@ -60,16 +60,18 @@
   }
   function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
   function loadFundingDraft() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(PAYLOAD_DRAFT_STORAGE_KEY) || 'null');
-      if (parsed && typeof parsed === 'object' && parsed.draft_token && parsed.integration_campaign_id) state.fundingDraft = parsed;
-    } catch (_error) { state.fundingDraft = null; }
+    // Money Rain funding is intentionally session-only. Never restore an unfinished funding draft.
+    try { localStorage.removeItem(PAYLOAD_DRAFT_STORAGE_KEY); } catch (_error) {}
+    state.fundingDraft = null;
   }
   function saveFundingDraft() {
-    if (state.fundingDraft) localStorage.setItem(PAYLOAD_DRAFT_STORAGE_KEY, JSON.stringify(state.fundingDraft));
-    else localStorage.removeItem(PAYLOAD_DRAFT_STORAGE_KEY);
+    // Keep the active draft only in memory so leaving/reloading ATM Town abandons this funding session.
+    try { localStorage.removeItem(PAYLOAD_DRAFT_STORAGE_KEY); } catch (_error) {}
   }
-  function clearFundingDraft() { state.fundingDraft = null; saveFundingDraft(); }
+  function clearFundingDraft() {
+    state.fundingDraft = null;
+    try { localStorage.removeItem(PAYLOAD_DRAFT_STORAGE_KEY); } catch (_error) {}
+  }
   function rewardForPoints(points, event = state.event) {
     if (!event?.reward_settlement || !event.reward_point_value_xrp) return '';
     const text = String(event.reward_point_value_xrp || '0');
