@@ -174,6 +174,8 @@
     purchaseNetwork: 'mainnet',
     merchantAddress: 'rMSDXpxDpV2pQJDHbp77XHHhT9QHMrfPYB',
     defaultUsdPrice: null,
+    defaultXrpPrice: 3,
+    defaultCryptoAsset: 'xrp',
     prices: Object.freeze({}),
     paymentCategories: Object.freeze([
       Object.freeze({ id: 'cash', label: 'CASH', rail: 'CARD', currency: 'USD' }),
