@@ -188,6 +188,16 @@
     ])
   });
 
+  // Official transferable ATM Town Attribute NFT collection.
+  // Keep disabled until the minting issuer + taxon are finalized and minted.
+  const ATTRIBUTE_NFT_COLLECTION = Object.freeze({
+    enabled: false,
+    name: 'ATM Town Attributes',
+    issuer: '',
+    taxon: null,
+    itemIdField: 'item_id'
+  });
+
   const CLAIM_PORTALS = Object.freeze({
     genesisHolderRewards: Object.freeze({
       id: 'genesis-holder-rewards-1',
@@ -203,6 +213,7 @@
     supabaseCdnSources: SUPABASE_CDN_SOURCES,
     embeddedWallet: EMBEDDED_WALLET,
     attributeStore: ATTRIBUTE_STORE,
+    attributeNftCollection: ATTRIBUTE_NFT_COLLECTION,
     claimPortals: CLAIM_PORTALS
   });
 })(window);
