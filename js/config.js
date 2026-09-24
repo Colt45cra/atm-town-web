@@ -193,9 +193,14 @@
   const ATTRIBUTE_NFT_COLLECTION = Object.freeze({
     enabled: false,
     name: 'ATM Town Attributes',
+    network: 'mainnet',
     issuer: '',
+    authorizedMinter: '',
     taxon: null,
-    itemIdField: 'item_id'
+    itemIdField: 'item_id',
+    transferable: true,
+    creatorPlatformMinimumBps: 2000,
+    mintingModel: 'authorized-minter'
   });
 
   const CLAIM_PORTALS = Object.freeze({
