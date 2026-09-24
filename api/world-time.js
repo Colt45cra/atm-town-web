@@ -135,8 +135,11 @@ export default async function handler(req, res) {
           integration_campaign_id: draft.integration_campaign_id,
           external_campaign_id: draft.external_campaign_id,
           external_event_id: draft.external_event_id,
-          pool_xrp: draft.pool_xrp,
-          point_drops: draft.point_drops,
+          network: status.state?.network || 'mainnet',
+          asset: status.state?.asset || draft.asset || { type: 'xrp' },
+          pool_amount: status.state?.poolAmount || draft.pool_amount || draft.pool_xrp,
+          pool_xrp: draft.pool_xrp || (status.state?.asset?.type === 'xrp' ? status.state?.poolAmount : null),
+          point_drops: draft.point_drops || null,
           funding_tx_hash: status.state?.funding?.depositTxHash || body.tx_hash || null,
         }));
       }
