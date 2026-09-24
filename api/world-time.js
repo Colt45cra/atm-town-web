@@ -123,7 +123,10 @@ export default async function handler(req, res) {
       if (action === 'start-funded-money-rain') {
         const draft = payloadDraftFromToken(body.draft_token, user.id);
         await assertMoneyRainLaunchContext(admin, body);
-        const status = await getMoneyRainFundingStatus(admin, user, body.draft_token);
+        const mainnet = draft.purpose === 'money_rain_mainnet';
+        const status = mainnet
+          ? await mainnetMoneyRainStatus(admin, user, body.draft_token)
+          : await getMoneyRainFundingStatus(admin, user, body.draft_token);
         if (!status.funded) throw conflict('Payload has not confirmed the full Money Rain funding amount yet.');
         return res.status(200).json(await startFundedMoneyRain(admin, user, {
           map: body.map,
