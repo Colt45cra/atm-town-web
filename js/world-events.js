@@ -484,55 +484,44 @@
     const draft = state.fundingDraft;
     try {
       if (typeof global.atmApiWithAuth !== 'function') throw new Error('Sign in to check Money Rain funding.');
-      // Re-submit only the SAME signed blob. This can never authorize a different destination/amount.
-      if (draft.tx_hash && draft.signed_tx_blob) {
-        try {
-          await global.atmApiWithAuth('/api/world-time?action=payload-funding-relay', {
-            method: 'POST',
-            body: JSON.stringify({ draft_token: draft.draft_token, tx_hash: draft.tx_hash, tx_blob: draft.signed_tx_blob }),
-          });
-        } catch (_error) {}
-      }
-      if (draft.tx_hash) {
-        try {
-          const verification = await global.atmApiWithAuth('/api/world-time?action=payload-funding-verify', {
-            method: 'POST', body: JSON.stringify({ draft_token: draft.draft_token, tx_hash: draft.tx_hash }),
-          });
-          if (verification?.validated && verification?.success === false) throw new Error(`XRPL rejected the funding transaction (${verification.result || 'unknown result'}).`);
-        } catch (error) {
-          if (/rejected/i.test(String(error?.message || ''))) throw error;
-        }
-      }
       const deadline = Date.now() + (wait ? FUNDING_STATUS_WAIT_MS : 1);
-      let last = null;
       do {
-        setPanelStatus('Waiting for Payload to confirm the full Testnet funding amount…');
-        last = await global.atmApiWithAuth('/api/world-time?action=payload-funding-status', {
+        if (draft.xaman_payload_uuid) {
+          const signed = await global.atmApiWithAuth('/api/world-time?action=payload-mainnet-xaman-status', {
+            method: 'POST', body: JSON.stringify({ draft_token: draft.draft_token, payload_uuid: draft.xaman_payload_uuid }),
+          });
+          if (signed?.cancelled) throw new Error('The Xaman funding request was cancelled.');
+          if (!signed?.signed) {
+            setPanelStatus('Waiting for the Xaman Mainnet payment to be signed…', '#ffd978');
+            if (!wait) return;
+          }
+        }
+        const status = await global.atmApiWithAuth('/api/world-time?action=payload-mainnet-funding-status', {
           method: 'POST', body: JSON.stringify({ draft_token: draft.draft_token }),
         });
-        if (last?.funded) {
-          setPanelStatus('Funding confirmed. Starting synchronized Money Rain…', '#66f7bd');
+        if (status?.funded) {
+          setPanelStatus('Mainnet funding confirmed. Starting synchronized Money Rain…', '#66f7bd');
           const data = await global.atmApiWithAuth('/api/world-time?action=start-funded-money-rain', {
-            method: 'POST',
-            body: JSON.stringify({ ...currentLaunchPayload(), draft_token: draft.draft_token, tx_hash: draft.tx_hash || null }),
+            method: 'POST', body: JSON.stringify({ ...currentLaunchPayload(), draft_token: draft.draft_token }),
           });
-          applyState(data);
-          clearFundingDraft();
-          closeControlPanel();
-          toast(`💸 ${draft.pool_xrp} Testnet XRP Money Rain provided by ${sponsorLabel(data.event)}!`, 4800);
+          applyState(data); clearFundingDraft(); closeControlPanel();
+          const label = draft.asset?.type === 'xrp' ? 'XRP' : draft.asset?.currency || 'token';
+          toast(`💸 ${draft.pool_amount} ${label} Money Rain provided by ${sponsorLabel(data.event)}!`, 4800);
+          return;
+        }
+        const stage = String(status?.state?.funding?.stage || '');
+        if (draft.xaman_payload_uuid && ['xrp','token','deposit'].includes(stage) && stage !== draft.funding_stage) {
+          state.fundingDraft = { ...draft, xaman_payload_uuid: null, funding_stage: stage };
+          saveFundingDraft(); renderControlPanel();
+          setPanelStatus(stage === 'token' ? 'Wallet activated and trustline created. Continue to fund the token prize pool in Xaman.' : 'Payload advanced to the next funding stage. Continue in Xaman.', '#66f7bd');
           return;
         }
         if (!wait || Date.now() >= deadline) break;
         await sleep(FUNDING_STATUS_POLL_MS);
       } while (Date.now() < deadline);
-      setPanelStatus(draft.tx_hash
-        ? 'Funding is still confirming. Do NOT authorize another payment. Use CHECK FUNDING & START again.'
-        : 'Payload has not received the required funding yet.', '#ffd978');
-    } catch (error) {
-      setPanelStatus(error?.message || 'Payload funding status could not be confirmed.', '#ff9fb1');
-    } finally {
-      if (ownBusy) { state.fundingBusy = false; renderControlPanel(); }
-    }
+      setPanelStatus('Funding is still confirming on XRPL Mainnet. Do not send a second payment; use CHECK FUNDING again.', '#ffd978');
+    } catch (error) { setPanelStatus(error?.message || 'Payload funding status could not be confirmed.', '#ff9fb1'); }
+    finally { if (ownBusy) { state.fundingBusy = false; renderControlPanel(); } }
   }
 
   async function startMoneyRainPreview() {
