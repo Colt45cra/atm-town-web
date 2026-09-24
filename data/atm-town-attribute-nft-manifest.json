@@ -1,0 +1,933 @@
+{
+  "collection": {
+    "name": "ATM Town Attributes",
+    "network": "mainnet",
+    "issuer": null,
+    "taxon": null,
+    "transferable": true,
+    "royalty_bps": null,
+    "status": "awaiting_issuer_taxon_supply_and_royalty"
+  },
+  "defaults": {
+    "price_xrp": "3",
+    "metadata_standard": "XRPL NFT JSON",
+    "unlock_field": "item_id"
+  },
+  "items": [
+    {
+      "item_id": "body:astronaut",
+      "name": "Astronaut Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Astronaut Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Astronaut Body in ATM Town.",
+        "item_id": "body:astronaut",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:black",
+      "name": "Black Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Black Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Black Body in ATM Town.",
+        "item_id": "body:black",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:cyber-blue",
+      "name": "Cyber Blue Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Cyber Blue Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Cyber Blue Body in ATM Town.",
+        "item_id": "body:cyber-blue",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:cyber-orange",
+      "name": "Cyber Orange Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Cyber Orange Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Cyber Orange Body in ATM Town.",
+        "item_id": "body:cyber-orange",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:cyber-pink",
+      "name": "Cyber Pink Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Cyber Pink Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Cyber Pink Body in ATM Town.",
+        "item_id": "body:cyber-pink",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:cyber-purple",
+      "name": "Cyber Purple Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Cyber Purple Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Cyber Purple Body in ATM Town.",
+        "item_id": "body:cyber-purple",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:gold",
+      "name": "Gold Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Gold Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Gold Body in ATM Town.",
+        "item_id": "body:gold",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:green",
+      "name": "Green Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Green Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Green Body in ATM Town.",
+        "item_id": "body:green",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:navy-blue",
+      "name": "Navy Blue Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Navy Blue Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Navy Blue Body in ATM Town.",
+        "item_id": "body:navy-blue",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "body:red",
+      "name": "Red Body",
+      "slot": "body",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Red Body",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Red Body in ATM Town.",
+        "item_id": "body:red",
+        "slot": "body",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:blue-green",
+      "name": "Blue & Green Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Blue & Green Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Blue & Green Backpack in ATM Town.",
+        "item_id": "backpack:blue-green",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:blue-yellow",
+      "name": "Blue & Yellow Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Blue & Yellow Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Blue & Yellow Backpack in ATM Town.",
+        "item_id": "backpack:blue-yellow",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:bright-orange",
+      "name": "Bright Orange Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Bright Orange Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Bright Orange Backpack in ATM Town.",
+        "item_id": "backpack:bright-orange",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:gold-purple",
+      "name": "Gold & Purple Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Gold & Purple Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Gold & Purple Backpack in ATM Town.",
+        "item_id": "backpack:gold-purple",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:green",
+      "name": "Green Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Green Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Green Backpack in ATM Town.",
+        "item_id": "backpack:green",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:pink-teal",
+      "name": "Pink & Teal Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Pink & Teal Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Pink & Teal Backpack in ATM Town.",
+        "item_id": "backpack:pink-teal",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:rucksack",
+      "name": "Rucksack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Rucksack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Rucksack in ATM Town.",
+        "item_id": "backpack:rucksack",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:teal",
+      "name": "Teal Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Teal Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Teal Backpack in ATM Town.",
+        "item_id": "backpack:teal",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "backpack:yellow-pink",
+      "name": "Yellow & Pink Backpack",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Yellow & Pink Backpack",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Yellow & Pink Backpack in ATM Town.",
+        "item_id": "backpack:yellow-pink",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:baby-blue-headphones",
+      "name": "Baby Blue Headphones",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Baby Blue Headphones",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Baby Blue Headphones in ATM Town.",
+        "item_id": "head:baby-blue-headphones",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:banana-headphones",
+      "name": "Banana Headphones",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Banana Headphones",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Banana Headphones in ATM Town.",
+        "item_id": "head:banana-headphones",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:blue-mohawk",
+      "name": "Blue Mohawk",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Blue Mohawk",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Blue Mohawk in ATM Town.",
+        "item_id": "head:blue-mohawk",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:bullish-black",
+      "name": "Bullish Black Horns",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Bullish Black Horns",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Bullish Black Horns in ATM Town.",
+        "item_id": "head:bullish-black",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:buuvva-headphones",
+      "name": "Buuvva Headphones",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Buuvva Headphones",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Buuvva Headphones in ATM Town.",
+        "item_id": "head:buuvva-headphones",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:green-headphones",
+      "name": "Green Headphones",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Green Headphones",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Green Headphones in ATM Town.",
+        "item_id": "head:green-headphones",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "back:green-katana",
+      "name": "Green Katana",
+      "slot": "katana",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Green Katana",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Green Katana in ATM Town.",
+        "item_id": "back:green-katana",
+        "slot": "katana",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:orange-green-mohawk",
+      "name": "Orange Green Mohawk",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Orange Green Mohawk",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Orange Green Mohawk in ATM Town.",
+        "item_id": "head:orange-green-mohawk",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:paper-hat",
+      "name": "Paper Hat",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Paper Hat",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Paper Hat in ATM Town.",
+        "item_id": "head:paper-hat",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:pink-mohawk",
+      "name": "Pink Mohawk",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Pink Mohawk",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Pink Mohawk in ATM Town.",
+        "item_id": "head:pink-mohawk",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "head:red-headphones",
+      "name": "Red Headphones",
+      "slot": "head",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Red Headphones",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Red Headphones in ATM Town.",
+        "item_id": "head:red-headphones",
+        "slot": "head",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "back:white-katana",
+      "name": "White Katana",
+      "slot": "katana",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — White Katana",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks White Katana in ATM Town.",
+        "item_id": "back:white-katana",
+        "slot": "katana",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "back:yellow-katana",
+      "name": "Yellow Katana",
+      "slot": "katana",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Yellow Katana",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Yellow Katana in ATM Town.",
+        "item_id": "back:yellow-katana",
+        "slot": "katana",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:baby-blue",
+      "name": "Baby Blue Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Baby Blue Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Baby Blue Chest in ATM Town.",
+        "item_id": "chest:baby-blue",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:blue",
+      "name": "Blue Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Blue Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Blue Chest in ATM Town.",
+        "item_id": "chest:blue",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:gold",
+      "name": "Gold Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Gold Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Gold Chest in ATM Town.",
+        "item_id": "chest:gold",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:green",
+      "name": "Green Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Green Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Green Chest in ATM Town.",
+        "item_id": "chest:green",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:og",
+      "name": "OG Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — OG Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks OG Chest in ATM Town.",
+        "item_id": "chest:og",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:pastel-blue",
+      "name": "Pastel Blue Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Pastel Blue Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Pastel Blue Chest in ATM Town.",
+        "item_id": "chest:pastel-blue",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:pastel-red",
+      "name": "Pastel Red Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Pastel Red Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Pastel Red Chest in ATM Town.",
+        "item_id": "chest:pastel-red",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:red",
+      "name": "Red Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Red Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Red Chest in ATM Town.",
+        "item_id": "chest:red",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "chest:yellow",
+      "name": "Yellow Chest",
+      "slot": "chest",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Yellow Chest",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Yellow Chest in ATM Town.",
+        "item_id": "chest:yellow",
+        "slot": "chest",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "face:black-dead-face",
+      "name": "Black Dead Face",
+      "slot": "face",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Black Dead Face",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Black Dead Face in ATM Town.",
+        "item_id": "face:black-dead-face",
+        "slot": "face",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "face:gold",
+      "name": "Gold Face",
+      "slot": "face",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Gold Face",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Gold Face in ATM Town.",
+        "item_id": "face:gold",
+        "slot": "face",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "face:og",
+      "name": "OG Face",
+      "slot": "face",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — OG Face",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks OG Face in ATM Town.",
+        "item_id": "face:og",
+        "slot": "face",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "face:squint-face-black",
+      "name": "Black Squint Face",
+      "slot": "face",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Black Squint Face",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Black Squint Face in ATM Town.",
+        "item_id": "face:squint-face-black",
+        "slot": "face",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "face:squint-face-white",
+      "name": "White Squint Face",
+      "slot": "face",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — White Squint Face",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks White Squint Face in ATM Town.",
+        "item_id": "face:squint-face-white",
+        "slot": "face",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "face:white-dead-face",
+      "name": "White Dead Face",
+      "slot": "face",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — White Dead Face",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks White Dead Face in ATM Town.",
+        "item_id": "face:white-dead-face",
+        "slot": "face",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:baby-blue",
+      "name": "Baby Blue Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Baby Blue Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Baby Blue Gloves in ATM Town.",
+        "item_id": "gloves:baby-blue",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:blue",
+      "name": "Blue Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Blue Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Blue Gloves in ATM Town.",
+        "item_id": "gloves:blue",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:boxing-gloves",
+      "name": "Boxing Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Boxing Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Boxing Gloves in ATM Town.",
+        "item_id": "gloves:boxing-gloves",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:green",
+      "name": "Green Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Green Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Green Gloves in ATM Town.",
+        "item_id": "gloves:green",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:orange",
+      "name": "Orange Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Orange Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Orange Gloves in ATM Town.",
+        "item_id": "gloves:orange",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:purple",
+      "name": "Purple Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Purple Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Purple Gloves in ATM Town.",
+        "item_id": "gloves:purple",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:tan",
+      "name": "Tan Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Tan Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Tan Gloves in ATM Town.",
+        "item_id": "gloves:tan",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "gloves:yellow",
+      "name": "Yellow Gloves",
+      "slot": "hands",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Yellow Gloves",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Yellow Gloves in ATM Town.",
+        "item_id": "gloves:yellow",
+        "slot": "hands",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "shoes:baby-blue",
+      "name": "Baby Blue Shoes",
+      "slot": "feet",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Baby Blue Shoes",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Baby Blue Shoes in ATM Town.",
+        "item_id": "shoes:baby-blue",
+        "slot": "feet",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "shoes:gold",
+      "name": "Gold Shoes",
+      "slot": "feet",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Gold Shoes",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Gold Shoes in ATM Town.",
+        "item_id": "shoes:gold",
+        "slot": "feet",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "shoes:green",
+      "name": "Green Shoes",
+      "slot": "feet",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Green Shoes",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Green Shoes in ATM Town.",
+        "item_id": "shoes:green",
+        "slot": "feet",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "shoes:red",
+      "name": "Red Shoes",
+      "slot": "feet",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Red Shoes",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Red Shoes in ATM Town.",
+        "item_id": "shoes:red",
+        "slot": "feet",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "shoes:tan",
+      "name": "Tan Shoes",
+      "slot": "feet",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Tan Shoes",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Tan Shoes in ATM Town.",
+        "item_id": "shoes:tan",
+        "slot": "feet",
+        "game": "ATM Town"
+      }
+    },
+    {
+      "item_id": "equipment:jetpack",
+      "name": "Jetpack Module",
+      "slot": "back",
+      "supply": null,
+      "mint_status": "planned",
+      "sale_price_xrp": "3",
+      "metadata": {
+        "name": "ATM Town Attribute — Jetpack Module",
+        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Jetpack Module in ATM Town.",
+        "item_id": "equipment:jetpack",
+        "slot": "back",
+        "game": "ATM Town"
+      }
+    }
+  ]
+}
