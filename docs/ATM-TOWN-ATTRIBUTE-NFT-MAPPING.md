@@ -8,7 +8,7 @@ This is the working bridge between the current ATM Town character catalog, legac
 - Existing explicit You Are ATM trait rules: **32**.
 - Planned official Attribute NFTs: **61**, one metadata definition per game item ID.
 - Direct Attribute Store XRP price: **3 XRP per attribute**.
-- Official Attribute NFT minting is not live yet; issuer, taxon, supply per item, and royalty are intentionally still unset.
+- Official Attribute NFT minting is not live yet. Dedicated Mainnet issuer: `rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff`. Operational/authorized minter: `rM5oXXzDLJxLqKp6ZwZjjesPvNvh669uCc`. The collection taxon and secondary-sale royalty remain intentionally unset until the first-mint gate.
 
 The game now has two independent ownership paths: an existing You Are ATM NFT trait can unlock a mapped item, and a future official Attribute NFT can unlock the same item through its immutable `item_id` metadata field.
 
@@ -97,4 +97,4 @@ ATM Town trusts the collection issuer + taxon and then matches `item_id` exactly
 
 ## Before Mainnet minting
 
-We still need to finalize four collection-level choices: the minting issuer wallet, a dedicated taxon, supply for each attribute, and the royalty/transfer fee. These values are left blank in the manifest on purpose so we do not accidentally mint the wrong supply or bind the collection to the wrong issuer.
+The issuer and operational/minter wallets are now selected. The production model is mint-on-purchase rather than a pre-minted fixed supply. Before the first Mainnet attribute mint, we still need to lock the dedicated taxon and royalty/transfer fee, then validate one test attribute end-to-end.
