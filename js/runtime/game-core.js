@@ -5641,8 +5641,57 @@ requestAnimationFrame(loop);
   flowStyle.textContent=`
     .signupOptionalSetup{margin:10px 0;border:1px solid rgba(88,241,230,.14);border-radius:14px;padding:10px;background:rgba(3,18,28,.58)}
     .signupOptionalSetup summary{cursor:pointer;color:#8feee8;font-size:11px;font-weight:900;letter-spacing:.05em}
-    .returningPlayer img{display:none!important}.returningPlayerLabel{display:grid;place-items:center;min-height:58px;padding:12px 18px;border-radius:17px;background:linear-gradient(90deg,#58f1e6,#6ff7c9);color:#062029;font-size:15px;font-weight:1000;box-shadow:0 14px 28px rgba(0,0,0,.28)}
-    @media(max-width:920px){.welcomeButtons .returningPlayer{width:min(78%,360px)!important}.returningPlayerLabel{min-height:54px;padding:10px 15px;font-size:14px;border-radius:16px}}
+    .returningPlayer{position:relative;isolation:isolate;filter:drop-shadow(0 10px 18px rgba(0,0,0,.34))}
+    .returningPlayer img{display:none!important}
+    .returningPlayerLabel{
+      position:relative;
+      display:grid;
+      place-items:center;
+      min-height:60px;
+      padding:12px 34px;
+      color:#efffff;
+      font-size:14px;
+      font-weight:1000;
+      letter-spacing:.025em;
+      text-shadow:0 0 12px rgba(88,241,230,.35);
+      background:
+        linear-gradient(180deg,rgba(10,38,52,.96),rgba(3,19,29,.98)) padding-box,
+        linear-gradient(90deg,#58f1e6 0%,#64dff7 48%,#58f1e6 100%) border-box;
+      border:2px solid transparent;
+      border-radius:13px;
+      box-shadow:
+        inset 0 0 0 1px rgba(123,249,255,.12),
+        inset 0 0 22px rgba(88,241,230,.06),
+        0 0 14px rgba(88,241,230,.14);
+      clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0 calc(100% - 14px),0 14px);
+      overflow:hidden;
+    }
+    .returningPlayerLabel::before{
+      content:"";
+      position:absolute;
+      inset:4px;
+      pointer-events:none;
+      border:1px solid rgba(88,241,230,.28);
+      clip-path:inherit;
+      box-shadow:inset 0 0 12px rgba(88,241,230,.06);
+    }
+    .returningPlayerLabel::after{
+      content:"";
+      position:absolute;
+      left:18px;
+      right:18px;
+      top:0;
+      height:2px;
+      background:linear-gradient(90deg,transparent,#b9ffff,transparent);
+      opacity:.72;
+      box-shadow:0 0 10px rgba(88,241,230,.45);
+      pointer-events:none;
+    }
+    .returningPlayer:active .returningPlayerLabel{transform:translateY(1px);box-shadow:inset 0 0 0 1px rgba(123,249,255,.16),inset 0 0 26px rgba(88,241,230,.09),0 0 18px rgba(88,241,230,.2)}
+    @media(max-width:920px){
+      .welcomeButtons .returningPlayer{width:min(74%,340px)!important}
+      .returningPlayerLabel{min-height:56px;padding:10px 24px;font-size:13px;border-radius:12px}
+    }
     .characterChoice[data-onboarding-locked="1"]{position:relative;opacity:.58}.characterChoice[data-onboarding-locked="1"]::before{content:'🔒';position:absolute;left:6px;top:6px;z-index:2;font-size:15px;filter:drop-shadow(0 2px 3px #000)}
     #atmFirstRunCoach{position:fixed;z-index:70;left:50%;top:max(72px,calc(env(safe-area-inset-top) + 58px));transform:translateX(-50%);width:min(420px,calc(100vw - 28px));padding:12px 44px 12px 14px;border:1px solid rgba(88,241,230,.34);border-radius:16px;background:rgba(3,18,28,.94);box-shadow:0 18px 44px rgba(0,0,0,.42);color:#eaffff;font:700 12px/1.4 system-ui;pointer-events:auto}
     #atmFirstRunCoach strong{display:block;color:#ffd166;font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}#atmFirstRunCoach button{position:absolute;right:8px;top:8px;border:0;background:transparent;color:#9fc3cc;font-size:18px}
