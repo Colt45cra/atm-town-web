@@ -495,7 +495,7 @@
     currencyInput?.addEventListener('input', (event) => { state.moneyRainCurrency = String(event.target.value || '').trim().slice(0, 40); });
     issuerInput?.addEventListener('input', (event) => { state.moneyRainIssuer = String(event.target.value || '').trim().slice(0, 40); });
     playerButton?.addEventListener('click', () => { state.sponsorMode = 'player'; renderControlPanel(); });
-    brandButton?.addEventListener('click', () => { state.sponsorMode = 'brand'; renderControlPanel(); setTimeout(() => document.getElementById('atmWorldEventSponsorInput')?.focus(), 0); });
+    brandButton?.addEventListener('click', () => { state.sponsorMode = 'brand'; renderControlPanel(); });
     sponsorInput?.addEventListener('input', (event) => { state.sponsorLabel = String(event.target.value || '').slice(0, 32); });
     poolInput?.addEventListener('input', (event) => { state.poolXrp = String(event.target.value || '').replace(/[^0-9.]/g, '').slice(0, 10); });
   }
