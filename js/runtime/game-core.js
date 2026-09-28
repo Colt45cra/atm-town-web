@@ -2981,7 +2981,7 @@ async function connectMultiplayer(){
             onlineMode=true;
             await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
             broadcastState(true);
-            if(authSession?.user){supabaseClient.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id).then(()=>{});}
+            if(authSession?.user&&window.atmEntryMode!=='guest'){supabaseClient.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id).then(()=>{});}
             window.ATMLiveChat?.connectRoom?.(roomName);
             resolve();
           }catch(err){reject(err);}
@@ -4163,7 +4163,7 @@ if(characterPickerEl){
 function selectCharacter(characterId){const requested=ALLOWED_CHARACTERS.includes(characterId)?characterId:'classic';if(window.atmLockerCanSelectCharacter&&!window.atmLockerCanSelectCharacter(requested)){window.atmLockerOpenForLockedCharacter?.(requested);return false;}selectedCharacter=(CHARACTER_SPRITES[requested]||CHARACTER_SHEETS[requested])?requested:'classic';document.querySelectorAll('.characterChoice').forEach(button=>button.classList.toggle('selected',button.dataset.character===selectedCharacter));updateEntryProgress(3,authSession?.user?[1,2]:[2]);window.atmLockerCharacterChanged?.(selectedCharacter);return true;}
 document.querySelectorAll('.characterChoice').forEach(button=>button.addEventListener('click',()=>selectCharacter(button.dataset.character)));
 selectCharacter(savedMp.character||'classic');
-const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user){getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
+const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user&&window.atmEntryMode!=='guest'){getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
 
 const keys={};
 function isTextEntryTarget(target){
@@ -5656,7 +5656,7 @@ requestAnimationFrame(loop);
     document.querySelectorAll('.profileCharacterChoice').forEach(button=>{const active=button.dataset.profileCharacter===info.id;button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active?'true':'false');});
   }
   function applyEntryMode(mode){
-    entryMode=mode;shell.dataset.entryMode=mode;
+    entryMode=mode;shell.dataset.entryMode=mode;window.atmEntryMode=mode;
     const online=document.getElementById('joinOnline'),offline=document.getElementById('joinOffline'),note=document.getElementById('entryModeNote'),eyebrow=document.getElementById('profileEyebrow');
     if(mode==='guest'){
       selectCharacter('classic');updateCharacterSummary();
@@ -6282,7 +6282,14 @@ function lockerRevokeFoundItem(itemId,quantity=1){
 function lockerCanSelectCharacter(characterId){
   const item=lockerItemForCharacter(characterId);return !item||lockerOwnershipInfo(item).owned;
 }
+function lockerRefreshOnboardingCharacterLocks(){
+  document.querySelectorAll('.characterChoice').forEach(button=>{
+    if(lockerCanSelectCharacter(button.dataset.character))delete button.dataset.onboardingLocked;
+    else button.dataset.onboardingLocked='1';
+  });
+}
 window.atmLockerCanSelectCharacter=lockerCanSelectCharacter;
+lockerRefreshOnboardingCharacterLocks();
 window.atmLockerOpenForLockedCharacter=(characterId)=>{
   if(document.body.classList.contains('access-flow-open')){
     document.querySelectorAll('.characterChoice').forEach(button=>{if(button.dataset.character===characterId)button.dataset.onboardingLocked='1';});
@@ -6292,8 +6299,8 @@ window.atmLockerOpenForLockedCharacter=(characterId)=>{
   lockerOpen();lockerState.slot='body';lockerState.filter='my-characters';lockerState.selectedItemId=lockerItemForCharacter(characterId)?.id||null;lockerRender();lockerSetStatus(lockerCharacterName(characterId)+' is not owned by the linked wallet.','error');
 };
 window.atmLockerCharacterChanged=(characterId)=>{lockerActiveSavedCharacterId=null;lockerLoadout.base=lockerItemForCharacter(characterId)?.id||'character:classic';lockerSaveLoadout();lockerRender();};
-window.atmLockerInventoryChanged=()=>{if(lockerState.status==='ready'&&!lockerState.nftMetadataLoading.size)lockerEnforceEquipmentOwnership();if(lockerState.open)lockerRender();};
-window.atmLockerAccountUpdated=()=>{lockerUpdateWalletBadge();if(lockerState.open&&lockerWalletAddress())lockerRefreshXrpl(true);else lockerRender();};
+window.atmLockerInventoryChanged=()=>{if(lockerState.status==='ready'&&!lockerState.nftMetadataLoading.size)lockerEnforceEquipmentOwnership();lockerRefreshOnboardingCharacterLocks();if(lockerState.open)lockerRender();};
+window.atmLockerAccountUpdated=()=>{lockerUpdateWalletBadge();lockerRefreshOnboardingCharacterLocks();if(lockerState.open&&lockerWalletAddress())lockerRefreshXrpl(true);else lockerRender();};
 window.atmInventory=Object.freeze({catalog:ATM_ITEM_CATALOG,collection:ATM_YOU_ARE_ATM_COLLECTION,traitRules:ATM_YOU_ARE_ATM_TRAIT_RULES,open:()=>lockerOpen(),refreshXrpl:()=>lockerRefreshXrpl(false),entitlements:()=>ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).source==='xrpl').map(item=>item.id),grantFoundItem:lockerGrantFoundItem,revokeFoundItem:lockerRevokeFoundItem});
 window.atmLockerOwns=(itemId)=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id===itemId);return !!item&&lockerOwnershipInfo(item).owned;};
 window.atmLockerPermanentJetpackEquipped=()=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id==='equipment:jetpack');const source=item?lockerOwnershipInfo(item).source:'';return lockerLoadout.back==='equipment:jetpack'&&!!item&&(source==='xrpl'||source==='purchase');};
