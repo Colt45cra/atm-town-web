@@ -81,9 +81,11 @@
   }
 
   function focusChatInput() {
-    // ATM Town never programmatically focuses text fields. The mobile keyboard
-    // should open only after the player explicitly taps/clicks the input.
-    return false;
+    const input = $('chatInput');
+    if (!input) return false;
+    try { input.focus({ preventScroll: true }); }
+    catch (_) { input.focus(); }
+    return document.activeElement === input;
   }
 
   function sync() {
@@ -120,9 +122,13 @@
     applyViewportVars();
 
     if (state.liveChatOpen) {
-      // Opening Live Chat opens the panel only. The keyboard stays closed until
-      // the player explicitly taps/clicks the chat input.
+      // Must happen synchronously inside the user's chat-button gesture.
+      if (options.focusInput !== false) focusChatInput();
+      // Some mobile browsers need a second focus while the viewport animation starts.
+      setTimeout(() => { if (state.liveChatOpen && !state.keyboardLikelyOpen) focusChatInput(); }, 120);
+      setTimeout(() => { if (state.liveChatOpen && !state.keyboardLikelyOpen) focusChatInput(); }, 320);
       settleKeyboardGeometry();
+      armKeyboardFailureGuard();
     } else {
       clearTimeout(state.keyboardFailureTimer);
       state.keyboardFailureTimer = null;
@@ -138,6 +144,7 @@
 
     const onViewportChange = () => {
       settleKeyboardGeometry();
+      if (state.liveChatOpen && expectsSoftKeyboard() && !state.keyboardLikelyOpen) armKeyboardFailureGuard();
     };
 
     global.visualViewport?.addEventListener('resize', onViewportChange);
