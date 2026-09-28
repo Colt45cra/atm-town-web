@@ -10,37 +10,42 @@
     throw new Error('ATM Town bootstrap could not start because js/config.js was not loaded first.');
   }
 
-  const CANONICAL_AUTH_REDIRECT = 'https://www.atmtown.fun/?signup_return=1';
+  const CANONICAL_SIGNUP_REDIRECT = 'https://www.atmtown.fun/?signup_return=1';
+  const CANONICAL_LOGIN_REDIRECT = 'https://www.atmtown.fun/?login_return=1';
   let supabaseLibraryPromise = null;
 
-  function resumeSignupReturnIntent() {
+  function resumeAuthReturnIntent() {
     let url;
     try {
       url = new URL(global.location.href);
     } catch (_error) {
       return;
     }
-    if (url.searchParams.get('signup_return') !== '1') return;
+    const signupReturn = url.searchParams.get('signup_return') === '1';
+    const loginReturn = url.searchParams.get('login_return') === '1';
+    if (!signupReturn && !loginReturn) return;
 
     try {
-      global.localStorage.setItem('atm_signup_pending', '1');
+      if (signupReturn) global.localStorage.setItem('atm_signup_pending', '1');
+      if (loginReturn) global.localStorage.setItem('atm_login_pending', '1');
     } catch (_error) {}
 
     let attempts = 0;
-    const reopenSignup = () => {
+    const reopenFlow = () => {
       attempts += 1;
       if (typeof global.atmShowFlowScreen === 'function') {
-        global.atmShowFlowScreen('signup');
+        global.atmShowFlowScreen(signupReturn ? 'signup' : 'login');
         try {
           const cleanUrl = new URL(global.location.href);
           cleanUrl.searchParams.delete('signup_return');
+          cleanUrl.searchParams.delete('login_return');
           global.history.replaceState(global.history.state, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
         } catch (_error) {}
         return;
       }
-      if (attempts < 160) global.setTimeout(reopenSignup, 50);
+      if (attempts < 160) global.setTimeout(reopenFlow, 50);
     };
-    reopenSignup();
+    reopenFlow();
   }
 
   function enforceCanonicalEmailAuthRedirect(library) {
@@ -63,7 +68,9 @@
             ...credentials,
             options: {
               ...(credentials.options || {}),
-              emailRedirectTo: CANONICAL_AUTH_REDIRECT
+              emailRedirectTo: String(credentials?.options?.emailRedirectTo || '').includes('login_return=1')
+                ? CANONICAL_LOGIN_REDIRECT
+                : CANONICAL_SIGNUP_REDIRECT
             }
           });
         };
@@ -308,7 +315,7 @@
   }
 
   applyBuildIdentity();
-  resumeSignupReturnIntent();
+  resumeAuthReturnIntent();
   global.addEventListener('DOMContentLoaded', relocateTownDirectoryHotspot, { once: true });
 
   if (document.readyState === 'complete') {
