@@ -2,15 +2,16 @@
   "collection": {
     "name": "ATM Town Attributes",
     "network": "mainnet",
-    "issuer": null,
+    "issuer": "rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff",
     "taxon": null,
     "transferable": true,
     "royalty_bps": null,
-    "status": "awaiting_dedicated_issuer_authorized_minter_taxon_supply_and_royalty",
-    "authorized_minter": null,
+    "status": "issuer_and_minter_selected_authorization_pending_taxon_and_royalty",
+    "authorized_minter": "rM5oXXzDLJxLqKp6ZwZjjesPvNvh669uCc",
     "minting_model": "authorized-minter",
     "platform_minimum_primary_sale_bps": 2000,
-    "batch_split_status": "future-batchv1_1"
+    "batch_split_status": "future-batchv1_1",
+    "supply_model": "mint-on-purchase"
   },
   "defaults": {
     "price_xrp": "3",
