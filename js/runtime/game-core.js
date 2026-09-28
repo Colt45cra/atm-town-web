@@ -2689,7 +2689,8 @@ async function sendEmailLogin(inputId='identityEmail',buttonId='emailLoginBtn'){
   if(btn){btn.disabled=true;btn.textContent='SENDING…';}
   try{
     const client=await getSupabaseClient();
-    const {error}=await client.auth.signInWithOtp({email,options:{emailRedirectTo:'https://atm-town-web.vercel.app'}});
+    const returnUrl=inputId==='loginEmail'?'https://www.atmtown.fun/?login_return=1':'https://www.atmtown.fun/?signup_return=1';
+    const {error}=await client.auth.signInWithOtp({email,options:{emailRedirectTo:returnUrl}});
     if(error)throw error;
     setIdentityStatus('Check your email and open the ATM Town sign-in link.','ok');
   }catch(error){setIdentityStatus(error.message||'Email sign-in failed.','error');}
@@ -5638,7 +5639,7 @@ requestAnimationFrame(loop);
     .signupOptionalSetup{margin:10px 0;border:1px solid rgba(88,241,230,.14);border-radius:14px;padding:10px;background:rgba(3,18,28,.58)}
     .signupOptionalSetup summary{cursor:pointer;color:#8feee8;font-size:11px;font-weight:900;letter-spacing:.05em}
     .returningPlayer img{display:none!important}.returningPlayerLabel{display:grid;place-items:center;min-height:64px;padding:14px 18px;border-radius:18px;background:linear-gradient(90deg,#58f1e6,#6ff7c9);color:#062029;font-size:16px;font-weight:1000;box-shadow:0 14px 28px rgba(0,0,0,.28)}
-    .characterChoice[data-onboarding-locked="1"]{opacity:.58}.characterChoice[data-onboarding-locked="1"]::before{content:'🔒';position:absolute;left:6px;top:6px;z-index:2;font-size:15px;filter:drop-shadow(0 2px 3px #000)}
+    .characterChoice[data-onboarding-locked="1"]{position:relative;opacity:.58}.characterChoice[data-onboarding-locked="1"]::before{content:'🔒';position:absolute;left:6px;top:6px;z-index:2;font-size:15px;filter:drop-shadow(0 2px 3px #000)}
     #atmFirstRunCoach{position:fixed;z-index:70;left:50%;top:max(72px,calc(env(safe-area-inset-top) + 58px));transform:translateX(-50%);width:min(420px,calc(100vw - 28px));padding:12px 44px 12px 14px;border:1px solid rgba(88,241,230,.34);border-radius:16px;background:rgba(3,18,28,.94);box-shadow:0 18px 44px rgba(0,0,0,.42);color:#eaffff;font:700 12px/1.4 system-ui;pointer-events:auto}
     #atmFirstRunCoach strong{display:block;color:#ffd166;font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}#atmFirstRunCoach button{position:absolute;right:8px;top:8px;border:0;background:transparent;color:#9fc3cc;font-size:18px}
     body.atm-first-run-action #action{box-shadow:0 0 0 5px rgba(255,209,102,.25),0 10px 30px rgba(255,79,163,.45)!important;animation:atmFirstRunPulse 1s ease-in-out infinite}
@@ -5707,13 +5708,25 @@ requestAnimationFrame(loop);
     if(selectCharacter(button.dataset.profileCharacter)!==false)updateCharacterSummary();
   });
   window.atmFlowAuthUpdated(!!authSession?.user);
-  let signupPending=false;try{signupPending=localStorage.getItem('atm_signup_pending')==='1';}catch(_error){}
+  let signupPending=false,loginPending=false;
+  try{
+    signupPending=localStorage.getItem('atm_signup_pending')==='1';
+    loginPending=localStorage.getItem('atm_login_pending')==='1';
+  }catch(_error){}
   const xamanPending=!!readPendingXamanLink()||new URLSearchParams(location.search).get('xaman_return')==='1';
   if(xamanPending){show('signup');setTimeout(resumePendingXamanLink,250);}
   else{
-    show('welcome');
-    // Return verified signup users to the signup page after opening the email link.
-    setTimeout(()=>{if(signupPending&&authSession?.user)show('signup');},900);
+    show(loginPending?'login':'welcome');
+    // Email-link returns keep their intent separate: signup resumes setup,
+    // while returning-player login goes straight to the saved profile.
+    setTimeout(async()=>{
+      if(loginPending&&authSession?.user){
+        try{localStorage.removeItem('atm_login_pending');}catch(_e){}
+        await window.atmOpenKnownAccountProfile?.();
+        return;
+      }
+      if(signupPending&&authSession?.user)show('signup');
+    },900);
   }
 })();
 
