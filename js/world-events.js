@@ -15,6 +15,7 @@
   const FUNDING_STATUS_WAIT_MS = 45_000;
   const RESULTS_WINDOW_MS = 25_000;
   const PAYOUT_NOTICE_PREFIX = 'atm_money_rain_payout_notified_v1:';
+  const REFUND_NOTICE_PREFIX = 'atm_money_rain_refund_notified_v1:';
   const state = {
     event: null,
     serverOffsetMs: 0,
@@ -73,13 +74,31 @@
     try { localStorage.removeItem(PAYLOAD_DRAFT_STORAGE_KEY); } catch (_error) {}
   }
   function rewardForPoints(points, event = state.event) {
-    if (!event?.reward_settlement || !event.reward_point_value_xrp) return '';
-    const text = String(event.reward_point_value_xrp || '0');
-    const match = /^(\d+)(?:\.(\d{1,6}))?$/.exec(text); if (!match) return '';
-    const drops = BigInt(match[1]) * 1_000_000n + BigInt(((match[2] || '') + '000000').slice(0, 6));
-    const total = drops * BigInt(Math.max(0, Number(points || 0)));
-    const whole = total / 1_000_000n, fraction = (total % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '');
+    if (!event?.reward_settlement) return '';
+    const pointCount = BigInt(Math.max(0, Number(points || 0)));
+    if (event.reward_point_value_xrp) {
+      const text = String(event.reward_point_value_xrp || '0');
+      const match = /^(\d+)(?:\.(\d{1,6}))?$/.exec(text); if (!match) return '';
+      const drops = BigInt(match[1]) * 1_000_000n + BigInt(((match[2] || '') + '000000').slice(0, 6));
+      const total = drops * pointCount;
+      const whole = total / 1_000_000n, fraction = (total % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '');
+      return fraction ? `${whole}.${fraction}` : `${whole}`;
+    }
+    // Mainnet Money Rain stores the authoritative pool amount rather than the
+    // legacy Testnet point_drops field. Mirror server settlement math exactly.
+    const poolText = String(event.reward_pool_xrp || '').trim();
+    const poolMatch = /^(\d+)(?:\.(\d{1,12}))?$/.exec(poolText); if (!poolMatch) return '';
+    const poolFraction = poolMatch[2] || '';
+    const scale = 10n ** BigInt(poolFraction.length);
+    const poolUnits = BigInt(poolMatch[1]) * scale + BigInt(poolFraction || '0');
+    const numerator = poolUnits * 1_000_000n * pointCount;
+    const denominator = scale * 1000n;
+    const totalDrops = numerator / denominator + (numerator % denominator === 0n ? 0n : 1n);
+    const whole = totalDrops / 1_000_000n, fraction = (totalDrops % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '');
     return fraction ? `${whole}.${fraction}` : `${whole}`;
+  }
+  function eventNetworkLabel(event = state.event) {
+    return String(event?.reward_network || '').toLowerCase() === 'mainnet' ? 'Mainnet' : 'Testnet';
   }
   function sponsorLabel(event) {
     const configured = String(event?.sponsor?.label || '').trim();
@@ -160,6 +179,17 @@
     global.dispatchEvent(new CustomEvent('atm:pay-notification', { detail }));
     Promise.resolve(global.ATMEmbeddedWallet?.refreshBalance?.({ silent: true })).catch(() => {});
   }
+  function maybeNotifyConfirmedSponsorRefund(event) {
+    if (!event?.reward_settlement || !event.is_sponsor || !['completed', 'cancelled'].includes(String(event.settlement_status || ''))) return;
+    const amount = String(event.immediate_refund_xrp || '0');
+    if (!positiveXrp(amount) || !event.immediate_refund_tx_hash) return;
+    const key = `${REFUND_NOTICE_PREFIX}${event.id}`;
+    try { if (localStorage.getItem(key) === '1') return; } catch (_error) {}
+    try { localStorage.setItem(key, '1'); } catch (_error) {}
+    const detail = { kind: 'money_rain_refund', tone: 'success', message: `Money Rain unused funds returned · +${amount} XRP ✓`, amount_xrp: amount, event_id: String(event.id), tx_hash: String(event.immediate_refund_tx_hash) };
+    global.dispatchEvent(new CustomEvent('atm:pay-notification', { detail }));
+    toast(`💸 Money Rain refund returned · +${amount} XRP ✓`, 5200);
+  }
   function applyState(data, reason = 'poll') {
     if (Number.isFinite(Number(data?.server_time_ms))) state.serverOffsetMs = Number(data.server_time_ms) - Date.now();
     const incoming = data?.event || null;
@@ -227,7 +257,10 @@
         }
       }
     }
-    if (isMoneyRainEvent(incoming)) maybeNotifyConfirmedPayout(incoming);
+    if (isMoneyRainEvent(incoming)) {
+      maybeNotifyConfirmedPayout(incoming);
+      maybeNotifyConfirmedSponsorRefund(incoming);
+    }
     state.lastPhase = phase;
     renderHud(); renderControlPanel();
     global.dispatchEvent(new CustomEvent('atm:world-event-state', { detail: { event: incoming, phase, serverOffsetMs: state.serverOffsetMs, reason } }));
@@ -299,7 +332,7 @@
     if (phase === 'announced') {
       title.textContent = `💸 MONEY RAIN IN ${secondsLabel(starts - now)}`;
       meta.textContent = event.reward_settlement
-        ? `Provided by ${providedBy} · ${event.reward_pool_xrp} Testnet XRP prize pool`
+        ? `Provided by ${providedBy} · ${event.reward_pool_xrp} ${eventNetworkLabel(event)} XRP prize pool`
         : `Provided by ${providedBy} · preview event`;
       score.textContent = 'GET READY';
     } else if (phase === 'active') {
@@ -314,7 +347,7 @@
       const recovery = String(event.reserve_recovery_status || '');
       const settlementText = event.reward_settlement
         ? (settlement === 'completed'
-          ? (event.is_sponsor && recovery && !['retired','blocked'].includes(recovery) ? 'payout complete · reserve recovery pending' : 'Payload payout complete')
+          ? (event.is_sponsor && event.immediate_refund_xrp ? `payout complete · ${event.immediate_refund_xrp} XRP unused funds refunded` : event.is_sponsor && recovery && !['retired','blocked'].includes(recovery) ? 'payout complete · reserve recovery pending' : 'Payload payout complete')
           : settlement === 'cancelled' ? 'unused pool refund processing' : settlement === 'blocked' ? 'payout needs attention' : 'Payload settlement processing')
         : 'preview complete';
       meta.textContent = `${count} participant${count === 1 ? '' : 's'} · ${settlementText} · provided by ${providedBy}`;
@@ -380,7 +413,7 @@
         const participantCount = Array.isArray(event.participants) ? event.participants.length : 0;
         activeBlock = `<div class="atmWorldEventPreview"><strong>📦 Prop Hunt is ${phase === 'announced' ? 'starting' : livePhase === 'hide' ? 'hide phase live' : 'hunt phase live'}</strong><div>Triggered by <b>${escapeHtml(sponsorLabel(event))}</b>.</div><div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until props transform.` : livePhase === 'hide' ? `${secondsLabel(hideEnds - nowMs())} remaining to hide.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining · ${Number(event.remaining_prop_count || 0)} props still hidden.`}</div><div style="margin-top:7px;color:#66f7bd">${participantCount} player${participantCount === 1 ? '' : 's'} in this round · one hunter and the rest become map props.</div></div>`;
       } else {
-        const reward = event.reward_settlement ? `<div style="margin-top:7px;color:#66f7bd;font-weight:850">Prize pool: ${escapeHtml(event.reward_pool_xrp)} Testnet XRP · you keep exactly what you collect.</div>` : '';
+        const reward = event.reward_settlement ? `<div style="margin-top:7px;color:#66f7bd;font-weight:850">Prize pool: ${escapeHtml(event.reward_pool_xrp)} ${escapeHtml(eventNetworkLabel(event))} XRP · you keep exactly what you collect.</div>` : '';
         activeBlock = `<div class="atmWorldEventPreview"><strong>💸 Money Rain is ${phase === 'announced' ? 'starting' : 'live'}</strong><div>Money Rain provided by <b>${escapeHtml(sponsorLabel(event))}</b>.</div>${reward}<div style="margin-top:7px;color:#afcbd2">${phase === 'announced' ? `${secondsLabel(Date.parse(event.starts_at) - nowMs())} until drops begin.` : `${secondsLabel(Date.parse(event.ends_at) - nowMs())} remaining.`}</div></div>`;
       }
     } else if (event && phase === 'completed' && isZombieEvent(event)) {
