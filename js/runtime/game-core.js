@@ -5652,9 +5652,77 @@ requestAnimationFrame(loop);
   }
   function selectedButton(){return document.querySelector('.characterChoice.selected')||document.querySelector('.characterChoice[data-character="classic"]');}
   function selectedInfo(){const b=selectedButton();return {id:b?.dataset.character||'classic',name:(b?.querySelector('span')?.textContent||'ATM').trim(),src:b?.querySelector('img')?.src||''};}
+
+  // Character preview art is not guaranteed to use identical transparent
+  // padding. Center the visible (non-transparent) pixels instead of the source
+  // image canvas so current and future character thumbnails sit consistently
+  // in the circular Step 3 halo without per-character offsets.
+  const characterPreviewCenterCache=new Map();
+  function applyVisibleCharacterCenter(img,center){
+    if(!img||!center||!img.naturalWidth||!img.naturalHeight)return;
+    const boxWidth=img.clientWidth,boxHeight=img.clientHeight;
+    if(!boxWidth||!boxHeight)return;
+    const containScale=Math.min(boxWidth/img.naturalWidth,boxHeight/img.naturalHeight);
+    const renderedWidth=img.naturalWidth*containScale;
+    const renderedHeight=img.naturalHeight*containScale;
+    const maxShiftX=boxWidth*.18,maxShiftY=boxHeight*.18;
+    const dx=Math.max(-maxShiftX,Math.min(maxShiftX,(.5-center.x)*renderedWidth));
+    const dy=Math.max(-maxShiftY,Math.min(maxShiftY,(.5-center.y)*renderedHeight));
+    img.style.transform='translate3d('+dx.toFixed(2)+'px,'+dy.toFixed(2)+'px,0)';
+  }
+  function centerVisibleCharacterPreview(img){
+    if(!img)return;
+    const source=img.currentSrc||img.src||'';
+    if(!source)return;
+    if(!img.complete||!img.naturalWidth||!img.naturalHeight)return;
+    const cached=characterPreviewCenterCache.get(source);
+    if(cached){applyVisibleCharacterCenter(img,cached);return;}
+    try{
+      const maxScan=384;
+      const scanScale=Math.min(1,maxScan/Math.max(img.naturalWidth,img.naturalHeight));
+      const width=Math.max(1,Math.round(img.naturalWidth*scanScale));
+      const height=Math.max(1,Math.round(img.naturalHeight*scanScale));
+      const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+      const context=canvas.getContext('2d',{willReadFrequently:true});
+      if(!context)throw new Error('Canvas unavailable');
+      context.clearRect(0,0,width,height);context.drawImage(img,0,0,width,height);
+      const pixels=context.getImageData(0,0,width,height).data;
+      let minX=width,minY=height,maxX=-1,maxY=-1;
+      for(let y=0;y<height;y++){
+        for(let x=0;x<width;x++){
+          if(pixels[(y*width+x)*4+3]<20)continue;
+          if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;
+        }
+      }
+      const center=maxX>=minX&&maxY>=minY
+        ?{x:(minX+maxX+1)/(2*width),y:(minY+maxY+1)/(2*height)}
+        :{x:.5,y:.5};
+      characterPreviewCenterCache.set(source,center);
+      if((img.currentSrc||img.src||'')===source)applyVisibleCharacterCenter(img,center);
+    }catch(_error){
+      // Cross-origin/opaque future assets gracefully fall back to normal CSS
+      // centering instead of breaking the onboarding flow.
+      const center={x:.5,y:.5};characterPreviewCenterCache.set(source,center);applyVisibleCharacterCenter(img,center);
+    }
+  }
+  const entryCharacterPreview=document.getElementById('entryCharacterPreview');
+  entryCharacterPreview?.addEventListener('load',()=>centerVisibleCharacterPreview(entryCharacterPreview));
+  let previewResizeFrame=0;
+  const recenterEntryPreview=()=>{
+    cancelAnimationFrame(previewResizeFrame);
+    previewResizeFrame=requestAnimationFrame(()=>centerVisibleCharacterPreview(entryCharacterPreview));
+  };
+  window.addEventListener('resize',recenterEntryPreview);
+  window.visualViewport?.addEventListener('resize',recenterEntryPreview);
+
   function updateCharacterSummary(){
     const info=selectedInfo();const preview=document.getElementById('entryCharacterPreview');const label=document.getElementById('entryCharacterLabel');const selectedLabel=document.getElementById('selectedCharacterName');
-    if(preview&&info.src)preview.src=info.src;if(label)label.textContent=info.name;if(selectedLabel)selectedLabel.textContent=info.name+' selected';
+    if(preview&&info.src){
+      preview.style.transform='translate3d(0,0,0)';
+      preview.src=info.src;
+      if(preview.complete&&preview.naturalWidth)requestAnimationFrame(()=>centerVisibleCharacterPreview(preview));
+    }
+    if(label)label.textContent=info.name;if(selectedLabel)selectedLabel.textContent=info.name+' selected';
     document.querySelectorAll('.profileCharacterChoice').forEach(button=>{const active=button.dataset.profileCharacter===info.id;button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active?'true':'false');});
   }
   function applyEntryMode(mode){
