@@ -2685,7 +2685,7 @@ async function initializeIdentity(){
 async function sendEmailLogin(inputId='identityEmail',buttonId='emailLoginBtn'){
   const input=document.getElementById(inputId);const btn=document.getElementById(buttonId);
   const email=String(input?.value||'').trim();
-  if(!/^\S+@\S+\.\S+$/.test(email)){setIdentityStatus('Enter a valid email address.','error');input?.focus();return;}
+  if(!/^\S+@\S+\.\S+$/.test(email)){setIdentityStatus('Enter a valid email address.','error');return;}
   if(btn){btn.disabled=true;btn.textContent='SENDING…';}
   try{
     const client=await getSupabaseClient();
@@ -2872,7 +2872,6 @@ async function connectMultiplayer(){
   if(!playerName){
     statusEl.textContent='Enter a display name first.';
     statusEl.style.color='#ffd166';
-    nameInput.focus();
     townEntryInProgress=false;
     return;
   }
@@ -3156,7 +3155,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout
 let lastChatSentAt=0;
 function sendChat(){
   const input=document.getElementById('chatInput');const message=String(input?.value||'').replace(/\s+/g,' ').trim().slice(0,180);if(!message)return;
-  const keepLiveChatFocused=!!window.ATMLiveChat?.isOpen?.();
   const now=Date.now();if(now-lastChatSentAt<500)return;lastChatSentAt=now;input.value='';
   const messageId=globalThis.crypto?.randomUUID?.()||`chat_${now}_${Math.random().toString(36).slice(2,12)}`;
   const createdAt=new Date(now).toISOString();const senderUserId=String(authSession?.user?.id||'');
@@ -3165,13 +3163,7 @@ function sendChat(){
     realtimeChannel.send({type:'broadcast',event:'chat',payload:{id:playerId,user_id:senderUserId,name:playerName,message,message_id:messageId,created_at:createdAt,x:player.x,y:player.y,map:currentMap}});
     window.ATMLiveChat?.persistSentMessage?.({message_id:messageId,message});
   }
-  if(keepLiveChatFocused&&input){
-    requestAnimationFrame(()=>{
-      if(!window.ATMLiveChat?.isOpen?.())return;
-      try{input.focus({preventScroll:true});}catch(_e){input.focus();}
-      window.ATMHudLayout?.sync?.();
-    });
-  }
+  window.ATMHudLayout?.sync?.();
 }
 window.atmSendChat=sendChat;
 function updateRemoteInterpolation(){
@@ -4304,7 +4296,10 @@ function gamepadActiveUiRoot(){
 }
 function gamepadFocusable(root){
   if(!root)return[];
-  return [...root.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(gamepadElementVisible);
+  // Text-entry controls are intentionally excluded from programmatic UI focus.
+  // On touch devices this prevents controller navigation from summoning the
+  // software keyboard. Text fields remain fully usable by tapping/clicking.
+  return [...root.querySelectorAll('button:not([disabled]),[href],select:not([disabled]),[tabindex]:not([tabindex="-1"]):not(input):not(textarea)')].filter(gamepadElementVisible);
 }
 function gamepadPreferredUiTarget(root,items=gamepadFocusable(root)){
   const preferred=root?.querySelector('.peopleHubTab.active,.lockerTab.active,.atmPayTab.active,.atmWorldEventBtn:not([disabled]),.flowPrimary:not([disabled]),button.primary:not([disabled]),.atmWalletBtn.primary:not([disabled])');
@@ -4326,7 +4321,8 @@ function gamepadActivateUi(){
   let target=document.activeElement;
   if(!target||!root.contains(target)||!gamepadElementVisible(target))target=gamepadPreferredUiTarget(root);
   if(!target)return false;
-  if(['INPUT','TEXTAREA','SELECT'].includes(target.tagName)){target.focus();return true;}
+  if(['INPUT','TEXTAREA'].includes(target.tagName))return false;
+  if(target.tagName==='SELECT'){target.click();return true;}
   target.click();return true;
 }
 function gamepadDispatchKey(key,code,down){
@@ -5742,7 +5738,6 @@ requestAnimationFrame(loop);
     document.body.classList.add('access-flow-open');currentScreen=name;shell.dataset.screen=name;overlay.style.display='block';overlay.querySelectorAll('.flowScreen').forEach(s=>s.classList.toggle('active',s.dataset.flowScreen===name));
     if(name==='character'){applyEntryMode('signed');updateCharacterSummary();setTimeout(()=>selectedButton()?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}),40);}
     if(name==='profile')updateCharacterSummary();
-    const first=name==='signup'?document.getElementById('identityEmail'):name==='login'?document.getElementById('loginEmail'):name==='profile'?document.getElementById('displayName'):null;if(first)setTimeout(()=>{try{first.focus({preventScroll:true});}catch(_){first.focus();}},80);
   }
   window.atmShowFlowScreen=show;
   window.atmFlowAuthUpdated=(signed)=>{
@@ -6122,7 +6117,7 @@ function tradeNftOpen(target){
   const offer=document.createElement('button');offer.type='button';offer.textContent='MAKE XRP OFFER';offer.disabled=beacon.mode!=='open_to_trade';offer.title=offer.disabled?'This player is showcasing this NFT but is not currently open to trade.':'Create a real XRPL NFT buy offer signed with Xaman.';actions.appendChild(offer);
   const nftSwap=document.createElement('button');nftSwap.type='button';nftSwap.disabled=true;nftSwap.textContent='OFFER MY NFT';nftSwap.title='NFT-for-NFT negotiation is the next trading phase.';actions.appendChild(nftSwap);
   const composer=document.createElement('div');composer.className='tradeOfferComposer';composer.hidden=true;const label=document.createElement('label');label.textContent='YOUR XRP OFFER';const row=document.createElement('div');row.className='tradeOfferAmountRow';const input=document.createElement('input');input.id='tradeOfferAmount';input.type='number';input.min='0.000001';input.step='0.000001';input.inputMode='decimal';input.placeholder='25';const currency=document.createElement('span');currency.textContent='XRP';row.append(input,currency);label.appendChild(row);const submit=document.createElement('button');submit.type='button';submit.id='tradeOfferSubmit';submit.className='tradeOfferSubmit';submit.textContent='REVIEW & SIGN WITH XAMAN';const status=document.createElement('div');status.id='tradeOfferStatus';status.className='tradeOfferStatus';status.textContent='The offer is created on XRPL only after you approve it in Xaman.';composer.append(label,submit,status);actions.appendChild(composer);
-  offer.addEventListener('click',()=>{composer.hidden=!composer.hidden;if(!composer.hidden)input.focus();});submit.addEventListener('click',()=>startNftBuyOffer(target,input.value));
+  offer.addEventListener('click',()=>{composer.hidden=!composer.hidden;});submit.addEventListener('click',()=>startNftBuyOffer(target,input.value));
   const note=document.createElement('div');note.className='tradeNftNote';note.textContent='ATM Town never receives either wallet secret. XRP buy offers and acceptance are native XRPL transactions reviewed in Xaman.';actions.appendChild(note);content.appendChild(actions);
 }
 
