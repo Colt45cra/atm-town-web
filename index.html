@@ -1366,15 +1366,38 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
     <div aria-live="polite" class="flowStatus" id="welcomeStatus"></div>
   </div>
 </section>
+<section aria-labelledby="loginTitle" class="flowScreen accountScreen" data-flow-screen="login">
+<button class="flowBack" id="loginBackBtn" type="button">‹ Back</button>
+<div class="compactHeader">
+<img alt="ATM Town logo" class="flowLogo compactLogo" src="assets/ui/atm-town-logo.webp"/>
+<div><div class="flowEyebrow">Welcome Back</div><h2 id="loginTitle">Log In to ATM Town</h2></div>
+</div>
+<div class="accountLayout">
+<div class="flowCard accountCard">
+<div class="cardHeading"><span>1</span><div><strong>Use your device passkey</strong><small>Fastest on a device where you already saved an ATM Town passkey.</small></div></div>
+<button class="flowPrimary cyan" id="loginPasskeyBtn" type="button">Continue with passkey</button>
+<div class="flowDivider">or</div>
+<label class="flowLabel" for="loginEmail">Email address</label>
+<input autocomplete="email" id="loginEmail" inputmode="email" placeholder="you@example.com" type="email"/>
+<button class="flowPrimary gold" id="loginEmailBtn" type="button">Email me a sign-in link</button>
+<div class="identityMeta">Use email when you are on a new device or do not have your passkey available.</div>
+<div aria-live="polite" class="identityStatus" id="loginIdentityStatus"></div>
+</div>
+<div class="flowCard signupNextCard">
+<div class="cardHeading"><span>✓</span><div><strong>Same player account</strong><small>Passkey and email both return you to the same ATM Town account.</small></div></div>
+<div class="identityMeta">No wallet connection is required just to enter and play ATM Town.</div>
+</div>
+</div>
+</section>
 <section aria-labelledby="signupTitle" class="flowScreen accountScreen" data-flow-screen="signup">
 <button class="flowBack" id="signupBackBtn" type="button">‹ Back</button>
 <div class="compactHeader">
 <img alt="ATM Town logo" class="flowLogo compactLogo" src="assets/ui/atm-town-logo.webp"/>
-<div><div class="flowEyebrow">Create Your Account</div><h2 id="signupTitle">Verify. Secure. Connect.</h2></div>
+<div><div class="flowEyebrow">Step 1 · Save Your Player</div><h2 id="signupTitle">Create Your ATM Town Account</h2></div>
 </div>
 <div class="accountLayout">
 <div class="flowCard accountCard">
-<div class="cardHeading"><span>1</span><div><strong>Email verification</strong><small>We will send a secure ATM Town sign-in link.</small></div><span class="identityBadge" id="identityBadge">GUEST</span></div>
+<div class="cardHeading"><span>1</span><div><strong>Save your player</strong><small>Verify your email so your name, character and progress can stay with your account.</small></div><span class="identityBadge" id="identityBadge">GUEST</span></div>
 <div id="identityCard">
 <div class="identityTitle"><strong>PLAYER ACCOUNT</strong></div>
 <div class="identityMeta" id="identityLoading">Checking saved login…</div>
@@ -1387,20 +1410,24 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
 </div>
 <div id="identitySignedIn">
 <div class="verifiedBanner"><span>✓</span><div><strong id="accountEmail">Email verified</strong><small id="walletLine">Wallet: <span class="walletValue">Not linked</span></small></div></div>
+<details class="signupOptionalSetup">
+<summary>Optional setup for XRPL features</summary>
+<div class="identityMeta">You can skip this and start playing. Add these later when you want faster login, NFT ownership or ATM Pay.</div>
 <div class="signupOptions">
 <button class="flowSecondary" id="registerPasskeyBtn" type="button">Add fingerprint / passkey</button>
 <button class="flowSecondary cyan" id="linkWalletBtn" type="button">Connect Xaman</button>
 <button class="flowSecondary atmWallet" id="embeddedWalletBtn" type="button"><span class="identityBtnIcon">◇</span>ATM Pay · Testnet</button>
-<button class="flowTextButton" id="signOutBtn" type="button">Use a different email</button>
 </div>
+</details>
+<button class="flowTextButton" id="signOutBtn" type="button">Use a different email</button>
 <div aria-live="polite" class="xamanLinkBar" id="xamanLinkBar" hidden role="status"><span id="xamanLinkBarText">Waiting for Xaman…</span></div>
 </div>
 <div aria-live="polite" class="identityStatus" id="identityStatus"></div>
 </div>
 </div>
 <div class="flowCard signupNextCard">
-<div class="cardHeading"><span>2</span><div><strong>Secure your account</strong><small>A passkey lets the Log In button open your phone's fingerprint, face, or device lock.</small></div></div>
-<div class="cardHeading"><span>3</span><div><strong>Wallet & ATM Pay</strong><small>Keep Xaman for your existing XRPL wallet, or set up ATM Pay on Testnet to send and request money by @name.</small></div></div>
+<div class="cardHeading"><span>2</span><div><strong>Choose your character</strong><small>Pick who you want to be in ATM Town.</small></div></div>
+<div class="cardHeading"><span>3</span><div><strong>Enter the Town</strong><small>Choose your player name and jump straight into the world.</small></div></div>
 <button class="flowPrimary cyan" disabled="" id="signupContinueBtn" type="button">Continue to character selection</button>
 <div aria-live="polite" class="flowStatus" id="signupStatus">Verify your email to continue.</div>
 </div>
@@ -1423,7 +1450,7 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
 <button class="flowBack" id="profileBackBtn" type="button">‹ Back</button>
 <div class="compactHeader centeredHeader profileHeader">
 <img alt="ATM Town logo" class="flowLogo compactLogo" src="assets/ui/atm-town-logo.webp"/>
-<div><div class="flowEyebrow" id="profileEyebrow">Final Step</div><h2 id="profileTitle">Ready to Enter</h2></div>
+<div><div class="flowEyebrow" id="profileEyebrow">Step 3</div><h2 id="profileTitle">Ready to Enter</h2></div>
 </div>
 <div class="profileLayout">
 <div class="flowCard characterSummary">
@@ -1431,23 +1458,7 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
 <strong id="entryCharacterLabel">ATM</strong>
 <small id="entryModeNote">Your selected character will be used online.</small>
 <div class="profileCharacterPickerWrap">
-<span class="profileCharacterPickerLabel">Change character</span>
-<div aria-label="Change playable character" class="profileCharacterPicker" id="profileCharacterPicker" role="group">
-<button aria-pressed="true" class="profileCharacterChoice selected" data-profile-character="classic" type="button"><img alt="ATM character" src="assets/characters/thumbnails/character-atm.webp"><span>ATM</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="fuzzy" type="button"><img alt="Fuzzy character" src="assets/characters/thumbnails/character-fuzzy.webp"><span>Fuzzy</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="miracle" type="button"><img alt="Miracle character" src="assets/characters/thumbnails/character-miracle.webp"><span>Miracle</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="luci" type="button"><img alt="Luci character" src="assets/characters/thumbnails/character-luci.webp"><span>Luci</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="triskeleton" type="button"><img alt="Triskeleton character" src="assets/characters/thumbnails/character-triskeleton.webp"><span>Triskeleton</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="phnix" type="button"><img alt="Phnix character" src="assets/characters/thumbnails/character-phnix.webp"><span>Phnix</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="bear" type="button"><img alt="Bear character" src="assets/characters/thumbnails/character-bear.webp"><span>Bear</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="xoge" type="button"><img alt="Xoge character" src="assets/characters/thumbnails/character-xoge.webp"><span>Xoge</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="flippy" type="button"><img alt="Flippy character" src="assets/characters/thumbnails/character-flippy.webp"><span>Flippy</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="salute" type="button"><img alt="Salute character" src="assets/characters/thumbnails/character-salute.webp"><span>Salute</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="brad" type="button"><img alt="Brad character" src="assets/characters/thumbnails/character-brad.webp"><span>Brad</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="david" type="button"><img alt="David character" src="assets/characters/thumbnails/character-david.webp"><span>David</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="kaj" type="button"><img alt="Kaj character" src="assets/characters/thumbnails/character-kaj.webp"><span>Kaj</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="daniel" type="button"><img alt="Daniel character" src="assets/characters/thumbnails/character-daniel.webp"><span>Daniel</span></button>
-<button aria-pressed="false" class="profileCharacterChoice" data-profile-character="army" type="button"><img alt="ARMY character" src="assets/characters/thumbnails/character-army.webp"><span>ARMY</span></button>
+<button class="flowSecondary" id="profileChangeCharacterBtn" type="button">Change character</button>
 </div>
 </div>
 </div>
