@@ -14,6 +14,7 @@
   const FUNDING_STATUS_POLL_MS = 1600;
   const FUNDING_STATUS_WAIT_MS = 45_000;
   const RESULTS_WINDOW_MS = 25_000;
+  const PANEL_LAUNCH_GUARD_MS = 900;
   const PAYOUT_NOTICE_PREFIX = 'atm_money_rain_payout_notified_v1:';
   const REFUND_NOTICE_PREFIX = 'atm_money_rain_refund_notified_v1:';
   const state = {
@@ -40,6 +41,8 @@
     fundingBusy: false,
     panelStatus: '',
     panelStatusColor: '#9fc3cc',
+    panelOpenedAt: -Infinity,
+    panelArmTimer: null,
     pickupFx: [],
   };
 
@@ -168,10 +171,29 @@
     if (!match) return false;
     return BigInt(match[1]) * 1_000_000n + BigInt(((match[2] || '') + '000000').slice(0, 6)) > 0n;
   }
+  function formatXrpDisplay(value, minDecimals = 3) {
+    const raw = String(value ?? '0').trim();
+    const match = /^(\d+)(?:\.(\d{1,6}))?$/.exec(raw);
+    if (!match) return raw || `0.${'0'.repeat(minDecimals)}`;
+    const whole = match[1];
+    let fraction = String(match[2] || '').slice(0, 6);
+    while (fraction.length < minDecimals) fraction += '0';
+    while (fraction.length > minDecimals && fraction.endsWith('0')) fraction = fraction.slice(0, -1);
+    return `${whole}.${fraction}`;
+  }
+  function panelLaunchArmed() {
+    return performance.now() - Number(state.panelOpenedAt || 0) >= PANEL_LAUNCH_GUARD_MS;
+  }
+  function guardPanelLaunch() {
+    if (panelLaunchArmed()) return true;
+    setPanelStatus('World Event controls are ready — tap the event you want to start.', '#ffd978');
+    return false;
+  }
   function maybeNotifyConfirmedPayout(event) {
     if (!event?.reward_settlement || event.personal_score_available === false || String(event.settlement_status || '') !== 'completed') return;
-    const amount = String(event.my_reward_xrp || rewardForPoints(event.my_score || state.myScore, event) || '0');
-    if (!positiveXrp(amount)) return;
+    const rawAmount = String(event.my_reward_xrp || rewardForPoints(event.my_score || state.myScore, event) || '0');
+    if (!positiveXrp(rawAmount)) return;
+    const amount = formatXrpDisplay(rawAmount);
     const key = `${PAYOUT_NOTICE_PREFIX}${event.id}`;
     try { if (localStorage.getItem(key) === '1') return; } catch (_error) {}
     try { localStorage.setItem(key, '1'); } catch (_error) {}
@@ -181,8 +203,9 @@
   }
   function maybeNotifyConfirmedSponsorRefund(event) {
     if (!event?.reward_settlement || !event.is_sponsor || !['completed', 'cancelled'].includes(String(event.settlement_status || ''))) return;
-    const amount = String(event.immediate_refund_xrp || '0');
-    if (!positiveXrp(amount) || !event.immediate_refund_tx_hash) return;
+    const rawAmount = String(event.immediate_refund_xrp || '0');
+    if (!positiveXrp(rawAmount) || !event.immediate_refund_tx_hash) return;
+    const amount = formatXrpDisplay(rawAmount);
     const key = `${REFUND_NOTICE_PREFIX}${event.id}`;
     try { if (localStorage.getItem(key) === '1') return; } catch (_error) {}
     try { localStorage.setItem(key, '1'); } catch (_error) {}
@@ -238,8 +261,8 @@
           const winner = incoming.leaders?.[0];
           const mine = incoming.personal_score_available !== false ? Number(incoming.my_score || state.myScore || 0) : state.myScore;
           const myReward = incoming.reward_settlement ? (incoming.my_reward_xrp || rewardForPoints(mine, incoming)) : '';
-          const winnerValue = incoming.reward_settlement ? `${winner?.reward_amount_xrp || rewardForPoints(winner?.points || 0, incoming)} XRP` : `${winner?.points || 0}`;
-          const mineValue = incoming.reward_settlement ? `${myReward || '0'} XRP` : `${mine}`;
+          const winnerValue = incoming.reward_settlement ? `${formatXrpDisplay(winner?.reward_amount_xrp || rewardForPoints(winner?.points || 0, incoming) || '0')} XRP` : `${winner?.points || 0}`;
+          const mineValue = incoming.reward_settlement ? `${formatXrpDisplay(myReward || '0')} XRP` : `${mine}`;
           const payoutSuffix = incoming.reward_settlement ? ' · payout pending XRPL confirmation' : '';
           toast(winner ? `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix} · #1 ${winner.display_name} ${winnerValue}` : `💸 Money Rain complete · You earned ${mineValue}${payoutSuffix}`, 5200);
         }
@@ -339,7 +362,7 @@
       title.textContent = `💸 MONEY RAIN · ${secondsLabel(ends - now)} LEFT`;
       meta.textContent = `Provided by ${providedBy} · ${Number(event.claimed_points || 0).toLocaleString()} / ${Number(event.pool_points || 1000).toLocaleString()} points claimed`;
       const optimistic = state.myScore + optimisticPoints();
-      score.textContent = event.reward_settlement ? `YOU ${rewardForPoints(optimistic, event) || '0'} XRP` : `YOU ${optimistic}`;
+      score.textContent = event.reward_settlement ? `YOU ${formatXrpDisplay(rewardForPoints(optimistic, event) || '0')} XRP` : `YOU ${optimistic}`;
     } else {
       title.textContent = '💸 MONEY RAIN COMPLETE';
       const count = Number(event.participant_count || event.leaders?.length || 0);
@@ -347,12 +370,12 @@
       const recovery = String(event.reserve_recovery_status || '');
       const settlementText = event.reward_settlement
         ? (settlement === 'completed'
-          ? (event.is_sponsor && event.immediate_refund_xrp ? `payout complete · ${event.immediate_refund_xrp} XRP unused funds refunded` : event.is_sponsor && recovery && !['retired','blocked'].includes(recovery) ? 'payout complete · reserve recovery pending' : 'Payload payout complete')
+          ? (event.is_sponsor && event.immediate_refund_xrp ? `payout complete · ${formatXrpDisplay(event.immediate_refund_xrp)} XRP unused funds refunded` : event.is_sponsor && recovery && !['retired','blocked'].includes(recovery) ? 'payout complete · reserve recovery pending' : 'Payload payout complete')
           : settlement === 'cancelled' ? 'unused pool refund processing' : settlement === 'blocked' ? 'payout needs attention' : 'Payload settlement processing')
         : 'preview complete';
       meta.textContent = `${count} participant${count === 1 ? '' : 's'} · ${settlementText} · provided by ${providedBy}`;
       const rank = Number(event.my_rank || 0);
-      const mine = event.reward_settlement ? `${event.my_reward_xrp || rewardForPoints(state.myScore, event) || '0'} XRP` : `${state.myScore} COLLECTED`;
+      const mine = event.reward_settlement ? `${formatXrpDisplay(event.my_reward_xrp || rewardForPoints(state.myScore, event) || '0')} XRP` : `${state.myScore} COLLECTED`;
       score.textContent = `YOU${rank ? ` #${rank}` : ''} · ${mine}`;
     }
     hud.classList.add('show');
@@ -431,11 +454,12 @@
         ? `<div style="color:${settlement === 'completed' ? '#66f7bd' : settlement === 'blocked' ? '#ff9fb1' : '#ffd978'};font-weight:850;margin:8px 0">${settlement === 'completed' ? '✓ Player payouts confirmed on XRPL' : settlement === 'cancelled' ? '✓ No player payout required' : settlement === 'blocked' ? `Payload payout needs attention${event.settlement_error ? `: ${escapeHtml(event.settlement_error)}` : ''}` : 'Payload settlement is processing automatically…'}</div>`
         : '';
       const sponsorSettlement = rewardEvent && event.is_sponsor
-        ? `<div class="atmWorldEventFunding" style="margin-top:10px"><div class="atmWorldEventEyebrow">SPONSOR SETTLEMENT</div><div class="atmWorldEventFundingRow"><span>Unused funds → funding wallet</span><b>${event.immediate_refund_xrp ? `${escapeHtml(event.immediate_refund_xrp)} XRP` : (settlement === 'completed' || settlement === 'cancelled' ? '0 XRP / none spendable' : 'pending')}</b></div><div class="atmWorldEventFundingRow"><span>Campaign reserve recovery</span><b>${recovery === 'retired' ? `retired${event.reserve_recovery_xrp ? ` · ${escapeHtml(event.reserve_recovery_xrp)} XRP recovered` : ''}` : recovery === 'blocked' ? 'needs review' : recovery ? 'pending' : 'waiting'}</b></div>${event.reserve_recovery_error ? `<div class="atmWorldEventFundingNote" style="color:#ff9fb1">${escapeHtml(event.reserve_recovery_error)}</div>` : '<div class="atmWorldEventFundingNote">Player rewards are final. Payload retires the temporary campaign wallet separately when XRPL allows AccountDelete.</div>'}</div>`
+        ? `<div class="atmWorldEventFunding" style="margin-top:10px"><div class="atmWorldEventEyebrow">SPONSOR SETTLEMENT</div><div class="atmWorldEventFundingRow"><span>Unused funds → funding wallet</span><b>${event.immediate_refund_xrp ? `${escapeHtml(formatXrpDisplay(event.immediate_refund_xrp))} XRP` : (settlement === 'completed' || settlement === 'cancelled' ? '0 XRP / none spendable' : 'pending')}</b></div><div class="atmWorldEventFundingRow"><span>Campaign reserve recovery</span><b>${recovery === 'retired' ? `retired${event.reserve_recovery_xrp ? ` · ${escapeHtml(event.reserve_recovery_xrp)} XRP recovered` : ''}` : recovery === 'blocked' ? 'needs review' : recovery ? 'pending' : 'waiting'}</b></div>${event.reserve_recovery_error ? `<div class="atmWorldEventFundingNote" style="color:#ff9fb1">${escapeHtml(event.reserve_recovery_error)}</div>` : '<div class="atmWorldEventFundingNote">Player rewards are final. Payload retires the temporary campaign wallet separately when XRPL allows AccountDelete.</div>'}</div>`
         : '';
-      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))} · every participant keeps the amount they collected</div>${settlementLine}${event.leaders.slice(0,12).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${rewardEvent ? `${escapeHtml(leader.reward_amount_xrp || rewardForPoints(leader.points, event) || '0')} XRP` : `${leader.points} collected`}</b></div>`).join('')}<div style="margin-top:8px;color:#9fc3cc;font-size:11px">${Number(event.unclaimed_points || 0)} of ${Number(event.pool_points || 1000)} points were not collected${rewardEvent ? ' and are handled by Payload settlement.' : '.'}</div>${sponsorSettlement}</div>`;
+      activeBlock = `<div class="atmWorldEventPreview"><strong>Last Money Rain results</strong><div style="color:#afcbd2;margin-bottom:7px">Provided by ${escapeHtml(sponsorLabel(event))} · every participant keeps the amount they collected</div>${settlementLine}${event.leaders.slice(0,12).map((leader) => `<div class="atmWorldEventLeader"><span>#${leader.rank} ${escapeHtml(leader.display_name)}${leader.handle ? ` · @${escapeHtml(leader.handle)}` : ''}</span><b>${rewardEvent ? `${escapeHtml(formatXrpDisplay(leader.reward_amount_xrp || rewardForPoints(leader.points, event) || '0'))} XRP` : `${leader.points} collected`}</b></div>`).join('')}<div style="margin-top:8px;color:#9fc3cc;font-size:11px">${Number(event.unclaimed_points || 0)} of ${Number(event.pool_points || 1000)} points were not collected${rewardEvent ? ' and are handled by Payload settlement.' : '.'}</div>${sponsorSettlement}</div>`;
     }
     const sponsorDisabled = Boolean(event && phase !== 'completed');
+    const launchGuarded = !panelLaunchArmed();
     const brandActive = state.sponsorMode === 'brand';
     const draft = state.fundingDraft;
     const draftAssetLabel = draft?.asset?.type === 'iou' ? String(draft.asset.currency || 'TOKEN') : 'XRP';
@@ -446,17 +470,18 @@
     const fundingLabel = draftStage === 'xrp' ? 'XRP reserve / fees required' : 'Funding required';
     const pendingFunding = draft ? `<div class="atmWorldEventFunding"><div class="atmWorldEventEyebrow">PAYLOAD · MAINNET FUNDING</div><div class="atmWorldEventFundingRow"><span>Prize pool</span><b>${escapeHtml(draft.pool_amount || '')} ${escapeHtml(draftAssetLabel)}</b></div><div class="atmWorldEventFundingRow"><span>${fundingLabel}</span><b>${escapeHtml(draftRequired || 'Calculated by Payload')} ${escapeHtml(draftStage === 'xrp' ? 'XRP' : draftAssetLabel)}</b></div><div class="atmWorldEventFundingRow"><span>Status</span><b>${draft.xaman_payload_uuid ? 'XAMAN REQUEST CREATED' : 'READY FOR XAMAN'}</b></div><div class="atmWorldEventFundingNote">This is an XRPL Mainnet campaign. Xaman signs the required payment from your verified linked wallet to this event's disposable Payload wallet. Payload returns any unused event funds to that same sponsor wallet after settlement.</div></div>` : '';
     const primaryText = draft ? (draft.xaman_payload_uuid ? 'CHECK XAMAN FUNDING' : `OPEN XAMAN · FUND ${escapeHtml(draftRequired || '')} ${escapeHtml(draftStage === 'xrp' ? 'XRP' : draftAssetLabel)}`) : 'PREPARE PAYLOAD MONEY RAIN';
-    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch synchronized ATM Town events from the Command Core. Money Rain uses server-authoritative collection; The Horde is the synchronized combat event with shared enemy spawns, synchronized fire effects, and escalating enemy types.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>🧟 THE HORDE · WORLD EVENT</strong><div>Start a 15-second global countdown, then survive 90 seconds in the outdoor town. Gutter and Handy Man fill the pack while Beast Man is much harder to kill.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>±40°</b><span>body-facing fire cone</span></div><div class="atmWorldEventFact"><b>Backpedal</b><span>aim owns body facing</span></div><div class="atmWorldEventFact"><b>R · Rapid</b><span>map-edge power weapon</span></div><div class="atmWorldEventFact"><b>S · Spread</b><span>close-range power weapon</span></div></div><div class="atmWorldEventSponsorHint">This phase does not award XRP/ATM and does not use authoritative PvP hit registration. It is structured so combat authority can move to a realtime server later without replacing the controls/weapons.</div></div><button class="atmWorldEventBtn" id="atmZombieEventStart" type="button" style="background:linear-gradient(90deg,#ff7f98,#ffb266);color:#2b0911" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START THE HORDE'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>📦 PROP HUNT · WORLD EVENT</strong><div>Everyone in the current online lobby snapshot joins the round. One player stays normal as the hunter while every other participant is disguised using verified full ATM Town map props like benches, street lamps, ATM vending machines, the town directory kiosk, and the token market board.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>15 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>20 sec</b><span>hide phase</span></div><div class="atmWorldEventFact"><b>120 sec</b><span>hunt phase</span></div><div class="atmWorldEventFact"><b>Last found</b><span>prop wins</span></div></div><div class="atmWorldEventSponsorHint">The original hunter uses ACTION near a disguised player to tag them. Every found prop turns back into their character and joins the seeker team. The last prop actually found wins. Disguises now use full standalone ATM Town prop assets instead of cropped scene fragments.</div></div><button class="atmWorldEventBtn" id="atmPropHuntStart" type="button" style="margin-top:9px;background:linear-gradient(90deg,#ffd166,#69f6bd);color:#062029" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START PROP HUNT'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>💸 PAYLOAD MONEY RAIN · MAINNET</strong><div>Choose the prize pool before the event. The 1,000 game points divide that pool exactly, so every collectible has a deterministic XRP value. First place is only a rank — every collector receives what they actually picked up.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>exact reward basis</span></div><div class="atmWorldEventFact"><b>Mainnet</b><span>Xaman + Payload</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>PROJECT / BRAND</button></div>${brandActive ? `<input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${sponsorDisabled || draft ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”</div>` : `<div class="atmWorldEventSponsorInput" style="opacity:.9;cursor:default">${escapeHtml(state.controlContext?.handle ? '@' + state.controlContext.handle : state.controlContext?.display_name || 'Your ATM Town player name')}</div><div class="atmWorldEventSponsorHint">Your ATM Town name / @handle is used automatically. Choose PROJECT / BRAND to enter a custom provider name.</div>`}<label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">PRIZE ASSET</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${state.moneyRainAssetType === 'xrp' ? 'active' : ''}" id="atmWorldEventAssetXrp" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>XRP</button><button class="atmWorldEventSponsorChoice ${state.moneyRainAssetType === 'iou' ? 'active' : ''}" id="atmWorldEventAssetToken" type="button" ${sponsorDisabled || draft ? 'disabled' : ''}>XRPL TOKEN</button></div>${state.moneyRainAssetType === 'iou' ? `<input class="atmWorldEventSponsorInput" id="atmWorldEventCurrencyInput" type="text" maxlength="40" placeholder="Currency code (ATM, 666, etc.)" value="${escapeHtml(state.moneyRainCurrency)}" ${sponsorDisabled || draft ? 'disabled' : ''}><input class="atmWorldEventSponsorInput" id="atmWorldEventIssuerInput" type="text" maxlength="40" placeholder="Issuer r..." value="${escapeHtml(state.moneyRainIssuer)}" ${sponsorDisabled || draft ? 'disabled' : ''}>` : ''}<label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">MAINNET PRIZE POOL · ${state.moneyRainAssetType === 'xrp' ? 'XRP' : escapeHtml(state.moneyRainCurrency || 'TOKEN')}</label><input class="atmWorldEventPoolInput" id="atmWorldEventPoolInput" type="text" inputmode="decimal" maxlength="10" placeholder="0.100" value="${escapeHtml(state.poolXrp)}" ${sponsorDisabled || draft ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">Choose XRP or an XRPL issued token. Payload creates a fresh disposable wallet for this event and refunds unused funds after settlement.</div></div>${pendingFunding}<div style="font-size:12px;color:#66f7bd;font-weight:850">XAMAN FUNDS THE DISPOSABLE MAINNET CAMPAIGN WALLET. ATM TOWN AND PAYLOAD NEVER RECEIVE YOUR XAMAN SECRET.</div></div><button class="atmWorldEventBtn" id="atmWorldEventPayloadAction" type="button" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : primaryText}</button>${!draft ? `<button class="atmWorldEventBtn" id="atmWorldEventPreviewStart" type="button" style="margin-top:9px;background:#173746;color:#dff7fb" ${sponsorDisabled || state.fundingBusy ? 'disabled' : ''}>START PREVIEW · NO XRP</button>` : ''}<div class="atmWorldEventStatus" id="atmWorldEventStatus" style="color:${escapeHtml(state.panelStatusColor)}">${escapeHtml(state.panelStatus)}</div>`;
+    body.innerHTML = `<div class="atmWorldEventEyebrow">ATM HQ · WORLD EVENT ENGINE</div><h2>World Event Control</h2><p>Launch synchronized ATM Town events from the Command Core. Money Rain uses server-authoritative collection; The Horde is the synchronized combat event with shared enemy spawns, synchronized fire effects, and escalating enemy types.</p>${activeBlock}<div class="atmWorldEventPreview"><strong>🧟 THE HORDE · WORLD EVENT</strong><div>Start a 15-second global countdown, then survive 90 seconds in the outdoor town. Gutter and Handy Man fill the pack while Beast Man is much harder to kill.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>±40°</b><span>body-facing fire cone</span></div><div class="atmWorldEventFact"><b>Backpedal</b><span>aim owns body facing</span></div><div class="atmWorldEventFact"><b>R · Rapid</b><span>map-edge power weapon</span></div><div class="atmWorldEventFact"><b>S · Spread</b><span>close-range power weapon</span></div></div><div class="atmWorldEventSponsorHint">This phase does not award XRP/ATM and does not use authoritative PvP hit registration. It is structured so combat authority can move to a realtime server later without replacing the controls/weapons.</div></div><button class="atmWorldEventBtn" id="atmZombieEventStart" type="button" style="background:linear-gradient(90deg,#ff7f98,#ffb266);color:#2b0911" ${sponsorDisabled || state.fundingBusy || launchGuarded ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START THE HORDE'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>📦 PROP HUNT · WORLD EVENT</strong><div>Everyone in the current online lobby snapshot joins the round. One player stays normal as the hunter while every other participant is disguised using verified full ATM Town map props like benches, street lamps, ATM vending machines, the town directory kiosk, and the token market board.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>15 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>20 sec</b><span>hide phase</span></div><div class="atmWorldEventFact"><b>120 sec</b><span>hunt phase</span></div><div class="atmWorldEventFact"><b>Last found</b><span>prop wins</span></div></div><div class="atmWorldEventSponsorHint">The original hunter uses ACTION near a disguised player to tag them. Every found prop turns back into their character and joins the seeker team. The last prop actually found wins. Disguises now use full standalone ATM Town prop assets instead of cropped scene fragments.</div></div><button class="atmWorldEventBtn" id="atmPropHuntStart" type="button" style="margin-top:9px;background:linear-gradient(90deg,#ffd166,#69f6bd);color:#062029" ${sponsorDisabled || state.fundingBusy || launchGuarded ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : 'START PROP HUNT'}</button><div class="atmWorldEventPreview" style="margin-top:12px"><strong>💸 PAYLOAD MONEY RAIN · MAINNET</strong><div>Choose the prize pool before the event. The 1,000 game points divide that pool exactly, so every collectible has a deterministic XRP value. First place is only a rank — every collector receives what they actually picked up.</div><div class="atmWorldEventFacts"><div class="atmWorldEventFact"><b>10 sec</b><span>global countdown</span></div><div class="atmWorldEventFact"><b>45 sec</b><span>live event</span></div><div class="atmWorldEventFact"><b>1,000 pts</b><span>exact reward basis</span></div><div class="atmWorldEventFact"><b>Mainnet</b><span>Xaman + Payload</span></div></div><div class="atmWorldEventSponsorBox"><label>DISPLAY THIS MONEY RAIN AS PROVIDED BY</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${!brandActive ? 'active' : ''}" id="atmWorldEventSponsorPlayer" type="button" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}>MY PLAYER NAME</button><button class="atmWorldEventSponsorChoice ${brandActive ? 'active' : ''}" id="atmWorldEventSponsorBrand" type="button" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}>PROJECT / BRAND</button></div>${brandActive ? `<input class="atmWorldEventSponsorInput" id="atmWorldEventSponsorInput" type="text" maxlength="32" placeholder="ATM, ChillGuy, etc." value="${escapeHtml(state.sponsorLabel)}" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">Players will see “Money Rain provided by ${escapeHtml(state.sponsorLabel || 'your project')}.”</div>` : `<div class="atmWorldEventSponsorInput" style="opacity:.9;cursor:default">${escapeHtml(state.controlContext?.handle ? '@' + state.controlContext.handle : state.controlContext?.display_name || 'Your ATM Town player name')}</div><div class="atmWorldEventSponsorHint">Your ATM Town name / @handle is used automatically. Choose PROJECT / BRAND to enter a custom provider name.</div>`}<label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">PRIZE ASSET</label><div class="atmWorldEventSponsorRow"><button class="atmWorldEventSponsorChoice ${state.moneyRainAssetType === 'xrp' ? 'active' : ''}" id="atmWorldEventAssetXrp" type="button" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}>XRP</button><button class="atmWorldEventSponsorChoice ${state.moneyRainAssetType === 'iou' ? 'active' : ''}" id="atmWorldEventAssetToken" type="button" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}>XRPL TOKEN</button></div>${state.moneyRainAssetType === 'iou' ? `<input class="atmWorldEventSponsorInput" id="atmWorldEventCurrencyInput" type="text" maxlength="40" placeholder="Currency code (ATM, 666, etc.)" value="${escapeHtml(state.moneyRainCurrency)}" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}><input class="atmWorldEventSponsorInput" id="atmWorldEventIssuerInput" type="text" maxlength="40" placeholder="Issuer r..." value="${escapeHtml(state.moneyRainIssuer)}" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}>` : ''}<label style="display:block;margin-top:13px;font-size:11px;font-weight:900;letter-spacing:.08em;color:#91b8c2">MAINNET PRIZE POOL · ${state.moneyRainAssetType === 'xrp' ? 'XRP' : escapeHtml(state.moneyRainCurrency || 'TOKEN')}</label><input class="atmWorldEventPoolInput" id="atmWorldEventPoolInput" type="text" inputmode="decimal" maxlength="10" placeholder="0.100" value="${escapeHtml(state.poolXrp)}" ${sponsorDisabled || draft || launchGuarded ? 'disabled' : ''}><div class="atmWorldEventSponsorHint">Choose XRP or an XRPL issued token. Payload creates a fresh disposable wallet for this event and refunds unused funds after settlement.</div></div>${pendingFunding}<div style="font-size:12px;color:#66f7bd;font-weight:850">XAMAN FUNDS THE DISPOSABLE MAINNET CAMPAIGN WALLET. ATM TOWN AND PAYLOAD NEVER RECEIVE YOUR XAMAN SECRET.</div></div><button class="atmWorldEventBtn" id="atmWorldEventPayloadAction" type="button" ${sponsorDisabled || state.fundingBusy || launchGuarded ? 'disabled' : ''}>${sponsorDisabled ? 'WORLD EVENT IN PROGRESS' : primaryText}</button>${!draft ? `<button class="atmWorldEventBtn" id="atmWorldEventPreviewStart" type="button" style="margin-top:9px;background:#173746;color:#dff7fb" ${sponsorDisabled || state.fundingBusy || launchGuarded ? 'disabled' : ''}>START PREVIEW · NO XRP</button>` : ''}<div class="atmWorldEventStatus" id="atmWorldEventStatus" style="color:${escapeHtml(state.panelStatusColor)}">${escapeHtml(state.panelStatus)}</div>`;
 
 
-    body.querySelector('#atmZombieEventStart')?.addEventListener('click', startZombieOutbreakPreview);
-    body.querySelector('#atmPropHuntStart')?.addEventListener('click', startPropHuntEvent);
+    body.querySelector('#atmZombieEventStart')?.addEventListener('click', () => { if (guardPanelLaunch()) startZombieOutbreakPreview(); });
+    body.querySelector('#atmPropHuntStart')?.addEventListener('click', () => { if (guardPanelLaunch()) startPropHuntEvent(); });
     body.querySelector('#atmWorldEventPayloadAction')?.addEventListener('click', () => {
+      if (!guardPanelLaunch()) return;
       if (!state.fundingDraft) preparePayloadMoneyRain();
       else if (state.fundingDraft.xaman_payload_uuid) checkPayloadFundingAndStart({ wait: true });
       else fundPayloadMoneyRain();
     });
-    body.querySelector('#atmWorldEventPreviewStart')?.addEventListener('click', startMoneyRainPreview);
+    body.querySelector('#atmWorldEventPreviewStart')?.addEventListener('click', () => { if (guardPanelLaunch()) startMoneyRainPreview(); });
     const playerButton = body.querySelector('#atmWorldEventSponsorPlayer');
     const brandButton = body.querySelector('#atmWorldEventSponsorBrand');
     const sponsorInput = body.querySelector('#atmWorldEventSponsorInput');
@@ -478,11 +503,17 @@
   function openControlPanel(context = {}) {
     installUi();
     loadFundingDraft();
+    clearTimeout(state.panelArmTimer);
+    state.panelOpenedAt = performance.now();
     state.controlContext = { map: String(context.map || ''), x: Number(context.x), y: Number(context.y) };
     renderControlPanel();
     document.getElementById('atmWorldEventOverlay').classList.add('open');
+    state.panelArmTimer = setTimeout(() => { state.panelArmTimer = null; renderControlPanel(); }, PANEL_LAUNCH_GUARD_MS + 40);
   }
-  function closeControlPanel() { document.getElementById('atmWorldEventOverlay')?.classList.remove('open'); }
+  function closeControlPanel() {
+    clearTimeout(state.panelArmTimer); state.panelArmTimer = null; state.panelOpenedAt = -Infinity;
+    document.getElementById('atmWorldEventOverlay')?.classList.remove('open');
+  }
 
   async function preparePayloadMoneyRain() {
     if (state.fundingBusy) return;
