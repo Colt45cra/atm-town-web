@@ -170,9 +170,9 @@
     if (toggle) toggle.setAttribute('aria-expanded', state.open ? 'true' : 'false');
     document.body.classList.toggle('live-chat-open', state.open);
 
-    // Opening the panel must not focus the composer. The software keyboard is
-    // opened only when the player explicitly taps/clicks the chat input.
-    global.ATMHudLayout?.setLiveChatOpen?.(state.open, { focusInput: false });
+    // The HUD layout owns keyboard coupling. On touch devices the panel is
+    // intentionally transparent/hidden until the software keyboard is real.
+    global.ATMHudLayout?.setLiveChatOpen?.(state.open, { focusInput: state.open });
 
     if (state.open) {
       state.unread = 0;
@@ -309,8 +309,17 @@
     global.visualViewport?.addEventListener('scroll', syncPanelToVisualViewport);
     global.addEventListener('orientationchange', () => setTimeout(syncPanelToVisualViewport, 120));
 
-    // Live Chat may remain open with the keyboard closed. Tapping/clicking the
-    // composer is the only action that should request text entry on mobile.
+    // If a phone refuses to open (or the user dismisses) the software keyboard,
+    // close Live Chat instead of ever leaving the chat panel open by itself.
+    global.addEventListener('atm:live-chat-keyboard-failed', () => {
+      if (state.open) setOpen(false);
+    });
+    $('chatInput')?.addEventListener('blur', () => {
+      if (!state.open || !global.ATMHudLayout?.expectsSoftKeyboard?.()) return;
+      setTimeout(() => {
+        if (state.open && !global.ATMHudLayout?.isKeyboardOpen?.()) setOpen(false);
+      }, 260);
+    });
 
     setInterval(renderPreview, 1_000);
     updateUnread(); renderPreview(); renderPanel();
