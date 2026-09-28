@@ -5768,6 +5768,7 @@ requestAnimationFrame(loop);
   }
   window.atmStartFirstRunTutorial=()=>{
     if(done()||active)return;
+    if(savedMp?.playerName){saveDone();return;}
     active=true;startX=Number(player?.x||0);startY=Number(player?.y||0);setStage(0);
     const action=document.getElementById('action');
     const onAction=()=>{if(active&&stage===1)setStage(2);};
