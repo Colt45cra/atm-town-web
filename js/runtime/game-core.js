@@ -3155,6 +3155,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout
 let lastChatSentAt=0;
 function sendChat(){
   const input=document.getElementById('chatInput');const message=String(input?.value||'').replace(/\s+/g,' ').trim().slice(0,180);if(!message)return;
+  const keepLiveChatFocused=!!window.ATMLiveChat?.isOpen?.();
   const now=Date.now();if(now-lastChatSentAt<500)return;lastChatSentAt=now;input.value='';
   const messageId=globalThis.crypto?.randomUUID?.()||`chat_${now}_${Math.random().toString(36).slice(2,12)}`;
   const createdAt=new Date(now).toISOString();const senderUserId=String(authSession?.user?.id||'');
@@ -3163,7 +3164,13 @@ function sendChat(){
     realtimeChannel.send({type:'broadcast',event:'chat',payload:{id:playerId,user_id:senderUserId,name:playerName,message,message_id:messageId,created_at:createdAt,x:player.x,y:player.y,map:currentMap}});
     window.ATMLiveChat?.persistSentMessage?.({message_id:messageId,message});
   }
-  window.ATMHudLayout?.sync?.();
+  if(keepLiveChatFocused&&input){
+    requestAnimationFrame(()=>{
+      if(!window.ATMLiveChat?.isOpen?.())return;
+      try{input.focus({preventScroll:true});}catch(_e){input.focus();}
+      window.ATMHudLayout?.sync?.();
+    });
+  }
 }
 window.atmSendChat=sendChat;
 function updateRemoteInterpolation(){
