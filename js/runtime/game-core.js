@@ -5638,7 +5638,8 @@ requestAnimationFrame(loop);
   flowStyle.textContent=`
     .signupOptionalSetup{margin:10px 0;border:1px solid rgba(88,241,230,.14);border-radius:14px;padding:10px;background:rgba(3,18,28,.58)}
     .signupOptionalSetup summary{cursor:pointer;color:#8feee8;font-size:11px;font-weight:900;letter-spacing:.05em}
-    .returningPlayer img{display:none!important}.returningPlayerLabel{display:grid;place-items:center;min-height:64px;padding:14px 18px;border-radius:18px;background:linear-gradient(90deg,#58f1e6,#6ff7c9);color:#062029;font-size:16px;font-weight:1000;box-shadow:0 14px 28px rgba(0,0,0,.28)}
+    .returningPlayer img{display:none!important}.returningPlayerLabel{display:grid;place-items:center;min-height:58px;padding:12px 18px;border-radius:17px;background:linear-gradient(90deg,#58f1e6,#6ff7c9);color:#062029;font-size:15px;font-weight:1000;box-shadow:0 14px 28px rgba(0,0,0,.28)}
+    @media(max-width:920px){.welcomeButtons .returningPlayer{width:min(78%,360px)!important}.returningPlayerLabel{min-height:54px;padding:10px 15px;font-size:14px;border-radius:16px}}
     .characterChoice[data-onboarding-locked="1"]{position:relative;opacity:.58}.characterChoice[data-onboarding-locked="1"]::before{content:'🔒';position:absolute;left:6px;top:6px;z-index:2;font-size:15px;filter:drop-shadow(0 2px 3px #000)}
     #atmFirstRunCoach{position:fixed;z-index:70;left:50%;top:max(72px,calc(env(safe-area-inset-top) + 58px));transform:translateX(-50%);width:min(420px,calc(100vw - 28px));padding:12px 44px 12px 14px;border:1px solid rgba(88,241,230,.34);border-radius:16px;background:rgba(3,18,28,.94);box-shadow:0 18px 44px rgba(0,0,0,.42);color:#eaffff;font:700 12px/1.4 system-ui;pointer-events:auto}
     #atmFirstRunCoach strong{display:block;color:#ffd166;font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}#atmFirstRunCoach button{position:absolute;right:8px;top:8px;border:0;background:transparent;color:#9fc3cc;font-size:18px}
