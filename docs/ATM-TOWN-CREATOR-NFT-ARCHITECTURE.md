@@ -4,6 +4,9 @@
 
 All official ATM Town game-asset NFTs use one dedicated **ATM Town issuer account** on XRPL Mainnet.
 
+- Dedicated issuer: `rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff`
+- Operational / authorized minter: `rM5oXXzDLJxLqKp6ZwZjjesPvNvh669uCc`
+
 The issuer should be treated as a cold identity account. Routine minting should be performed by a separate operational account authorized through the issuer's `NFTokenMinter` setting. The authorized minter includes the cold issuer in the `Issuer` field of each `NFTokenMint`.
 
 Creators never receive the issuer secret or minter secret.
