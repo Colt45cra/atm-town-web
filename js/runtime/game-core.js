@@ -2584,7 +2584,7 @@ async function getSupabaseClient(){
 function setIdentityStatus(message,tone='normal'){
   const el=document.getElementById('identityStatus');
   if(el){el.textContent=message||'';el.classList.toggle('dangerText',tone==='error');if(tone==='ok')el.style.color='#7cf7bd';else if(tone!=='error')el.style.color='#9fc3cc';}
-  for(const id of ['welcomeStatus','signupStatus']){const mirror=document.getElementById(id);if(!mirror)continue;mirror.textContent=message||'';mirror.classList.toggle('danger',tone==='error');mirror.classList.toggle('ok',tone==='ok');}
+  for(const id of ['welcomeStatus','signupStatus','loginIdentityStatus']){const mirror=document.getElementById(id);if(!mirror)continue;mirror.textContent=message||'';mirror.classList.toggle('danger',tone==='error');mirror.classList.toggle('ok',tone==='ok');}
 }
 function shortWallet(value){return value&&value.length>14?value.slice(0,7)+'…'+value.slice(-6):value;}
 function updateEntryProgress(activeStep=1,completed=[]){
@@ -2599,6 +2599,18 @@ function renderIdentity(){
   if(guest)guest.style.display=isSigned?'none':'block';
   if(signed)signed.style.display=isSigned?'block':'none';
   if(badge){badge.textContent=isSigned?'SIGNED IN':'GUEST';badge.classList.toggle('signed',isSigned);}
+  const landingLogin=document.getElementById('landingLoginBtn');
+  if(landingLogin){
+    let returningLabel=landingLogin.querySelector('.returningPlayerLabel');
+    if(isSigned){
+      if(!returningLabel){returningLabel=document.createElement('span');returningLabel.className='returningPlayerLabel';landingLogin.appendChild(returningLabel);}
+      returningLabel.textContent='Continue as '+String(playerAccount?.display_name||authSession?.user?.email?.split('@')[0]||'Player').slice(0,20);
+      landingLogin.classList.add('returningPlayer');
+      landingLogin.setAttribute('aria-label',returningLabel.textContent);
+    }else{
+      returningLabel?.remove();landingLogin.classList.remove('returningPlayer');landingLogin.setAttribute('aria-label','Log In');
+    }
+  }
   updateEntryProgress(isSigned?2:1,isSigned?[1]:[]);
   if(window.atmFlowAuthUpdated)window.atmFlowAuthUpdated(isSigned);
   if(isSigned){
@@ -2670,24 +2682,29 @@ async function initializeIdentity(){
     setIdentityStatus('Account service unavailable. Guest play still works.','error');
   }
 }
-async function sendEmailLogin(){
-  const email=(document.getElementById('identityEmail').value||'').trim();
-  if(!/^\S+@\S+\.\S+$/.test(email)){setIdentityStatus('Enter a valid email address.','error');return;}
-  const btn=document.getElementById('emailLoginBtn');btn.disabled=true;btn.textContent='SENDING…';
+async function sendEmailLogin(inputId='identityEmail',buttonId='emailLoginBtn'){
+  const input=document.getElementById(inputId);const btn=document.getElementById(buttonId);
+  const email=String(input?.value||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)){setIdentityStatus('Enter a valid email address.','error');input?.focus();return;}
+  if(btn){btn.disabled=true;btn.textContent='SENDING…';}
   try{
     const client=await getSupabaseClient();
     const {error}=await client.auth.signInWithOtp({email,options:{emailRedirectTo:'https://atm-town-web.vercel.app'}});
     if(error)throw error;
     setIdentityStatus('Check your email and open the ATM Town sign-in link.','ok');
   }catch(error){setIdentityStatus(error.message||'Email sign-in failed.','error');}
-  finally{btn.disabled=false;btn.innerHTML='<span class="identityBtnIcon">✉</span>SEND VERIFICATION EMAIL';}
+  finally{
+    if(btn){btn.disabled=false;btn.textContent=buttonId==='loginEmailBtn'?'Email me a sign-in link':'Send verification email';}
+  }
 }
 async function signInWithPasskey(){
   if(passkeySignInInProgress)return false;
   passkeySignInInProgress=true;
   const btn=document.getElementById('passkeyLoginBtn');
+  const loginBtn=document.getElementById('loginPasskeyBtn');
   const landingBtn=document.getElementById('landingLoginBtn');
   if(btn){btn.disabled=true;btn.textContent='WAITING…';}
+  if(loginBtn){loginBtn.disabled=true;loginBtn.textContent='WAITING…';}
   if(landingBtn){landingBtn.disabled=true;landingBtn.setAttribute('aria-busy','true');}
   try{
     setIdentityStatus('Opening your device passkey…');
@@ -2698,10 +2715,11 @@ async function signInWithPasskey(){
     setIdentityStatus('Passkey sign-in complete.','ok');
     if(!townEntryActive)await openKnownAccountProfile();
     return true;
-  }catch(error){setIdentityStatus(error.message||'No ATM Town passkey was found on this device. Use Sign Up to verify your email.','error');return false;}
+  }catch(error){setIdentityStatus(error.message||'No ATM Town passkey was found on this device. Use email sign-in instead.','error');return false;}
   finally{
     passkeySignInInProgress=false;
     if(btn){btn.disabled=false;btn.innerHTML='<span class="identityBtnIcon">⌁</span>USE PASSKEY';}
+    if(loginBtn){loginBtn.disabled=false;loginBtn.textContent='Continue with passkey';}
     if(landingBtn){landingBtn.disabled=false;landingBtn.removeAttribute('aria-busy');}
   }
 }
@@ -2804,8 +2822,11 @@ async function signOutAccount(){
   try{window.ATMEmbeddedWallet?.resetForAuthChange?.();const client=await getSupabaseClient();await client.auth.signOut();playerAccount=null;setIdentityStatus('Signed out. Guest play is still available.');renderIdentity();}
   catch(error){setIdentityStatus(error.message||'Sign out failed.','error');}
 }
-document.getElementById('emailLoginBtn')?.addEventListener('click',sendEmailLogin);
+document.getElementById('emailLoginBtn')?.addEventListener('click',()=>sendEmailLogin('identityEmail','emailLoginBtn'));
+document.getElementById('loginEmailBtn')?.addEventListener('click',()=>sendEmailLogin('loginEmail','loginEmailBtn'));
+document.getElementById('loginEmail')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();sendEmailLogin('loginEmail','loginEmailBtn');}});
 document.getElementById('passkeyLoginBtn')?.addEventListener('click',signInWithPasskey);
+document.getElementById('loginPasskeyBtn')?.addEventListener('click',signInWithPasskey);
 document.getElementById('registerPasskeyBtn')?.addEventListener('click',registerPasskey);
 document.getElementById('linkWalletBtn')?.addEventListener('click',linkXamanWallet);
 document.getElementById('signOutBtn')?.addEventListener('click',signOutAccount);
@@ -2976,6 +2997,7 @@ async function connectMultiplayer(){
     statusEl.style.color='#7cf7bd';
     townEntryActive=true;
     hideTownAccessFlow();
+    window.atmStartFirstRunTutorial?.();
     // Do not leave this control permanently disabled. If an OS/browser restore
     // ever exposes the profile screen, it remains recoverable instead of dead.
     button.disabled=false;
@@ -4141,7 +4163,7 @@ if(characterPickerEl){
 function selectCharacter(characterId){const requested=ALLOWED_CHARACTERS.includes(characterId)?characterId:'classic';if(window.atmLockerCanSelectCharacter&&!window.atmLockerCanSelectCharacter(requested)){window.atmLockerOpenForLockedCharacter?.(requested);return false;}selectedCharacter=(CHARACTER_SPRITES[requested]||CHARACTER_SHEETS[requested])?requested:'classic';document.querySelectorAll('.characterChoice').forEach(button=>button.classList.toggle('selected',button.dataset.character===selectedCharacter));updateEntryProgress(3,authSession?.user?[1,2]:[2]);window.atmLockerCharacterChanged?.(selectedCharacter);return true;}
 document.querySelectorAll('.characterChoice').forEach(button=>button.addEventListener('click',()=>selectCharacter(button.dataset.character)));
 selectCharacter(savedMp.character||'classic');
-const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();if(authSession?.user){getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
+const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user){getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
 
 const keys={};
 function isTextEntryTarget(target){
@@ -5611,6 +5633,18 @@ requestAnimationFrame(loop);
   let currentScreen='welcome';
   let entryMode='signed';
   const screen=(name)=>overlay?.querySelector('[data-flow-screen="'+name+'"]');
+  const flowStyle=document.createElement('style');
+  flowStyle.textContent=`
+    .signupOptionalSetup{margin:10px 0;border:1px solid rgba(88,241,230,.14);border-radius:14px;padding:10px;background:rgba(3,18,28,.58)}
+    .signupOptionalSetup summary{cursor:pointer;color:#8feee8;font-size:11px;font-weight:900;letter-spacing:.05em}
+    .returningPlayer img{display:none!important}.returningPlayerLabel{display:grid;place-items:center;min-height:64px;padding:14px 18px;border-radius:18px;background:linear-gradient(90deg,#58f1e6,#6ff7c9);color:#062029;font-size:16px;font-weight:1000;box-shadow:0 14px 28px rgba(0,0,0,.28)}
+    .characterChoice[data-onboarding-locked="1"]{opacity:.58}.characterChoice[data-onboarding-locked="1"]::before{content:'🔒';position:absolute;left:6px;top:6px;z-index:2;font-size:15px;filter:drop-shadow(0 2px 3px #000)}
+    #atmFirstRunCoach{position:fixed;z-index:70;left:50%;top:max(72px,calc(env(safe-area-inset-top) + 58px));transform:translateX(-50%);width:min(420px,calc(100vw - 28px));padding:12px 44px 12px 14px;border:1px solid rgba(88,241,230,.34);border-radius:16px;background:rgba(3,18,28,.94);box-shadow:0 18px 44px rgba(0,0,0,.42);color:#eaffff;font:700 12px/1.4 system-ui;pointer-events:auto}
+    #atmFirstRunCoach strong{display:block;color:#ffd166;font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}#atmFirstRunCoach button{position:absolute;right:8px;top:8px;border:0;background:transparent;color:#9fc3cc;font-size:18px}
+    body.atm-first-run-action #action{box-shadow:0 0 0 5px rgba(255,209,102,.25),0 10px 30px rgba(255,79,163,.45)!important;animation:atmFirstRunPulse 1s ease-in-out infinite}
+    body.atm-first-run-coin #quest{box-shadow:0 0 0 3px rgba(88,241,230,.24)!important}@keyframes atmFirstRunPulse{50%{transform:scale(1.08)}}
+  `;
+  document.head.appendChild(flowStyle);
   function setStatus(id,text,tone=''){
     const el=document.getElementById(id);if(!el)return;el.textContent=text||'';el.classList.toggle('danger',tone==='error');el.classList.toggle('ok',tone==='ok');
   }
@@ -5626,9 +5660,9 @@ requestAnimationFrame(loop);
     const online=document.getElementById('joinOnline'),offline=document.getElementById('joinOffline'),note=document.getElementById('entryModeNote'),eyebrow=document.getElementById('profileEyebrow');
     if(mode==='guest'){
       selectCharacter('classic');updateCharacterSummary();
-      if(online)online.textContent='Enter Town as Guest';if(offline)offline.style.display='none';if(note)note.textContent='Guest accounts use ATM and progress is not attached to an account.';if(eyebrow)eyebrow.textContent='Guest Entry';
+      if(online)online.textContent='Enter Town as Guest';if(offline)offline.style.display='none';if(note)note.textContent='Guest mode uses ATM. Progress is not saved to an account.';if(eyebrow)eyebrow.textContent='Guest Entry';
     }else{
-      if(online)online.textContent='Enter Town Online';if(offline)offline.style.display='block';if(note)note.textContent='Your selected character will be used online.';if(eyebrow)eyebrow.textContent='Final Step';
+      if(online)online.textContent='Enter Town Online';if(offline)offline.style.display='block';if(note)note.textContent='Your selected character will be used online.';if(eyebrow)eyebrow.textContent='Step 3';
     }
   }
   function show(name){
@@ -5638,24 +5672,33 @@ requestAnimationFrame(loop);
     document.body.classList.add('access-flow-open');currentScreen=name;shell.dataset.screen=name;overlay.style.display='block';overlay.querySelectorAll('.flowScreen').forEach(s=>s.classList.toggle('active',s.dataset.flowScreen===name));
     if(name==='character'){applyEntryMode('signed');updateCharacterSummary();setTimeout(()=>selectedButton()?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}),40);}
     if(name==='profile')updateCharacterSummary();
-    const first=name==='signup'?document.getElementById('identityEmail'):name==='profile'?document.getElementById('displayName'):null;if(first)setTimeout(()=>{try{first.focus({preventScroll:true});}catch(_){first.focus();}},80);
+    const first=name==='signup'?document.getElementById('identityEmail'):name==='login'?document.getElementById('loginEmail'):name==='profile'?document.getElementById('displayName'):null;if(first)setTimeout(()=>{try{first.focus({preventScroll:true});}catch(_){first.focus();}},80);
   }
   window.atmShowFlowScreen=show;
   window.atmFlowAuthUpdated=(signed)=>{
     const continueBtn=document.getElementById('signupContinueBtn');if(continueBtn)continueBtn.disabled=!signed;
-    if(signed){setStatus('signupStatus','Email verified. Add a passkey or Xaman wallet now, or continue.','ok');}
+    if(signed){setStatus('signupStatus','Email verified. You can continue now. Passkey and wallet setup are optional.','ok');}
     else if(currentScreen==='signup'){setStatus('signupStatus','Verify your email to continue.');}
   };
   document.getElementById('landingLoginBtn')?.addEventListener('click',async()=>{
-    setStatus('welcomeStatus','Opening your fingerprint, face, or device passkey…');
-    if(authSession?.user){setStatus('welcomeStatus','Account already signed in.','ok');await window.atmOpenKnownAccountProfile?.();return;}
-    await signInWithPasskey();
+    if(authSession?.user){setStatus('welcomeStatus','Welcome back.','ok');await window.atmOpenKnownAccountProfile?.();return;}
+    setIdentityStatus('');
+    show('login');
   });
   document.getElementById('landingSignupBtn')?.addEventListener('click',()=>{try{localStorage.setItem('atm_signup_pending','1');}catch(_e){}show('signup');});
-  document.getElementById('landingGuestBtn')?.addEventListener('click',()=>{applyEntryMode('guest');show('profile');});
+  document.getElementById('landingGuestBtn')?.addEventListener('click',()=>{
+    applyEntryMode('guest');
+    let guestName='';try{guestName=localStorage.getItem('atm_guest_name')||'';}catch(_e){}
+    if(!guestName){guestName='Guest'+String(Math.floor(1000+Math.random()*9000));try{localStorage.setItem('atm_guest_name',guestName);}catch(_e){}}
+    const nameField=document.getElementById('displayName');if(nameField)nameField.value=guestName;
+    show('profile');
+    setTimeout(()=>document.getElementById('joinOnline')?.click(),100);
+  });
+  document.getElementById('loginBackBtn')?.addEventListener('click',()=>show('welcome'));
   document.getElementById('signupBackBtn')?.addEventListener('click',()=>show('welcome'));
-  document.getElementById('characterBackBtn')?.addEventListener('click',()=>show('welcome'));
+  document.getElementById('characterBackBtn')?.addEventListener('click',()=>show(authSession?.user?'signup':'welcome'));
   document.getElementById('profileBackBtn')?.addEventListener('click',()=>show(entryMode==='guest'?'welcome':'character'));
+  document.getElementById('profileChangeCharacterBtn')?.addEventListener('click',()=>show('character'));
   document.getElementById('signupContinueBtn')?.addEventListener('click',()=>{if(!authSession?.user){setStatus('signupStatus','Verify your email before continuing.','error');return;}try{localStorage.removeItem('atm_signup_pending');}catch(_e){}show('character');});
   document.getElementById('characterNextBtn')?.addEventListener('click',()=>{applyEntryMode('signed');show('profile');});
   document.querySelector('.characterPicker')?.addEventListener('click',()=>setTimeout(updateCharacterSummary,0));
@@ -5672,6 +5715,48 @@ requestAnimationFrame(loop);
     // Return verified signup users to the signup page after opening the email link.
     setTimeout(()=>{if(signupPending&&authSession?.user)show('signup');},900);
   }
+})();
+
+(function installFirstRunCoach(){
+  const KEY='atm_first_run_tutorial_v1';
+  let timer=0,startX=0,startY=0,stage=0,active=false;
+  const done=()=>{try{return localStorage.getItem(KEY)==='done';}catch(_e){return false;}};
+  const saveDone=()=>{try{localStorage.setItem(KEY,'done');}catch(_e){}};
+  function clearHighlights(){document.body.classList.remove('atm-first-run-action','atm-first-run-coin');}
+  function close(markDone=false){
+    active=false;clearInterval(timer);timer=0;clearHighlights();document.getElementById('atmFirstRunCoach')?.remove();if(markDone)saveDone();
+  }
+  function coach(){
+    let el=document.getElementById('atmFirstRunCoach');
+    if(!el){
+      el=document.createElement('div');el.id='atmFirstRunCoach';el.innerHTML='<strong>First steps</strong><span></span><button type="button" aria-label="Skip tutorial">×</button>';
+      el.querySelector('button').addEventListener('click',()=>close(true));document.body.appendChild(el);
+    }
+    return el;
+  }
+  function text(message){const el=coach();const span=el.querySelector('span');if(span)span.textContent=message;}
+  function setStage(next){
+    stage=next;clearHighlights();
+    const touch=matchMedia?.('(pointer:coarse)')?.matches;
+    if(stage===0)text(touch?'Move with the joystick to look around ATM Town.':'Move with WASD or the arrow keys to look around ATM Town.');
+    else if(stage===1){text('Walk up to something interesting and tap ACTION to interact.');document.body.classList.add('atm-first-run-action');}
+    else if(stage===2){text('Nice. Grab a coin nearby — your first quest tracks 6 of them.');document.body.classList.add('atm-first-run-coin');}
+    else if(stage===3){text('You’ve got it. Explore the town, meet projects, play games and discover what you can own.');setTimeout(()=>close(true),3200);}
+  }
+  function tick(){
+    if(!active)return;
+    if(stage===0&&Math.hypot(Number(player?.x||0)-startX,Number(player?.y||0)-startY)>42)setStage(1);
+    if(stage===2&&Number(document.getElementById('progress')?.textContent||0)>0)setStage(3);
+  }
+  window.atmStartFirstRunTutorial=()=>{
+    if(done()||active)return;
+    active=true;startX=Number(player?.x||0);startY=Number(player?.y||0);setStage(0);
+    const action=document.getElementById('action');
+    const onAction=()=>{if(active&&stage===1)setStage(2);};
+    action?.addEventListener('pointerdown',onAction,{once:false});
+    action?.addEventListener('click',onAction,{once:false});
+    timer=setInterval(tick,180);
+  };
 })();
 
 
@@ -6198,7 +6283,14 @@ function lockerCanSelectCharacter(characterId){
   const item=lockerItemForCharacter(characterId);return !item||lockerOwnershipInfo(item).owned;
 }
 window.atmLockerCanSelectCharacter=lockerCanSelectCharacter;
-window.atmLockerOpenForLockedCharacter=(characterId)=>{lockerOpen();lockerState.slot='body';lockerState.filter='my-characters';lockerState.selectedItemId=lockerItemForCharacter(characterId)?.id||null;lockerRender();lockerSetStatus(lockerCharacterName(characterId)+' is not owned by the linked wallet.','error');};
+window.atmLockerOpenForLockedCharacter=(characterId)=>{
+  if(document.body.classList.contains('access-flow-open')){
+    document.querySelectorAll('.characterChoice').forEach(button=>{if(button.dataset.character===characterId)button.dataset.onboardingLocked='1';});
+    const label=document.getElementById('selectedCharacterName');if(label)label.textContent=lockerCharacterName(characterId)+' requires ownership';
+    return;
+  }
+  lockerOpen();lockerState.slot='body';lockerState.filter='my-characters';lockerState.selectedItemId=lockerItemForCharacter(characterId)?.id||null;lockerRender();lockerSetStatus(lockerCharacterName(characterId)+' is not owned by the linked wallet.','error');
+};
 window.atmLockerCharacterChanged=(characterId)=>{lockerActiveSavedCharacterId=null;lockerLoadout.base=lockerItemForCharacter(characterId)?.id||'character:classic';lockerSaveLoadout();lockerRender();};
 window.atmLockerInventoryChanged=()=>{if(lockerState.status==='ready'&&!lockerState.nftMetadataLoading.size)lockerEnforceEquipmentOwnership();if(lockerState.open)lockerRender();};
 window.atmLockerAccountUpdated=()=>{lockerUpdateWalletBadge();if(lockerState.open&&lockerWalletAddress())lockerRefreshXrpl(true);else lockerRender();};
