@@ -5718,15 +5718,20 @@ requestAnimationFrame(loop);
   else{
     show(loginPending?'login':'welcome');
     // Email-link returns keep their intent separate: signup resumes setup,
-    // while returning-player login goes straight to the saved profile.
-    setTimeout(async()=>{
+    // while returning-player login goes straight to the saved profile. Retry
+    // briefly because mobile browsers may finish restoring the auth session
+    // after the access-flow UI has already mounted.
+    let returnAttempts=0;
+    const resumeEmailReturn=async()=>{
       if(loginPending&&authSession?.user){
         try{localStorage.removeItem('atm_login_pending');}catch(_e){}
         await window.atmOpenKnownAccountProfile?.();
         return;
       }
-      if(signupPending&&authSession?.user)show('signup');
-    },900);
+      if(signupPending&&authSession?.user){show('signup');return;}
+      if((loginPending||signupPending)&&returnAttempts++<80)setTimeout(resumeEmailReturn,100);
+    };
+    setTimeout(resumeEmailReturn,120);
   }
 })();
 
