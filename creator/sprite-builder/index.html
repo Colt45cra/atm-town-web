@@ -3,66 +3,438 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#05070a">
+<meta name="theme-color" content="#050506">
 <title>Sprite Builder — ATM Town Creator</title>
 <style>
-:root{--bg:#05070a;--panel:#0c1218;--panel2:#101923;--line:#263642;--text:#f4fbff;--muted:#94a9b7;--a:#6fe7ff;--b:#ffd24a;--c:#ff684f;--good:#7fffc7;--bad:#ff8895}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(circle at 12% -5%,#18323a 0,#070b10 38%,#05070a 75%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max-width:1160px;margin:auto}.nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 14px}.back{color:#c5d6df;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;background:#0b1117}.brand{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--a);font-weight:900}.hero{border:1px solid var(--line);border-radius:20px;padding:20px;background:linear-gradient(160deg,#111b24,#090e13);margin-bottom:14px}.hero h1{font-size:clamp(28px,6vw,46px);letter-spacing:-.035em;margin:4px 0 7px}.hero p{color:var(--muted);margin:0;line-height:1.5;max-width:800px}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.95fr);gap:14px}.card{background:linear-gradient(180deg,#0e171eee,#090e13ee);border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 14px 36px #0005}.card h2{font-size:14px;margin:0 0 12px}.field{margin-bottom:11px}.field label{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:900;color:#bacbd5;margin-bottom:6px}input,select,button{font:inherit}input[type=text],select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:#071016;color:var(--text);outline:none}input:focus,select:focus{border-color:var(--a)}input[type=range]{width:100%;accent-color:var(--a)}
-.drop{position:relative;border:1px dashed #3a5e6d;border-radius:14px;background:#071016;min-height:190px;padding:16px;display:grid;place-items:center;text-align:center;cursor:pointer;overflow:hidden}.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}.drop img{max-width:100%;max-height:250px;object-fit:contain}.drop strong{display:block}.drop span{display:block;color:var(--muted);font-size:11px;margin-top:5px}.hidden{display:none!important}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.checkline{display:flex;gap:8px;align-items:center;color:#c5d4dc;font-size:12px;margin:8px 0 12px}.checkline input{width:18px;height:18px;accent-color:var(--a)}
-.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:13px 0}.spec{border:1px solid var(--line);border-radius:10px;background:#071016;padding:9px}.spec b{display:block;font-size:14px}.spec span{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#111e27;color:var(--text);border-radius:10px;padding:10px 12px;font-weight:850;cursor:pointer}.btn.primary{background:linear-gradient(135deg,var(--b),#ff8d43);border-color:#ffb64b;color:#1b0c00}.btn.secondary{border-color:#365b69}.btn:disabled{opacity:.42;cursor:not-allowed}.btn:active{transform:translateY(1px)}
-.status{margin-top:10px;border:1px solid var(--line);border-radius:11px;background:#071016;padding:10px;font-size:12px;line-height:1.45;color:#b4c6d0}.status.good{border-color:#285e49;color:var(--good)}.status.bad{border-color:#64343c;color:#ffc0c7}
-.stage{min-height:390px;border:1px solid var(--line);border-radius:14px;display:grid;place-items:center;overflow:auto;padding:14px;background:linear-gradient(45deg,#111d24 25%,#0c151b 25%,#0c151b 50%,#111d24 50%,#111d24 75%,#0c151b 75%);background-size:24px 24px}.stage canvas{max-width:100%;height:auto;image-rendering:pixelated;filter:drop-shadow(0 8px 14px #0009)}
-.preview{display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:center}.animStage{height:180px;border:1px solid var(--line);border-radius:14px;background:radial-gradient(circle,#16313b,#071016 72%);display:grid;place-items:center}.animStage canvas{max-width:155px;max-height:170px;image-rendering:pixelated}.dirBtns{display:grid;grid-template-columns:1fr 1fr;gap:7px}.dirBtns .btn.active{border-color:var(--a);background:#12313b}.note{font-size:10px;line-height:1.45;color:#8095a2;margin-top:9px}.import{position:relative;overflow:hidden}.import input{position:absolute;inset:0;opacity:0;cursor:pointer}.full{grid-column:1/-1}
-@media(max-width:850px){.grid{grid-template-columns:1fr}.stage{min-height:300px}.preview{grid-template-columns:1fr}.animStage{height:165px}.full{grid-column:auto}}
-@media(max-width:500px){body{padding:9px}.row{grid-template-columns:1fr}.specs{grid-template-columns:repeat(2,1fr)}.card{padding:12px}}
+:root{
+  --bg:#040405;
+  --panel:#0a0b0f;
+  --panel2:#101119;
+  --line:rgba(255,214,72,.24);
+  --gold:#ffd84a;
+  --orange:#ff9d32;
+  --cyan:#08d9ff;
+  --blue:#177cff;
+  --pink:#ff4f9a;
+  --red:#ff554d;
+  --text:#fff9e8;
+  --muted:#9da8b9;
+  --good:#72ffd0;
+  --bad:#ff8d9b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#030304;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{
+  position:relative;
+  overflow-x:hidden;
+  padding:12px;
+  padding-bottom:max(28px,env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 84% -5%,rgba(8,217,255,.16),transparent 30%),
+    radial-gradient(circle at 10% 0%,rgba(255,79,154,.13),transparent 26%),
+    linear-gradient(180deg,#08080b 0,#030304 62%);
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:.26;
+  background:
+    linear-gradient(rgba(8,217,255,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(8,217,255,.08) 1px,transparent 1px);
+  background-size:42px 42px;
+  mask-image:linear-gradient(to bottom,transparent 0,#000 18%,#000 100%);
+}
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:.1;
+  background:repeating-linear-gradient(180deg,transparent 0 3px,rgba(255,255,255,.08) 4px);
+  mix-blend-mode:screen;
+}
+.wrap{position:relative;z-index:1;max-width:1160px;margin:auto}
+.nav{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:2px 0 12px;padding:3px 2px;
+}
+.back{
+  display:inline-flex;align-items:center;gap:6px;
+  color:#d9f8ff;text-decoration:none;
+  border:1px solid rgba(8,217,255,.34);
+  border-radius:11px;padding:9px 12px;font-size:12px;font-weight:800;
+  background:linear-gradient(180deg,rgba(7,22,28,.94),rgba(4,10,14,.96));
+  box-shadow:inset 0 0 16px rgba(8,217,255,.04);
+}
+.navBrand{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:1000}
+
+.hero{
+  position:relative;
+  overflow:hidden;
+  min-height:240px;
+  display:grid;
+  grid-template-columns:minmax(0,1.12fr) minmax(220px,.88fr);
+  align-items:center;
+  gap:18px;
+  margin-bottom:14px;
+  padding:25px clamp(18px,4vw,34px);
+  border:1px solid rgba(255,216,74,.34);
+  border-radius:24px;
+  background:
+    radial-gradient(circle at 84% 40%,rgba(8,217,255,.18),transparent 32%),
+    radial-gradient(circle at 74% 25%,rgba(255,79,154,.14),transparent 26%),
+    linear-gradient(135deg,rgba(20,13,6,.97),rgba(8,10,15,.99) 44%,rgba(4,10,16,.99));
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.52),
+    inset 0 0 0 1px rgba(255,255,255,.025),
+    0 0 35px rgba(255,216,74,.05);
+}
+.hero::before{
+  content:"";
+  position:absolute;left:0;right:0;bottom:0;height:46%;
+  background:
+    linear-gradient(rgba(8,217,255,.16) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(8,217,255,.15) 1px,transparent 1px);
+  background-size:34px 24px;
+  transform:perspective(250px) rotateX(62deg) scale(1.34);
+  transform-origin:center bottom;
+  opacity:.55;
+  mask-image:linear-gradient(to top,#000,transparent 95%);
+}
+.heroText,.heroLogo{position:relative;z-index:1}
+.kicker{
+  display:inline-flex;align-items:center;gap:8px;
+  color:var(--cyan);font-size:11px;font-weight:1000;letter-spacing:.18em;text-transform:uppercase;
+}
+.kicker::before{
+  content:"";width:32px;height:3px;border-radius:99px;
+  background:linear-gradient(90deg,var(--pink),var(--gold),var(--cyan));
+  box-shadow:0 0 13px rgba(8,217,255,.45);
+}
+.hero h1{
+  margin:8px 0 9px;
+  max-width:680px;
+  font-size:clamp(32px,6vw,58px);
+  line-height:.95;
+  letter-spacing:-.055em;
+  font-weight:1000;
+  text-transform:uppercase;
+}
+.hero h1 span{
+  display:block;
+  background:linear-gradient(90deg,#fff6cf 0,var(--gold) 28%,#ff9a3d 54%,var(--pink) 76%,var(--cyan) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 14px rgba(255,216,74,.12));
+}
+.hero p{margin:0;max-width:670px;color:#b9c6d2;line-height:1.6;font-size:14px}
+.heroLogo{
+  display:grid;place-items:center;
+  min-height:190px;
+}
+.heroLogo img{
+  width:min(100%,380px);
+  max-height:220px;
+  object-fit:contain;
+  filter:drop-shadow(0 0 18px rgba(8,217,255,.22)) drop-shadow(0 0 13px rgba(255,79,154,.15));
+}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.95fr);gap:14px}
+.card{
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(13,15,22,.97),rgba(6,8,12,.98));
+  border:1px solid rgba(255,216,74,.2);
+  border-radius:20px;
+  padding:16px;
+  box-shadow:0 18px 44px rgba(0,0,0,.4),inset 0 0 0 1px rgba(255,255,255,.018);
+}
+.card::before{
+  content:"";position:absolute;left:0;top:0;width:100%;height:3px;
+  background:linear-gradient(90deg,var(--pink),var(--gold) 35%,var(--cyan) 75%,transparent);
+  opacity:.85;
+}
+.card h2{
+  display:flex;align-items:center;gap:8px;
+  margin:0 0 13px;font-size:13px;letter-spacing:.07em;text-transform:uppercase;
+  color:#fff5d4;
+}
+.card h2::before{
+  content:"";width:7px;height:7px;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 13px rgba(255,216,74,.75);
+}
+.field{margin-bottom:11px}
+.field label{
+  display:block;margin-bottom:6px;
+  color:#bfcbd7;font-size:9px;font-weight:1000;letter-spacing:.12em;text-transform:uppercase;
+}
+input,button{font:inherit}
+input[type=text]{
+  width:100%;padding:12px 13px;
+  color:#fff;background:#05070a;
+  border:1px solid rgba(8,217,255,.21);
+  border-radius:10px;outline:none;
+  box-shadow:inset 0 0 16px rgba(8,217,255,.025);
+}
+input[type=text]:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(8,217,255,.08),0 0 18px rgba(8,217,255,.08)}
+
+.drop{
+  position:relative;
+  min-height:220px;
+  padding:18px;
+  display:grid;place-items:center;text-align:center;overflow:hidden;cursor:pointer;
+  border:1px dashed rgba(8,217,255,.48);
+  border-radius:17px;
+  background:
+    radial-gradient(circle at 50% 35%,rgba(8,217,255,.10),transparent 48%),
+    linear-gradient(180deg,rgba(6,17,24,.92),rgba(5,8,12,.97));
+  transition:.18s ease;
+}
+.drop::before{
+  content:"";
+  position:absolute;inset:10px;border-radius:12px;
+  border:1px solid rgba(255,79,154,.08);
+  pointer-events:none;
+}
+.drop:hover{border-color:var(--gold);box-shadow:0 0 28px rgba(8,217,255,.07)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop img{position:relative;z-index:1;max-width:100%;max-height:270px;object-fit:contain;filter:drop-shadow(0 12px 22px #0009)}
+.drop strong{
+  display:block;
+  color:#fff7db;
+  font-size:17px;
+  font-weight:1000;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+.drop strong::before{
+  content:"+";
+  display:grid;place-items:center;
+  width:42px;height:42px;margin:0 auto 12px;
+  border:1px solid rgba(255,216,74,.55);
+  border-radius:12px;
+  color:var(--gold);font-size:28px;font-weight:500;
+  background:rgba(255,216,74,.06);
+  box-shadow:0 0 24px rgba(255,216,74,.08);
+}
+.drop span{display:block;color:#8299aa;font-size:11px;margin-top:6px}
+.hidden{display:none!important}
+
+.checkline{
+  display:flex;gap:9px;align-items:center;
+  margin:10px 0 13px;color:#bac6d1;font-size:11px;
+}
+.checkline input{width:18px;height:18px;accent-color:var(--cyan)}
+
+.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:13px 0}
+.spec{
+  position:relative;
+  padding:10px;
+  border:1px solid rgba(255,216,74,.15);
+  border-radius:11px;
+  background:linear-gradient(180deg,rgba(15,15,18,.92),rgba(6,8,11,.96));
+}
+.spec b{display:block;color:#fff0b0;font-size:15px;line-height:1.1}
+.spec span{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#778c9b}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  min-height:42px;
+  border:1px solid rgba(8,217,255,.22);
+  background:linear-gradient(180deg,#101923,#091016);
+  color:#eefbff;
+  border-radius:11px;
+  padding:10px 13px;
+  font-weight:950;
+  cursor:pointer;
+  transition:.16s ease;
+}
+.btn:hover:not(:disabled){transform:translateY(-1px);border-color:rgba(8,217,255,.5)}
+.btn.primary{
+  position:relative;
+  flex:1;
+  min-height:50px;
+  color:#160b00;
+  border-color:#ffd84a;
+  background:linear-gradient(105deg,#ffe665 0,#ffc13d 34%,#ff9a37 65%,#ff6d4d 100%);
+  box-shadow:0 10px 25px rgba(255,142,47,.19),inset 0 1px rgba(255,255,255,.55);
+  text-transform:uppercase;
+  letter-spacing:.025em;
+}
+.btn.primary::after{
+  content:"";position:absolute;left:13%;right:13%;bottom:-1px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--pink),var(--cyan),transparent);
+  opacity:.9;
+}
+.btn.primary:hover:not(:disabled){box-shadow:0 12px 30px rgba(255,142,47,.26),0 0 20px rgba(255,216,74,.08)}
+.btn:disabled{opacity:.38;cursor:not-allowed;filter:saturate(.5)}
+
+.status{
+  margin-top:10px;
+  padding:10px 11px;
+  border:1px solid rgba(8,217,255,.14);
+  border-radius:11px;
+  background:#05080c;
+  color:#9eafbd;
+  font-size:11px;line-height:1.45;
+}
+.status::before{content:"SYSTEM // ";color:var(--cyan);font-weight:900;font-size:9px;letter-spacing:.08em}
+.status.good{border-color:rgba(114,255,208,.34);color:var(--good)}
+.status.bad{border-color:rgba(255,91,108,.4);color:#ffc0c8}
+
+.note{margin-top:9px;color:#758a99;font-size:9px;line-height:1.55}
+
+.stage{
+  position:relative;
+  min-height:420px;
+  overflow:auto;
+  display:grid;place-items:center;
+  padding:14px;
+  border:1px solid rgba(8,217,255,.18);
+  border-radius:15px;
+  background:
+    linear-gradient(rgba(8,217,255,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(8,217,255,.08) 1px,transparent 1px),
+    radial-gradient(circle at 50% 35%,rgba(23,124,255,.08),transparent 45%),
+    #05080c;
+  background-size:28px 28px,28px 28px,auto,auto;
+}
+.stage::after{
+  content:"OUTPUT MATRIX";
+  position:absolute;top:9px;right:11px;
+  font-size:7px;font-weight:1000;letter-spacing:.14em;color:rgba(8,217,255,.35);
+}
+.stage canvas{
+  max-width:100%;height:auto;image-rendering:pixelated;
+  filter:drop-shadow(0 14px 22px rgba(0,0,0,.72));
+}
+
+.preview{display:grid;grid-template-columns:180px 1fr;gap:14px;align-items:center}
+.animStage{
+  height:190px;
+  display:grid;place-items:center;
+  border:1px solid rgba(8,217,255,.22);
+  border-radius:15px;
+  background:
+    linear-gradient(rgba(8,217,255,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(8,217,255,.07) 1px,transparent 1px),
+    radial-gradient(circle,rgba(8,217,255,.12),transparent 66%),
+    #05090d;
+  background-size:22px 22px,22px 22px,auto,auto;
+  box-shadow:inset 0 0 30px rgba(8,217,255,.025);
+}
+.animStage canvas{max-width:160px;max-height:178px;image-rendering:pixelated}
+.dirBtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.dirBtns .btn.active{
+  color:#140a00;
+  border-color:var(--gold);
+  background:linear-gradient(135deg,var(--gold),#ff9a38);
+  box-shadow:0 0 18px rgba(255,216,74,.09);
+}
+.full{grid-column:1/-1}
+
+.brandStrip{
+  margin:14px 0 2px;
+  display:flex;justify-content:center;align-items:center;gap:10px;
+  color:#576d7b;font-size:8px;font-weight:1000;letter-spacing:.18em;text-transform:uppercase;
+}
+.brandStrip i{display:block;width:42px;height:1px;background:linear-gradient(90deg,transparent,var(--cyan))}
+.brandStrip i:last-child{transform:scaleX(-1)}
+
+@media(max-width:850px){
+  .hero{grid-template-columns:1fr;min-height:0;padding:22px 18px}
+  .heroLogo{min-height:120px}
+  .heroLogo img{max-height:150px}
+  .grid{grid-template-columns:1fr}
+  .stage{min-height:300px}
+  .preview{grid-template-columns:1fr}
+  .animStage{height:175px}
+  .full{grid-column:auto}
+}
+@media(max-width:500px){
+  body{padding:9px}
+  .hero{border-radius:19px}
+  .hero h1{font-size:34px}
+  .heroLogo{min-height:95px}
+  .heroLogo img{max-height:115px}
+  .card{padding:13px;border-radius:17px}
+  .specs{grid-template-columns:repeat(2,1fr)}
+  .dirBtns{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
 <main class="wrap">
-  <div class="nav"><a class="back" href="../">← Creator</a><span class="brand">ATM Town Creator</span></div>
+  <div class="nav">
+    <a class="back" href="../">← Creator Hub</a>
+    <span class="navBrand">You Are All The Money</span>
+  </div>
+
   <section class="hero">
-    <div class="brand">GPT Sprite Builder</div>
-    <h1>One image → ATM Town sprite sheet</h1>
-    <p>Upload one image of your character. GPT will create a complete ATM Town-style 3×4 sprite sheet automatically using our hidden in-game reference sheet.</p>
+    <div class="heroText">
+      <div class="kicker">ATM Town Creator</div>
+      <h1>Build your <span>playable sprite.</span></h1>
+      <p>Upload one character image. ATM Town uses GPT and a hidden in-game sprite reference to create a complete 3×4 character sheet ready for the ATM Town format.</p>
+    </div>
+    <div class="heroLogo">
+      <img src="/assets/ui/atm-town-logo.webp" alt="ATM Town">
+    </div>
   </section>
 
   <div class="grid">
     <section class="card">
-      <h2>1. Character</h2>
-      <div class="field"><label>Character name</label><input id="charName" type="text" value="my-character" autocomplete="off"></div>
+      <h2>01 // Character Input</h2>
+      <div class="field">
+        <label>Character name</label>
+        <input id="charName" type="text" value="my-character" autocomplete="off">
+      </div>
+
       <label class="drop" id="drop">
         <input id="file" type="file" accept="image/png,image/webp,image/jpeg">
-        <div id="dropText"><strong>Tap to upload your character</strong><span>PNG, WebP or JPG • a clear full-body image works best</span></div>
+        <div id="dropText">
+          <strong>Upload Character</strong>
+          <span>PNG, WebP or JPG • clear full-body art works best</span>
+        </div>
         <img id="sourcePreview" class="hidden" alt="Uploaded character">
       </label>
-      <div class="checkline"><input id="removeBg" type="checkbox"><label for="removeBg">Remove a flat background before sending</label></div>
-      <div class="specs">
-        <div class="spec"><b>256×320</b><span>frame</span></div>
-        <div class="spec"><b>3×4</b><span>grid</span></div>
-        <div class="spec"><b>768×1280</b><span>sheet</span></div>
-        <div class="spec"><b>12</b><span>frames</span></div>
-        <div class="spec"><b>128, 303</b><span>foot anchor</span></div>
-        <div class="spec"><b>PNG/WebP</b><span>export</span></div>
+
+      <div class="checkline">
+        <input id="removeBg" type="checkbox">
+        <label for="removeBg">Remove a flat background before generation</label>
       </div>
-      <div class="actions">\n        <button class="btn primary" id="generateAi" disabled>Generate Sprite Sheet</button>\n      </div>\n      <div class="status" id="status">Upload a character to begin.</div>
-      <div class="note">Upload your character and generate a full ATM Town sprite sheet in one step. The hidden reference controls the poses, spacing, layout, and ATM Town style. Walk preview uses 1→2→3→2. Your OpenAI key and reference sheet are never shown in the Creator UI.</div>
+
+      <div class="specs">
+        <div class="spec"><b>256×320</b><span>Frame</span></div>
+        <div class="spec"><b>3×4</b><span>Grid</span></div>
+        <div class="spec"><b>768×1280</b><span>Sheet</span></div>
+        <div class="spec"><b>12</b><span>Frames</span></div>
+        <div class="spec"><b>128, 303</b><span>Foot Anchor</span></div>
+        <div class="spec"><b>PNG/WebP</b><span>Export</span></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="generateAi" disabled>Generate Sprite Sheet</button>
+      </div>
+
+      <div class="status" id="status">Upload a character to begin.</div>
+      <div class="note">One character image in. One ATM Town sprite sheet out. The reference sheet and generation prompt stay behind the scenes.</div>
     </section>
 
     <section class="card">
-      <h2>2. Final ATM Town sheet</h2>
+      <h2>02 // Sprite Matrix</h2>
       <div class="stage"><canvas id="sheet" width="768" height="1280"></canvas></div>
       <div class="actions" style="margin-top:10px">
         <button class="btn primary" id="downloadPng" disabled>Download PNG</button>
-        <button class="btn" id="downloadWebp" disabled>Download WebP</button>
+        <button class="btn" id="downloadWebp" disabled>WebP</button>
         <button class="btn" id="downloadThumb" disabled>Thumbnail</button>
         <button class="btn" id="downloadMeta" disabled>Metadata</button>
       </div>
     </section>
 
     <section class="card full">
-      <h2>3. Animation check</h2>
+      <h2>03 // Movement Test</h2>
       <div class="preview">
         <div class="animStage"><canvas id="anim" width="256" height="320"></canvas></div>
         <div>
@@ -73,11 +445,13 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
             <button class="btn" data-action="walk" data-dir="up">Walk Up</button>
             <button class="btn" data-action="walk" data-dir="right">Walk Right</button>
           </div>
-          <div class="note" id="previewText">Generate a sheet to preview it.</div>
+          <div class="note" id="previewText">Generate a sheet to test the ATM Town 1 → 2 → 3 → 2 walk cycle.</div>
         </div>
       </div>
     </section>
   </div>
+
+  <div class="brandStrip"><i></i>Built for ATM Town • Built on XRPL<i></i></div>
 </main>
 <script src="./app.js?v=20260929-simple1"></script>
 </body>
