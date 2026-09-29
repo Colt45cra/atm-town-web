@@ -75,6 +75,7 @@ const requiredFiles = [
   'assets/characters/playable/kaj.webp',
   'assets/characters/playable/daniel.webp',
   'assets/characters/playable/army.webp',
+  'assets/characters/playable/anunnaki.webp',
   'assets/characters/thumbnails/character-phnix.webp',
   'assets/characters/thumbnails/character-bear.webp',
   'assets/characters/thumbnails/character-xoge.webp',
@@ -85,6 +86,7 @@ const requiredFiles = [
   'assets/characters/thumbnails/character-kaj.webp',
   'assets/characters/thumbnails/character-daniel.webp',
   'assets/characters/thumbnails/character-army.webp',
+  'assets/characters/thumbnails/character-anunnaki.webp',
   'assets/characters/equipment/jetpack.webp',
   'assets/audio/jetpack-boost.wav',
   'assets/audio/quest-drift.mp3',
@@ -543,12 +545,12 @@ if (!zombieOutbreakSource.includes('syncFromWorldEvents') || !zombieOutbreakSour
 if (!worldEventsServerSource.includes('const ZOMBIE_COUNT = 60;') || zombieOutbreakSource.includes('target.d > 1200')) errors.push('v235.8.1 zombie population/map-wide player pursuit update is missing.');
 if (!gameRuntimeParts[0].includes("event:'world_event_hint'") || !gameRuntimeParts[0].includes('zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()') || !gameRuntimeParts[0].includes('drawRemoteWeapon?.(ctx,item.p)')) errors.push('v235.8.1 multiplayer Zombie Outbreak state relay is incomplete.');
 // v235.9.1 Daniel + ARMY playable characters.
-if (!gameRuntimeParts[0].includes("daniel:{src:'assets/characters/playable/daniel.webp'") || !gameRuntimeParts[0].includes("army:{src:'assets/characters/playable/army.webp'")) errors.push('v235.9.1 Daniel/ARMY sprite-sheet registration is missing.');
-if (!gameRuntimeParts[0].includes("'kaj','daniel','army']")) errors.push('v235.9.1 Daniel/ARMY are missing from the playable-character allowlist.');
-if (!gameRuntimeParts[0].includes("id:'character:daniel'") || !gameRuntimeParts[0].includes("id:'character:army'")) errors.push('v235.9.1 Daniel/ARMY Locker starter items are missing.');
+if (!gameRuntimeParts[0].includes("daniel:{src:'assets/characters/playable/daniel.webp'") || !gameRuntimeParts[0].includes("army:{src:'assets/characters/playable/army.webp'") || !gameRuntimeParts[0].includes("anunnaki:{src:'assets/characters/playable/anunnaki.webp'")) errors.push('v235.10 Anunnaki sprite-sheet registration is missing.');
+if (!gameRuntimeParts[0].includes("'kaj','daniel','army','anunnaki']")) errors.push('v235.10 Anunnaki is missing from the playable-character allowlist.');
+if (!gameRuntimeParts[0].includes("id:'character:daniel'") || !gameRuntimeParts[0].includes("id:'character:army'") || !gameRuntimeParts[0].includes("id:'character:anunnaki'")) errors.push('v235.10 Anunnaki Locker starter item is missing.');
 if (!html.includes('data-character="daniel"') || !html.includes('data-character="army"') || !html.includes('data-profile-character="daniel"') || !html.includes('data-profile-character="army"')) errors.push('v235.9.1 Daniel/ARMY entry/profile selectors are missing.');
-if (!peopleHubSource.includes("daniel:'assets/characters/thumbnails/character-daniel.webp'") || !peopleHubSource.includes("army:'assets/characters/thumbnails/character-army.webp'")) errors.push('v235.9.1 People Hub character avatars are incomplete.');
-if (!embeddedWalletSource.includes("daniel:'assets/characters/thumbnails/character-daniel.webp'") || !embeddedWalletSource.includes("army:'assets/characters/thumbnails/character-army.webp'")) errors.push('v235.9.1 ATM Pay character avatars are incomplete.');
+if (!peopleHubSource.includes("daniel:'assets/characters/thumbnails/character-daniel.webp'") || !peopleHubSource.includes("army:'assets/characters/thumbnails/character-army.webp'") || !peopleHubSource.includes("anunnaki:'assets/characters/thumbnails/character-anunnaki.webp'")) errors.push('v235.10 People Hub character avatars are incomplete.');
+if (!embeddedWalletSource.includes("daniel:'assets/characters/thumbnails/character-daniel.webp'") || !embeddedWalletSource.includes("army:'assets/characters/thumbnails/character-army.webp'") || !embeddedWalletSource.includes("anunnaki:'assets/characters/thumbnails/character-anunnaki.webp'")) errors.push('v235.10 ATM Pay character avatars are incomplete.');
 
 // v235.9 shared zombie authority/snapshots/fire effects.
 if (!gameRuntimeParts[0].includes("event:'zombie_combat'") || !gameRuntimeParts[0].includes("atm:zombie-network-send") || !gameRuntimeParts[0].includes('networkOnline:onlineMode')) errors.push('v235.9 realtime Zombie Outbreak transport is incomplete.');
