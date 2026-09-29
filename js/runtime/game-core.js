@@ -343,6 +343,7 @@ function hasPermanentEquippedJetpack(){return window.atmLockerPermanentJetpackEq
 function canUseJetpack(){return powerUps.jetpack>0||hasPermanentEquippedJetpack();}
 let townZoom=Number.isFinite(savedCameraZoom)?Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,savedCameraZoom)):0.92;
 let zoom=townZoom;
+const WALK_FRAME_SEQUENCE=[0,1,2,1];
 const player={x:TOWN_INITIAL_SPAWN.x,y:TOWN_INITIAL_SPAWN.y,r:14,speed:182,dir:'up',moving:false,frame:1,animTimer:0};
 const VENDING_POWER_SECONDS=30;
 const powerUps={speed:0,bounce:0,magnet:0,jetpack:0,invisibility:0,juggernaut:0,fire:0};
@@ -3627,7 +3628,7 @@ function updateTownBots(dt){
       bot.drawX=bot.x;
       bot.drawY=bot.y;
       bot.animTimer+=dt*7;
-      bot.frame=Math.floor(bot.animTimer)%3;
+      bot.frame=WALK_FRAME_SEQUENCE[Math.floor(bot.animTimer)%WALK_FRAME_SEQUENCE.length];
       bot.moving=true;
       bot.stepCarry=(bot.stepCarry||0)+Math.hypot(bot.x-prevX,bot.y-prevY);
       while(bot.stepCarry>=34){
@@ -5531,7 +5532,7 @@ function update(dt){
     const combatAnimDirection=zombieMotion?.animationDirection===-1?-1:1;
     player.animTimer+=dt*(onStairs?7:8)*combatAnimDirection;
     while(player.animTimer<0)player.animTimer+=3000;
-    player.frame=Math.floor(player.animTimer)%3;
+    player.frame=WALK_FRAME_SEQUENCE[Math.floor(player.animTimer)%WALK_FRAME_SEQUENCE.length];
   }
   player.moving=moved;
   if(!moved&&!airborne){player.animTimer=0;player.frame=1;}

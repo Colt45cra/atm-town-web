@@ -57,18 +57,24 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { mime, bytes } = parseDataUrl(body.imageDataUrl);
+    const primary = parseDataUrl(body.imageDataUrl);
+    const reference = body.referenceDataUrl ? parseDataUrl(body.referenceDataUrl) : null;
     const prompt = String(body.prompt || '').trim();
     if (!prompt || prompt.length > 9000) return res.status(400).json({ error: 'A valid generation prompt is required.' });
 
     const quality = ['low','medium','high','auto'].includes(body.quality) ? body.quality : 'medium';
     const poseKey = String(body.poseKey || 'pose').replace(/[^a-z0-9-_]/gi,'').slice(0,48) || 'pose';
-    const ext = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
+    const extFor = (mime) => mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
 
     const form = new FormData();
     form.append('model','gpt-image-2');
     form.append('prompt',prompt);
-    form.append('image',new Blob([bytes],{type:mime}),'character.'+ext);
+    if (reference) {
+      form.append('image[]',new Blob([primary.bytes],{type:primary.mime}),'character.'+extFor(primary.mime));
+      form.append('image[]',new Blob([reference.bytes],{type:reference.mime}),'atm-town-reference.'+extFor(reference.mime));
+    } else {
+      form.append('image',new Blob([primary.bytes],{type:primary.mime}),'character.'+extFor(primary.mime));
+    }
     form.append('size','1024x1024');
     form.append('quality',quality);
     form.append('background','transparent');
@@ -96,7 +102,7 @@ export default async function handler(req, res) {
     const imageBytes = Buffer.from(b64, 'base64');
     if (!imageBytes.length) return res.status(502).json({ error: 'OpenAI returned an empty image.' });
 
-    console.log('generate-sprite pose complete', poseKey, 'image bytes', imageBytes.length);
+    console.log('generate-sprite pose complete', poseKey, 'inputs', reference ? 2 : 1, 'image bytes', imageBytes.length);
     res.setHeader('Content-Type','image/webp');
     res.setHeader('Content-Length',String(imageBytes.length));
     res.setHeader('X-ATM-Generated','true');

@@ -2,6 +2,7 @@
 'use strict';
 
 const SPEC = { fw:256, fh:320, cols:3, rows:4, sheetW:768, sheetH:1280, anchorX:128, anchorY:303, rowOrder:['down','left','up','right'] };
+const WALK_SEQUENCE=[0,1,2,1];
 const $ = (id) => document.getElementById(id);
 const sheet = $('sheet');
 const ctx = sheet.getContext('2d', { willReadFrequently:true });
@@ -212,11 +213,61 @@ function normalizeContactSheet(img) {
 
 function styleGuidance() {
   const style=$('style').value;
-  if(style==='atm') return 'Convert the character into crisp ATM Town pixel-art / pixel-illustrated game style while preserving identity.';
+  if(style==='atm') return 'Match the actual ATM Town reference frame visual language: compact 2D game-sprite proportions, crisp pixel-illustrated edges, deliberate pixel clusters, restrained cluster-based shading, limited anti-aliasing, readable silhouette, and simplified small-scale details. Do NOT render photorealistic skin, fabric texture, cinematic lighting, painterly brushwork, smooth vector art, or glossy 3D rendering.';
   if(style==='mascot') return 'Preserve the character as a clean readable mascot or creature with a strong game silhouette.';
   if(style==='robot') return 'Preserve all machine, robot, screen, button, logo, and accessory details consistently.';
   if(style==='human') return 'Preserve face, hair, clothing, accessories, body proportions, and identifying details consistently.';
   return 'Preserve the uploaded character design, art style, colors, proportions, clothing, face, accessories, and distinguishing details as faithfully as possible.';
+}
+
+const POSE_REFERENCE_CELLS={
+  'front-walk-a':[0,0],
+  'front-idle':[0,1],
+  'front-walk-b':[0,2],
+  'left-walk-a':[1,0],
+  'left-idle':[1,1],
+  'left-walk-b':[1,2],
+  'back-walk-a':[2,0],
+  'back-idle':[2,1],
+  'back-walk-b':[2,2]
+};
+const referenceSheetCache=new Map();
+
+function referenceSheetSrc(){
+  const style=$('style').value;
+  if(style==='robot') return '/assets/characters/playable/atm.webp';
+  if(style==='mascot') return '/assets/characters/playable/fuzzy.webp';
+  return '/assets/characters/playable/brad.webp';
+}
+
+function loadReferenceSheet(src){
+  if(referenceSheetCache.has(src)) return referenceSheetCache.get(src);
+  const promise=new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error('ATM Town pose reference could not be loaded.'));
+    img.src=src;
+  });
+  referenceSheetCache.set(src,promise);
+  return promise;
+}
+
+async function poseReferenceDataURL(pose){
+  const rc=POSE_REFERENCE_CELLS[pose.key];
+  if(!rc) return null;
+  const img=await loadReferenceSheet(referenceSheetSrc());
+  const fw=img.naturalWidth/3;
+  const fh=img.naturalHeight/4;
+  const [row,col]=rc;
+  const c=document.createElement('canvas');
+  c.width=Math.round(fw);
+  c.height=Math.round(fh);
+  const cctx=c.getContext('2d');
+  cctx.imageSmoothingEnabled=false;
+  cctx.clearRect(0,0,c.width,c.height);
+  cctx.drawImage(img,col*fw,row*fh,fw,fh,0,0,c.width,c.height);
+  const webp=c.toDataURL('image/webp',0.94);
+  return webp.startsWith('data:image/webp')?webp:c.toDataURL('image/png');
 }
 
 const BASE_POSES = [
@@ -323,23 +374,27 @@ const CONTROLLED_POSES = [...BASE_POSES, ...OPPOSITE_POSES];
 
 function buildPosePrompt(pose) {
   const isOpposite=Boolean(pose.sourceKey);
+  const atmStyle=$('style').value==='atm';
   return [
     isOpposite
-      ? 'EDIT the attached existing ATM Town sprite pose. It is the Walk A reference for this exact direction.'
-      : 'Use the attached character image as the sole identity and design reference.',
+      ? 'IMAGE 1 is the already-generated Walk A pose for this exact character and direction. EDIT that pose.'
+      : 'IMAGE 1 is the user-uploaded character. Preserve this character\'s identity, design, colors, clothing, accessories, and defining features.',
+    'IMAGE 2 is a REAL ATM TOWN in-game frame for the exact target direction and gait phase. Use Image 2 as the authoritative pose template: copy its facing direction, leg placement, arm swing, body orientation, stance, framing, sprite scale, and foot baseline. Do NOT copy the identity, clothing, colors, face, species, or accessories from Image 2.',
+    atmStyle
+      ? 'Also use IMAGE 2 as the authoritative ATM Town rendering-style reference. The output should look like it belongs beside that real ATM Town frame in the same game.'
+      : 'Use IMAGE 2 for pose, gait, direction, scale, and framing only; keep the selected character-art guidance for rendering style.',
     'Create ONE single full-body game sprite pose, not a sprite sheet and not multiple characters.',
     isOpposite
-      ? 'Preserve the exact same character identity, art style, clothing, colors, accessories, body proportions, head direction, camera direction, scale and framing. Deliberately change the limb positions to the requested opposite walking phase.'
-      : 'Preserve the exact same character identity, clothing, colors, accessories, body proportions, face, hair, and distinguishing details from the source.',
+      ? 'Keep the same character identity and camera direction from Image 1, but change the limbs to match the opposite gait phase shown in Image 2.'
+      : 'Preserve the exact same character identity and design from Image 1 while adopting the pose shown in Image 2.',
     pose.prompt,
+    'The leg positions in IMAGE 2 are mandatory. The output must not repeat the same forward leg as the opposite walking phase.',
     'Keep the entire character visible from head to feet with generous transparent padding.',
     'Center the character with feet on one consistent horizontal baseline.',
     'Fully transparent background. No scenery, floor, cast shadow, text, labels, borders, grid, props, duplicate people, or extra limbs.',
-    'Do not invent or remove clothing or accessories.',
+    'Do not invent or remove clothing or accessories from the user character.',
     styleGuidance(),
-    isOpposite
-      ? 'The goal is a true opposite gait phase of the attached Walk A pose, not a mirrored duplicate and not the same leg-forward pose.'
-      : 'Prioritize exact body orientation and leg placement over dramatic posing.',
+    'Prioritize pose anatomy, gait phase, facing direction, ATM Town scale, and silhouette accuracy over dramatic posing.',
     'Return only this one isolated character pose.'
   ].join('\n');
 }
@@ -404,11 +459,13 @@ function drawPoseCell(cell,row,col,mirror=false) {
 }
 
 async function requestPose(imageDataUrl,pose) {
+  const referenceDataUrl=await poseReferenceDataURL(pose);
   const response=await fetch('/api/generate-sprite',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
       imageDataUrl,
+      referenceDataUrl,
       prompt:buildPosePrompt(pose),
       poseKey:pose.key,
       characterName:cleanName(),
@@ -430,12 +487,14 @@ async function requestPose(imageDataUrl,pose) {
 }
 
 function imageToPoseDataURL(img) {
+  const max=768;
+  const ratio=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
   const c=document.createElement('canvas');
-  c.width=Math.max(1,img.naturalWidth);
-  c.height=Math.max(1,img.naturalHeight);
+  c.width=Math.max(1,Math.round(img.naturalWidth*ratio));
+  c.height=Math.max(1,Math.round(img.naturalHeight*ratio));
   const cctx=c.getContext('2d');
-  cctx.drawImage(img,0,0);
-  const webp=c.toDataURL('image/webp',0.92);
+  cctx.drawImage(img,0,0,c.width,c.height);
+  const webp=c.toDataURL('image/webp',0.86);
   if(webp.startsWith('data:image/webp')) return webp;
   return c.toDataURL('image/png');
 }
@@ -517,10 +576,10 @@ function assembleControlledSheet(images) {
   drawPoseCell(cells['left-walk-b'],3,2,true);
 
   generated=true;
-  generationKind='gpt-controlled-v3';
+  generationKind='gpt-controlled-v4';
   setDownloads(true);
   startAnimation();
-  $('previewText').textContent='Controlled v3: 6 base poses + 3 opposite-stride edits; right row mirrored from left.';
+  $('previewText').textContent='Controlled v4: real ATM Town pose/style references • walk preview 1→2→3→2.';
 }
 
 async function generateWithAi() {
@@ -537,7 +596,7 @@ async function generateWithAi() {
     const images=await generateControlledPoses(imageDataUrl);
     setStatus('Assembling exact ATM Town gait and direction frames…');
     assembleControlledSheet(images);
-    setStatus('Controlled v3 sheet complete. Walk B poses were edited from Walk A into the opposite stride, and the right row is mirrored from the left row.','good');
+    setStatus('Controlled v4 sheet complete. Every pose used the matching real ATM Town frame as its gait/style reference.','good');
   }catch(err){
     setStatus(err.message || 'GPT generation failed.','bad');
   }finally{
@@ -609,7 +668,7 @@ function drawAnim(){
   actx.imageSmoothingEnabled=false;
   actx.clearRect(0,0,SPEC.fw,SPEC.fh);
   const row=Math.max(0,SPEC.rowOrder.indexOf(animDir));
-  const col=animAction==='idle'?1:(animFrame%3);
+  const col=animAction==='idle'?1:WALK_SEQUENCE[animFrame%WALK_SEQUENCE.length];
   actx.drawImage(sheet,col*SPEC.fw,row*SPEC.fh,SPEC.fw,SPEC.fh,0,0,SPEC.fw,SPEC.fh);
 }
 
@@ -664,7 +723,7 @@ $('downloadMeta').addEventListener('click',()=>{
     columns:3,rows:4,sheetWidth:SPEC.sheetW,sheetHeight:SPEC.sheetH,
     rowOrder:SPEC.rowOrder,columnOrder:['walk-a','idle','walk-b'],
     anchorX:SPEC.anchorX,anchorY:SPEC.anchorY,
-    idleFrame:1,walkFrames:[0,1,2],
+    idleFrame:1,walkFrames:[0,1,2],walkSequence:[0,1,2,1],
     transparent:true,generationKind
   };
   download(new Blob([JSON.stringify(meta,null,2)],{type:'application/json'}),cleanName()+'.sprite.json');
