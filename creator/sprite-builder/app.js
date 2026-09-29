@@ -219,14 +219,14 @@ function styleGuidance() {
   return 'Preserve the uploaded character design, art style, colors, proportions, clothing, face, accessories, and distinguishing details as faithfully as possible.';
 }
 
-const CONTROLLED_POSES = [
+const BASE_POSES = [
   {
     key:'front-walk-a',
     label:'Front walk A',
     prompt:[
       'FRONT view only. The character looks directly toward the camera.',
-      'Walking pose A: the CHARACTER LEFT leg steps clearly forward toward the viewer while the character right leg trails behind.',
-      'Character right arm swings forward and character left arm swings back.',
+      'Walking pose A: the CHARACTER LEFT leg steps clearly forward toward the viewer while the character RIGHT leg trails behind.',
+      'Character RIGHT arm swings forward and character LEFT arm swings back.',
       'Mild natural walking stride, not running or lunging.'
     ].join(' ')
   },
@@ -244,8 +244,9 @@ const CONTROLLED_POSES = [
     label:'Left walk A',
     prompt:[
       'TRUE LEFT-FACING side profile only. Nose, chest, hips, knees and toes all point LEFT.',
-      'Walking pose A: the visible/near leg extends clearly FORWARD toward the LEFT while the far leg extends back toward the RIGHT.',
-      'The visible/near arm swings back and the far arm swings forward.',
+      'Walking pose A: the LEG NEAREST THE VIEWER steps clearly forward toward the LEFT.',
+      'The FAR LEG trails behind toward the RIGHT.',
+      'The NEAR ARM swings back and the FAR ARM swings forward.',
       'Do not turn toward the camera. Do not face right.'
     ].join(' ')
   },
@@ -254,17 +255,7 @@ const CONTROLLED_POSES = [
     label:'Left idle',
     prompt:[
       'TRUE LEFT-FACING side profile only. Nose, chest, hips, knees and toes all point LEFT.',
-      'Neutral standing idle pose with feet close to the normal standing position.',
-      'Do not turn toward the camera. Do not face right.'
-    ].join(' ')
-  },
-  {
-    key:'left-walk-b',
-    label:'Left walk B',
-    prompt:[
-      'TRUE LEFT-FACING side profile only. Nose, chest, hips, knees and toes all point LEFT.',
-      'Walking pose B, the OPPOSITE stride from walk A: the visible/near leg extends clearly BACK toward the RIGHT while the far leg steps FORWARD toward the LEFT.',
-      'The visible/near arm swings forward and the far arm swings back.',
+      'Neutral standing idle pose with both feet close to the normal standing position.',
       'Do not turn toward the camera. Do not face right.'
     ].join(' ')
   },
@@ -273,8 +264,9 @@ const CONTROLLED_POSES = [
     label:'Back walk A',
     prompt:[
       'BACK view only. The character faces directly AWAY from the camera. Face and chest must not be visible.',
-      'Walking pose A: the CHARACTER LEFT leg steps forward away from the viewer while the character right leg trails.',
-      'Natural opposite arm swing. Mild walking stride, not running.'
+      'Walking pose A: the CHARACTER LEFT leg steps forward away from the viewer while the character RIGHT leg trails behind.',
+      'Character RIGHT arm swings forward and character LEFT arm swings back.',
+      'Mild natural walking stride, not running.'
     ].join(' ')
   },
   {
@@ -287,18 +279,67 @@ const CONTROLLED_POSES = [
   }
 ];
 
+const OPPOSITE_POSES = [
+  {
+    key:'front-walk-b',
+    sourceKey:'front-walk-a',
+    label:'Front walk B',
+    prompt:[
+      'Keep the exact FRONT-facing direction from the attached Walk A pose.',
+      'Change the gait to the OPPOSITE stride phase.',
+      'The CHARACTER RIGHT leg must now step clearly forward toward the viewer and the CHARACTER LEFT leg must trail behind.',
+      'Character LEFT arm swings forward and character RIGHT arm swings back.',
+      'Do not mirror or reverse the whole character. Keep the head, torso, clothing and accessories facing exactly the same direction.'
+    ].join(' ')
+  },
+  {
+    key:'left-walk-b',
+    sourceKey:'left-walk-a',
+    label:'Left walk B',
+    prompt:[
+      'Keep the exact TRUE LEFT-FACING profile direction from the attached Walk A pose.',
+      'Change the gait to the OPPOSITE stride phase.',
+      'The LEG NEAREST THE VIEWER, which is forward in Walk A, must move clearly BEHIND the body toward the RIGHT.',
+      'The FAR LEG must now step clearly FORWARD ahead of the body toward the LEFT.',
+      'The NEAR ARM swings forward and the FAR ARM swings back.',
+      'Do not mirror or reverse the whole character. The nose, chest, hips, knees and toes must still point LEFT.'
+    ].join(' ')
+  },
+  {
+    key:'back-walk-b',
+    sourceKey:'back-walk-a',
+    label:'Back walk B',
+    prompt:[
+      'Keep the exact BACK-facing direction from the attached Walk A pose.',
+      'Change the gait to the OPPOSITE stride phase.',
+      'The CHARACTER RIGHT leg must now step forward away from the viewer and the CHARACTER LEFT leg must trail behind.',
+      'Character LEFT arm swings forward and character RIGHT arm swings back.',
+      'Do not mirror or reverse the whole character. Keep the character facing directly away from the camera.'
+    ].join(' ')
+  }
+];
+
+const CONTROLLED_POSES = [...BASE_POSES, ...OPPOSITE_POSES];
+
 function buildPosePrompt(pose) {
+  const isOpposite=Boolean(pose.sourceKey);
   return [
-    'Use the attached character image as the sole identity and design reference.',
+    isOpposite
+      ? 'EDIT the attached existing ATM Town sprite pose. It is the Walk A reference for this exact direction.'
+      : 'Use the attached character image as the sole identity and design reference.',
     'Create ONE single full-body game sprite pose, not a sprite sheet and not multiple characters.',
-    'Preserve the exact same character identity, clothing, colors, accessories, body proportions, face, hair, and distinguishing details from the source.',
+    isOpposite
+      ? 'Preserve the exact same character identity, art style, clothing, colors, accessories, body proportions, head direction, camera direction, scale and framing. Deliberately change the limb positions to the requested opposite walking phase.'
+      : 'Preserve the exact same character identity, clothing, colors, accessories, body proportions, face, hair, and distinguishing details from the source.',
     pose.prompt,
     'Keep the entire character visible from head to feet with generous transparent padding.',
     'Center the character with feet on one consistent horizontal baseline.',
     'Fully transparent background. No scenery, floor, cast shadow, text, labels, borders, grid, props, duplicate people, or extra limbs.',
     'Do not invent or remove clothing or accessories.',
     styleGuidance(),
-    'Prioritize exact body orientation and leg placement over dramatic posing.',
+    isOpposite
+      ? 'The goal is a true opposite gait phase of the attached Walk A pose, not a mirrored duplicate and not the same leg-forward pose.'
+      : 'Prioritize exact body orientation and leg placement over dramatic posing.',
     'Return only this one isolated character pose.'
   ].join('\n');
 }
@@ -388,22 +429,59 @@ async function requestPose(imageDataUrl,pose) {
   return imageFromBlob(blob);
 }
 
-async function generateControlledPoses(imageDataUrl) {
-  const results={};
+function imageToPoseDataURL(img) {
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,img.naturalWidth);
+  c.height=Math.max(1,img.naturalHeight);
+  const cctx=c.getContext('2d');
+  cctx.drawImage(img,0,0);
+  const webp=c.toDataURL('image/webp',0.92);
+  if(webp.startsWith('data:image/webp')) return webp;
+  return c.toDataURL('image/png');
+}
+
+async function generatePoseList(list,sourceResolver,results,onComplete) {
   let cursor=0;
-  let completed=0;
   const worker=async()=>{
     while(true){
       const index=cursor++;
-      if(index>=CONTROLLED_POSES.length) return;
-      const pose=CONTROLLED_POSES[index];
-      setStatus('Generating controlled key poses… '+completed+'/'+CONTROLLED_POSES.length+' complete. Working on '+pose.label+'.');
-      results[pose.key]=await requestPose(imageDataUrl,pose);
-      completed+=1;
-      setStatus('Generating controlled key poses… '+completed+'/'+CONTROLLED_POSES.length+' complete.');
+      if(index>=list.length) return;
+      const pose=list[index];
+      const sourceDataUrl=await sourceResolver(pose,results);
+      onComplete('working',pose);
+      results[pose.key]=await requestPose(sourceDataUrl,pose);
+      onComplete('complete',pose);
     }
   };
   await Promise.all([worker(),worker()]);
+}
+
+async function generateControlledPoses(originalImageDataUrl) {
+  const results={};
+  const total=CONTROLLED_POSES.length;
+  let completed=0;
+  const report=(phase,pose)=>{
+    if(phase==='complete') completed+=1;
+    const extra=phase==='working' ? ' Working on '+pose.label+'.' : '';
+    setStatus('Generating controlled v3 poses… '+completed+'/'+total+' complete.'+extra);
+  };
+
+  await generatePoseList(
+    BASE_POSES,
+    async()=>originalImageDataUrl,
+    results,
+    report
+  );
+
+  // Walk B is an edit of its matching Walk A. This makes GPT explicitly swap
+  // the stride on the same pose instead of inventing a second unrelated walk.
+  await generatePoseList(
+    OPPOSITE_POSES,
+    async(pose,current)=>imageToPoseDataURL(current[pose.sourceKey]),
+    results,
+    report
+  );
+
   return results;
 }
 
@@ -418,31 +496,31 @@ function assembleControlledSheet(images) {
   ctx.clearRect(0,0,SPEC.sheetW,SPEC.sheetH);
   ctx.imageSmoothingEnabled=false;
 
-  // Row 1: front. Walk B is a deterministic mirror of Walk A so the gait phase must alternate.
+  // Row 1: front A, idle, and directly edited opposite-stride B.
   drawPoseCell(cells['front-walk-a'],0,0,false);
   drawPoseCell(cells['front-idle'],0,1,false);
-  drawPoseCell(cells['front-walk-a'],0,2,true);
+  drawPoseCell(cells['front-walk-b'],0,2,false);
 
-  // Row 2: true left-facing poses. A and B are generated independently with opposite explicit gait prompts.
+  // Row 2: left A, idle, and directly edited opposite-stride B.
   drawPoseCell(cells['left-walk-a'],1,0,false);
   drawPoseCell(cells['left-idle'],1,1,false);
   drawPoseCell(cells['left-walk-b'],1,2,false);
 
-  // Row 3: back. Walk B is a deterministic mirror of Walk A.
+  // Row 3: back A, idle, and directly edited opposite-stride B.
   drawPoseCell(cells['back-walk-a'],2,0,false);
   drawPoseCell(cells['back-idle'],2,1,false);
-  drawPoseCell(cells['back-walk-a'],2,2,true);
+  drawPoseCell(cells['back-walk-b'],2,2,false);
 
-  // Row 4: right is mirrored from the validated left-facing row, guaranteeing opposite direction.
+  // Row 4 is mirrored from the validated left-facing row so direction cannot drift.
   drawPoseCell(cells['left-walk-a'],3,0,true);
   drawPoseCell(cells['left-idle'],3,1,true);
   drawPoseCell(cells['left-walk-b'],3,2,true);
 
   generated=true;
-  generationKind='gpt-controlled-v2';
+  generationKind='gpt-controlled-v3';
   setDownloads(true);
   startAnimation();
-  $('previewText').textContent='Controlled v2: 7 GPT key poses + 5 deterministic mirrored frames.';
+  $('previewText').textContent='Controlled v3: 6 base poses + 3 opposite-stride edits; right row mirrored from left.';
 }
 
 async function generateWithAi() {
@@ -459,7 +537,7 @@ async function generateWithAi() {
     const images=await generateControlledPoses(imageDataUrl);
     setStatus('Assembling exact ATM Town gait and direction frames…');
     assembleControlledSheet(images);
-    setStatus('Controlled sprite sheet complete. Front/back gait alternates deterministically and the right row is mirrored from the left row.','good');
+    setStatus('Controlled v3 sheet complete. Walk B poses were edited from Walk A into the opposite stride, and the right row is mirrored from the left row.','good');
   }catch(err){
     setStatus(err.message || 'GPT generation failed.','bad');
   }finally{

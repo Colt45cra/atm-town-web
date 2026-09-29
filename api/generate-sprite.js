@@ -1,6 +1,6 @@
 const MAX_SOURCE_BYTES = 3_500_000;
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 21;
+const MAX_PER_WINDOW = 30;
 const buckets = new Map();
 
 function clientIp(req) {
