@@ -18,7 +18,7 @@
   if(global.ATMNpcDialogueStandard)return;
 
   const STANDARD=Object.freeze({
-    version:'1.0.0',
+    version:'1.1.0',
     layout:'world-bubble-bottom-carousel',
     questionOrientation:'horizontal',
     answerPlacement:'world-anchored',
@@ -92,6 +92,10 @@
     return countAnswered(questionHost)>=threshold;
   }
 
+  function screenAnchor(npc,yOffset=64){
+    return global.ATMNpcScreenAnchor?.(npc,yOffset)||null;
+  }
+
   function applyTheme(target,profileOrId){
     if(!target?.style)return false;
     const profile=typeof profileOrId==='string'?get(profileOrId):profileOrId;
@@ -124,6 +128,7 @@
     list,
     countAnswered,
     rewardUnlocked,
+    screenAnchor,
     applyTheme
   });
 })(window);
