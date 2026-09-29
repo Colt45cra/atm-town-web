@@ -1,6 +1,6 @@
 const MAX_SOURCE_BYTES = 3_500_000;
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 4;
+const MAX_PER_WINDOW = 21;
 const buckets = new Map();
 
 function clientIp(req) {
@@ -62,13 +62,14 @@ export default async function handler(req, res) {
     if (!prompt || prompt.length > 9000) return res.status(400).json({ error: 'A valid generation prompt is required.' });
 
     const quality = ['low','medium','high','auto'].includes(body.quality) ? body.quality : 'medium';
+    const poseKey = String(body.poseKey || 'pose').replace(/[^a-z0-9-_]/gi,'').slice(0,48) || 'pose';
     const ext = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
 
     const form = new FormData();
     form.append('model','gpt-image-2');
     form.append('prompt',prompt);
     form.append('image',new Blob([bytes],{type:mime}),'character.'+ext);
-    form.append('size','1024x1536');
+    form.append('size','1024x1024');
     form.append('quality',quality);
     form.append('background','transparent');
     form.append('output_format','webp');
@@ -95,10 +96,11 @@ export default async function handler(req, res) {
     const imageBytes = Buffer.from(b64, 'base64');
     if (!imageBytes.length) return res.status(502).json({ error: 'OpenAI returned an empty image.' });
 
-    console.log('generate-sprite image bytes', imageBytes.length);
+    console.log('generate-sprite pose complete', poseKey, 'image bytes', imageBytes.length);
     res.setHeader('Content-Type','image/webp');
     res.setHeader('Content-Length',String(imageBytes.length));
     res.setHeader('X-ATM-Generated','true');
+    res.setHeader('X-ATM-Pose',poseKey);
     res.setHeader('X-ATM-Model','gpt-image-2');
     return res.status(200).send(imageBytes);
   } catch (error) {

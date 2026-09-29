@@ -219,59 +219,87 @@ function styleGuidance() {
   return 'Preserve the uploaded character design, art style, colors, proportions, clothing, face, accessories, and distinguishing details as faithfully as possible.';
 }
 
-function buildPrompt() {
+const CONTROLLED_POSES = [
+  {
+    key:'front-walk-a',
+    label:'Front walk A',
+    prompt:[
+      'FRONT view only. The character looks directly toward the camera.',
+      'Walking pose A: the CHARACTER LEFT leg steps clearly forward toward the viewer while the character right leg trails behind.',
+      'Character right arm swings forward and character left arm swings back.',
+      'Mild natural walking stride, not running or lunging.'
+    ].join(' ')
+  },
+  {
+    key:'front-idle',
+    label:'Front idle',
+    prompt:[
+      'FRONT view only. The character looks directly toward the camera.',
+      'Neutral symmetrical standing idle pose. Both feet rest naturally under the body with no walking stride.',
+      'Arms relaxed in the character\'s normal idle position.'
+    ].join(' ')
+  },
+  {
+    key:'left-walk-a',
+    label:'Left walk A',
+    prompt:[
+      'TRUE LEFT-FACING side profile only. Nose, chest, hips, knees and toes all point LEFT.',
+      'Walking pose A: the visible/near leg extends clearly FORWARD toward the LEFT while the far leg extends back toward the RIGHT.',
+      'The visible/near arm swings back and the far arm swings forward.',
+      'Do not turn toward the camera. Do not face right.'
+    ].join(' ')
+  },
+  {
+    key:'left-idle',
+    label:'Left idle',
+    prompt:[
+      'TRUE LEFT-FACING side profile only. Nose, chest, hips, knees and toes all point LEFT.',
+      'Neutral standing idle pose with feet close to the normal standing position.',
+      'Do not turn toward the camera. Do not face right.'
+    ].join(' ')
+  },
+  {
+    key:'left-walk-b',
+    label:'Left walk B',
+    prompt:[
+      'TRUE LEFT-FACING side profile only. Nose, chest, hips, knees and toes all point LEFT.',
+      'Walking pose B, the OPPOSITE stride from walk A: the visible/near leg extends clearly BACK toward the RIGHT while the far leg steps FORWARD toward the LEFT.',
+      'The visible/near arm swings forward and the far arm swings back.',
+      'Do not turn toward the camera. Do not face right.'
+    ].join(' ')
+  },
+  {
+    key:'back-walk-a',
+    label:'Back walk A',
+    prompt:[
+      'BACK view only. The character faces directly AWAY from the camera. Face and chest must not be visible.',
+      'Walking pose A: the CHARACTER LEFT leg steps forward away from the viewer while the character right leg trails.',
+      'Natural opposite arm swing. Mild walking stride, not running.'
+    ].join(' ')
+  },
+  {
+    key:'back-idle',
+    label:'Back idle',
+    prompt:[
+      'BACK view only. The character faces directly AWAY from the camera. Face and chest must not be visible.',
+      'Neutral symmetrical standing idle pose with both feet under the body.'
+    ].join(' ')
+  }
+];
+
+function buildPosePrompt(pose) {
   return [
     'Use the attached character image as the sole identity and design reference.',
-    'Create exactly one transparent 3-column by 4-row game sprite contact sheet with 12 full-body cells.',
-    'All 12 cells must depict the SAME character with identical clothing, colors, accessories, proportions, face, hair, and distinguishing details.',
-    'No labels, no text, no grid lines, no borders, no scenery, no floor, no cast shadow.',
-    'Transparent background in every cell.',
-    'Keep one character centered in each cell with generous transparent padding. Never crop the head, hair, ears, wings, tail, weapons, hands, or feet.',
-    'Keep character scale and feet baseline extremely consistent across all 12 cells.',
-    '',
-    'STRICT 12-CELL POSE MAP — FOLLOW EVERY CELL EXACTLY:',
-    'ROW 1 = DOWN / FRONT VIEW ONLY.',
-    'Row 1 Col 1 = Walk A: FRONT view. Character left leg forward and right leg back. Right arm forward and left arm back.',
-    'Row 1 Col 2 = Idle: FRONT view. Neutral symmetrical standing pose with both feet centered.',
-    'Row 1 Col 3 = Walk B: FRONT view. Character right leg forward and left leg back. Left arm forward and right arm back.',
-    '',
-    'ROW 2 = LEFT-FACING PROFILE ONLY.',
-    'Row 2 Col 1 = Walk A: true LEFT profile. First stride phase.',
-    'Row 2 Col 2 = Idle: true LEFT profile. Neutral standing pose.',
-    'Row 2 Col 3 = Walk B: true LEFT profile. Opposite stride phase from Row 2 Col 1. The opposite leg must be forward.',
-    'Every frame in Row 2 must face LEFT. No frame in Row 2 may face right.',
-    '',
-    'ROW 3 = UP / BACK VIEW ONLY.',
-    'Row 3 Col 1 = Walk A: BACK view. Character left leg forward away from camera and right leg back. Opposite arm swing.',
-    'Row 3 Col 2 = Idle: BACK view. Neutral symmetrical standing pose.',
-    'Row 3 Col 3 = Walk B: BACK view. Character right leg forward away from camera and left leg back. Opposite arm swing.',
-    'Every frame in Row 3 must show the character from behind.',
-    '',
-    'ROW 4 = RIGHT-FACING PROFILE ONLY.',
-    'Row 4 Col 1 = Walk A: true RIGHT profile. First stride phase.',
-    'Row 4 Col 2 = Idle: true RIGHT profile. Neutral standing pose.',
-    'Row 4 Col 3 = Walk B: true RIGHT profile. Opposite stride phase from Row 4 Col 1. The opposite leg must be forward.',
-    'Every frame in Row 4 must face RIGHT. No frame in Row 4 may face left.',
-    '',
-    'CRITICAL WALK-CYCLE RULES:',
-    'Walk A and Walk B are opposite gait phases, never duplicates.',
-    'In EVERY row, the leg that is forward in Walk A must be the leg that is back in Walk B.',
-    'In EVERY row, the opposite leg must be forward in Walk B.',
-    'Never place the same leg forward in both walking columns of the same row.',
-    'Arms must counter-swing naturally with the legs.',
-    'Walking poses must be mild readable walking poses, not running, lunging, or action poses.',
-    '',
-    'CRITICAL DIRECTION RULES:',
-    'Row 1 always faces DOWN/front.',
-    'Row 2 always faces LEFT.',
-    'Row 3 always faces UP/back.',
-    'Row 4 always faces RIGHT.',
-    'Rows 2 and 4 are opposite directions and must never contain a frame facing the wrong way.',
-    '',
+    'Create ONE single full-body game sprite pose, not a sprite sheet and not multiple characters.',
+    'Preserve the exact same character identity, clothing, colors, accessories, body proportions, face, hair, and distinguishing details from the source.',
+    pose.prompt,
+    'Keep the entire character visible from head to feet with generous transparent padding.',
+    'Center the character with feet on one consistent horizontal baseline.',
+    'Fully transparent background. No scenery, floor, cast shadow, text, labels, borders, grid, props, duplicate people, or extra limbs.',
+    'Do not invent or remove clothing or accessories.',
     styleGuidance(),
-    'Favor strict sprite-sheet correctness, pose consistency, and directional accuracy over dramatic rendering.',
-    'Before returning the image, verify all 12 cells against the pose map and correct any duplicated stride phase or wrong-facing side-profile frame.',
-    'Return only the transparent 3x4 sprite contact sheet.'
+    'Prioritize exact body orientation and leg placement over dramatic posing.',
+    'Return only this one isolated character pose.'
   ].join('\n');
 }
 
@@ -283,53 +311,158 @@ async function canvasToDataURL(canvas) {
   return canvas.toDataURL('image/png');
 }
 
+function imageFromBlob(blob) {
+  return new Promise((resolve,reject) => {
+    const url=URL.createObjectURL(blob);
+    const img=new Image();
+    img.onload=()=>{ URL.revokeObjectURL(url); resolve(img); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('GPT returned an image that could not be decoded.')); };
+    img.src=url;
+  });
+}
+
+function normalizePoseToCell(img) {
+  const source=document.createElement('canvas');
+  source.width=Math.max(1,img.naturalWidth);
+  source.height=Math.max(1,img.naturalHeight);
+  const sctx=source.getContext('2d',{willReadFrequently:true});
+  sctx.drawImage(img,0,0);
+  removeFlatEdgeColor(source);
+
+  const b=alphaBounds(source);
+  const scalePct=Number($('subjectScale').value)/100;
+  const usableW=SPEC.fw*.86*scalePct;
+  const usableH=(SPEC.anchorY-8)*scalePct;
+  const scale=Math.min(usableW/b.w,usableH/b.h);
+  const dw=b.w*scale;
+  const dh=b.h*scale;
+
+  const cell=document.createElement('canvas');
+  cell.width=SPEC.fw;
+  cell.height=SPEC.fh;
+  const cctx=cell.getContext('2d');
+  cctx.imageSmoothingEnabled=false;
+  cctx.clearRect(0,0,SPEC.fw,SPEC.fh);
+  cctx.drawImage(
+    source,b.x,b.y,b.w,b.h,
+    SPEC.anchorX-dw/2,SPEC.anchorY-dh,dw,dh
+  );
+  return cell;
+}
+
+function drawPoseCell(cell,row,col,mirror=false) {
+  ctx.save();
+  if(mirror){
+    ctx.translate((col+1)*SPEC.fw,row*SPEC.fh);
+    ctx.scale(-1,1);
+    ctx.drawImage(cell,0,0,SPEC.fw,SPEC.fh);
+  }else{
+    ctx.drawImage(cell,col*SPEC.fw,row*SPEC.fh,SPEC.fw,SPEC.fh);
+  }
+  ctx.restore();
+}
+
+async function requestPose(imageDataUrl,pose) {
+  const response=await fetch('/api/generate-sprite',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      imageDataUrl,
+      prompt:buildPosePrompt(pose),
+      poseKey:pose.key,
+      characterName:cleanName(),
+      quality:'medium'
+    })
+  });
+
+  if(!response.ok){
+    const data=await response.json().catch(()=>({}));
+    throw new Error(data.error || (pose.label+' failed (HTTP '+response.status+')'));
+  }
+
+  const contentType=(response.headers.get('content-type') || '').toLowerCase();
+  if(!contentType.startsWith('image/')) throw new Error(pose.label+' returned an unexpected response.');
+
+  const blob=await response.blob();
+  if(!blob.size) throw new Error(pose.label+' returned an empty image.');
+  return imageFromBlob(blob);
+}
+
+async function generateControlledPoses(imageDataUrl) {
+  const results={};
+  let cursor=0;
+  let completed=0;
+  const worker=async()=>{
+    while(true){
+      const index=cursor++;
+      if(index>=CONTROLLED_POSES.length) return;
+      const pose=CONTROLLED_POSES[index];
+      setStatus('Generating controlled key poses… '+completed+'/'+CONTROLLED_POSES.length+' complete. Working on '+pose.label+'.');
+      results[pose.key]=await requestPose(imageDataUrl,pose);
+      completed+=1;
+      setStatus('Generating controlled key poses… '+completed+'/'+CONTROLLED_POSES.length+' complete.');
+    }
+  };
+  await Promise.all([worker(),worker()]);
+  return results;
+}
+
+function assembleControlledSheet(images) {
+  const cells={};
+  for(const pose of CONTROLLED_POSES){
+    cells[pose.key]=normalizePoseToCell(images[pose.key]);
+  }
+
+  sheet.width=SPEC.sheetW;
+  sheet.height=SPEC.sheetH;
+  ctx.clearRect(0,0,SPEC.sheetW,SPEC.sheetH);
+  ctx.imageSmoothingEnabled=false;
+
+  // Row 1: front. Walk B is a deterministic mirror of Walk A so the gait phase must alternate.
+  drawPoseCell(cells['front-walk-a'],0,0,false);
+  drawPoseCell(cells['front-idle'],0,1,false);
+  drawPoseCell(cells['front-walk-a'],0,2,true);
+
+  // Row 2: true left-facing poses. A and B are generated independently with opposite explicit gait prompts.
+  drawPoseCell(cells['left-walk-a'],1,0,false);
+  drawPoseCell(cells['left-idle'],1,1,false);
+  drawPoseCell(cells['left-walk-b'],1,2,false);
+
+  // Row 3: back. Walk B is a deterministic mirror of Walk A.
+  drawPoseCell(cells['back-walk-a'],2,0,false);
+  drawPoseCell(cells['back-idle'],2,1,false);
+  drawPoseCell(cells['back-walk-a'],2,2,true);
+
+  // Row 4: right is mirrored from the validated left-facing row, guaranteeing opposite direction.
+  drawPoseCell(cells['left-walk-a'],3,0,true);
+  drawPoseCell(cells['left-idle'],3,1,true);
+  drawPoseCell(cells['left-walk-b'],3,2,true);
+
+  generated=true;
+  generationKind='gpt-controlled-v2';
+  setDownloads(true);
+  startAnimation();
+  $('previewText').textContent='Controlled v2: 7 GPT key poses + 5 deterministic mirrored frames.';
+}
+
 async function generateWithAi() {
   if(!sourceImage) return;
   $('generateAi').disabled=true;
-  setStatus('Generating 12 directional poses with GPT… this can take a little while.');
+  setDownloads(false);
+  generated=false;
+  clearAnimation();
+  setStatus('Preparing controlled sprite generation…');
+
   try{
     const source=isolatedSource();
     const imageDataUrl=await canvasToDataURL(source);
-    const response=await fetch('/api/generate-sprite',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        imageDataUrl,
-        prompt:buildPrompt(),
-        characterName:cleanName(),
-        quality:'medium'
-      })
-    });
-    if(!response.ok){
-      const data=await response.json().catch(()=>({}));
-      throw new Error(data.error || ('Generation failed (HTTP '+response.status+')'));
-    }
-
-    const contentType=(response.headers.get('content-type') || '').toLowerCase();
-    if(!contentType.startsWith('image/')) throw new Error('The generation service returned an unexpected response.');
-
-    const blob=await response.blob();
-    if(!blob.size) throw new Error('The generation service returned an empty image.');
-
-    const objectUrl=URL.createObjectURL(blob);
-    const img=new Image();
-    img.onload=()=>{
-      try{
-        normalizeContactSheet(img);
-        setStatus('GPT generation complete. The 12 cells were normalized into the exact 768×1280 ATM Town sheet.','good');
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-        $('generateAi').disabled=!aiConfigured;
-      }
-    };
-    img.onerror=()=>{
-      URL.revokeObjectURL(objectUrl);
-      setStatus('GPT returned an image that could not be decoded.','bad');
-      $('generateAi').disabled=false;
-    };
-    img.src=objectUrl;
+    const images=await generateControlledPoses(imageDataUrl);
+    setStatus('Assembling exact ATM Town gait and direction frames…');
+    assembleControlledSheet(images);
+    setStatus('Controlled sprite sheet complete. Front/back gait alternates deterministically and the right row is mirrored from the left row.','good');
   }catch(err){
     setStatus(err.message || 'GPT generation failed.','bad');
+  }finally{
     $('generateAi').disabled=!aiConfigured;
   }
 }

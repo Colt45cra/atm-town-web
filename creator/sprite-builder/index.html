@@ -25,7 +25,7 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
   <section class="hero">
     <div class="brand">GPT Sprite Builder</div>
     <h1>One image → ATM Town sprite sheet</h1>
-    <p>Upload your character once. GPT generates the directional 3×4 pose sheet, then the browser normalizes every frame into ATM Town’s exact 256×320 layout.</p>
+    <p>Upload your character once. Controlled v2 generates seven key poses, then ATM Town builds the remaining gait and opposite-direction frames deterministically into the exact 3×4 sheet.</p>
   </section>
 
   <div class="grid">
@@ -56,7 +56,7 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
         <label class="btn import">Import AI sheet<input id="aiImport" type="file" accept="image/png,image/webp,image/jpeg"></label>
       </div>
       <div class="status" id="status">Upload a character to begin.</div>
-      <div class="note">Rows: Down, Left, Up, Right. Columns: Walk A, Idle, Walk B. Your OpenAI key is never sent to the browser.</div>
+      <div class="note">Controlled v2 uses 7 GPT pose generations per sheet. Rows: Down, Left, Up, Right. Columns: Walk A, Idle, Walk B. Front/back opposite strides and the right-facing row are constructed deterministically. Your OpenAI key is never sent to the browser.</div>
     </section>
 
     <section class="card">
@@ -88,6 +88,6 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
     </section>
   </div>
 </main>
-<script src="./app.js?v=20260929-4"></script>
+<script src="./app.js?v=20260929-v2"></script>
 </body>
 </html>
