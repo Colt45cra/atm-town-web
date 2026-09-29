@@ -245,15 +245,10 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   function positionSpeech(){
     const speech=document.getElementById('luci666WorldSpeech');if(!speech)return;
     if(!panelOpen()){speech.style.display='none';return;}
-    const luci=global.ATMLuci666?.getLuci?.();const point=luci?worldToScreen(luci.x,luci.y-66):null;
+    const luci=global.ATMLuci666?.getLuci?.();const point=luci?(global.ATMNpcScreenAnchor?.(luci,66)||worldToScreen(Number.isFinite(Number(luci.drawX))?Number(luci.drawX):luci.x,(Number.isFinite(Number(luci.drawY))?Number(luci.drawY):luci.y)-66)):null;
     if(!point){speech.style.display='none';return;}
     speech.style.display='block';
-    const width=Math.max(180,speech.offsetWidth||220),half=width/2;
-    const x=Math.min(Math.max(half+8,global.innerWidth-half-8),Math.max(half+8,point.x));
-    const card=document.getElementById('luci666Card')?.getBoundingClientRect();
-    const lowerLimit=card?Math.max(90,card.top-12):global.innerHeight-12;
-    const y=Math.min(lowerLimit,Math.max(88,point.y));
-    speech.style.left=`${x}px`;speech.style.top=`${y}px`;
+    speech.style.left=`${point.x}px`;speech.style.top=`${point.y}px`;
   }
 
   function spawnCoin(){
