@@ -31,7 +31,8 @@
     david:'assets/characters/thumbnails/character-david.webp',
     kaj:'assets/characters/thumbnails/character-kaj.webp',
     daniel:'assets/characters/thumbnails/character-daniel.webp',
-    army:'assets/characters/thumbnails/character-army.webp'
+    army:'assets/characters/thumbnails/character-army.webp',
+    anunnaki:'assets/characters/thumbnails/character-anunnaki.webp'
   });
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
