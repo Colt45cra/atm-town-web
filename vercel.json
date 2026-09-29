@@ -63,5 +63,22 @@
         }
       ]
     }
+  ],
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "alias": [
+    "creator.atmtown.fun"
+  ],
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "host",
+          "value": "creator.atmtown.fun"
+        }
+      ],
+      "destination": "/creator/index.html"
+    }
   ]
 }
