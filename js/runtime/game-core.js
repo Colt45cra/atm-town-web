@@ -4166,10 +4166,10 @@ function drawChatBubbles(){
     // the rendered player upward during jumping / jetpack flight.
     if(Math.hypot(player.x-bx,player.y-by)>420&&b.id!==playerId)continue;
     const bubbleY=by-bubbleLift;
-    ctx.save();ctx.font='700 11px system-ui';const lines=canvasTextLines(String(b.message||'').slice(0,140),220,3),lineH=14;
-    const width=Math.min(240,Math.max(60,...lines.map(line=>ctx.measureText(line).width))+18),height=lines.length*lineH+12;
-    const left=cam.x+7,right=cam.x+W/zoom-7;let cx=bx;if(right>left+width)cx=Math.max(left+width/2,Math.min(right-width/2,bx));const top=Math.max(cam.y+7,bubbleY-78-height);
-    roundedRectPath(cx-width/2,top,width,height,8);ctx.fillStyle='rgba(5,18,26,.94)';ctx.fill();ctx.strokeStyle='#58f1e6';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';lines.forEach((line,index)=>ctx.fillText(line,cx,top+6+index*lineH));ctx.restore();
+    ctx.save();ctx.font='700 10px system-ui';const lines=canvasTextLines(String(b.message||'').slice(0,140),190,3),lineH=12.5;
+    const width=Math.min(210,Math.max(56,...lines.map(line=>ctx.measureText(line).width))+14),height=lines.length*lineH+10;
+    const left=cam.x+7,right=cam.x+W/zoom-7;let cx=bx;if(right>left+width)cx=Math.max(left+width/2,Math.min(right-width/2,bx));const top=Math.max(cam.y+7,bubbleY-72-height);
+    roundedRectPath(cx-width/2,top,width,height,7);ctx.fillStyle='rgba(5,18,26,.94)';ctx.fill();ctx.strokeStyle='#58f1e6';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';lines.forEach((line,index)=>ctx.fillText(line,cx,top+5+index*lineH));ctx.restore();
   }
 }
 const savedMp=safeJsonParse(safeStorageGet('atm_mp','{}'),{});if(savedMp.playerName)document.getElementById('displayName').value=savedMp.playerName;if(savedMp.roomName)document.getElementById('roomName').value=savedMp.roomName;if(savedMp.url)document.getElementById('supabaseUrl').value=savedMp.url;if(savedMp.key)document.getElementById('supabaseKey').value=savedMp.key;
