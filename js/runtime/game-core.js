@@ -3385,6 +3385,31 @@ function canvasTextLines(value,maxWidth,maxLines=2){
 }
 function roundedRectPath(x,y,w,h,r=7){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath();}
 
+// Shared NPC-to-screen anchor. Project NPC modules use this instead of
+// clamping bubbles to the viewport. It follows the exact rendered bot position
+// (drawX/drawY) and the same pixel-snapped camera used by the game renderer, so
+// speech remains physically attached above the NPC while either actor moves.
+function atmNpcScreenAnchor(npc,yOffset=64){
+  try{
+    if(!npc)return null;
+    const canvas=document.getElementById('game'),rect=canvas?.getBoundingClientRect();
+    const z=Math.max(.0001,Number(zoom)||1);
+    const dpr=Math.max(.0001,Number(DPR)||1);
+    const worldX=Number.isFinite(Number(npc.drawX))?Number(npc.drawX):Number(npc.x);
+    const baseY=Number.isFinite(Number(npc.drawY))?Number(npc.drawY):Number(npc.y);
+    const worldY=baseY-(Number(yOffset)||0);
+    if(!rect||!Number.isFinite(worldX)||!Number.isFinite(worldY))return null;
+    const cameraX=Math.round(Number(cam.x||0)*z*dpr)/(z*dpr);
+    const cameraY=Math.round(Number(cam.y||0)*z*dpr)/(z*dpr);
+    const sx=(worldX-cameraX)*z,sy=(worldY-cameraY)*z;
+    return{
+      x:rect.left+(sx/Math.max(1,W))*rect.width,
+      y:rect.top+(sy/Math.max(1,H))*rect.height
+    };
+  }catch(_error){return null;}
+}
+window.ATMNpcScreenAnchor=atmNpcScreenAnchor;
+
 const TOWN_BOT_DEFS=Object.freeze([
   Object.freeze({id:'bot-atm',name:'ATM Bot',characterId:'classic',speed:74,pauseBase:1.4,route:[{x:1558,y:711},{x:1676,y:905},{x:1496,y:1084},{x:1376,y:870}]}),
   Object.freeze({id:'bot-fuzzy',name:'Fuzzy',characterId:'fuzzy',speed:72,pauseBase:1.7,route:[{x:888,y:659},{x:1080,y:680},{x:1080,y:740},{x:900,y:740},{x:720,y:690}]}),
