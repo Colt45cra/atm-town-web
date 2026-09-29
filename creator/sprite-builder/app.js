@@ -18,6 +18,7 @@ let animAction = 'idle';
 let animDir = 'down';
 let animFrame = 0;
 let raf = 0;
+let aiConfigured = false;
 
 function cleanName() {
   return ($('charName').value || 'character').trim().toLowerCase().replace(/[^a-z0-9-_]+/g,'-').replace(/^-+|-+$/g,'') || 'character';
@@ -27,6 +28,25 @@ function setStatus(message, kind='') {
   const el = $('status');
   el.textContent = message;
   el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+async function refreshAiAvailability() {
+  try {
+    const response = await fetch('/api/generate-sprite', { headers: { 'Accept':'application/json' } });
+    const data = await response.json().catch(() => ({}));
+    aiConfigured = Boolean(response.ok && data.configured);
+  } catch {
+    aiConfigured = false;
+  }
+  $('generateAi').disabled = !sourceImage || !aiConfigured;
+  if (sourceImage) {
+    setStatus(
+      aiConfigured
+        ? 'Character loaded. Generate the directional sprite sheet with GPT.'
+        : 'Character loaded. GPT generation is waiting for the server API key; local layout test and contact-sheet import still work.',
+      aiConfigured ? '' : 'bad'
+    );
+  }
 }
 
 function drawGrid() {
@@ -60,14 +80,14 @@ function loadFile(file) {
       $('sourcePreview').src = reader.result;
       $('sourcePreview').classList.remove('hidden');
       $('dropText').classList.add('hidden');
-      $('generateAi').disabled = false;
+      $('generateAi').disabled = !aiConfigured;
       $('simulate').disabled = false;
       generated = false;
       generationKind = 'none';
       setDownloads(false);
       drawGrid();
       clearAnimation();
-      setStatus('Character loaded. Generate the directional sprite sheet with GPT.');
+      setStatus(aiConfigured ? 'Character loaded. Generate the directional sprite sheet with GPT.' : 'Character loaded. GPT generation is waiting for the server API key; local layout test and contact-sheet import still work.', aiConfigured ? '' : 'bad');
     };
     img.onerror = () => setStatus('That image could not be decoded.','bad');
     img.src = reader.result;
@@ -245,13 +265,13 @@ async function generateWithAi() {
     img.onload=()=>{
       normalizeContactSheet(img);
       setStatus('GPT generation complete. The 12 cells were normalized into the exact 768×1280 ATM Town sheet.','good');
-      $('generateAi').disabled=false;
+      $('generateAi').disabled=!aiConfigured;
     };
     img.onerror=()=>{ setStatus('GPT returned an image that could not be decoded.','bad'); $('generateAi').disabled=false; };
     img.src=data.imageDataUrl;
   }catch(err){
     setStatus(err.message || 'GPT generation failed.','bad');
-    $('generateAi').disabled=false;
+    $('generateAi').disabled=!aiConfigured;
   }
 }
 
@@ -382,4 +402,5 @@ $('downloadMeta').addEventListener('click',()=>{
 
 drawGrid();
 setDownloads(false);
+refreshAiAvailability();
 })();
