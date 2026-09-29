@@ -5818,7 +5818,7 @@ requestAnimationFrame(loop);
   document.getElementById('loginBackBtn')?.addEventListener('click',()=>show('welcome'));
   document.getElementById('signupBackBtn')?.addEventListener('click',()=>show('welcome'));
   document.getElementById('characterBackBtn')?.addEventListener('click',()=>show(authSession?.user?'signup':'welcome'));
-  document.getElementById('profileBackBtn')?.addEventListener('click',()=>show(entryMode==='guest'?'welcome':'character'));
+  document.getElementById('profileBackBtn')?.addEventListener('click',()=>show('welcome'));
   document.getElementById('profileChangeCharacterBtn')?.addEventListener('click',()=>show('character'));
   document.getElementById('signupContinueBtn')?.addEventListener('click',()=>{if(!authSession?.user){setStatus('signupStatus','Verify your email before continuing.','error');return;}try{localStorage.removeItem('atm_signup_pending');}catch(_e){}show('character');});
   document.getElementById('characterNextBtn')?.addEventListener('click',()=>{applyEntryMode('signed');show('profile');});
