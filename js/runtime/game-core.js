@@ -422,6 +422,21 @@ let currentMap='town';
 let townReturnPoint=null;
 let playerName='Guest';
 let selectedCharacter='classic';
+let characterSelectionDirty=false;
+let characterSelectionOwnerUserId='';
+function markExplicitCharacterSelection(){
+  characterSelectionDirty=true;
+  characterSelectionOwnerUserId=String(authSession?.user?.id||'');
+}
+function clearCharacterSelectionIntent(){
+  characterSelectionDirty=false;
+  characterSelectionOwnerUserId='';
+}
+function hasCurrentCharacterSelectionIntent(){
+  if(!characterSelectionDirty)return false;
+  const currentUserId=String(authSession?.user?.id||'');
+  return !characterSelectionOwnerUserId||characterSelectionOwnerUserId===currentUserId;
+}
 let playerId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2));
 let roomName='atm-town-alpha';
 let supabaseClient=null, realtimeChannel=null, onlineMode=false;
@@ -2635,8 +2650,16 @@ async function loadPlayerAccount(){
 
 function applyKnownAccountPresentation(){
   if(!authSession?.user||!playerAccount)return false;
+  const currentUserId=String(authSession.user.id||'');
+  if(characterSelectionDirty&&characterSelectionOwnerUserId&&characterSelectionOwnerUserId!==currentUserId)clearCharacterSelectionIntent();
   const savedCharacter=ALLOWED_CHARACTERS.includes(playerAccount.selected_character)?playerAccount.selected_character:'classic';
-  try{selectCharacter(savedCharacter);}catch(_error){selectedCharacter=savedCharacter;}
+  // Account refreshes can arrive after the player has deliberately chosen a
+  // different character. Never overwrite that in-session choice. Location
+  // restore is separate and remains account-keyed, so changing character does
+  // not affect the player's saved map/position.
+  if(!hasCurrentCharacterSelectionIntent()&&!townEntryActive){
+    try{selectCharacter(savedCharacter,{source:'account'});}catch(_error){selectedCharacter=savedCharacter;}
+  }
   const nameField=document.getElementById('displayName');
   if(nameField&&playerAccount.display_name)nameField.value=String(playerAccount.display_name).slice(0,20);
   if(playerAccount.display_name)playerName=String(playerAccount.display_name).slice(0,20);
@@ -2668,7 +2691,10 @@ async function initializeIdentity(){
       // is deferred so a token refresh cannot re-enter the auth lock or race the
       // access flow while the player is entering the town.
       window.ATMEmbeddedWallet?.resetForAuthChange?.();
+      const previousUserId=String(authSession?.user?.id||'');
       authSession=session||null;
+      const nextUserId=String(authSession?.user?.id||'');
+      if(previousUserId!==nextUserId)clearCharacterSelectionIntent();
       setTimeout(async()=>{
         await loadPlayerAccount();
         if(authSession?.user)await window.ATMPay?.refresh?.();
@@ -2981,7 +3007,16 @@ async function connectMultiplayer(){
             onlineMode=true;
             await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
             broadcastState(true);
-            if(authSession?.user&&window.atmEntryMode!=='guest'){supabaseClient.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id).then(()=>{});}
+            if(authSession?.user&&window.atmEntryMode!=='guest'){
+              const committedCharacter=selectedCharacter;
+              if(playerAccount)playerAccount={...playerAccount,display_name:playerName,selected_character:committedCharacter};
+              supabaseClient.from('player_accounts').update({display_name:playerName,selected_character:committedCharacter}).eq('user_id',authSession.user.id).then(({error})=>{
+                if(!error&&selectedCharacter===committedCharacter){
+                  // Keep the explicit-selection guard for the active town
+                  // session; the next full login will load the committed value.
+                }
+              });
+            }
             window.ATMLiveChat?.connectRoom?.(roomName);
             resolve();
           }catch(err){reject(err);}
@@ -4160,10 +4195,19 @@ if(characterPickerEl){
   }
 }
 
-function selectCharacter(characterId){const requested=ALLOWED_CHARACTERS.includes(characterId)?characterId:'classic';if(window.atmLockerCanSelectCharacter&&!window.atmLockerCanSelectCharacter(requested)){window.atmLockerOpenForLockedCharacter?.(requested);return false;}selectedCharacter=(CHARACTER_SPRITES[requested]||CHARACTER_SHEETS[requested])?requested:'classic';document.querySelectorAll('.characterChoice').forEach(button=>button.classList.toggle('selected',button.dataset.character===selectedCharacter));updateEntryProgress(3,authSession?.user?[1,2]:[2]);window.atmLockerCharacterChanged?.(selectedCharacter);return true;}
-document.querySelectorAll('.characterChoice').forEach(button=>button.addEventListener('click',()=>selectCharacter(button.dataset.character)));
-selectCharacter(savedMp.character||'classic');
-const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user&&window.atmEntryMode!=='guest'){getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:selectedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
+function selectCharacter(characterId,options={}){
+  const requested=ALLOWED_CHARACTERS.includes(characterId)?characterId:'classic';
+  if(window.atmLockerCanSelectCharacter&&!window.atmLockerCanSelectCharacter(requested)){window.atmLockerOpenForLockedCharacter?.(requested);return false;}
+  selectedCharacter=(CHARACTER_SPRITES[requested]||CHARACTER_SHEETS[requested])?requested:'classic';
+  if(options.source==='user')markExplicitCharacterSelection();
+  document.querySelectorAll('.characterChoice').forEach(button=>button.classList.toggle('selected',button.dataset.character===selectedCharacter));
+  updateEntryProgress(3,authSession?.user?[1,2]:[2]);
+  window.atmLockerCharacterChanged?.(selectedCharacter);
+  return true;
+}
+document.querySelectorAll('.characterChoice').forEach(button=>button.addEventListener('click',()=>selectCharacter(button.dataset.character,{source:'user'})));
+selectCharacter(savedMp.character||'classic',{source:'local'});
+const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user&&window.atmEntryMode!=='guest'){const committedCharacter=selectedCharacter;if(playerAccount)playerAccount={...playerAccount,display_name:playerName,selected_character:committedCharacter};getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:committedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
 
 const keys={};
 function isTextEntryTarget(target){
@@ -5821,11 +5865,16 @@ requestAnimationFrame(loop);
   document.getElementById('profileBackBtn')?.addEventListener('click',()=>show('welcome'));
   document.getElementById('profileChangeCharacterBtn')?.addEventListener('click',()=>show('character'));
   document.getElementById('signupContinueBtn')?.addEventListener('click',()=>{if(!authSession?.user){setStatus('signupStatus','Verify your email before continuing.','error');return;}try{localStorage.removeItem('atm_signup_pending');}catch(_e){}show('character');});
-  document.getElementById('characterNextBtn')?.addEventListener('click',()=>{applyEntryMode('signed');show('profile');});
+  document.getElementById('characterNextBtn')?.addEventListener('click',()=>{
+    // Lock in the player's deliberate choice before any late auth/profile
+    // refresh can reapply the previously saved character.
+    if(authSession?.user)markExplicitCharacterSelection();
+    applyEntryMode('signed');show('profile');
+  });
   document.querySelector('.characterPicker')?.addEventListener('click',()=>setTimeout(updateCharacterSummary,0));
   document.getElementById('profileCharacterPicker')?.addEventListener('click',event=>{
     const button=event.target.closest('.profileCharacterChoice');if(!button||entryMode==='guest')return;
-    if(selectCharacter(button.dataset.profileCharacter)!==false)updateCharacterSummary();
+    if(selectCharacter(button.dataset.profileCharacter,{source:'user'})!==false)updateCharacterSummary();
   });
   window.atmFlowAuthUpdated(!!authSession?.user);
   let signupPending=false,loginPending=false;
