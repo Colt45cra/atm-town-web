@@ -238,6 +238,10 @@ function buildPrompt() {
 }
 
 async function canvasToDataURL(canvas) {
+  // WebP keeps the browser-to-function request much smaller than PNG while
+  // retaining transparency when the background-removal option is used.
+  const webp = canvas.toDataURL('image/webp', 0.9);
+  if (webp.startsWith('data:image/webp')) return webp;
   return canvas.toDataURL('image/png');
 }
 
@@ -258,17 +262,34 @@ async function generateWithAi() {
         quality:'medium'
       })
     });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(data.error || ('Generation failed (HTTP '+response.status+')'));
-    if(!data.imageDataUrl) throw new Error('The generation service returned no image.');
+    if(!response.ok){
+      const data=await response.json().catch(()=>({}));
+      throw new Error(data.error || ('Generation failed (HTTP '+response.status+')'));
+    }
+
+    const contentType=(response.headers.get('content-type') || '').toLowerCase();
+    if(!contentType.startsWith('image/')) throw new Error('The generation service returned an unexpected response.');
+
+    const blob=await response.blob();
+    if(!blob.size) throw new Error('The generation service returned an empty image.');
+
+    const objectUrl=URL.createObjectURL(blob);
     const img=new Image();
     img.onload=()=>{
-      normalizeContactSheet(img);
-      setStatus('GPT generation complete. The 12 cells were normalized into the exact 768×1280 ATM Town sheet.','good');
-      $('generateAi').disabled=!aiConfigured;
+      try{
+        normalizeContactSheet(img);
+        setStatus('GPT generation complete. The 12 cells were normalized into the exact 768×1280 ATM Town sheet.','good');
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        $('generateAi').disabled=!aiConfigured;
+      }
     };
-    img.onerror=()=>{ setStatus('GPT returned an image that could not be decoded.','bad'); $('generateAi').disabled=false; };
-    img.src=data.imageDataUrl;
+    img.onerror=()=>{
+      URL.revokeObjectURL(objectUrl);
+      setStatus('GPT returned an image that could not be decoded.','bad');
+      $('generateAi').disabled=false;
+    };
+    img.src=objectUrl;
   }catch(err){
     setStatus(err.message || 'GPT generation failed.','bad');
     $('generateAi').disabled=!aiConfigured;

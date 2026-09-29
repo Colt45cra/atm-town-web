@@ -72,7 +72,9 @@ export default async function handler(req, res) {
     form.append('quality',quality);
     form.append('background','transparent');
     form.append('output_format','webp');
-    form.append('output_compression','82');
+    // Keep the generated asset comfortably under Vercel's response-size ceiling.
+    // WebP is returned directly to the browser instead of being base64-wrapped in JSON.
+    form.append('output_compression','72');
 
     const upstream = await fetch('https://api.openai.com/v1/images/edits',{
       method:'POST',
@@ -90,11 +92,15 @@ export default async function handler(req, res) {
     const b64 = data?.data?.[0]?.b64_json;
     if (!b64) return res.status(502).json({ error: 'OpenAI returned no image data.' });
 
-    return res.status(200).json({
-      imageDataUrl:'data:image/webp;base64,'+b64,
-      model:'gpt-image-2',
-      generated:true
-    });
+    const imageBytes = Buffer.from(b64, 'base64');
+    if (!imageBytes.length) return res.status(502).json({ error: 'OpenAI returned an empty image.' });
+
+    console.log('generate-sprite image bytes', imageBytes.length);
+    res.setHeader('Content-Type','image/webp');
+    res.setHeader('Content-Length',String(imageBytes.length));
+    res.setHeader('X-ATM-Generated','true');
+    res.setHeader('X-ATM-Model','gpt-image-2');
+    return res.status(200).send(imageBytes);
   } catch (error) {
     console.error('generate-sprite error', error);
     return res.status(400).json({ error: error?.message || 'Sprite generation failed.' });
