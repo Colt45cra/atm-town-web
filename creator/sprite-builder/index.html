@@ -25,7 +25,7 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
   <section class="hero">
     <div class="brand">GPT Sprite Builder</div>
     <h1>One image → ATM Town sprite sheet</h1>
-    <p>Upload your character once. Controlled v4 uses the matching real ATM Town frame as a pose and style reference for every generated pose, edits each Walk A into the target Walk B gait, and mirrors the validated left row into the right row.</p>
+    <p>Upload one image of your character. GPT will create a complete ATM Town-style 3×4 sprite sheet automatically using our hidden in-game reference sheet.</p>
   </section>
 
   <div class="grid">
@@ -38,10 +38,6 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
         <img id="sourcePreview" class="hidden" alt="Uploaded character">
       </label>
       <div class="checkline"><input id="removeBg" type="checkbox"><label for="removeBg">Remove a flat background before sending</label></div>
-      <div class="row">
-        <div class="field"><label>Art guidance</label><select id="style"><option value="atm" selected>ATM Town character style (recommended)</option><option value="preserve">Preserve uploaded character style</option><option value="human">Human character</option><option value="mascot">Clean mascot / creature</option><option value="robot">Robot / machine</option></select></div>
-        <div class="field"><label>Character scale <span id="scaleValue">88%</span></label><input id="subjectScale" type="range" min="62" max="100" value="88"></div>
-      </div>
       <div class="specs">
         <div class="spec"><b>256×320</b><span>frame</span></div>
         <div class="spec"><b>3×4</b><span>grid</span></div>
@@ -50,13 +46,8 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
         <div class="spec"><b>128, 303</b><span>foot anchor</span></div>
         <div class="spec"><b>PNG/WebP</b><span>export</span></div>
       </div>
-      <div class="actions">
-        <button class="btn primary" id="generateAi" disabled>Generate with GPT</button>
-        <button class="btn secondary" id="simulate" disabled>Test layout locally</button>
-        <label class="btn import">Import AI sheet<input id="aiImport" type="file" accept="image/png,image/webp,image/jpeg"></label>
-      </div>
-      <div class="status" id="status">Upload a character to begin.</div>
-      <div class="note">Controlled v4 uses 9 GPT pose generations per sheet. Every generated pose receives the matching real ATM Town frame as a gait/pose reference. Walk preview uses 1→2→3→2. The right-facing row is mirrored from the validated left row. Your OpenAI key is never sent to the browser.</div>
+      <div class="actions">\n        <button class="btn primary" id="generateAi" disabled>Generate Sprite Sheet</button>\n      </div>\n      <div class="status" id="status">Upload a character to begin.</div>
+      <div class="note">Upload your character and generate a full ATM Town sprite sheet in one step. The hidden reference controls the poses, spacing, layout, and ATM Town style. Walk preview uses 1→2→3→2. Your OpenAI key and reference sheet are never shown in the Creator UI.</div>
     </section>
 
     <section class="card">
@@ -82,12 +73,12 @@ body{padding:14px;padding-bottom:max(28px,env(safe-area-inset-bottom))}.wrap{max
             <button class="btn" data-action="walk" data-dir="up">Walk Up</button>
             <button class="btn" data-action="walk" data-dir="right">Walk Right</button>
           </div>
-          <div class="note" id="previewText">Generate or import a sheet to preview it.</div>
+          <div class="note" id="previewText">Generate a sheet to preview it.</div>
         </div>
       </div>
     </section>
   </div>
 </main>
-<script src="./app.js?v=20260929-v4"></script>
+<script src="./app.js?v=20260929-simple1"></script>
 </body>
 </html>
