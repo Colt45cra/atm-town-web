@@ -4157,18 +4157,43 @@ function drawDepthScene(t){
   }
 }
 
+function townBotForBubbleId(id){
+  if(currentMap!=='town'||!townBotsReady||!id)return null;
+  return townBots.find(bot=>String(bot.id)===String(id))||null;
+}
 function drawChatBubbles(){
   const now=Date.now();
   for(let i=chatBubbles.length-1;i>=0;i--){
     const b=chatBubbles[i];if(now>b.expires){chatBubbles.splice(i,1);continue;}if(b.map!==currentMap)continue;
-    let bx=b.x,by=b.y,bubbleLift=0;if(b.id!==playerId&&remotePlayers.has(b.id)){const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;bubbleLift=Math.max(0,Number(p.jump||0));}else if(b.id===playerId){bx=player.x;by=player.y;bubbleLift=Math.max(0,Number(jumpLift()||0));}
+    let bx=b.x,by=b.y,bubbleLift=0,lockedNpc=false;
+    if(b.id!==playerId&&remotePlayers.has(b.id)){
+      const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;bubbleLift=Math.max(0,Number(p.jump||0));
+    }else if(b.id===playerId){
+      bx=player.x;by=player.y;bubbleLift=Math.max(0,Number(jumpLift()||0));
+    }else{
+      const bot=townBotForBubbleId(b.id);
+      if(bot){
+        // NPC bubbles must use the NPC's live rendered position every frame.
+        // The old fallback kept the coordinates captured when the line began,
+        // so a walking NPC could leave its bubble behind.
+        bx=Number.isFinite(bot.drawX)?bot.drawX:bot.x;
+        by=Number.isFinite(bot.drawY)?bot.drawY:bot.y;
+        lockedNpc=true;
+      }
+    }
     // Proximity is a ground-plane distance, while the visual bubble anchor follows
-    // the rendered player upward during jumping / jetpack flight.
+    // the rendered actor upward during movement / jumping / jetpack flight.
     if(Math.hypot(player.x-bx,player.y-by)>420&&b.id!==playerId)continue;
     const bubbleY=by-bubbleLift;
     ctx.save();ctx.font='700 10px system-ui';const lines=canvasTextLines(String(b.message||'').slice(0,140),190,3),lineH=12.5;
     const width=Math.min(210,Math.max(56,...lines.map(line=>ctx.measureText(line).width))+14),height=lines.length*lineH+10;
-    const left=cam.x+7,right=cam.x+W/zoom-7;let cx=bx;if(right>left+width)cx=Math.max(left+width/2,Math.min(right-width/2,bx));const top=Math.max(cam.y+7,bubbleY-72-height);
+    const left=cam.x+7,right=cam.x+W/zoom-7;
+    let cx=bx;
+    // Player chat may stay screen-readable near the edge, but NPC speech must
+    // remain physically centered above the NPC instead of sliding with camera.
+    if(!lockedNpc&&right>left+width)cx=Math.max(left+width/2,Math.min(right-width/2,bx));
+    const rawTop=bubbleY-72-height;
+    const top=lockedNpc?rawTop:Math.max(cam.y+7,rawTop);
     roundedRectPath(cx-width/2,top,width,height,7);ctx.fillStyle='rgba(5,18,26,.94)';ctx.fill();ctx.strokeStyle='#58f1e6';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';lines.forEach((line,index)=>ctx.fillText(line,cx,top+5+index*lineH));ctx.restore();
   }
 }
