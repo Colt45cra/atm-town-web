@@ -209,23 +209,24 @@
   }
 
   function worldPoint(npc,yOffset){
+    const shared=global.ATMNpcScreenAnchor?.(npc,yOffset);if(shared)return shared;
     try{
       const canvas=document.getElementById('game'),rect=canvas.getBoundingClientRect();
-      const sx=(npc.x-cam.x)*zoom,sy=(npc.y-yOffset-cam.y)*zoom;
+      const nx=Number.isFinite(Number(npc.drawX))?Number(npc.drawX):Number(npc.x);
+      const ny=Number.isFinite(Number(npc.drawY))?Number(npc.drawY):Number(npc.y);
+      const sx=(nx-cam.x)*zoom,sy=(ny-yOffset-cam.y)*zoom;
       return{x:rect.left+(sx/Math.max(1,W))*rect.width,y:rect.top+(sy/Math.max(1,H))*rect.height};
     }catch(_error){return null;}
   }
 
-  function clampX(x,width){return Math.max(width/2+8,Math.min(global.innerWidth-width/2-8,x));}
-
   function positionSpeech(){
     const npc=getFuzzy(),node=document.getElementById('fuzzyXrpWorldSpeech');if(!npc||!node||!state.open)return;
-    const p=worldPoint(npc,66);if(!p)return;const width=Math.min(300,global.innerWidth*.76);node.style.left=`${clampX(p.x,width)}px`;node.style.top=`${Math.max(74,p.y)}px`;
+    const p=worldPoint(npc,66);if(!p)return;node.style.left=`${p.x}px`;node.style.top=`${p.y}px`;
   }
 
   function placeBeckon(){
     const npc=getFuzzy(),node=document.getElementById('fuzzyXrpBeckon');if(!npc||!node||!inTown())return;
-    const p=worldPoint(npc,64);if(!p)return;node.style.left=`${clampX(p.x,250)}px`;node.style.top=`${Math.max(72,p.y)}px`;if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
+    const p=worldPoint(npc,64);if(!p)return;node.style.left=`${p.x}px`;node.style.top=`${p.y}px`;if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
   }
 
   function tick(){

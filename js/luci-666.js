@@ -205,13 +205,9 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
 
   function placeBeckon(){
     const node=document.getElementById('luci666Beckon'),luci=getLuci();if(!node||!luci||!inTown())return;
-    try{
-      const canvas=document.getElementById('game'),rect=canvas.getBoundingClientRect();
-      const sx=(luci.x-cam.x)*zoom,sy=(luci.y-64-cam.y)*zoom;
-      const px=rect.left+(sx/Math.max(1,W))*rect.width,py=rect.top+(sy/Math.max(1,H))*rect.height;
-      node.style.left=`${px}px`;node.style.top=`${py}px`;
-      if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
-    }catch(_error){}
+    const point=global.ATMNpcScreenAnchor?.(luci,64);if(!point)return;
+    node.style.left=`${point.x}px`;node.style.top=`${point.y}px`;
+    if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
   }
 
   function tick(){

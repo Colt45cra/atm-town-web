@@ -228,7 +228,7 @@
       return;
     }
     const script = document.createElement('script');
-    script.src = '/js/npc-dialogue-standard.js?v=1.0.0';
+    script.src = '/js/npc-dialogue-standard.js?v=1.1.0';
     script.async = false;
     script.dataset.atmNpcDialogueStandard = '1';
     script.onload = () => { if (typeof onReady === 'function') onReady(); };
@@ -242,7 +242,7 @@
   function loadLuci666Npc() {
     if (global.ATMLuci666 || document.querySelector('script[data-atm-luci-666]')) return;
     const script = document.createElement('script');
-    script.src = '/js/luci-666.js?v=1.0.4';
+    script.src = '/js/luci-666.js?v=1.0.5';
     script.async = false;
     script.dataset.atmLuci666 = '1';
     script.onerror = () => script.remove();
@@ -252,7 +252,7 @@
   function loadLuci666BeckonUx() {
     if (global.ATMLuci666BeckonUx || document.querySelector('script[data-atm-luci-666-beckon-ux]')) return;
     const script = document.createElement('script');
-    script.src = '/js/luci-666-beckon-ux.js?v=3.1.1';
+    script.src = '/js/luci-666-beckon-ux.js?v=3.1.2';
     script.async = false;
     script.dataset.atmLuci666BeckonUx = '1';
     script.onerror = () => script.remove();
@@ -262,7 +262,7 @@
   function loadMiracle111Npc() {
     if (global.ATMMiracle111 || document.querySelector('script[data-atm-miracle-111]')) return;
     const script = document.createElement('script');
-    script.src = '/js/miracle-111.js?v=1.0.0';
+    script.src = '/js/miracle-111.js?v=1.0.1';
     script.async = false;
     script.dataset.atmMiracle111 = '1';
     script.onerror = () => script.remove();
@@ -272,7 +272,7 @@
   function loadAtmEcosystemGuide() {
     if (global.ATMAtmGuide || document.querySelector('script[data-atm-ecosystem-guide]')) return;
     const script = document.createElement('script');
-    script.src = '/js/atm-ecosystem-guide.js?v=1.1.1';
+    script.src = '/js/atm-ecosystem-guide.js?v=1.1.2';
     script.async = false;
     script.dataset.atmEcosystemGuide = '1';
     script.onerror = () => script.remove();
@@ -282,7 +282,7 @@
   function loadFuzzyXrpNpc() {
     if (global.ATMFuzzyXrp || document.querySelector('script[data-atm-fuzzy-xrp]')) return;
     const script = document.createElement('script');
-    script.src = '/js/fuzzy-xrp.js?v=1.0.0';
+    script.src = '/js/fuzzy-xrp.js?v=1.0.1';
     script.async = false;
     script.dataset.atmFuzzyXrp = '1';
     script.onerror = () => script.remove();
@@ -292,7 +292,7 @@
   function loadTriskXrpNpc() {
     if (global.ATMTriskXrp || document.querySelector('script[data-atm-trisk-xrp]')) return;
     const script = document.createElement('script');
-    script.src = '/js/trisk-xrp.js?v=1.0.0';
+    script.src = '/js/trisk-xrp.js?v=1.0.1';
     script.async = false;
     script.dataset.atmTriskXrp = '1';
     script.onerror = () => script.remove();

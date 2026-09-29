@@ -216,13 +216,13 @@
 
   function placeBeckon(){
     const node=document.getElementById('miracle111Beckon'),npc=getMiracle();if(!node||!npc||!inTown())return;
-    const point=worldToScreen(npc.x,npc.y-64);if(!point)return;node.style.left=`${point.x}px`;node.style.top=`${point.y}px`;if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
+    const point=global.ATMNpcScreenAnchor?.(npc,64)||worldToScreen(Number.isFinite(Number(npc.drawX))?Number(npc.drawX):npc.x,(Number.isFinite(Number(npc.drawY))?Number(npc.drawY):npc.y)-64);if(!point)return;node.style.left=`${point.x}px`;node.style.top=`${point.y}px`;if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
   }
 
   function positionSpeech(){
     const speech=document.getElementById('miracle111WorldSpeech');if(!speech)return;if(!state.open){speech.style.display='none';return;}
-    const npc=getMiracle(),point=npc?worldToScreen(npc.x,npc.y-66):null;if(!point){speech.style.display='none';return;}speech.style.display='block';
-    const width=Math.max(180,speech.offsetWidth||220),half=width/2;const x=Math.min(Math.max(half+8,global.innerWidth-half-8),Math.max(half+8,point.x));const card=document.getElementById('miracle111Card')?.getBoundingClientRect();const lowerLimit=card?Math.max(90,card.top-12):global.innerHeight-12;const y=Math.min(lowerLimit,Math.max(88,point.y));speech.style.left=`${x}px`;speech.style.top=`${y}px`;
+    const npc=getMiracle(),point=npc?(global.ATMNpcScreenAnchor?.(npc,66)||worldToScreen(Number.isFinite(Number(npc.drawX))?Number(npc.drawX):npc.x,(Number.isFinite(Number(npc.drawY))?Number(npc.drawY):npc.y)-66)):null;if(!point){speech.style.display='none';return;}speech.style.display='block';
+    speech.style.left=`${point.x}px`;speech.style.top=`${point.y}px`;
   }
 
   function tick(){
