@@ -218,15 +218,12 @@ function authorizationMatches(result, hash) {
   };
 }
 
-function mintMatches(result, hash, destination = '') {
+function mintMatches(result, hash) {
   const tx = result?.tx_json || result?.tx || result?.transaction || result || {};
   const meta = result?.meta || result?.metaData || result?.metadata || {};
   const txHash = String(result?.hash || tx?.hash || tx?.Hash || '').toUpperCase();
   const engine = String(meta?.TransactionResult || meta?.transaction_result || result?.engine_result || '');
   const typeFlags = Number(tx?.Flags || 0) & 0xFFFF;
-  const destinationMatches = destination
-    ? String(tx?.Destination || '') === destination && String(tx?.Amount ?? '') === '0'
-    : !tx?.Destination;
   return {
     ok:
       result?.validated === true &&
@@ -238,7 +235,31 @@ function mintMatches(result, hash, destination = '') {
       Number(tx?.TransferFee) === ATM_TOWN_NFT_TRANSFER_FEE &&
       typeFlags === ATM_TOWN_NFT_FLAGS &&
       String(tx?.URI || '').toUpperCase() === ASTRONAUT_METADATA_URI_HEX &&
-      destinationMatches &&
+      tx?.Destination === undefined &&
+      tx?.Amount === undefined &&
+      engine === 'tesSUCCESS',
+    tx,
+    meta,
+    engine
+  };
+}
+
+function transferOfferMatches(result, hash, tokenId, playerWallet) {
+  const tx = result?.tx_json || result?.tx || result?.transaction || result || {};
+  const meta = result?.meta || result?.metaData || result?.metadata || {};
+  const txHash = String(result?.hash || tx?.hash || tx?.Hash || '').toUpperCase();
+  const engine = String(meta?.TransactionResult || meta?.transaction_result || result?.engine_result || '');
+  const typeFlags = Number(tx?.Flags || 0) & 0xFFFF;
+  return {
+    ok:
+      result?.validated === true &&
+      txHash === String(hash || '').toUpperCase() &&
+      String(tx?.TransactionType || '') === 'NFTokenCreateOffer' &&
+      String(tx?.Account || '') === ATM_TOWN_NFT_MINTER &&
+      String(tx?.NFTokenID || '').toUpperCase() === String(tokenId || '').toUpperCase() &&
+      String(tx?.Amount ?? '') === '0' &&
+      String(tx?.Destination || '') === playerWallet &&
+      typeFlags === 1 &&
       engine === 'tesSUCCESS',
     tx,
     meta,
@@ -265,7 +286,7 @@ function acceptMatches(result, hash, playerWallet) {
   };
 }
 
-async function createAstronautMintPayload(req, destination) {
+async function createAstronautMintPayload(req) {
   const origin = publicOriginForRequest(req);
   const returnUrl = `${origin}/?nft_setup=1&astronaut_mint_return=1&mint_payload={id}`;
   const txjson = {
@@ -277,10 +298,6 @@ async function createAstronautMintPayload(req, destination) {
     Flags: ATM_TOWN_NFT_FLAGS,
     URI: ASTRONAUT_METADATA_URI_HEX
   };
-  if (destination && destination !== ATM_TOWN_NFT_MINTER) {
-    txjson.Amount = '0';
-    txjson.Destination = destination;
-  }
   const response = await fetch(`${XAMAN_API_BASE}/payload`, {
     method: 'POST',
     headers: xamanHeaders(),
@@ -302,6 +319,41 @@ async function createAstronautMintPayload(req, destination) {
   const created = await readJson(response);
   if (!response.ok || !created?.uuid || !created?.next?.always) {
     throw xamanError(created, 'Xaman rejected the Astronaut Body mint request');
+  }
+  return created;
+}
+
+async function createAstronautTransferOfferPayload(req, playerWallet, tokenId) {
+  const origin = publicOriginForRequest(req);
+  const returnUrl = `${origin}/?nft_setup=1&astronaut_offer_return=1&offer_payload={id}`;
+  const response = await fetch(`${XAMAN_API_BASE}/payload`, {
+    method: 'POST',
+    headers: xamanHeaders(),
+    cache: 'no-store',
+    body: JSON.stringify({
+      txjson: {
+        TransactionType: 'NFTokenCreateOffer',
+        Account: ATM_TOWN_NFT_MINTER,
+        NFTokenID: tokenId,
+        Amount: '0',
+        Destination: playerWallet,
+        Flags: 1
+      },
+      options: {
+        submit: true,
+        expire: 10,
+        force_network: 'MAINNET',
+        return_url: { app: returnUrl, web: returnUrl }
+      },
+      custom_meta: {
+        identifier: 'atm-town-astronaut-body-transfer-offer',
+        instruction: `Create a 0 XRP Astronaut Body sell offer restricted to ${playerWallet}. Sign with the ATM Town operational/minter wallet only.`
+      }
+    })
+  });
+  const created = await readJson(response);
+  if (!response.ok || !created?.uuid || !created?.next?.always) {
+    throw xamanError(created, 'Xaman rejected the Astronaut Body transfer-offer request');
   }
   return created;
 }
@@ -514,7 +566,11 @@ async function handleAstronautState(req, res) {
     offerId = String(offer?.nft_offer_index || offer?.NFTokenOffer || offer?.index || '').toUpperCase();
   }
   return res.status(200).json({
-    status: playerNft ? 'owned_by_player' : minterNft ? 'minted_waiting_transfer' : 'not_minted',
+    status: playerNft
+      ? 'owned_by_player'
+      : minterNft
+        ? (offerId ? 'offer_ready' : 'minted_needs_offer')
+        : 'not_minted',
     player_wallet: wallet,
     nftoken_id: String(playerNft?.NFTokenID || minterNft?.NFTokenID || '').toUpperCase(),
     offer_id: offerId,
@@ -542,7 +598,7 @@ async function handleAstronautMintStart(req, res) {
       return res.status(200).json({ already_minted: true, nftoken_id: String(minterNft.NFTokenID || '').toUpperCase(), player_wallet: wallet });
     }
   }
-  const created = await createAstronautMintPayload(req, wallet);
+  const created = await createAstronautMintPayload(req);
   return res.status(201).json({
     payload_uuid: created.uuid,
     deeplink: created.next.always,
@@ -579,39 +635,123 @@ async function handleAstronautMintStatus(req, res) {
   }
   const nodeType = String(response.dispatched_nodetype || '').toUpperCase();
   if (nodeType && !nodeType.includes('MAINNET')) return res.status(409).json({ status: 'failed', error: 'The mint was not submitted to XRPL Mainnet.' });
+  const dispatchedResult = String(response.dispatched_result || response.engine_result || '');
+  if (dispatchedResult && dispatchedResult !== 'tesSUCCESS') {
+    return res.status(409).json({ status: 'failed', error: `XRPL rejected the mint: ${dispatchedResult}.` });
+  }
   const txHash = String(response.txid || '').toUpperCase();
   if (!XRPL_TX_HASH.test(txHash)) return res.status(200).json({ status: 'pending', phase: 'validating' });
   const validated = await txByHash(txHash);
   if (!validated) return res.status(200).json({ status: 'pending', phase: 'validating', tx_hash: txHash });
-  const expectedDestination = wallet === ATM_TOWN_NFT_MINTER ? '' : wallet;
-  const match = mintMatches(validated, txHash, expectedDestination);
+  const match = mintMatches(validated, txHash);
   if (!match.ok) {
     return res.status(409).json({ status: 'failed', tx_hash: txHash, error: `The validated transaction did not exactly match the locked Astronaut Body mint${match.engine ? ` (${match.engine})` : ''}.` });
   }
   let tokenId = tokenIdFromMeta(match.meta);
-  let minted = null;
   if (!tokenId) {
-    minted = await findAstronautNft(ATM_TOWN_NFT_MINTER);
+    const minted = await findAstronautNft(ATM_TOWN_NFT_MINTER);
     tokenId = String(minted?.NFTokenID || '').toUpperCase();
-  }
-  let offerId = offerIdFromMeta(match.meta);
-  if (tokenId && expectedDestination && !offerId) {
-    const offers = await sellOffers(tokenId);
-    const offer = offers.find((entry) =>
-      String(entry?.destination || entry?.Destination || '') === expectedDestination &&
-      String(entry?.amount ?? entry?.Amount ?? '') === '0'
-    );
-    offerId = String(offer?.nft_offer_index || offer?.NFTokenOffer || offer?.index || '').toUpperCase();
   }
   const playerOwns = Boolean(await findAstronautNft(wallet));
   return res.status(200).json({
     status: playerOwns ? 'owned_by_player' : 'minted',
-    phase: playerOwns ? 'complete' : expectedDestination ? 'ready_to_accept' : 'complete',
+    phase: playerOwns || wallet === ATM_TOWN_NFT_MINTER ? 'complete' : 'ready_to_create_offer',
+    tx_hash: txHash,
+    nftoken_id: tokenId,
+    player_wallet: wallet,
+    metadata_uri: ASTRONAUT_METADATA_URI
+  });
+}
+
+async function handleAstronautOfferStart(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST required.' });
+  const { wallet } = await verifiedPlayerWallet(req);
+  if (wallet === ATM_TOWN_NFT_MINTER) {
+    const owned = await findAstronautNft(wallet);
+    return res.status(200).json({ not_needed: true, already_owned: Boolean(owned), nftoken_id: String(owned?.NFTokenID || '').toUpperCase() });
+  }
+  const playerNft = await findAstronautNft(wallet);
+  if (playerNft) return res.status(200).json({ already_owned: true, nftoken_id: String(playerNft.NFTokenID || '').toUpperCase() });
+  const minterNft = await findAstronautNft(ATM_TOWN_NFT_MINTER);
+  if (!minterNft?.NFTokenID) return res.status(409).json({ error: 'Mint Astronaut Body first. The operational wallet does not currently hold the test NFT.' });
+  const tokenId = String(minterNft.NFTokenID).toUpperCase();
+  const offers = await sellOffers(tokenId);
+  const existing = offers.find((entry) =>
+    String(entry?.destination || entry?.Destination || '') === wallet &&
+    String(entry?.amount ?? entry?.Amount ?? '') === '0'
+  );
+  const existingOfferId = String(existing?.nft_offer_index || existing?.NFTokenOffer || existing?.index || '').toUpperCase();
+  if (/^[A-F0-9]{64}$/.test(existingOfferId)) {
+    return res.status(200).json({ already_created: true, nftoken_id: tokenId, offer_id: existingOfferId, player_wallet: wallet });
+  }
+  const created = await createAstronautTransferOfferPayload(req, wallet, tokenId);
+  return res.status(201).json({
+    payload_uuid: created.uuid,
+    deeplink: created.next.always,
+    qr_png: created.refs?.qr_png || null,
+    expires_in_minutes: 10,
+    player_wallet: wallet,
+    nftoken_id: tokenId
+  });
+}
+
+async function handleAstronautOfferStatus(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'GET required.' });
+  const { wallet } = await verifiedPlayerWallet(req);
+  const payloadUuid = String(req.query?.payload_uuid || '').trim();
+  if (!PAYLOAD_UUID.test(payloadUuid)) return res.status(400).json({ error: 'A valid Xaman transfer-offer payload UUID is required.' });
+
+  const lookup = await fetchXamanPayload(payloadUuid);
+  if (!lookup.found) return res.status(404).json({ error: 'Astronaut transfer-offer request was not found.' });
+  const payload = lookup.payload || {};
+  const meta = payload.meta || {};
+  if (!meta.resolved) return res.status(200).json({ status: meta.expired === true ? 'expired' : 'pending', phase: meta.opened_by_deeplink ? 'opened' : 'waiting' });
+  if (meta.signed !== true) return res.status(200).json({ status: 'rejected' });
+
+  const response = payload.response || {};
+  const signer = String(response.account || '');
+  if (signer && signer !== ATM_TOWN_NFT_MINTER) {
+    return res.status(409).json({ status: 'failed', error: 'The transfer offer must be signed by the ATM Town operational/minter wallet.' });
+  }
+  const nodeType = String(response.dispatched_nodetype || '').toUpperCase();
+  if (nodeType && !nodeType.includes('MAINNET')) return res.status(409).json({ status: 'failed', error: 'The transfer offer was not submitted to XRPL Mainnet.' });
+
+  const dispatchedResult = String(response.dispatched_result || response.engine_result || '');
+  if (dispatchedResult && dispatchedResult !== 'tesSUCCESS') {
+    return res.status(409).json({ status: 'failed', error: `XRPL rejected the transfer offer: ${dispatchedResult}.` });
+  }
+
+  const txHash = String(response.txid || '').toUpperCase();
+  if (!XRPL_TX_HASH.test(txHash)) return res.status(200).json({ status: 'pending', phase: 'validating' });
+  const validated = await txByHash(txHash);
+  if (!validated) return res.status(200).json({ status: 'pending', phase: 'validating', tx_hash: txHash });
+
+  const minterNft = await findAstronautNft(ATM_TOWN_NFT_MINTER);
+  const tokenId = String(minterNft?.NFTokenID || '').toUpperCase();
+  if (!/^[A-F0-9]{64}$/.test(tokenId)) {
+    return res.status(409).json({ status: 'failed', tx_hash: txHash, error: 'The operational wallet no longer holds the Astronaut test NFT.' });
+  }
+  const match = transferOfferMatches(validated, txHash, tokenId, wallet);
+  if (!match.ok) {
+    return res.status(409).json({ status: 'failed', tx_hash: txHash, error: `The validated transaction did not exactly match the restricted Astronaut transfer offer${match.engine ? ` (${match.engine})` : ''}.` });
+  }
+
+  let offerId = offerIdFromMeta(match.meta);
+  if (!offerId) {
+    const offers = await sellOffers(tokenId);
+    const offer = offers.find((entry) =>
+      String(entry?.destination || entry?.Destination || '') === wallet &&
+      String(entry?.amount ?? entry?.Amount ?? '') === '0'
+    );
+    offerId = String(offer?.nft_offer_index || offer?.NFTokenOffer || offer?.index || '').toUpperCase();
+  }
+  return res.status(200).json({
+    status: /^[A-F0-9]{64}$/.test(offerId) ? 'offer_ready' : 'pending',
+    phase: /^[A-F0-9]{64}$/.test(offerId) ? 'ready_to_accept' : 'offer-sync',
     tx_hash: txHash,
     nftoken_id: tokenId,
     offer_id: offerId,
-    player_wallet: wallet,
-    metadata_uri: ASTRONAUT_METADATA_URI
+    player_wallet: wallet
   });
 }
 
@@ -686,6 +826,8 @@ export default async function handler(req, res) {
     if (action === 'astronaut-state') return await handleAstronautState(req, res);
     if (action === 'astronaut-mint-start') return await handleAstronautMintStart(req, res);
     if (action === 'astronaut-mint-status') return await handleAstronautMintStatus(req, res);
+    if (action === 'astronaut-offer-start') return await handleAstronautOfferStart(req, res);
+    if (action === 'astronaut-offer-status') return await handleAstronautOfferStatus(req, res);
     if (action === 'astronaut-accept-start') return await handleAstronautAcceptStart(req, res);
     if (action === 'astronaut-accept-status') return await handleAstronautAcceptStatus(req, res);
     return res.status(400).json({ error: 'Unknown ATM Town NFT issuer setup action.' });

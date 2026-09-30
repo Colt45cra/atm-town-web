@@ -8,10 +8,11 @@
   const MINTER = 'rM5oXXzDLJxLqKp6ZwZjjesPvNvh669uCc';
   const AUTH_KEY = 'atm_nft_minter_auth_payload';
   const MINT_KEY = 'atm_astronaut_mint_payload';
+  const OFFER_KEY = 'atm_astronaut_offer_payload';
   const ACCEPT_KEY = 'atm_astronaut_accept_payload';
   let authorized = false;
-  let authTimer = null, mintTimer = null, acceptTimer = null;
-  let authAttempts = 0, mintAttempts = 0, acceptAttempts = 0;
+  let authTimer = null, mintTimer = null, offerTimer = null, acceptTimer = null;
+  let authAttempts = 0, mintAttempts = 0, offerAttempts = 0, acceptAttempts = 0;
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
@@ -80,16 +81,18 @@
           <div class="atmNftToken" id="atmAstronautToken"></div>
           <div class="atmNftTestActions">
             <button type="button" class="atmNftSetupBtn gold" id="atmAstronautMint">MINT ASTRONAUT BODY</button>
+            <button type="button" class="atmNftSetupBtn" id="atmAstronautOffer" hidden>CREATE TRANSFER OFFER</button>
             <button type="button" class="atmNftSetupBtn primary" id="atmAstronautAccept" hidden>ACCEPT INTO GAME WALLET</button>
           </div>
         </div>
-        <div class="atmNftSetupNext"><b>TEST FLOW</b><span>The operational wallet signs the mint. ATM Town creates a zero-XRP transfer offer to your verified game wallet. Your game wallet then accepts it, and the Locker can verify ownership from the ledger.</span></div>
+        <div class="atmNftSetupNext"><b>TEST FLOW</b><span>1) Operational wallet mints the NFT. 2) Operational wallet creates a restricted 0-XRP sell offer to your verified game wallet. 3) Your game wallet accepts it. The Locker then verifies actual XRPL ownership.</span></div>
       </section>`;
     document.body.appendChild(root);
     document.getElementById('atmNftSetupClose')?.addEventListener('click', closeSetup);
     document.getElementById('atmNftCheckLedger')?.addEventListener('click', () => checkLedger(false));
     document.getElementById('atmNftAuthorize')?.addEventListener('click', startAuthorization);
     document.getElementById('atmAstronautMint')?.addEventListener('click', startMint);
+    document.getElementById('atmAstronautOffer')?.addEventListener('click', startOffer);
     document.getElementById('atmAstronautAccept')?.addEventListener('click', startAccept);
   }
 
@@ -107,9 +110,9 @@
     if(el)el.textContent=id?'NFTokenID: '+id:'';
   }
   function closeSetup(){
-    clearTimeout(authTimer);clearTimeout(mintTimer);clearTimeout(acceptTimer);
+    clearTimeout(authTimer);clearTimeout(mintTimer);clearTimeout(offerTimer);clearTimeout(acceptTimer);
     const url=new URL(location.href);
-    ['nft_setup','nft_auth_return','payload','astronaut_mint_return','mint_payload','astronaut_accept_return','accept_payload'].forEach(k=>url.searchParams.delete(k));
+    ['nft_setup','nft_auth_return','payload','astronaut_mint_return','mint_payload','astronaut_offer_return','offer_payload','astronaut_accept_return','accept_payload'].forEach(k=>url.searchParams.delete(k));
     history.replaceState(history.state,'',url.pathname+url.search+url.hash);
     document.getElementById('atmNftSetup')?.remove();
   }
@@ -174,26 +177,37 @@
   }
 
   async function checkAstronautState(){
-    const mint=document.getElementById('atmAstronautMint'),accept=document.getElementById('atmAstronautAccept');
+    const mint=document.getElementById('atmAstronautMint');
+    const offer=document.getElementById('atmAstronautOffer');
+    const accept=document.getElementById('atmAstronautAccept');
     try{
       const data=await api('/api/xaman-link?action=nft-astronaut-state');
       setToken(data.nftoken_id||'');
       if(data.status==='owned_by_player'){
         if(mint){mint.disabled=true;mint.dataset.locked='1';mint.textContent='ASTRONAUT MINTED ✓';}
+        if(offer)offer.hidden=true;
         if(accept)accept.hidden=true;
         setAstronautStatus(`Test complete. Astronaut Body is owned by your verified game wallet ${shortAddress(data.player_wallet)}.`,'success');
-      }else if(data.status==='minted_waiting_transfer'){
+      }else if(data.status==='offer_ready'){
         if(mint){mint.disabled=true;mint.dataset.locked='1';mint.textContent='ASTRONAUT MINTED ✓';}
+        if(offer)offer.hidden=true;
         if(accept){accept.hidden=false;accept.disabled=false;}
-        setAstronautStatus(`Mint validated. Accept the zero-XRP transfer into ${shortAddress(data.player_wallet)} to complete the game ownership test.`);
+        setAstronautStatus(`Restricted 0-XRP transfer offer is ready for ${shortAddress(data.player_wallet)}. Accept it with that game wallet.`);
+      }else if(data.status==='minted_needs_offer'){
+        if(mint){mint.disabled=true;mint.dataset.locked='1';mint.textContent='ASTRONAUT MINTED ✓';}
+        if(offer){offer.hidden=false;offer.disabled=false;}
+        if(accept)accept.hidden=true;
+        setAstronautStatus(`Mint validated. Next create the restricted 0-XRP transfer offer to ${shortAddress(data.player_wallet)}.`);
       }else{
         if(mint){delete mint.dataset.locked;mint.textContent='MINT ASTRONAUT BODY';mint.disabled=!authorized;}
+        if(offer)offer.hidden=true;
         if(accept)accept.hidden=true;
-        setAstronautStatus(`Ready to mint one test NFT. It will be offered to your verified game wallet ${shortAddress(data.player_wallet)} for 0 XRP.`);
+        setAstronautStatus(`Ready to mint one test NFT. The operational wallet will mint it first, then offer it to ${shortAddress(data.player_wallet)} for 0 XRP.`);
       }
       return data;
     }catch(error){
       if(mint)mint.disabled=true;
+      if(offer)offer.disabled=true;
       setAstronautStatus(error.message||'Could not read Astronaut NFT test state.','error');
       throw error;
     }
@@ -206,7 +220,7 @@
       const data=await api('/api/xaman-link?action=nft-astronaut-mint-start',{method:'POST',body:'{}'});
       if(data.already_owned||data.already_minted){await checkAstronautState();return;}
       localStorage.setItem(MINT_KEY,data.payload_uuid);
-      setAstronautStatus('Opening Xaman. Sign with the operational/minter wallet only. Verify Taxon 321, TransferFee 10000, Flags 8, and the ATM Town issuer.');
+      setAstronautStatus('Opening Xaman. Sign with the operational/minter wallet only. This transaction mints Astronaut Body to the minter. Verify Taxon 321, TransferFee 10000, Flags 8, and the ATM Town issuer.');
       location.assign(data.deeplink);
     }catch(error){setAstronautStatus(error.message||'Could not start the Astronaut mint.','error');if(button)button.disabled=!authorized;}
   }
@@ -221,13 +235,49 @@
         const data=await api('/api/xaman-link?action=nft-astronaut-mint-status&payload_uuid='+encodeURIComponent(payloadUuid));
         if(['minted','owned_by_player'].includes(data.status)){
           clearTimeout(mintTimer);localStorage.removeItem(MINT_KEY);setToken(data.nftoken_id||'');
-          setAstronautStatus(data.status==='owned_by_player'?'Astronaut Body is now in your game wallet.':'Astronaut Body mint validated. Ready for the zero-XRP transfer.','success');
+          setAstronautStatus(data.status==='owned_by_player'?'Astronaut Body is now in your game wallet.':'Astronaut Body mint validated. Next create the restricted 0-XRP transfer offer.','success');
           await checkAstronautState();return;
         }
         if(['rejected','failed','expired'].includes(data.status)){clearTimeout(mintTimer);localStorage.removeItem(MINT_KEY);setAstronautStatus(data.error||'The mint was not completed.','error');await checkAstronautState().catch(()=>{});return;}
         setAstronautStatus(data.phase==='opened'?'Xaman opened. Waiting for operational wallet signature…':'Mint signed. Waiting for XRPL validation…');
       }catch(error){setAstronautStatus(error.message||'Mint validation is still pending.');}
       if(mintAttempts<50)mintTimer=setTimeout(check,2500);
+    };check();
+  }
+
+  async function startOffer(){
+    const button=document.getElementById('atmAstronautOffer');if(button)button.disabled=true;
+    setAstronautStatus('Building the restricted 0-XRP transfer offer…');
+    try{
+      const data=await api('/api/xaman-link?action=nft-astronaut-offer-start',{method:'POST',body:'{}'});
+      if(data.already_owned||data.not_needed||data.already_created){await checkAstronautState();return;}
+      localStorage.setItem(OFFER_KEY,data.payload_uuid);
+      setAstronautStatus('Opening Xaman. Sign this transfer-offer transaction with the operational/minter wallet only.');
+      location.assign(data.deeplink);
+    }catch(error){setAstronautStatus(error.message||'Could not create the Astronaut transfer offer.','error');if(button)button.disabled=false;}
+  }
+
+  function pollOffer(payloadUuid){
+    if(!/^[0-9a-f-]{36}$/i.test(String(payloadUuid||'')))return;
+    clearTimeout(offerTimer);offerAttempts=0;
+    const check=async()=>{
+      if(document.hidden){offerTimer=setTimeout(check,1500);return;}
+      offerAttempts++;
+      try{
+        const data=await api('/api/xaman-link?action=nft-astronaut-offer-status&payload_uuid='+encodeURIComponent(payloadUuid));
+        if(data.status==='offer_ready'){
+          clearTimeout(offerTimer);localStorage.removeItem(OFFER_KEY);
+          setAstronautStatus('Restricted 0-XRP offer validated. Now accept it with your verified game wallet.','success');
+          await checkAstronautState();return;
+        }
+        if(['rejected','failed','expired'].includes(data.status)){
+          clearTimeout(offerTimer);localStorage.removeItem(OFFER_KEY);
+          setAstronautStatus(data.error||'The transfer offer was not completed.','error');
+          await checkAstronautState().catch(()=>{});return;
+        }
+        setAstronautStatus(data.phase==='opened'?'Xaman opened. Waiting for operational wallet signature…':'Transfer offer signed. Waiting for XRPL validation…');
+      }catch(error){setAstronautStatus(error.message||'Transfer-offer validation is still pending.');}
+      if(offerAttempts<50)offerTimer=setTimeout(check,2500);
     };check();
   }
 
@@ -266,9 +316,11 @@
   function resumeFlows(){
     const auth=uuidParam('payload')||localStorage.getItem(AUTH_KEY)||'';
     const mint=uuidParam('mint_payload')||localStorage.getItem(MINT_KEY)||'';
+    const offer=uuidParam('offer_payload')||localStorage.getItem(OFFER_KEY)||'';
     const accept=uuidParam('accept_payload')||localStorage.getItem(ACCEPT_KEY)||'';
     if(auth)pollAuthorization(auth);
     if(mint)pollMint(mint);
+    if(offer)pollOffer(offer);
     if(accept)pollAccept(accept);
   }
 
