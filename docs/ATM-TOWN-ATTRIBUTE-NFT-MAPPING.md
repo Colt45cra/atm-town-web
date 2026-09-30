@@ -97,4 +97,4 @@ ATM Town trusts the collection issuer + taxon and then matches `item_id` exactly
 
 ## Before Mainnet minting
 
-The issuer and operational/minter wallets are now selected. The production model is mint-on-purchase rather than a pre-minted fixed supply. Before the first Mainnet attribute mint, we still need to lock the dedicated taxon and royalty/transfer fee, then validate one test attribute end-to-end.
+The issuer and operational/minter wallets are authorized. The production model is mint-on-purchase. Collection settings are now locked to NFTokenTaxon **321** and a **10% secondary-sale royalty** (XRPL TransferFee **10000**). Before the first Mainnet attribute mint, every required `atm-town.attribute.v1` metadata field must be complete and validated, then one test attribute will be minted and verified end-to-end.

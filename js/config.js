@@ -189,16 +189,21 @@
   });
 
   // Official transferable ATM Town Attribute NFT collection.
-  // Keep disabled until the minting issuer + taxon are finalized and minted.
+  // Issuer/minter/taxon/royalty are locked. Keep ownership gating disabled until
+  // the first metadata-v1 NFT is minted and verified end-to-end on Mainnet.
   const ATTRIBUTE_NFT_COLLECTION = Object.freeze({
     enabled: false,
     name: 'ATM Town Attributes',
     network: 'mainnet',
-    issuer: '',
-    authorizedMinter: '',
-    taxon: null,
+    issuer: 'rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff',
+    authorizedMinter: 'rM5oXXzDLJxLqKp6ZwZjjesPvNvh669uCc',
+    taxon: 321,
     itemIdField: 'item_id',
+    metadataSchemaVersion: 'atm-town.attribute.v1',
     transferable: true,
+    royaltyPercent: 10,
+    royaltyBps: 1000,
+    xrplTransferFee: 10000,
     creatorPlatformMinimumBps: 2000,
     mintingModel: 'authorized-minter'
   });

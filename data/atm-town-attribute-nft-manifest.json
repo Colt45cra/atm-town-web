@@ -3,20 +3,26 @@
     "name": "ATM Town Attributes",
     "network": "mainnet",
     "issuer": "rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff",
-    "taxon": null,
+    "taxon": 321,
     "transferable": true,
-    "royalty_bps": null,
-    "status": "issuer_and_minter_selected_authorization_pending_taxon_and_royalty",
+    "royalty_bps": 1000,
+    "status": "issuer_minter_taxon_royalty_locked_metadata_completion_pending_first_mint",
     "authorized_minter": "rM5oXXzDLJxLqKp6ZwZjjesPvNvh669uCc",
     "minting_model": "authorized-minter",
     "platform_minimum_primary_sale_bps": 2000,
     "batch_split_status": "future-batchv1_1",
-    "supply_model": "mint-on-purchase"
+    "supply_model": "mint-on-purchase",
+    "royalty_percent": 10,
+    "xrpl_transfer_fee": 10000,
+    "metadata_schema_version": "atm-town.attribute.v1",
+    "metadata_schema_path": "data/atm-town-attribute-metadata.schema.json"
   },
   "defaults": {
     "price_xrp": "3",
-    "metadata_standard": "XRPL NFT JSON",
-    "unlock_field": "item_id"
+    "metadata_standard": "ATM Town Attribute Metadata v1",
+    "unlock_field": "item_id",
+    "metadata_schema_version": "atm-town.attribute.v1",
+    "mint_gate": "metadata-complete-and-validated"
   },
   "items": [
     {
