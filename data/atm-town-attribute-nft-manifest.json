@@ -15,7 +15,9 @@
     "royalty_percent": 10,
     "xrpl_transfer_fee": 10000,
     "metadata_schema_version": "atm-town.attribute.v1",
-    "metadata_schema_path": "data/atm-town-attribute-metadata.schema.json"
+    "metadata_schema_path": "data/atm-town-attribute-metadata.schema.json",
+    "first_test_item_id": "body:astronaut",
+    "first_test_status": "metadata-ready"
   },
   "defaults": {
     "price_xrp": "3",
@@ -30,15 +32,241 @@
       "name": "Astronaut Body",
       "slot": "body",
       "supply": null,
-      "mint_status": "planned",
+      "mint_status": "ready",
       "sale_price_xrp": "3",
       "metadata": {
+        "schema_version": "atm-town.attribute.v1",
         "name": "ATM Town Attribute — Astronaut Body",
-        "description": "Transferable ATM Town character attribute. Owning this NFT in your verified XRPL wallet unlocks Astronaut Body in ATM Town.",
+        "description": "Official transferable ATM Town body attribute for the ATM character. Equipping Astronaut Body gives the ATM character a low-gravity jump profile: 4× normal jump height and 2.7× normal jump duration, with existing Bounce and Jetpack synergies preserved.",
+        "image": "https://raw.githubusercontent.com/Colt45cra/atm-town-web/b69630a6d84119e4cbd629179dafc07b7f1dc97b/assets/characters/thumbnails/body-astronaut.webp",
+        "animation_url": null,
+        "external_url": "https://www.atmtown.fun/",
+        "game": {
+          "id": "atm-town",
+          "name": "ATM Town"
+        },
+        "collection": {
+          "name": "ATM Town Attributes",
+          "issuer": "rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff",
+          "taxon": 321
+        },
         "item_id": "body:astronaut",
+        "asset_type": "equipment",
         "slot": "body",
-        "game": "ATM Town"
-      }
+        "compatible_character_ids": [
+          "classic"
+        ],
+        "compatible_character_names": [
+          "ATM"
+        ],
+        "rarity": "Low Gravity",
+        "tags": [
+          "astronaut",
+          "space",
+          "low-gravity",
+          "movement",
+          "body"
+        ],
+        "appearance": {
+          "asset_key": "body:astronaut",
+          "asset_uri": "https://raw.githubusercontent.com/Colt45cra/atm-town-web/b69630a6d84119e4cbd629179dafc07b7f1dc97b/assets/characters/body/astronaut.webp",
+          "preview_uri": "https://raw.githubusercontent.com/Colt45cra/atm-town-web/b69630a6d84119e4cbd629179dafc07b7f1dc97b/assets/characters/thumbnails/body-astronaut.webp",
+          "colorway": "White / Black Astronaut",
+          "colors": [
+            {
+              "name": "Suit White",
+              "hex": "#F4F4F1"
+            },
+            {
+              "name": "Visor Black",
+              "hex": "#050505"
+            },
+            {
+              "name": "Metallic Silver",
+              "hex": "#B9B7AE"
+            },
+            {
+              "name": "Indicator Amber",
+              "hex": "#F6A700"
+            }
+          ],
+          "render_profile": {
+            "sprite_format": "3x4",
+            "columns": 3,
+            "rows": 4,
+            "row_order": [
+              "down",
+              "left",
+              "up",
+              "right"
+            ],
+            "frame_width": 256,
+            "frame_height": 320,
+            "sheet_width": 768,
+            "sheet_height": 1280,
+            "frame_columns": [
+              "walk_a",
+              "idle",
+              "walk_b"
+            ],
+            "anchor_x": 128,
+            "anchor_y": 303,
+            "display_scale": 0.33
+          }
+        },
+        "gameplay": {
+          "balance_version": 1,
+          "stats": {
+            "strength_multiplier": 1,
+            "speed_multiplier": 1,
+            "jump_height_multiplier": 4,
+            "jump_duration_multiplier": 2.7,
+            "health_multiplier": 1,
+            "damage_multiplier": 1,
+            "armor_multiplier": 1
+          },
+          "reference_values": {
+            "normal_move_speed_px_per_second": 182,
+            "normal_jump_height_px": 38,
+            "normal_jump_duration_seconds": 0.64,
+            "equipped_move_speed_px_per_second": 182,
+            "equipped_jump_height_px": 152,
+            "equipped_jump_duration_seconds": 1.728,
+            "barrier_clearance_px": 24
+          }
+        },
+        "abilities": [
+          {
+            "id": "low_gravity",
+            "name": "Low Gravity",
+            "type": "movement",
+            "enabled": true,
+            "parameters": {
+              "jump_height_multiplier": 4,
+              "jump_duration_multiplier": 2.7,
+              "barrier_clearance_px": 24
+            }
+          },
+          {
+            "id": "bounce_low_gravity_synergy",
+            "name": "Bounce + Low Gravity",
+            "type": "synergy",
+            "enabled": true,
+            "parameters": {
+              "requires": "powerup:bounce",
+              "additional_jump_height_multiplier": 2,
+              "additional_jump_duration_multiplier": 2,
+              "resulting_jump_height_multiplier": 8,
+              "resulting_jump_duration_multiplier": 5.4,
+              "resulting_jump_height_px": 304,
+              "resulting_jump_duration_seconds": 3.456
+            }
+          },
+          {
+            "id": "astronaut_jetpack_low_gravity",
+            "name": "Astronaut Jetpack Low Gravity",
+            "type": "synergy",
+            "enabled": true,
+            "parameters": {
+              "requires": "equipment:jetpack",
+              "upward_release_brake": 178,
+              "fall_gravity_start": 65,
+              "fall_gravity_ramp": 105,
+              "fall_gravity_max": 170,
+              "max_fall_speed": 190,
+              "min_activation_rise_speed": 150,
+              "jetpack_max_rise_speed": 270
+            }
+          }
+        ],
+        "equip_rules": {
+          "exclusive_slot": true,
+          "requires": [],
+          "conflicts_with": [],
+          "stacks_with": [
+            "powerup:bounce",
+            "equipment:jetpack"
+          ]
+        },
+        "mint_policy": {
+          "supply_model": "mint-on-purchase",
+          "primary_price_xrp": "3",
+          "transferable": true,
+          "secondary_sale_royalty_percent": 10,
+          "xrpl_transfer_fee": 10000
+        },
+        "provenance": {
+          "creator": "ATM Town",
+          "source": "ATM Town official attribute catalog and live gameplay constants",
+          "metadata_version": 1,
+          "created_at": null,
+          "source_asset_commit": "b69630a6d84119e4cbd629179dafc07b7f1dc97b"
+        },
+        "attributes": [
+          {
+            "trait_type": "Game",
+            "value": "ATM Town"
+          },
+          {
+            "trait_type": "Character",
+            "value": "ATM"
+          },
+          {
+            "trait_type": "Asset Type",
+            "value": "Equipment"
+          },
+          {
+            "trait_type": "Slot",
+            "value": "Body"
+          },
+          {
+            "trait_type": "Colorway",
+            "value": "White / Black Astronaut"
+          },
+          {
+            "trait_type": "Ability",
+            "value": "Low Gravity"
+          },
+          {
+            "trait_type": "Jump Height",
+            "value": "4×"
+          },
+          {
+            "trait_type": "Jump Duration",
+            "value": "2.7×"
+          },
+          {
+            "trait_type": "Strength",
+            "value": "1×"
+          },
+          {
+            "trait_type": "Speed",
+            "value": "1×"
+          },
+          {
+            "trait_type": "Health",
+            "value": "1×"
+          },
+          {
+            "trait_type": "Damage",
+            "value": "1×"
+          },
+          {
+            "trait_type": "Armor",
+            "value": "1×"
+          },
+          {
+            "trait_type": "Taxon",
+            "value": 321
+          },
+          {
+            "trait_type": "Royalty",
+            "value": "10%"
+          }
+        ]
+      },
+      "supply_model": "mint-on-purchase",
+      "metadata_path": "nft/metadata/body-astronaut-v1.json"
     },
     {
       "item_id": "body:black",
