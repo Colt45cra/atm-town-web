@@ -173,6 +173,27 @@ function cleanText(value, max = 500) {
   return String(value ?? '').replace(/\0/g, '').trim().slice(0, max);
 }
 
+function cleanStringArray(value, maxItems = 50, maxLength = 100) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map((entry) => cleanText(entry, maxLength)).filter(Boolean))].slice(0, maxItems);
+}
+
+function cleanPlainJson(value, depth = 0) {
+  if (depth > 4) return null;
+  if (value === null || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') return cleanText(value, 500);
+  if (Array.isArray(value)) return value.slice(0, 40).map((entry) => cleanPlainJson(entry, depth + 1));
+  if (!value || typeof value !== 'object') return null;
+  const out = {};
+  for (const [key, entry] of Object.entries(value).slice(0, 60)) {
+    const cleanKey = cleanText(key, 100);
+    if (!cleanKey) continue;
+    out[cleanKey] = cleanPlainJson(entry, depth + 1);
+  }
+  return out;
+}
+
 async function resolveMetadata(uriHex, tokenId) {
   const decodedUri = decodeHexUri(uriHex);
   if (!decodedUri) return { status: 'missing', uri: '', name: '', description: '', image_url: '' };
@@ -263,6 +284,19 @@ function metadataFromJson(json, decodedUri, metadataUrl) {
     animation_url: normalizeContentUri(metadataUriValue(source.animation_url) || metadataUriValue(source.animation) || metadataUriValue(source.video), metadataUrl),
     external_url: normalizeContentUri(metadataUriValue(source.external_url) || metadataUriValue(source.external_link) || metadataUriValue(source.website), metadataUrl),
     collection: cleanText(source.collection?.name || source.collection || source.project || source.collection_name || '', 180),
+    schema_version: cleanText(source.schema_version || source.schemaVersion || '', 80),
+    item_id: cleanText(source.item_id || source.properties?.item_id || '', 100),
+    asset_type: cleanText(source.asset_type || source.properties?.asset_type || '', 60),
+    slot: cleanText(source.slot || source.properties?.slot || '', 60),
+    compatible_character_ids: cleanStringArray(source.compatible_character_ids || source.properties?.compatible_character_ids, 50, 64),
+    game: cleanPlainJson(source.game),
+    collection_data: cleanPlainJson(source.collection),
+    appearance: cleanPlainJson(source.appearance),
+    gameplay: cleanPlainJson(source.gameplay),
+    abilities: Array.isArray(source.abilities) ? cleanPlainJson(source.abilities) : [],
+    equip_rules: cleanPlainJson(source.equip_rules),
+    provenance: cleanPlainJson(source.provenance),
+    properties: cleanPlainJson(source.properties),
     attributes: Array.isArray(source.attributes) ? source.attributes.slice(0, 80).map((entry) => ({
       trait_type: cleanText(entry?.trait_type || entry?.type || entry?.name || '', 100),
       value: cleanText(entry?.value ?? entry?.description ?? '', 180)
