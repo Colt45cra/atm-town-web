@@ -1,0 +1,96 @@
+{
+  "schema_version": "atm-town.attribute.v1",
+  "name": "ATM Town Attribute — REPLACE NAME",
+  "description": "REPLACE WITH PLAYER-FACING DESCRIPTION",
+  "image": "ipfs://REPLACE_WITH_IMAGE_CID",
+  "animation_url": null,
+  "external_url": "https://atmtown.fun",
+  "game": {
+    "id": "atm-town",
+    "name": "ATM Town"
+  },
+  "collection": {
+    "name": "ATM Town Attributes",
+    "issuer": "rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff",
+    "taxon": 321
+  },
+  "item_id": "REPLACE:ITEM-ID",
+  "asset_type": "equipment",
+  "slot": "REPLACE_SLOT",
+  "compatible_character_ids": [
+    "classic"
+  ],
+  "rarity": "REPLACE_RARITY",
+  "tags": [],
+  "appearance": {
+    "asset_key": "REPLACE:ITEM-ID",
+    "asset_uri": "ipfs://REPLACE_WITH_GAME_ASSET_CID",
+    "preview_uri": "ipfs://REPLACE_WITH_PREVIEW_CID",
+    "colorway": "REPLACE_COLORWAY",
+    "colors": [
+      {
+        "name": "REPLACE_COLOR_NAME",
+        "hex": "#000000"
+      }
+    ],
+    "render_profile": {
+      "sprite_format": "3x4",
+      "columns": 3,
+      "rows": 4,
+      "row_order": [
+        "down",
+        "left",
+        "up",
+        "right"
+      ],
+      "frame_width": 256,
+      "frame_height": 320,
+      "anchor_x": 128,
+      "anchor_y": 303,
+      "display_scale": 0.33
+    }
+  },
+  "gameplay": {
+    "balance_version": 1,
+    "stats": {
+      "strength_multiplier": 1,
+      "speed_multiplier": 1,
+      "jump_height_multiplier": 1,
+      "jump_duration_multiplier": 1,
+      "health_multiplier": 1,
+      "damage_multiplier": 1,
+      "armor_multiplier": 1
+    }
+  },
+  "abilities": [],
+  "equip_rules": {
+    "exclusive_slot": true,
+    "requires": [],
+    "conflicts_with": [],
+    "stacks_with": []
+  },
+  "provenance": {
+    "creator": "ATM Town",
+    "source": "ATM Town official attribute catalog",
+    "metadata_version": 1,
+    "created_at": null
+  },
+  "attributes": [
+    {
+      "trait_type": "Game",
+      "value": "ATM Town"
+    },
+    {
+      "trait_type": "Character",
+      "value": "ATM"
+    },
+    {
+      "trait_type": "Slot",
+      "value": "REPLACE_SLOT"
+    },
+    {
+      "trait_type": "Colorway",
+      "value": "REPLACE_COLORWAY"
+    }
+  ]
+}
