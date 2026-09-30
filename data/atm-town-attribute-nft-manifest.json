@@ -17,7 +17,7 @@
     "metadata_schema_version": "atm-town.attribute.v1",
     "metadata_schema_path": "data/atm-town-attribute-metadata.schema.json",
     "first_test_item_id": "body:astronaut",
-    "first_test_status": "metadata-ready"
+    "first_test_status": "ready-to-mint"
   },
   "defaults": {
     "price_xrp": "3",
@@ -266,7 +266,8 @@
         ]
       },
       "supply_model": "mint-on-purchase",
-      "metadata_path": "nft/metadata/body-astronaut-v1.json"
+      "metadata_path": "nft/metadata/body-astronaut-v1.json",
+      "metadata_uri": "https://raw.githubusercontent.com/Colt45cra/atm-town-web/939d769f53e297de047933cbf3be0f5fab60f48f/nft/metadata/body-astronaut-v1.json"
     },
     {
       "item_id": "body:black",

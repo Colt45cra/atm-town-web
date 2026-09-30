@@ -189,10 +189,10 @@
   });
 
   // Official transferable ATM Town Attribute NFT collection.
-  // Issuer/minter/taxon/royalty are locked. Keep ownership gating disabled until
-  // the first metadata-v1 NFT is minted and verified end-to-end on Mainnet.
+  // Issuer/minter/taxon/royalty are locked. Official collection recognition is
+  // enabled for the first Astronaut Body end-to-end Mainnet ownership test.
   const ATTRIBUTE_NFT_COLLECTION = Object.freeze({
-    enabled: false,
+    enabled: true,
     name: 'ATM Town Attributes',
     network: 'mainnet',
     issuer: 'rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff',
