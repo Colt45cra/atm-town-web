@@ -291,7 +291,6 @@ async function createAstronautMintPayload(req) {
   const returnUrl = `${origin}/?nft_setup=1&astronaut_mint_return=1&mint_payload={id}`;
   const txjson = {
     TransactionType: 'NFTokenMint',
-    Account: ATM_TOWN_NFT_MINTER,
     Issuer: ATM_TOWN_NFT_ISSUER,
     NFTokenTaxon: ATM_TOWN_NFT_TAXON,
     TransferFee: ATM_TOWN_NFT_TRANSFER_FEE,
@@ -308,6 +307,7 @@ async function createAstronautMintPayload(req) {
         submit: true,
         expire: 10,
         force_network: 'MAINNET',
+        signer: ATM_TOWN_NFT_MINTER,
         return_url: { app: returnUrl, web: returnUrl }
       },
       custom_meta: {
@@ -333,7 +333,6 @@ async function createAstronautTransferOfferPayload(req, playerWallet, tokenId) {
     body: JSON.stringify({
       txjson: {
         TransactionType: 'NFTokenCreateOffer',
-        Account: ATM_TOWN_NFT_MINTER,
         NFTokenID: tokenId,
         Amount: '0',
         Destination: playerWallet,
@@ -343,6 +342,7 @@ async function createAstronautTransferOfferPayload(req, playerWallet, tokenId) {
         submit: true,
         expire: 10,
         force_network: 'MAINNET',
+        signer: ATM_TOWN_NFT_MINTER,
         return_url: { app: returnUrl, web: returnUrl }
       },
       custom_meta: {
@@ -368,13 +368,13 @@ async function createAstronautAcceptPayload(req, playerWallet, offerId) {
     body: JSON.stringify({
       txjson: {
         TransactionType: 'NFTokenAcceptOffer',
-        Account: playerWallet,
         NFTokenSellOffer: offerId
       },
       options: {
         submit: true,
         expire: 10,
         force_network: 'MAINNET',
+        signer: playerWallet,
         return_url: { app: returnUrl, web: returnUrl }
       },
       custom_meta: {
@@ -400,7 +400,6 @@ async function createAuthorizationPayload(req) {
     body: JSON.stringify({
       txjson: {
         TransactionType: 'AccountSet',
-        Account: ATM_TOWN_NFT_ISSUER,
         SetFlag: AUTHORIZED_NFT_MINTER_FLAG,
         NFTokenMinter: ATM_TOWN_NFT_MINTER
       },
@@ -408,6 +407,7 @@ async function createAuthorizationPayload(req) {
         submit: true,
         expire: 10,
         force_network: 'MAINNET',
+        signer: ATM_TOWN_NFT_ISSUER,
         return_url: {
           app: returnUrl,
           web: returnUrl
