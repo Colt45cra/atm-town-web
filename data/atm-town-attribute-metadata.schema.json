@@ -1,0 +1,477 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atmtown.fun/schemas/attribute-metadata-v1.json",
+  "title": "ATM Town Attribute Metadata v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "name",
+    "description",
+    "image",
+    "external_url",
+    "game",
+    "collection",
+    "item_id",
+    "asset_type",
+    "slot",
+    "compatible_character_ids",
+    "appearance",
+    "gameplay",
+    "abilities",
+    "equip_rules",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "atm-town.attribute.v1"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 180
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1200
+    },
+    "image": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "animation_url": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
+    "external_url": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "game": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "const": "atm-town"
+        },
+        "name": {
+          "const": "ATM Town"
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "issuer",
+        "taxon"
+      ],
+      "properties": {
+        "name": {
+          "const": "ATM Town Attributes"
+        },
+        "issuer": {
+          "const": "rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff"
+        },
+        "taxon": {
+          "const": 321
+        }
+      }
+    },
+    "item_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+:[a-z0-9-]+$",
+      "maxLength": 100
+    },
+    "asset_type": {
+      "enum": [
+        "equipment",
+        "character",
+        "consumable",
+        "companion",
+        "vehicle",
+        "environment"
+      ]
+    },
+    "slot": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "compatible_character_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      }
+    },
+    "rarity": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 40,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60
+      }
+    },
+    "appearance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "asset_key",
+        "colorway",
+        "colors",
+        "render_profile"
+      ],
+      "properties": {
+        "asset_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "asset_uri": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        },
+        "preview_uri": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        },
+        "colorway": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "colors": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "hex"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "hex": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              }
+            }
+          }
+        },
+        "render_profile": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "sprite_format",
+            "columns",
+            "rows",
+            "row_order",
+            "frame_width",
+            "frame_height"
+          ],
+          "properties": {
+            "sprite_format": {
+              "const": "3x4"
+            },
+            "columns": {
+              "const": 3
+            },
+            "rows": {
+              "const": 4
+            },
+            "row_order": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "const": "down"
+                },
+                {
+                  "const": "left"
+                },
+                {
+                  "const": "up"
+                },
+                {
+                  "const": "right"
+                }
+              ],
+              "items": false
+            },
+            "frame_width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "frame_height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "anchor_x": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "anchor_y": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "display_scale": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "exclusiveMinimum": 0,
+              "maximum": 10
+            }
+          }
+        }
+      }
+    },
+    "gameplay": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "balance_version",
+        "stats"
+      ],
+      "properties": {
+        "balance_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "strength_multiplier",
+            "speed_multiplier",
+            "jump_height_multiplier",
+            "jump_duration_multiplier",
+            "health_multiplier",
+            "damage_multiplier",
+            "armor_multiplier"
+          ],
+          "properties": {
+            "strength_multiplier": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "speed_multiplier": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 5
+            },
+            "jump_height_multiplier": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 20
+            },
+            "jump_duration_multiplier": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 10
+            },
+            "health_multiplier": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 20
+            },
+            "damage_multiplier": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "armor_multiplier": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 20
+            }
+          }
+        }
+      }
+    },
+    "abilities": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "id",
+          "type",
+          "enabled",
+          "parameters"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9._-]+$",
+            "maxLength": 100
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "type": {
+            "enum": [
+              "passive",
+              "active",
+              "synergy",
+              "movement",
+              "combat",
+              "utility",
+              "cosmetic"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "parameters": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "equip_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exclusive_slot",
+        "requires",
+        "conflicts_with",
+        "stacks_with"
+      ],
+      "properties": {
+        "exclusive_slot": {
+          "type": "boolean"
+        },
+        "requires": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "conflicts_with": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "stacks_with": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "creator",
+        "source",
+        "metadata_version"
+      ],
+      "properties": {
+        "creator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "metadata_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "attributes": {
+      "type": "array",
+      "maxItems": 80,
+      "items": {
+        "type": "object",
+        "required": [
+          "trait_type",
+          "value"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "trait_type": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "value": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
