@@ -1,4 +1,5 @@
-const client=window.supabase.createClient('https://xnyjurertwohlqczaeux.supabase.co','sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD',{auth:{storageKey:'atm-town-admin-auth'}});
+import { sendAdminSignInLink } from './auth.js';
+const client=window.supabase.createClient('https://xnyjurertwohlqczaeux.supabase.co','sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,experimental:{passkey:true}}});
 const $=id=>document.getElementById(id);let state=null,payoutId=null;
 const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
 const status=message=>{$('status').textContent=message;};
@@ -11,9 +12,50 @@ function renderGames(){const host=$('gameRows');host.replaceChildren();for(const
 function actionButton(host,label,action,id){const button=node('button',label);button.type='button';button.addEventListener('click',async()=>{button.disabled=true;try{const result=await api(action,{id});if(action==='admin-payout'){payoutId=id;$('payment').hidden=false;$('xaman').hidden=!result.deeplink;if(result.deeplink)$('xaman').href=result.deeplink;$('qr').hidden=!result.qr_png;if(result.qr_png)$('qr').src=result.qr_png;status(result.deeplink?'Payment ready for your signature.':'Payment already started; open the existing request in Xaman.');}else if(action==='admin-payout-status')status(result.status==='paid'?'Payment confirmed on the XRPL.':result.error||'Payment awaits ledger confirmation.');else status('Reward updated.');await load();}catch(error){status(error.message);}finally{button.disabled=false;}});host.append(button);}
 function renderPayouts(){const host=$('payoutRows');host.replaceChildren();for(const reward of state.rewards){const row=node('article');row.className='row';row.append(node('h3',`${reward.amount||'0'} ATM · ${reward.status.toUpperCase()}`),node('p',`${reward.game_id} · ${reward.coins} coins · ${new Date(reward.started_at).toLocaleString()}`));const wallet=node('p',reward.wallet_address);wallet.className='wallet';row.append(wallet);if(reward.failure_reason)row.append(node('p',reward.failure_reason));if(reward.tx_hash){const link=node('a','View confirmed payment');link.href=`https://livenet.xrpl.org/transactions/${reward.tx_hash}`;link.target='_blank';link.rel='noopener';row.append(link);}const actions=node('div');actions.className='actions';if(reward.status==='review'){actionButton(actions,'Approve','admin-approve',reward.id);actionButton(actions,'Reject','admin-reject',reward.id);}if(reward.status==='approved')actionButton(actions,'Pay in Xaman','admin-payout',reward.id);if(reward.status==='signing')actionButton(actions,'Verify payment','admin-payout-status',reward.id);row.append(actions);host.append(row);}if(!state.rewards.length)host.append(node('p','No reward claims yet.'));}
 async function load(){state=await api('admin-state');$('login').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('pending').textContent=state.rewards.filter(r=>r.status==='review').length;$('treasury').textContent=state.treasury||'Not configured';renderPrices();renderGames();renderPayouts();$('auditRows').replaceChildren(...state.audit.map(entry=>{const row=node('article');row.className='row';row.append(node('strong',entry.action),node('p',new Date(entry.created_at).toLocaleString()),node('p',JSON.stringify(entry.details)));return row;}));}
-$('loginForm').addEventListener('submit',async event=>{event.preventDefault();const form=event.target,button=form.querySelector('button');button.disabled=true;try{const {error}=await client.auth.signInWithPassword({email:form.elements.email.value,password:form.elements.password.value});if(error)throw error;await load();form.elements.password.value='';status('');}catch(error){status(error.message);}finally{button.disabled=false;}});
-$('logout').addEventListener('click',async()=>{await client.auth.signOut();state=null;$('dashboard').hidden=true;$('login').hidden=false;$('logout').hidden=true;status('Signed out.');});
+function showAuthState(session){
+ const signedIn=!!session?.user;
+ $('logout').hidden=!signedIn;
+ $('loginForm').hidden=signedIn;
+ $('passkey').hidden=signedIn||typeof client.auth.signInWithPasskey!=='function';
+ $('signedIn').hidden=!signedIn;
+ $('signedInMessage').textContent=signedIn?`Signed in as ${session.user.email||'your ATM Town account'}. Checking administrator access…`:'';
+ if(!signedIn){state=null;$('dashboard').hidden=true;$('login').hidden=false;$('payment').hidden=true;payoutId=null;}
+}
+let authLoad=null;
+async function refreshAccess(){
+ if(authLoad)return authLoad;
+ authLoad=(async()=>{
+ const {data,error}=await client.auth.getSession();if(error)throw error;
+ showAuthState(data.session);if(!data.session)return;
+ try{await load();status('');}
+ catch(error){
+ $('dashboard').hidden=true;$('login').hidden=false;
+ $('signedInMessage').textContent='Your ATM Town sign-in worked. Administrator access is not ready yet.';
+ status(error.message);
+ }
+ })();
+ try{return await authLoad;}finally{authLoad=null;}
+}
+$('loginForm').addEventListener('submit',async event=>{
+ event.preventDefault();const form=event.target,button=form.querySelector('button');button.disabled=true;button.textContent='Sending…';
+ try{await sendAdminSignInLink(client,form.elements.email.value,location.origin);status('Check your email and open the ATM Town sign-in link. It will return you to the control room.');}
+ catch(error){status(error.message);}
+ finally{button.disabled=false;button.textContent='Email me a sign-in link';}
+});
+$('passkey').addEventListener('click',async()=>{
+ const button=$('passkey');button.disabled=true;status('Opening your ATM Town passkey…');
+ try{const {error}=await client.auth.signInWithPasskey();if(error)throw error;await refreshAccess();}
+ catch(error){status(`${error.message||'Passkey sign-in failed.'} You can also request an email sign-in link.`);}
+ finally{button.disabled=false;}
+});
+$('logout').addEventListener('click',async()=>{
+ const {error}=await client.auth.signOut({scope:'local'});if(error){status(error.message);return;}
+ showAuthState(null);status('Signed out on this device.');
+});
+$('checkAccess').addEventListener('click',()=>refreshAccess().catch(error=>status(error.message)));
+// Auth callbacks stay synchronous; defer requests until Supabase releases its auth lock.
+client.auth.onAuthStateChange(()=>setTimeout(()=>refreshAccess().catch(error=>status(error.message)),0));
 $('refresh').addEventListener('click',()=>load().catch(error=>status(error.message)));$('search').addEventListener('input',renderPrices);
 for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',()=>{for(const other of document.querySelectorAll('[data-tab]')){const active=other===button;other.setAttribute('aria-pressed',String(active));$(other.dataset.tab).hidden=!active;}});
 $('verify').addEventListener('click',async()=>{if(!payoutId)return;try{const result=await api('admin-payout-status',{id:payoutId});status(result.status==='paid'?'Payment confirmed on the XRPL.':'Payment awaits ledger confirmation.');await load();}catch(error){status(error.message);}});
-load().catch(error=>{if(error.message!=='Sign in required.')status(error.message);});
+refreshAccess().catch(error=>status(error.message));

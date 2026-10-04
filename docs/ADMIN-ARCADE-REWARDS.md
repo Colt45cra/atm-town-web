@@ -1,14 +1,15 @@
 # ATM Town Control and arcade rewards
 
-Standalone installable control app: `/admin/`. It uses ATM Town sign-in with a separate browser session and a server-only `town_admins` allowlist. It shares the game backend rather than duplicating account or pricing data.
+Standalone installable control app: `/admin/`. It uses ATM Town sign-in with the existing same-origin ATM Town session, email magic links or a registered device passkey and a server-only `town_admins` allowlist. It shares the game backend rather than duplicating account or pricing data.
 
 ## Setup required before launch
 
 1. Run existing attribute-commerce setup if not installed, then `supabase/ATM-Town-v236-Admin-Arcade-Rewards.sql` in the **ATM Town** project (`xnyjurertwohlqczaeux`). The currently connected Supabase account cannot access this project.
-2. Insert the owner's verified auth user UUID into `town_admins`. Do not infer privileges from email, display name, or editable user metadata.
-3. Set `ATM_TOWN_REWARDS_WALLET` to a dedicated Mainnet treasury controlled through Xaman. Fund it with ATM and sufficient XRP for fees; establish the ATM issuer trustline. Existing Xaman server credentials are reused. No wallet seeds are collected.
-4. Deploy after the database setup. Open `/admin/` and configure attribute prices and game rules. Rules default paused with zero value; no invented launch reward rates.
-5. Test one small payout to a linked verified wallet with an ATM trustline. Confirm on the ledger before showing it as paid.
+2. Add the deployed `/admin/` URL to Supabase Auth’s redirect allowlist. For this draft also add `https://atm-town-web-git-admin-arcade-rewards-colton-adams-s-projects.vercel.app/admin/`. The email flow uses `shouldCreateUser: false`, so it only signs in existing accounts. Verify the email return once the project is connected.
+3. Insert the owner's verified auth user UUID into `town_admins`. Do not infer privileges from email, display name, or editable user metadata.
+4. Set `ATM_TOWN_REWARDS_WALLET` to a dedicated Mainnet treasury controlled through Xaman. Fund it with ATM and sufficient XRP for fees; establish the ATM issuer trustline. Existing Xaman server credentials are reused. No wallet seeds are collected.
+5. Deploy after the database setup. Open `/admin/` and configure attribute prices and game rules. Rules default paused with zero value; no invented launch reward rates.
+6. Test one small payout to a linked verified wallet with an ATM trustline. Confirm on the ledger before showing it as paid.
 
 ## Implemented behavior
 
