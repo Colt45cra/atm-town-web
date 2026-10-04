@@ -1,0 +1,497 @@
+{
+  "characters": [
+    {
+      "id": "classic",
+      "name": "ATM"
+    },
+    {
+      "id": "fuzzy",
+      "name": "Fuzzy"
+    },
+    {
+      "id": "miracle",
+      "name": "Miracle"
+    },
+    {
+      "id": "luci",
+      "name": "Luci"
+    },
+    {
+      "id": "triskeleton",
+      "name": "Triskeleton"
+    },
+    {
+      "id": "phnix",
+      "name": "Phnix"
+    },
+    {
+      "id": "bear",
+      "name": "Bear"
+    },
+    {
+      "id": "xoge",
+      "name": "Xoge"
+    },
+    {
+      "id": "flippy",
+      "name": "Flippy"
+    },
+    {
+      "id": "salute",
+      "name": "Salute"
+    },
+    {
+      "id": "brad",
+      "name": "Brad"
+    },
+    {
+      "id": "david",
+      "name": "David"
+    },
+    {
+      "id": "kaj",
+      "name": "Kaj"
+    },
+    {
+      "id": "daniel",
+      "name": "Daniel"
+    },
+    {
+      "id": "army",
+      "name": "ARMY"
+    },
+    {
+      "id": "anunnaki",
+      "name": "Anunnaki"
+    }
+  ],
+  "items": [
+    {
+      "id": "body:astronaut",
+      "name": "Astronaut Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:black",
+      "name": "Black Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:cyber-blue",
+      "name": "Cyber Blue Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:cyber-orange",
+      "name": "Cyber Orange Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:cyber-pink",
+      "name": "Cyber Pink Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:cyber-purple",
+      "name": "Cyber Purple Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:gold",
+      "name": "Gold Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:green",
+      "name": "Green Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:navy-blue",
+      "name": "Navy Blue Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "body:red",
+      "name": "Red Body",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:blue-green",
+      "name": "Blue & Green Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:blue-yellow",
+      "name": "Blue & Yellow Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:bright-orange",
+      "name": "Bright Orange Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:gold-purple",
+      "name": "Gold & Purple Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:green",
+      "name": "Green Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:pink-teal",
+      "name": "Pink & Teal Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:rucksack",
+      "name": "Rucksack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:teal",
+      "name": "Teal Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "backpack:yellow-pink",
+      "name": "Yellow & Pink Backpack",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:baby-blue-headphones",
+      "name": "Baby Blue Headphones",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:banana-headphones",
+      "name": "Banana Headphones",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:blue-mohawk",
+      "name": "Blue Mohawk",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:bullish-black",
+      "name": "Bullish Black Horns",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:buuvva-headphones",
+      "name": "Buuvva Headphones",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:green-headphones",
+      "name": "Green Headphones",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "back:green-katana",
+      "name": "Green Katana",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:orange-green-mohawk",
+      "name": "Orange Green Mohawk",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:paper-hat",
+      "name": "Paper Hat",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:pink-mohawk",
+      "name": "Pink Mohawk",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "head:red-headphones",
+      "name": "Red Headphones",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "back:white-katana",
+      "name": "White Katana",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "back:yellow-katana",
+      "name": "Yellow Katana",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:baby-blue",
+      "name": "Baby Blue Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:blue",
+      "name": "Blue Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:gold",
+      "name": "Gold Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:green",
+      "name": "Green Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:og",
+      "name": "OG Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:pastel-blue",
+      "name": "Pastel Blue Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:pastel-red",
+      "name": "Pastel Red Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:red",
+      "name": "Red Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "chest:yellow",
+      "name": "Yellow Chest",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "face:black-dead-face",
+      "name": "Black Dead Face",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "face:gold",
+      "name": "Gold Face",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "face:og",
+      "name": "OG Face",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "face:squint-face-black",
+      "name": "Black Squint Face",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "face:squint-face-white",
+      "name": "White Squint Face",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "face:white-dead-face",
+      "name": "White Dead Face",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:baby-blue",
+      "name": "Baby Blue Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:blue",
+      "name": "Blue Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:boxing-gloves",
+      "name": "Boxing Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:green",
+      "name": "Green Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:orange",
+      "name": "Orange Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:purple",
+      "name": "Purple Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:tan",
+      "name": "Tan Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "gloves:yellow",
+      "name": "Yellow Gloves",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "shoes:baby-blue",
+      "name": "Baby Blue Shoes",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "shoes:gold",
+      "name": "Gold Shoes",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "shoes:green",
+      "name": "Green Shoes",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "shoes:red",
+      "name": "Red Shoes",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "shoes:tan",
+      "name": "Tan Shoes",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
+      "id": "equipment:jetpack",
+      "name": "Jetpack Module",
+      "characterIds": [
+        "classic"
+      ]
+    }
+  ]
+}
