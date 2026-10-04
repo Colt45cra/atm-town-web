@@ -31,9 +31,9 @@
   function reset(){syncGeometry({preserveObjects:false});state.time=0;state.distance=0;state.coins=0;state.speed=250;state.lane=1;state.targetLane=1;state.x=state.lanes[1];state.traffic=[];state.pickups=[];state.roadOffset=0;state.spawnTimer=.45;state.coinTimer=1.1;ui.score.textContent='0';ui.coins.textContent='0';loadBest();}
   function showMessage(title,detail,button='RACE AGAIN'){ui.message.querySelector('h3').textContent=title;const ps=ui.message.querySelectorAll('p');if(ps[0])ps[0].textContent=detail;ui.start.textContent=button;ui.message.classList.remove('hidden');}
   function open(){if(state.open)return;state.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';if(jumpState?.active)jumpState.active=false;if(jetpackState?.active)endJetpack();global.atmVoiceEnterGameZone?.('neon-racer','NEON RACER VOICE','arcade','shared');document.body.classList.add('neon-racer-open');panel.classList.add('open');panel.setAttribute('aria-hidden','false');resize();reset();showMessage('Neon Racer','Dodge traffic, switch lanes, and collect ATM coins.','START RACE');render();}
-  function close(){global.atmVoiceExitGameZone?.('neon-racer');state.open=false;state.running=false;dialogOpen=false;document.body.classList.remove('neon-racer-open');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
+  function close(){global.atmRewardsExit?.('neon-racer');global.atmVoiceExitGameZone?.('neon-racer');state.open=false;state.running=false;dialogOpen=false;document.body.classList.remove('neon-racer-open');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
   global.openATMNeonRacer=open;
-  function start(){resize();reset();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');requestAnimationFrame(loop);}
+  function start(){global.atmRewardsStart?.('neon-racer');resize();reset();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');requestAnimationFrame(loop);}
   function move(dir){if(!state.open||!state.running)return;state.targetLane=clamp(state.targetLane+dir,0,2);}
   function vehicleMetrics(player=false){if(state.mobile)return player?{w:50,h:86}:{w:54,h:92};return player?{w:38,h:66}:{w:44,h:76};}
   function spawnTraffic(){const occupied=new Set(state.traffic.filter(t=>t.y<state.viewH*.20).map(t=>t.lane));let options=[0,1,2].filter(l=>!occupied.has(l));if(!options.length)options=[0,1,2];const lane=options[Math.floor(Math.random()*options.length)],m=vehicleMetrics(false);state.traffic.push({lane,x:state.lanes[lane],y:-m.h,speed:.82+Math.random()*.3,shade:Math.floor(Math.random()*3)});}
@@ -45,7 +45,7 @@
     for(const t of state.traffic)t.y+=state.speed*t.speed*dt;for(const c of state.pickups){c.y+=state.speed*.92*dt;c.phase+=dt*7;}
     state.traffic=state.traffic.filter(t=>t.y<state.viewH+120);state.pickups=state.pickups.filter(c=>!c.taken&&c.y<state.viewH+55);
     const pm=vehicleMetrics(true),tm=vehicleMetrics(false),car={x:state.x,y:state.viewH-(state.mobile?112:88),w:pm.w,h:pm.h};for(const t of state.traffic){if(overlap(car,{x:t.x,y:t.y,w:tm.w,h:tm.h})){end();return;}}
-    for(const c of state.pickups){if(Math.hypot(car.x-c.x,car.y-c.y)<(state.mobile?38:30)){c.taken=true;state.coins++;ui.coins.textContent=String(state.coins);}}
+    for(const c of state.pickups){if(Math.hypot(car.x-c.x,car.y-c.y)<(state.mobile?38:30)){c.taken=true;state.coins++;global.atmRewardsCoin?.('neon-racer');ui.coins.textContent=String(state.coins);}}
     ui.score.textContent=String(Math.floor(state.distance));global.atmPublishArcadeGameState?.('neon-racer',{x:state.x,lane:state.targetLane,distance:state.distance});}
   function drawRoad(){const W=state.viewW,H=state.viewH,g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#071325');g.addColorStop(1,'#02050a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     ctx.fillStyle='#071017';ctx.fillRect(state.roadLeft,0,state.roadRight-state.roadLeft,H);ctx.strokeStyle='rgba(88,241,230,.52)';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(state.roadLeft,0);ctx.lineTo(state.roadLeft,H);ctx.moveTo(state.roadRight,0);ctx.lineTo(state.roadRight,H);ctx.stroke();

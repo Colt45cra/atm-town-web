@@ -60,7 +60,7 @@
     ui.time.textContent='0:00.00';ui.cash.textContent='0/17';ui.checkpoint.textContent='START';
     ui.ability.textContent=state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS';
   }
-  function startRun(){resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('sky-run',{mode:'time-trial'});requestAnimationFrame(loop);}
+  function startRun(){window.atmRewardsStart?.('sky-run');resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('sky-run',{mode:'time-trial'});requestAnimationFrame(loop);}
   function showIntro(){resetRun();ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='Rooftop Vault Run';ui.messageDetail.textContent='Desktop: A/D or arrows to move, Space to jump. Mobile: drag the joystick and tap the play area to jump.';ui.start.textContent='START RUN';}
   function showFinish(){
     state.running=false;state.finished=true;saveBest();window.atmLeaderboardSubmit?.('sky-run',{score_value:Math.round(state.time*1000),secondary_value:runner.cash,details:{cash:runner.cash}});ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='VAULT REACHED!';
@@ -71,7 +71,7 @@
     if(jumpState?.active)jumpState.active=false;if(jetpackState?.active)endJetpack();
     window.atmVoiceEnterGameZone?.('sky-run','SKY RUN VOICE','arcade','shared');document.body.classList.add('sky-run-open');panel.classList.add('open');panel.setAttribute('aria-hidden','false');showIntro();resizeCanvas();
   }
-  function closeSkyRun(){
+  function closeSkyRun(){window.atmRewardsExit?.('sky-run');
     window.atmVoiceExitGameZone?.('sky-run');state.open=false;state.running=false;dialogOpen=false;document.body.classList.remove('sky-run-open');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');
     input.left=input.right=input.jump=input.jumpPressed=false;skyJumpPointer=null;input.axisX=0;resetSkyJoystick();
   }
@@ -140,7 +140,7 @@
   function updateMovingPlatforms(t){for(const p of movingPlatforms)p.x=p.baseX+Math.sin(t*p.speed+p.phase)*p.range;}
   function updatePickups(){
     const r=playerRect();
-    for(const p of pickups){if(p.collected)continue;const box={x:p.x-16,y:p.y-20,w:32,h:32};if(rectsOverlap(r,box)){p.collected=true;if(p.type==='cash')runner.cash++;else if(p.type==='bounce')runner.bounceReady=true;else if(p.type==='jetpack')runner.jetpack=5;}}
+    for(const p of pickups){if(p.collected)continue;const box={x:p.x-16,y:p.y-20,w:32,h:32};if(rectsOverlap(r,box)){p.collected=true;if(p.type==='cash'){runner.cash++;window.atmRewardsCoin?.('sky-run');}else if(p.type==='bounce')runner.bounceReady=true;else if(p.type==='jetpack')runner.jetpack=5;}}
     for(let i=0;i<checkpoints.length;i++){const c=checkpoints[i];if(i+1>runner.checkpointIndex&&Math.abs(runner.x-c.x)<44&&Math.abs(runner.y-c.y)<90){runner.checkpointIndex=i+1;runner.checkpointX=c.x;runner.checkpointY=c.y;ui.checkpoint.textContent=c.label;}}
     if(rectsOverlap(runnerRectForFinish(),finish))showFinish();
   }

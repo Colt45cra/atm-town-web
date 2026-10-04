@@ -131,13 +131,13 @@
     ui.start.textContent='CLIMB AGAIN';
   }
 
-  function startRun(){resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('platform-panic',{mode:'endless'});requestAnimationFrame(loop);}
+  function startRun(){window.atmRewardsStart?.('platform-panic');resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('platform-panic',{mode:'endless'});requestAnimationFrame(loop);}
   function open(){
     if(state.open)return;state.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';
     if(jumpState?.active)jumpState.active=false;if(jetpackState?.active)endJetpack();
     window.atmVoiceEnterGameZone?.('platform-panic','PLATFORM PANIC VOICE','arcade','shared');document.body.classList.add('platform-panic-open');panel.classList.add('open');panel.setAttribute('aria-hidden','false');showIntro();resizeCanvas();
   }
-  function close(){
+  function close(){window.atmRewardsExit?.('platform-panic');
     window.atmVoiceExitGameZone?.('platform-panic');state.open=false;state.running=false;dialogOpen=false;document.body.classList.remove('platform-panic-open');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');
     input.left=input.right=input.jump=input.jumpPressed=false;input.axisX=0;resetJoystick();
   }
@@ -206,7 +206,7 @@
     for(const coin of coins){
       if(coin.collected)continue;
       if(rectsOverlap(r,{x:coin.x-14,y:coin.y-14,w:28,h:28})){
-        coin.collected=true;runner.coins++;ui.coins.textContent=String(runner.coins);
+        coin.collected=true;runner.coins++;window.atmRewardsCoin?.('platform-panic');ui.coins.textContent=String(runner.coins);
       }
     }
   }

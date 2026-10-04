@@ -1,3 +1,4 @@
+import { handleEconomy } from '../lib/town-economy.js';
 import { randomUUID } from 'node:crypto';
 import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
 
@@ -210,6 +211,8 @@ export default async function handler(req, res) {
   if (setCors(req, res)) return;
   res.setHeader('Cache-Control', 'no-store');
   try {
+    const economyAction = String(req.body?.action || req.query?.action || '');
+    if (/^(admin-|rewards-)/.test(economyAction)) return await handleEconomy(req, res);
     if (req.method === 'GET') return await getLeaderboard(req, res);
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ error: 'GET or POST required.' }); }
     const action = String(req.body?.action || '');

@@ -42,14 +42,14 @@
   }
   function setMessage(title,detail,button){ui.message.querySelector('h3').textContent=title;ui.detail.textContent=detail;ui.start.textContent=button;ui.message.classList.remove('hidden');}
   function showIntro(){reset();setMessage('Flappy Jetpack','Tap anywhere in the play area. Desktop players can also use Space or the up arrow.','START FLIGHT');}
-  function start(){reset();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('flappy-jetpack',{mode:state.astronaut?'astronaut':'standard'});flap();requestAnimationFrame(loop);}
+  function start(){window.atmRewardsStart?.('flappy-jetpack');reset();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('flappy-jetpack',{mode:state.astronaut?'astronaut':'standard'});flap();requestAnimationFrame(loop);}
   function end(reason){if(!state.running)return;state.running=false;state.over=true;saveBest();window.atmLeaderboardSubmit?.('flappy-jetpack',{score_value:state.score,secondary_value:state.coins,details:{coins:state.coins,duration_ms:Math.round(state.time*1000)}});setMessage('FLIGHT OVER',`${reason} · Score ${state.score} · Coins ${state.coins} · Best ${state.best}`,'FLY AGAIN');}
   function open(){
     if(state.open)return;state.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';
     if(jumpState?.active)jumpState.active=false;if(jetpackState?.active)endJetpack();
     window.atmVoiceEnterGameZone?.('flappy-jetpack','FLAPPY JETPACK VOICE','arcade','shared');document.body.classList.add('flappy-jetpack-open');panel.classList.add('open');panel.setAttribute('aria-hidden','false');showIntro();resize();render();
   }
-  function close(){window.atmVoiceExitGameZone?.('flappy-jetpack');state.open=false;state.running=false;dialogOpen=false;document.body.classList.remove('flappy-jetpack-open');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
+  function close(){window.atmRewardsExit?.('flappy-jetpack');window.atmVoiceExitGameZone?.('flappy-jetpack');state.open=false;state.running=false;dialogOpen=false;document.body.classList.remove('flappy-jetpack-open');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
   window.openATMFlappyJetpack=open;
 
   function flap(){if(!state.running)return;flyer.vy=state.astronaut?-315:-385;state.flame=.22;}
@@ -74,7 +74,7 @@
       const top={x:p.x,y:0,w:PIPE_W,h:p.gapY};
       const bottom={x:p.x,y:p.gapY+p.gapH,w:PIPE_W,h:VIEW_H-(p.gapY+p.gapH)};
       if(overlap(playerBox,top)||overlap(playerBox,bottom)){end('Tower collision');return;}
-      if(!p.coinTaken){const cx=p.x+PIPE_W*.5,cy=p.gapY+p.gapH*.5+p.coinOffset;if(Math.hypot(flyer.x-cx,flyer.y-cy)<24){p.coinTaken=true;state.coins++;ui.coins.textContent=String(state.coins);}}
+      if(!p.coinTaken){const cx=p.x+PIPE_W*.5,cy=p.gapY+p.gapH*.5+p.coinOffset;if(Math.hypot(flyer.x-cx,flyer.y-cy)<24){p.coinTaken=true;state.coins++;window.atmRewardsCoin?.('flappy-jetpack');ui.coins.textContent=String(state.coins);}}
     }
     if(flyer.y<22||flyer.y>VIEW_H-22)end(flyer.y<22?'Too high':'Fell below the skyline');
     window.atmPublishArcadeGameState?.('flappy-jetpack',{x:flyer.x,y:flyer.y,rotation:flyer.rotation,vy:flyer.vy,time:state.time});
