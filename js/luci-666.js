@@ -95,7 +95,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   function claimedWelcome(claim){
     const label=String(claim?.wallet_label||claim?.wallet_source||'linked wallet');
     const wallet=shortWallet(claim?.wallet||'');
-    return `Looks like you already claimed your tokens. Glad to see you back to learn more!${wallet?` Your 6 $666 was sent to your ${label} ${wallet}.`:''}`;
+    return `Looks like you already claimed your tokens. Glad to see you back to learn more!${wallet?` Your ${claim?.amount||'6'} $666 was sent to your ${label} ${wallet}.`:''}`;
   }
 
   function showAnswer(id){
@@ -104,13 +104,17 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     const text=document.getElementById('luci666AnswerText');
     const claim=document.getElementById('luci666Claim');
     if(id==='welcome'){
-      if(text)text.textContent='Well, look who wandered into my corner of ATM Town. Pick a question, LightBringer. I deal in sixes — and I’ve got a one-time 6 $666 welcome gift for eligible visitors.';
+      if(text)text.textContent='Well, look who wandered into my corner of ATM Town. Pick a question, LightBringer. I deal in sixes — check my welcome gift for today’s reward.';
+    }else if(id==='gift'&&state.rewardClaim?.enabled===false){
+      if(text)text.textContent='My token rewards are currently turned off. You can still learn about $666 here.';
     }else if(id==='gift'&&state.rewardClaim?.already_claimed===true){
       if(text)text.textContent=claimedWelcome(state.rewardClaim);
+    }else if(id==='gift'){
+      state.answered.add(id);if(text)text.textContent=`I have ${state.rewardClaim?.amount||'6'} $666 for eligible visitors. Check your linked wallet and pick up your reward.`;
     }else if(item){
       state.answered.add(id);if(text)text.textContent=item.answer;
     }
-    if(claim)claim.classList.toggle('visible',id==='gift'&&state.rewardClaim?.already_claimed!==true);
+    if(claim){claim.textContent=`CLAIM ${state.rewardClaim?.amount||'6'} $666`;claim.classList.toggle('visible',id==='gift'&&state.rewardClaim?.enabled!==false&&(state.rewardClaim?.already_claimed!==true||state.rewardClaim?.claim_status!=='success'));}
     renderQuestions();
   }
 
@@ -123,7 +127,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       const q=QUESTIONS.find(item=>item.id===id);if(!q)continue;
       const button=document.createElement('button');button.type='button';button.className='luci666Question'+(state.answered.has(id)?' asked':'');button.textContent=q.label;button.addEventListener('click',()=>showAnswer(id));host.appendChild(button);
     }
-    if(state.answered.size>=3){const gift=QUESTIONS.find(q=>q.id==='gift');const button=document.createElement('button');button.type='button';button.className='luci666Question reward'+(state.answered.has('gift')?' asked':'');button.textContent="I'm ready for my welcome gift.";button.addEventListener('click',()=>showAnswer('gift'));host.appendChild(button);}
+    if(state.answered.size>=3&&state.rewardClaim?.enabled!==false){const gift=QUESTIONS.find(q=>q.id==='gift');const button=document.createElement('button');button.type='button';button.className='luci666Question reward'+(state.answered.has('gift')?' asked':'');button.textContent="I'm ready for my welcome gift.";button.addEventListener('click',()=>showAnswer('gift'));host.appendChild(button);}
   }
 
   function openDialogue(){
@@ -150,7 +154,8 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   }
   async function getRewardStatus(){
     if(typeof global.atmApiWithAuth!=='function')throw new Error('Sign in to ATM Town before checking Luci’s reward.');
-    return global.atmApiWithAuth('/api/xaman-vending-start?commerce=luci-666-claim-status',{method:'GET'});
+    const result=await global.atmApiWithAuth('/api/xaman-vending-start?commerce=luci-666-claim-status',{method:'GET'});
+    state.rewardClaim=result;return result;
   }
   function shortWallet(address){
     const value=String(address||'');return value.length>16?value.slice(0,8)+'…'+value.slice(-6):value;
@@ -168,7 +173,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   }
   async function requestReward(){
     const button=document.getElementById('luci666Claim'),status=document.getElementById('luci666Status');
-    if(button)button.disabled=true;if(status)status.textContent='Claiming 6 $666 from Payload…';
+    if(button)button.disabled=true;if(status)status.textContent=`Claiming ${state.rewardClaim?.amount||'6'} $666 from Payload…`;
     try{
       if(typeof global.atmApiWithAuth!=='function')throw new Error('Sign in to ATM Town before claiming Luci’s reward.');
       const result=await global.atmApiWithAuth('/api/xaman-vending-start?commerce=luci-666-claim',{
@@ -178,7 +183,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       finishReward({
         ok:result?.ok===true,
         pending:result?.pending===true,
-        message:result?.message||(result?.ok===true?'6 $666 sent and confirmed on XRPL. 🔥':'Reward claim is still processing.')
+        message:result?.message||(result?.ok===true?'Reward sent and confirmed on XRPL. 🔥':'Reward claim is still processing.')
       });
       if(result?.ok===true)showRewardReceipt(result);
       return result;
@@ -190,7 +195,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   function finishReward(result={}){
     const button=document.getElementById('luci666Claim'),status=document.getElementById('luci666Status');
     if(button)button.disabled=!!result.ok;
-    if(status)status.textContent=result.ok?(result.message||'6 $666 sent and confirmed on XRPL. 🔥'):(result.message||'Could not claim the reward yet.');
+    if(status)status.textContent=result.ok?(result.message||'Reward sent and confirmed on XRPL. 🔥'):(result.message||'Could not claim the reward yet.');
   }
 
   function triggerBeckon(now){

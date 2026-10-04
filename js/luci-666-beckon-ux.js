@@ -201,6 +201,14 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       // wallet whose one-time claim is already reserved/submitted/successful.
       if(typeof global.ATMLuci666?.getRewardStatus==='function'){
         const claim=await global.ATMLuci666.getRewardStatus();
+        if(claim?.enabled===false){giftState.mode='disabled';giftState.coin=null;document.getElementById('luci666PrivateCoin')?.classList.remove('visible');speechText('My rewards are currently turned off. You can still learn about $666 here.');return;}
+        const coin=document.getElementById('luci666PrivateCoin');if(coin){coin.textContent=String(claim?.amount||'6');coin.setAttribute('aria-label',`Pick up ${claim?.amount||'6'} $666`);}
+        if(claim?.already_claimed===true&&claim?.claim_status!=='success'){
+          giftState.mode='pending';giftState.coin=null;
+          document.getElementById('luci666PrivateCoin')?.classList.remove('visible');
+          speechText('Your reward is processing. Check its payment status before collecting another.');
+          addAction('CHECK PAYMENT',()=>global.ATMLuci666.requestReward(),true);return;
+        }
         if(claim?.already_claimed===true){
           giftState.mode='claimed';giftState.coin=null;
           document.getElementById('luci666PrivateCoin')?.classList.remove('visible');
@@ -208,7 +216,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
           const wallet=String(claim.wallet||'');
           const short=wallet.length>16?wallet.slice(0,8)+'…'+wallet.slice(-6):wallet;
           const tx=claim.tx_hash?' XRPL transaction '+String(claim.tx_hash).slice(0,10)+'… is recorded.':'';
-          speechText(`Looks like you already claimed your tokens. Glad to see you back to learn more! Your 6 $666 was sent to your ${label} ${short}.${tx}`);
+          speechText(`Looks like you already claimed your tokens. Glad to see you back to learn more! Your ${claim?.amount||'6'} $666 was sent to your ${label} ${short}.${tx}`);
           return;
         }
       }
@@ -290,8 +298,8 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
         const label=String(result.wallet_label||result.wallet_source||'linked wallet');
         const wallet=String(result.wallet||'');const short=wallet.length>16?wallet.slice(0,8)+'…'+wallet.slice(-6):wallet;
         speechText(result.already_claimed===true
-          ? `You already claimed this welcome reward. Your 6 $666 went to ${label} ${short}.`
-          : `There you go — 6 $666 confirmed and sent to ${label} ${short}. Be the Light. 🔥`);
+          ? `You already claimed this welcome reward. Your ${result.amount} $666 went to ${label} ${short}.`
+          : `There you go — ${result.amount} $666 confirmed and sent to ${label} ${short}. Be the Light. 🔥`);
       }else{
         const status=result?.message||hiddenStatus();
         speechText(status||'Your coin is reserved for you, but the $666 payout connection is not ready yet. It will stay here instead of pretending the send happened.');
