@@ -4,9 +4,9 @@ Standalone installable control app: `/admin/`. It uses ATM Town sign-in with the
 
 ## Setup required before launch
 
-1. Run existing attribute-commerce setup if not installed, then `supabase/ATM-Town-v236-Admin-Arcade-Rewards.sql` in the **ATM Town** project (`xnyjurertwohlqczaeux`). The currently connected Supabase account cannot access this project.
+1. Run existing attribute-commerce setup if not installed, then `supabase/ATM-Town-v236-Admin-Arcade-Rewards.sql` in the **ATM Town** project (`xnyjurertwohlqczaeux`). Applied and verified on 2026-10-04 using the ATM Town + connection.
 2. Add the deployed `/admin/` URL to Supabase Auth’s redirect allowlist. For this draft also add `https://atm-town-web-git-admin-arcade-rewards-colton-adams-s-projects.vercel.app/admin/`. The email flow uses `shouldCreateUser: false`, so it only signs in existing accounts. Verify the email return once the project is connected.
-3. Insert the owner's verified auth user UUID into `town_admins`. Do not infer privileges from email, display name, or editable user metadata.
+3. The user-confirmed `colton18771@gmail.com` account is authorized in `town_admins`. Do not infer additional privileges from display names or editable user metadata.
 4. Set `ATM_TOWN_REWARDS_WALLET` to a dedicated Mainnet treasury controlled through Xaman. Fund it with ATM and sufficient XRP for fees; establish the ATM issuer trustline. Existing Xaman server credentials are reused. No wallet seeds are collected.
 5. Deploy after the database setup. Open `/admin/` and configure attribute prices and game rules. Rules default paused with zero value; no invented launch reward rates.
 6. Test one small payout to a linked verified wallet with an ATM trustline. Confirm on the ledger before showing it as paid.
@@ -23,8 +23,8 @@ The admin app supports review, approve/reject, Xaman treasury payment, ledger co
 
 **This draft does not enable automatic real-money payouts.** Pickups are reported by browser code. Sequence, timing, authenticated sessions and limits reduce accidental duplicates but do not prove legitimate play: a malicious client can emulate these requests. Claims therefore require administrator review and treasury signing. Enabling unattended payments safely needs authoritative server simulation/input replay for each reward game plus an authorized funded payout executor (for example, a reusable Payload treasury integration). Neither has been silently replaced with a wallet seed or trusted browser total.
 
-The player message explicitly says submitted for review. Admin reports automatic payouts disabled. This limitation and the inaccessible production database must be resolved before the user's complete requested flow is live.
+The player message explicitly says submitted for review. Admin reports automatic payouts disabled. This limitation and the email redirect setup must be resolved before the user's complete requested flow is live.
 
 ## Verification
 
-Run `npm run validate` and `node --test tests/town-economy.test.mjs`. Validate the SQL and concurrency behavior in an accessible ATM Town staging database, then test iPad/mobile close, replay, network retry and one real small payment. Live database, wallet signing and ledger payout were not tested in this session.
+Run `npm run validate` and `node --test tests/town-economy.test.mjs`. Validate the SQL and concurrency behavior in an accessible ATM Town staging database, then test iPad/mobile close, replay, network retry and one real small payment. Live database tests passed for duplicate coin reporting, idempotent exits, daily budget reservation, owner access and restricted function/table privileges. Test changes were rolled back. Wallet signing and ledger payouts remain untested. Supabase Auth redirect settings still require dashboard access.
