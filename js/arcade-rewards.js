@@ -1,6 +1,6 @@
-/* Rewards are claimed on exit. Browser pickups require admin review; they are not proof of play. */
+/* Rewards are claimed on exit. Payload pays automatically; server caps do not make browser pickups proof of play. */
 (function(global){
- const sessions=new Map(),key='atm-town-arcade-exits-v1';
+ const lastNotices=new Map(),sessions=new Map(),key='atm-town-arcade-exits-v1';
  const read=()=>{try{return JSON.parse(localStorage.getItem(key)||'[]');}catch{return [];}};
  const save=list=>localStorage.setItem(key,JSON.stringify(list.slice(-50)));
  async function api(action,body={}){
@@ -14,7 +14,7 @@
  async function flush(){if(flushing)return;flushing=true;try{
  const client=await getSupabaseClient(),{data}=await client.auth.getSession();if(!data.session)return;
  for(const entry of read().filter(e=>e.user_id===data.session.user.id)){
- try{const result=await api('rewards-exit',{session_id:entry.id});save(read().filter(e=>e.id!==entry.id));if(Number(result.amount)>0)notice(`${result.amount} ATM reward submitted for review. Payment appears after ledger confirmation.`);}
+ try{const result=await api('rewards-exit',{session_id:entry.id});if(['paid','empty','rejected'].includes(result.status))save(read().filter(e=>e.id!==entry.id));if(Number(result.amount)>0&&lastNotices.get(entry.id)!==result.status){lastNotices.set(entry.id,result.status);notice(result.status==='paid'?`${result.amount} ATM paid to your linked wallet.`:`${result.amount} ATM queued for automatic payment through Payload.`);}}
  catch(error){console.warn('Arcade reward exit retained for retry:',error.message);break;}
  }
  }finally{flushing=false;}}
