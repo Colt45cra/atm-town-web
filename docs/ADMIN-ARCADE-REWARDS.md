@@ -1,0 +1,29 @@
+# ATM Town Control and arcade rewards
+
+Standalone installable control app: `/admin/`. It uses ATM Town sign-in with a separate browser session and a server-only `town_admins` allowlist. It shares the game backend rather than duplicating account or pricing data.
+
+## Setup required before launch
+
+1. Run existing attribute-commerce setup if not installed, then `supabase/ATM-Town-v236-Admin-Arcade-Rewards.sql` in the **ATM Town** project (`xnyjurertwohlqczaeux`). The currently connected Supabase account cannot access this project.
+2. Insert the owner's verified auth user UUID into `town_admins`. Do not infer privileges from email, display name, or editable user metadata.
+3. Set `ATM_TOWN_REWARDS_WALLET` to a dedicated Mainnet treasury controlled through Xaman. Fund it with ATM and sufficient XRP for fees; establish the ATM issuer trustline. Existing Xaman server credentials are reused. No wallet seeds are collected.
+4. Deploy after the database setup. Open `/admin/` and configure attribute prices and game rules. Rules default paused with zero value; no invented launch reward rates.
+5. Test one small payout to a linked verified wallet with an ATM trustline. Confirm on the ledger before showing it as paid.
+
+## Implemented behavior
+
+Attribute prices for USD, ATM, RLUSD and XRP; explicit currency disable with a blank field; attribute pause; server-side cart pricing; transactional changes and audit history. Previously, an inactive row or blank XRP amount silently restored a 3 XRP default. This is fixed: fallback applies only to attributes with no database price row.
+
+Sky Run cash and Platform Panic, Flappy Jetpack, Neon Racer coins each report sequential pickups into an authenticated server session. Replay opens a new session and closes the previous run. Exit submits the claim, preserving interrupted/offline exit requests on the same device for retry. Daily limits are reserved atomically across games, claims are idempotent, and the wallet and rate are snapshotted when the run begins. Daily limits use UTC calendar days. In-flight runs retain their configured rate when rules change.
+
+The admin app supports review, approve/reject, Xaman treasury payment, ledger confirmation, and payment history. Unknown payment-creation outcomes stay locked for reconciliation rather than producing another payable request. Signed, validated payments must match the exact treasury, destination, amount, issuer and invoice. A claim is never described as paid merely because a signing request exists.
+
+## Outstanding requirement: automatic payouts on exit
+
+**This draft does not enable automatic real-money payouts.** Pickups are reported by browser code. Sequence, timing, authenticated sessions and limits reduce accidental duplicates but do not prove legitimate play: a malicious client can emulate these requests. Claims therefore require administrator review and treasury signing. Enabling unattended payments safely needs authoritative server simulation/input replay for each reward game plus an authorized funded payout executor (for example, a reusable Payload treasury integration). Neither has been silently replaced with a wallet seed or trusted browser total.
+
+The player message explicitly says submitted for review. Admin reports automatic payouts disabled. This limitation and the inaccessible production database must be resolved before the user's complete requested flow is live.
+
+## Verification
+
+Run `npm run validate` and `node --test tests/town-economy.test.mjs`. Validate the SQL and concurrency behavior in an accessible ATM Town staging database, then test iPad/mobile close, replay, network retry and one real small payment. Live database, wallet signing and ledger payout were not tested in this session.
