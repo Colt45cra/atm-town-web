@@ -67,7 +67,7 @@
 #luci666WorldSpeech .luciWorldAction.secondary{border-color:rgba(130,220,255,.42);background:#12323d;color:#d9f8ff}
 #luci666PrivateCoin{position:fixed;z-index:9650;display:none;width:42px;height:42px;border-radius:50%;place-items:center;background:radial-gradient(circle at 35% 28%,#fff5a8 0 12%,#ffd45f 22%,#f29a27 55%,#9b4719 78%,#4b1c13 100%);border:2px solid rgba(255,231,135,.92);box-shadow:0 8px 18px rgba(0,0,0,.5),0 0 22px rgba(255,187,64,.62);color:#562316;font:1000 16px/1 system-ui;text-shadow:0 1px rgba(255,255,255,.45);transform:translate(-50%,-78%);transform-origin:50% 100%;pointer-events:auto;cursor:pointer;animation:luciCoinBob .9s ease-in-out infinite alternate}
 #luci666PrivateCoin.visible{display:grid}
-#luci666PrivateCoin:after{content:'6 $666';position:absolute;top:43px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:3px 6px;border-radius:7px;background:rgba(13,16,20,.88);color:#ffe39a;font:1000 7px system-ui;border:1px solid rgba(255,209,102,.3)}
+#luci666PrivateCoin:after{content:attr(data-reward);position:absolute;top:43px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:3px 6px;border-radius:7px;background:rgba(13,16,20,.88);color:#ffe39a;font:1000 7px system-ui;border:1px solid rgba(255,209,102,.3)}
 @keyframes luciCoinBob{from{margin-top:0;filter:brightness(1)}to{margin-top:-6px;filter:brightness(1.15)}}
 #luci666Beckon{transition:none!important;scale:1!important;text-wrap:balance!important;contain:layout style paint!important}
 /* Luci conversation is an in-world HUD, not a modal lock. */
@@ -202,12 +202,12 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       if(typeof global.ATMLuci666?.getRewardStatus==='function'){
         const claim=await global.ATMLuci666.getRewardStatus();
         if(claim?.enabled===false){giftState.mode='disabled';giftState.coin=null;document.getElementById('luci666PrivateCoin')?.classList.remove('visible');speechText('My rewards are currently turned off. You can still learn about $666 here.');return;}
-        const coin=document.getElementById('luci666PrivateCoin');if(coin){coin.textContent=String(claim?.amount||'6');coin.setAttribute('aria-label',`Pick up ${claim?.amount||'6'} $666`);}
+        const coin=document.getElementById('luci666PrivateCoin');if(coin){coin.textContent=String(claim?.amount||'6');coin.dataset.reward=`${claim?.amount||'6'} $666`;coin.setAttribute('aria-label',`Pick up ${claim?.amount||'6'} $666`);}
         if(claim?.already_claimed===true&&claim?.claim_status!=='success'){
           giftState.mode='pending';giftState.coin=null;
           document.getElementById('luci666PrivateCoin')?.classList.remove('visible');
           speechText('Your reward is processing. Check its payment status before collecting another.');
-          addAction('CHECK PAYMENT',()=>global.ATMLuci666.requestReward(),true);return;
+          addAction('CHECK PAYMENT',async()=>{try{const result=await global.ATMLuci666.requestReward();speechText(result.message);if(result.ok)resolveGiftState(true);}catch(error){speechText(error.message);}},true);return;
         }
         if(claim?.already_claimed===true){
           giftState.mode='claimed';giftState.coin=null;
