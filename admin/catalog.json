@@ -2,73 +2,92 @@
   "characters": [
     {
       "id": "classic",
-      "name": "ATM"
+      "name": "ATM",
+      "sprite_src": "assets/characters/playable/atm.webp"
     },
     {
       "id": "fuzzy",
-      "name": "Fuzzy"
+      "name": "Fuzzy",
+      "sprite_src": "assets/characters/playable/fuzzy.webp"
     },
     {
       "id": "miracle",
-      "name": "Miracle"
+      "name": "Miracle",
+      "sprite_src": "assets/characters/playable/miracle.webp"
     },
     {
       "id": "luci",
-      "name": "Luci"
+      "name": "Luci",
+      "sprite_src": "assets/characters/playable/luci.webp"
     },
     {
       "id": "triskeleton",
-      "name": "Triskeleton"
+      "name": "Triskeleton",
+      "sprite_src": "assets/characters/playable/triskeleton.webp"
     },
     {
       "id": "phnix",
-      "name": "Phnix"
+      "name": "Phnix",
+      "sprite_src": "assets/characters/playable/phnix.webp"
     },
     {
       "id": "bear",
-      "name": "Bear"
+      "name": "Bear",
+      "sprite_src": "assets/characters/playable/bear.webp"
     },
     {
       "id": "xoge",
-      "name": "Xoge"
+      "name": "Xoge",
+      "sprite_src": "assets/characters/playable/xoge.webp"
     },
     {
       "id": "flippy",
-      "name": "Flippy"
+      "name": "Flippy",
+      "sprite_src": "assets/characters/playable/flippy.webp"
     },
     {
       "id": "salute",
-      "name": "Salute"
+      "name": "Salute",
+      "sprite_src": "assets/characters/playable/salute.webp"
     },
     {
       "id": "brad",
-      "name": "Brad"
+      "name": "Brad",
+      "sprite_src": "assets/characters/playable/brad.webp"
     },
     {
       "id": "david",
-      "name": "David"
+      "name": "David",
+      "sprite_src": "assets/characters/playable/david.webp"
     },
     {
       "id": "kaj",
-      "name": "Kaj"
+      "name": "Kaj",
+      "sprite_src": "assets/characters/playable/kaj.webp"
     },
     {
       "id": "daniel",
-      "name": "Daniel"
+      "name": "Daniel",
+      "sprite_src": "assets/characters/playable/daniel.webp"
     },
     {
       "id": "army",
-      "name": "ARMY"
+      "name": "ARMY",
+      "sprite_src": "assets/characters/playable/army.webp"
     },
     {
       "id": "anunnaki",
-      "name": "Anunnaki"
+      "name": "Anunnaki",
+      "sprite_src": "assets/characters/playable/anunnaki.webp"
     }
   ],
   "items": [
     {
       "id": "body:astronaut",
       "name": "Astronaut Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/astronaut.webp",
       "characterIds": [
         "classic"
       ]
@@ -76,6 +95,9 @@
     {
       "id": "body:black",
       "name": "Black Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/black.webp",
       "characterIds": [
         "classic"
       ]
@@ -83,6 +105,9 @@
     {
       "id": "body:cyber-blue",
       "name": "Cyber Blue Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/cyber-blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -90,6 +115,9 @@
     {
       "id": "body:cyber-orange",
       "name": "Cyber Orange Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/cyber-orange.webp",
       "characterIds": [
         "classic"
       ]
@@ -97,6 +125,9 @@
     {
       "id": "body:cyber-pink",
       "name": "Cyber Pink Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/cyber-pink.webp",
       "characterIds": [
         "classic"
       ]
@@ -104,6 +135,9 @@
     {
       "id": "body:cyber-purple",
       "name": "Cyber Purple Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/cyber-purple.webp",
       "characterIds": [
         "classic"
       ]
@@ -111,6 +145,9 @@
     {
       "id": "body:gold",
       "name": "Gold Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/gold.webp",
       "characterIds": [
         "classic"
       ]
@@ -118,6 +155,9 @@
     {
       "id": "body:green",
       "name": "Green Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/green.webp",
       "characterIds": [
         "classic"
       ]
@@ -125,6 +165,9 @@
     {
       "id": "body:navy-blue",
       "name": "Navy Blue Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/navy-blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -132,6 +175,9 @@
     {
       "id": "body:red",
       "name": "Red Body",
+      "category": "body",
+      "slot": "body",
+      "sprite_src": "assets/characters/body/red.webp",
       "characterIds": [
         "classic"
       ]
@@ -139,6 +185,9 @@
     {
       "id": "backpack:blue-green",
       "name": "Blue & Green Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/blue-green.webp",
       "characterIds": [
         "classic"
       ]
@@ -146,6 +195,9 @@
     {
       "id": "backpack:blue-yellow",
       "name": "Blue & Yellow Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/blue-yellow.webp",
       "characterIds": [
         "classic"
       ]
@@ -153,6 +205,9 @@
     {
       "id": "backpack:bright-orange",
       "name": "Bright Orange Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/bright-orange.webp",
       "characterIds": [
         "classic"
       ]
@@ -160,6 +215,9 @@
     {
       "id": "backpack:gold-purple",
       "name": "Gold & Purple Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/gold-purple.webp",
       "characterIds": [
         "classic"
       ]
@@ -167,6 +225,9 @@
     {
       "id": "backpack:green",
       "name": "Green Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/green.webp",
       "characterIds": [
         "classic"
       ]
@@ -174,6 +235,9 @@
     {
       "id": "backpack:pink-teal",
       "name": "Pink & Teal Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/pink-teal.webp",
       "characterIds": [
         "classic"
       ]
@@ -181,6 +245,9 @@
     {
       "id": "backpack:rucksack",
       "name": "Rucksack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/rucksack.webp",
       "characterIds": [
         "classic"
       ]
@@ -188,6 +255,9 @@
     {
       "id": "backpack:teal",
       "name": "Teal Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/teal.webp",
       "characterIds": [
         "classic"
       ]
@@ -195,6 +265,9 @@
     {
       "id": "backpack:yellow-pink",
       "name": "Yellow & Pink Backpack",
+      "category": "backpack",
+      "slot": "back",
+      "sprite_src": "assets/characters/backpack/yellow-pink.webp",
       "characterIds": [
         "classic"
       ]
@@ -202,6 +275,9 @@
     {
       "id": "head:baby-blue-headphones",
       "name": "Baby Blue Headphones",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/baby-blue-headphones.webp",
       "characterIds": [
         "classic"
       ]
@@ -209,6 +285,9 @@
     {
       "id": "head:banana-headphones",
       "name": "Banana Headphones",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/banana-headphones.webp",
       "characterIds": [
         "classic"
       ]
@@ -216,6 +295,9 @@
     {
       "id": "head:blue-mohawk",
       "name": "Blue Mohawk",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/blue-mohawk.webp",
       "characterIds": [
         "classic"
       ]
@@ -223,6 +305,9 @@
     {
       "id": "head:bullish-black",
       "name": "Bullish Black Horns",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/bullish-black.webp",
       "characterIds": [
         "classic"
       ]
@@ -230,6 +315,9 @@
     {
       "id": "head:buuvva-headphones",
       "name": "Buuvva Headphones",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/buuvva-headphones.webp",
       "characterIds": [
         "classic"
       ]
@@ -237,6 +325,9 @@
     {
       "id": "head:green-headphones",
       "name": "Green Headphones",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/green-headphones.webp",
       "characterIds": [
         "classic"
       ]
@@ -244,6 +335,9 @@
     {
       "id": "back:green-katana",
       "name": "Green Katana",
+      "category": "back",
+      "slot": "katana",
+      "sprite_src": "assets/characters/back/green-katana.webp",
       "characterIds": [
         "classic"
       ]
@@ -251,6 +345,9 @@
     {
       "id": "head:orange-green-mohawk",
       "name": "Orange Green Mohawk",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/orange-green-mohawk.webp",
       "characterIds": [
         "classic"
       ]
@@ -258,6 +355,9 @@
     {
       "id": "head:paper-hat",
       "name": "Paper Hat",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/paper-hat.webp",
       "characterIds": [
         "classic"
       ]
@@ -265,6 +365,9 @@
     {
       "id": "head:pink-mohawk",
       "name": "Pink Mohawk",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/pink-mohawk.webp",
       "characterIds": [
         "classic"
       ]
@@ -272,6 +375,9 @@
     {
       "id": "head:red-headphones",
       "name": "Red Headphones",
+      "category": "head",
+      "slot": "head",
+      "sprite_src": "assets/characters/head/red-headphones.webp",
       "characterIds": [
         "classic"
       ]
@@ -279,6 +385,9 @@
     {
       "id": "back:white-katana",
       "name": "White Katana",
+      "category": "back",
+      "slot": "katana",
+      "sprite_src": "assets/characters/back/white-katana.webp",
       "characterIds": [
         "classic"
       ]
@@ -286,6 +395,9 @@
     {
       "id": "back:yellow-katana",
       "name": "Yellow Katana",
+      "category": "back",
+      "slot": "katana",
+      "sprite_src": "assets/characters/back/yellow-katana.webp",
       "characterIds": [
         "classic"
       ]
@@ -293,6 +405,9 @@
     {
       "id": "chest:baby-blue",
       "name": "Baby Blue Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/baby-blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -300,6 +415,9 @@
     {
       "id": "chest:blue",
       "name": "Blue Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -307,6 +425,9 @@
     {
       "id": "chest:gold",
       "name": "Gold Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/gold.webp",
       "characterIds": [
         "classic"
       ]
@@ -314,6 +435,9 @@
     {
       "id": "chest:green",
       "name": "Green Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/green.webp",
       "characterIds": [
         "classic"
       ]
@@ -321,6 +445,9 @@
     {
       "id": "chest:og",
       "name": "OG Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/og.webp",
       "characterIds": [
         "classic"
       ]
@@ -328,6 +455,9 @@
     {
       "id": "chest:pastel-blue",
       "name": "Pastel Blue Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/pastel-blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -335,6 +465,9 @@
     {
       "id": "chest:pastel-red",
       "name": "Pastel Red Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/pastel-red.webp",
       "characterIds": [
         "classic"
       ]
@@ -342,6 +475,9 @@
     {
       "id": "chest:red",
       "name": "Red Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/red.webp",
       "characterIds": [
         "classic"
       ]
@@ -349,6 +485,9 @@
     {
       "id": "chest:yellow",
       "name": "Yellow Chest",
+      "category": "chest",
+      "slot": "chest",
+      "sprite_src": "assets/characters/chest/yellow.webp",
       "characterIds": [
         "classic"
       ]
@@ -356,6 +495,9 @@
     {
       "id": "face:black-dead-face",
       "name": "Black Dead Face",
+      "category": "face",
+      "slot": "face",
+      "sprite_src": "assets/characters/face/black-dead-face.webp",
       "characterIds": [
         "classic"
       ]
@@ -363,6 +505,9 @@
     {
       "id": "face:gold",
       "name": "Gold Face",
+      "category": "face",
+      "slot": "face",
+      "sprite_src": "assets/characters/face/gold.webp",
       "characterIds": [
         "classic"
       ]
@@ -370,6 +515,9 @@
     {
       "id": "face:og",
       "name": "OG Face",
+      "category": "face",
+      "slot": "face",
+      "sprite_src": "assets/characters/face/og.webp",
       "characterIds": [
         "classic"
       ]
@@ -377,6 +525,9 @@
     {
       "id": "face:squint-face-black",
       "name": "Black Squint Face",
+      "category": "face",
+      "slot": "face",
+      "sprite_src": "assets/characters/face/squint-face-black.webp",
       "characterIds": [
         "classic"
       ]
@@ -384,6 +535,9 @@
     {
       "id": "face:squint-face-white",
       "name": "White Squint Face",
+      "category": "face",
+      "slot": "face",
+      "sprite_src": "assets/characters/face/squint-face-white.webp",
       "characterIds": [
         "classic"
       ]
@@ -391,6 +545,9 @@
     {
       "id": "face:white-dead-face",
       "name": "White Dead Face",
+      "category": "face",
+      "slot": "face",
+      "sprite_src": "assets/characters/face/white-dead-face.webp",
       "characterIds": [
         "classic"
       ]
@@ -398,6 +555,9 @@
     {
       "id": "gloves:baby-blue",
       "name": "Baby Blue Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/baby-blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -405,6 +565,9 @@
     {
       "id": "gloves:blue",
       "name": "Blue Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -412,6 +575,9 @@
     {
       "id": "gloves:boxing-gloves",
       "name": "Boxing Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/boxing-gloves.webp",
       "characterIds": [
         "classic"
       ]
@@ -419,6 +585,9 @@
     {
       "id": "gloves:green",
       "name": "Green Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/green.webp",
       "characterIds": [
         "classic"
       ]
@@ -426,6 +595,9 @@
     {
       "id": "gloves:orange",
       "name": "Orange Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/orange.webp",
       "characterIds": [
         "classic"
       ]
@@ -433,6 +605,9 @@
     {
       "id": "gloves:purple",
       "name": "Purple Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/purple.webp",
       "characterIds": [
         "classic"
       ]
@@ -440,6 +615,9 @@
     {
       "id": "gloves:tan",
       "name": "Tan Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/tan.webp",
       "characterIds": [
         "classic"
       ]
@@ -447,6 +625,9 @@
     {
       "id": "gloves:yellow",
       "name": "Yellow Gloves",
+      "category": "gloves",
+      "slot": "hands",
+      "sprite_src": "assets/characters/gloves/yellow.webp",
       "characterIds": [
         "classic"
       ]
@@ -454,6 +635,9 @@
     {
       "id": "shoes:lightning-force-ones",
       "name": "Lightning Force Ones",
+      "category": "shoes",
+      "slot": "feet",
+      "sprite_src": "assets/characters/shoes/lightning-force-ones.png",
       "characterIds": [
         "classic"
       ]
@@ -461,6 +645,9 @@
     {
       "id": "shoes:baby-blue",
       "name": "Baby Blue Shoes",
+      "category": "shoes",
+      "slot": "feet",
+      "sprite_src": "assets/characters/shoes/baby-blue.webp",
       "characterIds": [
         "classic"
       ]
@@ -468,6 +655,9 @@
     {
       "id": "shoes:gold",
       "name": "Gold Shoes",
+      "category": "shoes",
+      "slot": "feet",
+      "sprite_src": "assets/characters/shoes/gold.webp",
       "characterIds": [
         "classic"
       ]
@@ -475,6 +665,9 @@
     {
       "id": "shoes:green",
       "name": "Green Shoes",
+      "category": "shoes",
+      "slot": "feet",
+      "sprite_src": "assets/characters/shoes/green.webp",
       "characterIds": [
         "classic"
       ]
@@ -482,6 +675,9 @@
     {
       "id": "shoes:red",
       "name": "Red Shoes",
+      "category": "shoes",
+      "slot": "feet",
+      "sprite_src": "assets/characters/shoes/red.webp",
       "characterIds": [
         "classic"
       ]
@@ -489,6 +685,9 @@
     {
       "id": "shoes:tan",
       "name": "Tan Shoes",
+      "category": "shoes",
+      "slot": "feet",
+      "sprite_src": "assets/characters/shoes/tan.webp",
       "characterIds": [
         "classic"
       ]
@@ -496,6 +695,9 @@
     {
       "id": "equipment:jetpack",
       "name": "Jetpack Module",
+      "category": "equipment",
+      "slot": "back",
+      "sprite_src": null,
       "characterIds": [
         "classic"
       ]
