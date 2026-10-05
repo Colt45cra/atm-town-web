@@ -63,6 +63,7 @@ const ATM_EQUIPMENT_SHEETS=Object.freeze({
   'gloves:purple':{src:'assets/characters/gloves/purple.webp',preview:'assets/characters/thumbnails/gloves-purple.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'hands'},
   'gloves:tan':{src:'assets/characters/gloves/tan.webp',preview:'assets/characters/thumbnails/gloves-tan.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'hands'},
   'gloves:yellow':{src:'assets/characters/gloves/yellow.webp',preview:'assets/characters/thumbnails/gloves-yellow.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'hands'},
+  'shoes:lightning-force-ones':{src:'assets/characters/shoes/lightning-force-ones.png',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'feet'},
   'shoes:baby-blue':{src:'assets/characters/shoes/baby-blue.webp',preview:'assets/characters/thumbnails/shoes-baby-blue.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'feet'},
   'shoes:gold':{src:'assets/characters/shoes/gold.webp',preview:'assets/characters/thumbnails/shoes-gold.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'feet'},
   'shoes:green':{src:'assets/characters/shoes/green.webp',preview:'assets/characters/thumbnails/shoes-green.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'feet'},
@@ -346,6 +347,10 @@ let zoom=townZoom;
 const WALK_FRAME_SEQUENCE=[0,1,2,1];
 const player={x:TOWN_INITIAL_SPAWN.x,y:TOWN_INITIAL_SPAWN.y,r:14,speed:182,dir:'up',moving:false,frame:1,animTimer:0};
 const VENDING_POWER_SECONDS=30;
+function playerMovementSpeedMultiplier(){
+  const shoesEquipped=selectedCharacter==='classic'&&(window.atmActiveLoadout||{}).feet==='shoes:lightning-force-ones';
+  return Math.max(shoesEquipped?1.6:1,powerUps.speed>0?1.5:1);
+}
 const powerUps={speed:0,bounce:0,magnet:0,jetpack:0,invisibility:0,juggernaut:0,fire:0};
 const MAGNET_RANGE=300;
 const MAGNET_PULL_SPEED=430;
@@ -3360,7 +3365,7 @@ function startJump(){
   if(keys['w']||keys['arrowup'])launchY-=1;
   if(keys['s']||keys['arrowdown'])launchY+=1;
   const launchMag=Math.hypot(launchX,launchY);
-  const launchSpeed=player.speed*(powerUps.speed>0?1.5:1);
+  const launchSpeed=player.speed*playerMovementSpeedMultiplier();
   if(launchMag>0){
     jumpState.momentumX=launchX/launchMag*launchSpeed;
     jumpState.momentumY=launchY/launchMag*launchSpeed;
@@ -5429,7 +5434,7 @@ function update(dt){
     const activeSize=ATM_MAPS.pixelSize(currentMap);
     const mapW=activeSize.w;
     const mapH=activeSize.h;
-    const jetpackSpeed=player.speed*(powerUps.speed>0?1.5:1)*JETPACK_DIRECTIONAL_BOOST;
+    const jetpackSpeed=player.speed*playerMovementSpeedMultiplier()*JETPACK_DIRECTIONAL_BOOST;
     if(mag>0){
       dx/=mag;dy/=mag;
       const targetVX=dx*jetpackSpeed,targetVY=dy*jetpackSpeed;
@@ -5464,7 +5469,7 @@ function update(dt){
     }
     moved=Math.hypot(player.x-beforeX,player.y-beforeY)>0.05;
   }else if(jumpState.active){
-    const jumpSpeed=player.speed*(powerUps.speed>0?1.5:1);
+    const jumpSpeed=player.speed*playerMovementSpeedMultiplier();
     if(mag>0){
       dx/=mag;dy/=mag;
       const targetVX=dx*jumpSpeed,targetVY=dy*jumpSpeed;
@@ -5495,7 +5500,7 @@ function update(dt){
   }else if(mag>0){
     dx/=mag;dy/=mag;
     onStairs=playerOnStairs()||stairWalkwayAt(player.x+dx*10,player.y+dy*10);
-    const moveSpeed=player.speed*(powerUps.speed>0?1.5:1)*(onStairs?0.72:1);
+    const moveSpeed=player.speed*playerMovementSpeedMultiplier()*(onStairs?0.72:1);
     const nx=player.x+dx*moveSpeed*dt;
     const ny=player.y+dy*moveSpeed*dt;
     if(!blocked(nx,player.y))player.x=nx;
@@ -6151,6 +6156,7 @@ const ATM_ITEM_CATALOG=Object.freeze([
   {id:'gloves:purple',name:'Purple Gloves',type:'equipment',slot:'hands',rarity:'Development',ownership:'development',emoji:'🥊',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'gloves:tan',name:'Tan Gloves',type:'equipment',slot:'hands',rarity:'Development',ownership:'development',emoji:'🥊',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'gloves:yellow',name:'Yellow Gloves',type:'equipment',slot:'hands',rarity:'Development',ownership:'development',emoji:'🥊',xrpl:null,compatibleCharacterIds:['classic']},
+  {id:'shoes:lightning-force-ones',name:'Lightning Force Ones',type:'equipment',slot:'feet',rarity:'Speed',ownership:'development',emoji:'⚡',xrpl:null,description:'Passive: 1.6× movement speed while equipped, slightly faster than the Lightning Can (1.5×). Does not stack with Lightning.',compatibleCharacterIds:['classic']},
   {id:'shoes:baby-blue',name:'Baby Blue Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:gold',name:'Gold Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:green',name:'Green Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
@@ -6439,6 +6445,12 @@ function lockerItemPreview(item){
     const bodyId=item.loadout?.body;const bodyPreview=bodyId&&ATM_EQUIPMENT_SHEETS[bodyId]?.preview;if(bodyPreview)return bodyPreview;
   }
   if(item.characterId){const img=document.querySelector(`.characterChoice[data-character="${item.characterId}"] img`);if(img?.src)return img.src;}
+  if(item.id==='shoes:lightning-force-ones'){
+    const img=equipmentSheetImgs[item.id];
+    if(img?.complete&&img.naturalWidth){
+      if(!item._lightningPreview){const canvas=document.createElement('canvas');canvas.width=128;canvas.height=64;const context=canvas.getContext('2d');context.drawImage(img,256+48,248,160,64,0,0,128,64);return canvas.toDataURL('image/png');}
+    }
+  }
   const equipment=ATM_EQUIPMENT_SHEETS[item.id];if(equipment?.preview)return equipment.preview;
   return '';
 }

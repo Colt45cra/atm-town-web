@@ -452,6 +452,13 @@
       ]
     },
     {
+      "id": "shoes:lightning-force-ones",
+      "name": "Lightning Force Ones",
+      "characterIds": [
+        "classic"
+      ]
+    },
+    {
       "id": "shoes:baby-blue",
       "name": "Baby Blue Shoes",
       "characterIds": [
