@@ -1,4 +1,4 @@
-import { loadAttributeDefinitions, publicAttributeDefinitions } from '../lib/attribute-catalog.js';
+import { loadAttributeDefinitions, publicAttributeDefinitions, adminAttributeAccess } from '../lib/attribute-catalog.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
 import {
@@ -350,7 +350,7 @@ async function handleAttributeStoreGet(req, res) {
       .eq('user_id', user.id)
       .order('granted_at', { ascending: false });
     if (error) throw error;
-    return res.status(200).json({ item_ids: (data || []).map(row => row.item_id), entitlements: data || [] });
+    return res.status(200).json({ item_ids: (data || []).map(row => row.item_id), entitlements: data || [], admin_attribute_access: await adminAttributeAccess(admin,user) });
   }
   return res.status(400).json({ error: 'Unknown Attribute Store mode.' });
 }
