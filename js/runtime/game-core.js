@@ -7,7 +7,7 @@ const safeStorageSet=window.safeStorageSet;
 const safeJsonParse=window.safeJsonParse;
 const SPRITES = {"down":["assets/characters/legacy/classic/down-0.webp","assets/characters/legacy/classic/down-1.webp","assets/characters/legacy/classic/down-2.webp"],"left":["assets/characters/legacy/classic/left-0.webp","assets/characters/legacy/classic/left-1.webp","assets/characters/legacy/classic/left-2.webp"],"up":["assets/characters/legacy/classic/up-0.webp","assets/characters/legacy/classic/up-1.webp","assets/characters/legacy/classic/up-2.webp"],"right":["assets/characters/legacy/classic/right-0.webp","assets/characters/legacy/classic/right-1.webp","assets/characters/legacy/classic/right-2.webp"]};
 const CHARACTER_SHEETS={classic:{src:'assets/characters/playable/atm.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},fuzzy:{src:'assets/characters/playable/fuzzy.webp',preview:'assets/characters/thumbnails/character-fuzzy.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},miracle:{src:'assets/characters/playable/miracle.webp',preview:'assets/characters/thumbnails/character-miracle.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},luci:{src:'assets/characters/playable/luci.webp',preview:'assets/characters/thumbnails/character-luci.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},triskeleton:{src:'assets/characters/playable/triskeleton.webp',preview:'assets/characters/thumbnails/character-triskeleton.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},phnix:{src:'assets/characters/playable/phnix.webp',preview:'assets/characters/thumbnails/character-phnix.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},bear:{src:'assets/characters/playable/bear.webp',preview:'assets/characters/thumbnails/character-bear.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},xoge:{src:'assets/characters/playable/xoge.webp',preview:'assets/characters/thumbnails/character-xoge.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},flippy:{src:'assets/characters/playable/flippy.webp',preview:'assets/characters/thumbnails/character-flippy.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},salute:{src:'assets/characters/playable/salute.webp',preview:'assets/characters/thumbnails/character-salute.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},brad:{src:'assets/characters/playable/brad.webp',preview:'assets/characters/thumbnails/character-brad.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},david:{src:'assets/characters/playable/david.webp',preview:'assets/characters/thumbnails/character-david.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},kaj:{src:'assets/characters/playable/kaj.webp',preview:'assets/characters/thumbnails/character-kaj.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},daniel:{src:'assets/characters/playable/daniel.webp',preview:'assets/characters/thumbnails/character-daniel.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},army:{src:'assets/characters/playable/army.webp',preview:'assets/characters/thumbnails/character-army.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},victoria:{src:'assets/characters/playable/victoria.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33},anunnaki:{src:'assets/characters/playable/anunnaki.webp',preview:'assets/characters/thumbnails/character-anunnaki.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33}};
-const ATM_EQUIPMENT_SHEETS=Object.freeze({
+const ATM_EQUIPMENT_SHEETS={
   'body:astronaut':{src:'assets/characters/body/astronaut.webp',preview:'assets/characters/thumbnails/body-astronaut.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'body'},
   'body:black':{src:'assets/characters/body/black.webp',preview:'assets/characters/thumbnails/body-black.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'body'},
   'body:cyber-blue':{src:'assets/characters/body/cyber-blue.webp',preview:'assets/characters/thumbnails/body-cyber-blue.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'body'},
@@ -69,7 +69,8 @@ const ATM_EQUIPMENT_SHEETS=Object.freeze({
   'shoes:green':{src:'assets/characters/shoes/green.webp',preview:'assets/characters/thumbnails/shoes-green.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'feet'},
   'shoes:red':{src:'assets/characters/shoes/red.webp',preview:'assets/characters/thumbnails/shoes-red.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'feet'},
   'shoes:tan':{src:'assets/characters/shoes/tan.webp',preview:'assets/characters/thumbnails/shoes-tan.webp',cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:'feet'}
-});
+};
+const attributeEffectOverrides=new Map();
 window.atmActiveLoadout=window.atmActiveLoadout||{};
 const ALLOWED_CHARACTERS=['classic','fuzzy','miracle','luci','triskeleton','phnix','bear','xoge','flippy','salute','brad','david','kaj','daniel','army','anunnaki'];
 const CHARACTER_SPRITES={};
@@ -347,9 +348,14 @@ let zoom=townZoom;
 const WALK_FRAME_SEQUENCE=[0,1,2,1];
 const player={x:TOWN_INITIAL_SPAWN.x,y:TOWN_INITIAL_SPAWN.y,r:14,speed:182,dir:'up',moving:false,frame:1,animTimer:0};
 const VENDING_POWER_SECONDS=30;
+function equippedAttributeEffects(){
+  const effects=[];const seen=new Set();
+  for(const id of Object.values(window.atmActiveLoadout||{})){if(seen.has(id))continue;seen.add(id);const item=ATM_ITEM_CATALOG.find(entry=>entry.id===id&&entry.type==='equipment');if(!item||!lockerItemCompatibleWithCharacter(item)||!lockerOwnershipInfo(item).owned)continue;effects.push(attributeEffectOverrides.get(id)||{speed:id==='shoes:lightning-force-ones'?1.6:1,gravity:1,jump:1});}
+  return window.ATMAttributeEffects.combine(effects);
+}
+function equippedLayerCompatible(itemId,characterId){const item=ATM_ITEM_CATALOG.find(entry=>entry.id===itemId);return !!item&&lockerItemCompatibleWithCharacter(item,characterId);}
 function playerMovementSpeedMultiplier(){
-  const shoesEquipped=selectedCharacter==='classic'&&(window.atmActiveLoadout||{}).feet==='shoes:lightning-force-ones';
-  return Math.max(shoesEquipped?1.6:1,powerUps.speed>0?1.5:1);
+  return Math.max(equippedAttributeEffects().speed,powerUps.speed>0?1.5:1);
 }
 const powerUps={speed:0,bounce:0,magnet:0,jetpack:0,invisibility:0,juggernaut:0,fire:0};
 const MAGNET_RANGE=300;
@@ -3140,12 +3146,12 @@ function arcadeGameRemotePlayers(gameId){
 }
 function drawArcadeMiniGhost(targetCtx,remote,x,footY,dir='right',frame=1,scale=.185){
   if(!targetCtx||!remote)return;let characterId=remote.character||'classic',loadout=remote.loadout||{},config=CHARACTER_SHEETS?.[characterId],image=characterSheetImgs?.[characterId];
-  if(characterId==='classic'&&loadout.body&&ATM_EQUIPMENT_SHEETS?.[loadout.body]&&equipmentSheetImgs?.[loadout.body]?.complete&&equipmentSheetImgs[loadout.body].naturalWidth){config=ATM_EQUIPMENT_SHEETS[loadout.body];image=equipmentSheetImgs[loadout.body];}
+  if(equippedLayerCompatible(loadout.body,characterId)&&loadout.body&&ATM_EQUIPMENT_SHEETS?.[loadout.body]&&equipmentSheetImgs?.[loadout.body]?.complete&&equipmentSheetImgs[loadout.body].naturalWidth){config=ATM_EQUIPMENT_SHEETS[loadout.body];image=equipmentSheetImgs[loadout.body];}
   const drawLayer=(img,cfg)=>{if(!img?.complete||!img.naturalWidth||!cfg)return;const cols=cfg.cols||3,rows=cfg.rows||4,fw=Math.floor(img.naturalWidth/cols),fh=Math.floor(img.naturalHeight/rows),row=Math.max(0,(cfg.rowOrder||['down','left','up','right']).indexOf(dir)),safeFrame=Math.max(0,Math.min(cols-1,frame)),ax=Number.isFinite(cfg.anchorX)?cfg.anchorX:fw/2,ay=Number.isFinite(cfg.anchorY)?cfg.anchorY:fh-1;targetCtx.drawImage(img,safeFrame*fw,row*fh,fw,fh,Math.round(x-ax*scale),Math.round(footY-ay*scale),Math.round(fw*scale),Math.round(fh*scale));};
   targetCtx.save();targetCtx.globalAlpha=.62;
   if(config&&image?.complete&&image.naturalWidth)drawLayer(image,config);else{targetCtx.fillStyle='#9fc3cc';targetCtx.fillRect(x-14,footY-44,28,44);}
-  if(characterId==='classic'){
-    for(const slot of ['back','katana','chest','face','feet','head','hands']){const id=loadout[slot],cfg=ATM_EQUIPMENT_SHEETS?.[id],img=equipmentSheetImgs?.[id];if(id)drawLayer(img,cfg);}
+  if(CHARACTER_SHEETS[characterId]){
+    for(const slot of ['back','katana','chest','face','feet','head','hands','aura']){const id=equippedLayerCompatible(loadout[slot],characterId)?loadout[slot]:null,cfg=ATM_EQUIPMENT_SHEETS?.[id],img=equipmentSheetImgs?.[id];if(id)drawLayer(img,cfg);}
   }
   targetCtx.globalAlpha=.92;targetCtx.font='900 9px system-ui';targetCtx.textAlign='center';const label=String(remote.name||'Player').slice(0,22),w=Math.min(130,targetCtx.measureText(label).width+12);targetCtx.fillStyle='rgba(3,10,14,.82)';targetCtx.fillRect(x-w/2,footY-66,w,15);targetCtx.fillStyle='#eaffff';targetCtx.fillText(label,x,footY-55);targetCtx.restore();
 }
@@ -3264,7 +3270,8 @@ function buildJumpProfile(){
   // astronaut arc duration along with its height preserves the slow visual rise
   // and fall instead of making the combined jump race through the taller arc.
   const duration=jumpState.duration*(astronaut?ASTRONAUT_LOW_GRAVITY.durationMultiplier*(bounce?ASTRONAUT_LOW_GRAVITY.bounceDurationMultiplier:1):1);
-  return{astronaut,bounce,height,duration};
+  const adjusted=window.ATMAttributeEffects.jumpProfile(equippedAttributeEffects(),height,duration);
+  return{astronaut,bounce,height:adjusted.height,duration:adjusted.duration};
 }
 function lockJumpProfile(){
   const profile=buildJumpProfile();
@@ -3883,7 +3890,7 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
   const visualDir=directionAlias[dir]||dir;
   if(!CHARACTER_SHEETS[characterId]&&!CHARACTER_SPRITES[characterId])characterId='classic';
   const activeLoadout=equipmentLoadout||window.atmActiveLoadout||{};
-  const bodyItemId=characterId==='classic'?activeLoadout.body:null;
+  const bodyItemId=equippedLayerCompatible(activeLoadout.body,characterId)?activeLoadout.body:null;
   const bodySheetConfig=bodyItemId?ATM_EQUIPMENT_SHEETS[bodyItemId]:null;
   const bodySheetImage=bodyItemId?equipmentSheetImgs[bodyItemId]:null;
   const characterConfig=CHARACTER_SHEETS[characterId];
@@ -3950,6 +3957,7 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
     // All ATM equipment sheets use the same expanded 3x4 frame standard.
     // Body is the base shell; backpack and katana are independent layers, followed by the remaining slots.
     const drawEquipmentLayer=(itemId)=>{
+      if(!equippedLayerCompatible(itemId,characterId))return;
       const layerConfig=itemId?ATM_EQUIPMENT_SHEETS[itemId]:null;
       const layerImage=itemId?equipmentSheetImgs[itemId]:null;
       if(!layerConfig||!layerImage?.complete||!layerImage.naturalWidth)return;
@@ -3965,11 +3973,11 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
       ctx.drawImage(layerImage,lframe*lfw,lrow*lfh,lfw,lfh,ldx,ldy,ldw,ldh);
     };
 
-    if(characterId==='classic'){
+    if(CHARACTER_SHEETS[characterId]){
       const backItemId=!jetpackEquipped?activeLoadout.back:null;
       if(backItemId)drawEquipmentLayer(backItemId);
       if(activeLoadout.katana)drawEquipmentLayer(activeLoadout.katana);
-      for(const slotId of ['chest','face','feet','head']){
+      for(const slotId of ['chest','face','feet','head','aura']){
         const itemId=activeLoadout[slotId];
         if(itemId)drawEquipmentLayer(itemId);
       }
@@ -3990,7 +3998,7 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
     }
 
     // Hands/gloves are a foreground layer and must remain visible over the jetpack.
-    if(characterId==='classic'&&activeLoadout.hands)drawEquipmentLayer(activeLoadout.hands);
+    if(equippedLayerCompatible(activeLoadout.hands,characterId))drawEquipmentLayer(activeLoadout.hands);
 
     if(jetpackThrusting&&jetpackEquipped){
       const nozzleSourceMap={down:[{x:181,y:268}],left:[{x:178,y:249}],up:[{x:105,y:259},{x:151,y:259}],right:[{x:76,y:251}]};
@@ -5369,7 +5377,7 @@ function update(dt){
           ?Math.max(0,jetpackState.releaseElapsed)
           :Math.max(0,jetpackState.releaseElapsed-JETPACK_RELEASE_COAST);
         const fallGravity=Math.min(fallGravityMax,fallGravityStart+fallTime*fallGravityRamp);
-        jetpackState.velocity=Math.max(-maxFallSpeed,jetpackState.velocity-fallGravity*dt);
+        jetpackState.velocity=Math.max(-maxFallSpeed,jetpackState.velocity-fallGravity*equippedAttributeEffects().gravity*dt);
       }
     }
     jetpackState.lift+=jetpackState.velocity*dt;
@@ -6084,7 +6092,7 @@ const ATM_LOCKER_SLOTS=Object.freeze([
   {id:'feet',label:'SHOES',icon:'🥾'},
   {id:'aura',label:'AURA',icon:'✨'}
 ]);
-const ATM_ITEM_CATALOG=Object.freeze([
+let ATM_ITEM_CATALOG=[
   {id:'character:classic',name:'ATM',type:'character',slot:'base',characterId:'classic',rarity:'Starter',ownership:'starter',emoji:'🟩',xrpl:null},
   {id:'character:fuzzy',name:'Fuzzy',type:'character',slot:'base',characterId:'fuzzy',rarity:'Starter',ownership:'starter',emoji:'🐻',xrpl:null},
   {id:'character:miracle',name:'Miracle',type:'character',slot:'base',characterId:'miracle',rarity:'Starter',ownership:'starter',emoji:'😇',xrpl:null},
@@ -6163,7 +6171,8 @@ const ATM_ITEM_CATALOG=Object.freeze([
   {id:'shoes:red',name:'Red Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:tan',name:'Tan Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'equipment:jetpack',name:'Jetpack Module',type:'equipment',slot:'back',rarity:'Session',ownership:'session',emoji:'🚀',xrpl:null,description:'Purchased from an ATM Town vending machine. Each purchase adds 30 seconds.'}
-].map(atmMonetizeCatalogItem));
+].map(atmMonetizeCatalogItem);
+const baseAttributeItems=ATM_ITEM_CATALOG.slice();
 window.ATM_ITEM_CATALOG=ATM_ITEM_CATALOG;
 window.ATM_YOU_ARE_ATM_COLLECTION=ATM_YOU_ARE_ATM_COLLECTION;
 
@@ -6403,7 +6412,7 @@ function lockerRenderSavedBuildThumbnail(characterId,loadout={},direction='down'
 
     let config=CHARACTER_SHEETS[characterId],image=characterSheetImgs[characterId];
     const bodyItemId=loadout?.body;const bodySheet=bodyItemId&&ATM_EQUIPMENT_SHEETS[bodyItemId];const bodyImage=bodyItemId&&equipmentSheetImgs[bodyItemId];
-    if(characterId==='classic'&&bodySheet&&bodyImage?.complete&&bodyImage.naturalWidth){config=bodySheet;image=bodyImage;}
+    if(equippedLayerCompatible(bodyItemId,characterId)&&bodySheet&&bodyImage?.complete&&bodyImage.naturalWidth){config=bodySheet;image=bodyImage;}
     if(!config||!image?.complete||!image.naturalWidth)return '';
 
     const cols=config.cols||3,frameW=Math.floor(image.naturalWidth/cols),frameH=Math.floor(image.naturalHeight/(config.rows||4));
@@ -6417,7 +6426,7 @@ function lockerRenderSavedBuildThumbnail(characterId,loadout={},direction='down'
     tctx.drawImage(image,frame*frameW,row*frameH,frameW,frameH,dx,dy,dw,dh);
 
     const drawEquip=(slotId)=>{
-      const itemId=loadout?.[slotId];if(!itemId||itemId==='equipment:jetpack')return;
+      const itemId=loadout?.[slotId];if(!itemId||itemId==='equipment:jetpack'||!equippedLayerCompatible(itemId,characterId))return;
       const ec=ATM_EQUIPMENT_SHEETS[itemId],ei=equipmentSheetImgs[itemId];
       if(!ec||!ei?.complete||!ei.naturalWidth)return;
       const ecols=ec.cols||3,efw=Math.floor(ei.naturalWidth/ecols),efh=Math.floor(ei.naturalHeight/(ec.rows||4));
@@ -6428,16 +6437,18 @@ function lockerRenderSavedBuildThumbnail(characterId,loadout={},direction='down'
       tctx.drawImage(ei,eframe*efw,erow*efh,efw,efh,edx,edy,edw,edh);
     };
 
-    if(characterId==='classic'){
+    if(CHARACTER_SHEETS[characterId]){
       drawEquip('back');
       drawEquip('katana');
-      for(const slotId of ['chest','face','feet','head'])drawEquip(slotId);
+      for(const slotId of ['chest','face','feet','head','aura'])drawEquip(slotId);
       drawEquip('hands');
     }
     return thumb.toDataURL('image/webp',.9);
   }catch(_error){return '';}
 }
 function lockerItemPreview(item){
+  if(item.dynamicSprite){const image=equipmentSheetImgs[item.id];if(image?.complete&&image.naturalWidth){const preview=document.createElement('canvas');preview.width=128;preview.height=160;const context=preview.getContext('2d');context.drawImage(image,256,0,256,320,0,0,128,160);return preview.toDataURL('image/png');}return null;}
+
   if(item?.type==='saved-character'){
     const cached=item._previewCache||(item._previewCache=lockerRenderSavedBuildThumbnail(item.characterId,item.loadout,'down'));
     if(cached)return cached;
@@ -6744,7 +6755,7 @@ function lockerDrawPreview(){
   const characterId=selectedCharacter;
   let config=CHARACTER_SHEETS[characterId],image=characterSheetImgs[characterId];
   const bodyItem=lockerEquippedItem('body');
-  if(characterId==='classic'&&bodyItem&&ATM_EQUIPMENT_SHEETS[bodyItem.id]&&equipmentSheetImgs[bodyItem.id]?.complete&&equipmentSheetImgs[bodyItem.id].naturalWidth){config=ATM_EQUIPMENT_SHEETS[bodyItem.id];image=equipmentSheetImgs[bodyItem.id];}
+  if(bodyItem&&equippedLayerCompatible(bodyItem.id,characterId)&&ATM_EQUIPMENT_SHEETS[bodyItem.id]&&equipmentSheetImgs[bodyItem.id]?.complete&&equipmentSheetImgs[bodyItem.id].naturalWidth){config=ATM_EQUIPMENT_SHEETS[bodyItem.id];image=equipmentSheetImgs[bodyItem.id];}
   if(!config||!image?.complete||!image.naturalWidth){pctx.fillStyle='#9fc3cc';pctx.font='700 14px system-ui';pctx.textAlign='center';pctx.fillText('Loading character…',cw/2,ch/2);return;}
   const cols=config.cols||3,rows=config.rows||4,frameW=Math.floor(image.naturalWidth/cols),frameH=Math.floor(image.naturalHeight/rows);
   const row=Math.max(0,(config.rowOrder||['down','left','up','right']).indexOf(lockerState.direction));const frame=Math.max(0,Math.min(cols-1,lockerPreviewFrame));
@@ -6753,7 +6764,7 @@ function lockerDrawPreview(){
   pctx.fillStyle='rgba(0,0,0,.34)';pctx.beginPath();pctx.ellipse(footX,footY+2,44,10,0,0,Math.PI*2);pctx.fill();pctx.drawImage(image,frame*frameW,row*frameH,frameW,frameH,dx,dy,dw,dh);
 
   const drawPreviewEquipment=(item)=>{
-    if(!item||item.id==='equipment:jetpack')return;
+    if(!item||item.id==='equipment:jetpack'||!lockerItemCompatibleWithCharacter(item,characterId))return;
     const ec=ATM_EQUIPMENT_SHEETS[item.id],ei=equipmentSheetImgs[item.id];
     if(!ec||!ei?.complete||!ei.naturalWidth)return;
     const ecols=ec.cols||3,erows=ec.rows||4,efw=Math.floor(ei.naturalWidth/ecols),efh=Math.floor(ei.naturalHeight/erows);
@@ -6763,14 +6774,14 @@ function lockerDrawPreview(){
     const edx=Math.round(footX-eax*es),edy=Math.round(footY-eay*es),edw=Math.round(efw*es),edh=Math.round(efh*es);
     pctx.drawImage(ei,eframe*efw,erow*efh,efw,efh,edx,edy,edw,edh);
   };
-  if(characterId==='classic'){
+  if(CHARACTER_SHEETS[characterId]){
     const backItem=lockerEquippedItem('back');
     if(!canUseJetpack())drawPreviewEquipment(backItem);
     drawPreviewEquipment(lockerEquippedItem('katana'));
-    for(const slotId of ['chest','face','feet','head'])drawPreviewEquipment(lockerEquippedItem(slotId));
+    for(const slotId of ['chest','face','feet','head','aura'])drawPreviewEquipment(lockerEquippedItem(slotId));
   }
   if(canUseJetpack()&&jetpackOverlayImg.complete&&jetpackOverlayImg.naturalWidth){const oc=jetpackOverlaySheet.cols||3,or=jetpackOverlaySheet.rows||4,ofw=Math.floor(jetpackOverlayImg.naturalWidth/oc),ofh=Math.floor(jetpackOverlayImg.naturalHeight/or),orow=Math.max(0,(jetpackOverlaySheet.rowOrder||['down','left','up','right']).indexOf(lockerState.direction)),os=Math.min(1.05,(ch-55)/ofh,(cw-36)/ofw),oax=Number.isFinite(jetpackOverlaySheet.anchorX)?jetpackOverlaySheet.anchorX:ofw/2,oay=Number.isFinite(jetpackOverlaySheet.anchorY)?jetpackOverlaySheet.anchorY:ofh-1,odx=Math.round(footX-oax*os),ody=Math.round(footY-oay*os),odw=Math.round(ofw*os),odh=Math.round(ofh*os);pctx.drawImage(jetpackOverlayImg,frame*ofw,orow*ofh,ofw,ofh,odx,ody,odw,odh);}
-  if(characterId==='classic')drawPreviewEquipment(lockerEquippedItem('hands'));
+  if(CHARACTER_SHEETS[characterId])drawPreviewEquipment(lockerEquippedItem('hands'));
 }
 function lockerRender(){
   lockerUpdateWalletBadge();lockerSyncEntryPicker();lockerCreateSlots();lockerCreateFilters();lockerRenderGrids();lockerDrawPreview();lockerRenderNftCollection();
@@ -6844,10 +6855,25 @@ function attributeStoreToggleCart(item){const info=lockerOwnershipInfo(item);if(
 function attributeStoreCreateItem(item){const info=lockerOwnershipInfo(item),inCart=attributeStoreState.cart.includes(item.id),card=document.createElement('article');card.className='attributeStoreItem'+(info.owned?' owned':'')+(inCart?' inCart':'');const preview=lockerItemPreview(item);const art=preview?`<img alt="${item.name}" src="${preview}">`:`<span class="fallback">${item.emoji||'◈'}</span>`;const badge=info.owned?(info.source==='xrpl'?'NFT OWNED':info.source==='purchase'?'PURCHASED':'OWNED'):(inCart?'IN CART':lockerHasXrplMapping(item)?'NFT OR STORE':'STORE');card.innerHTML=`<span class="attributeStoreItemBadge">${badge}</span><div class="attributeStoreItemArt">${art}</div><div class="attributeStoreItemName">${item.name}</div><div class="attributeStoreItemMeta">${lockerSlotName(item.slot)} · ${attributeStoreCharacterName(attributeStoreState.characterId)}</div><div class="attributeStoreItemPrice">${info.owned?'IN YOUR LOCKER':attributeStorePriceText(item)}</div>`;const action=document.createElement('button');action.type='button';action.className='attributeStoreItemAction';action.textContent=info.owned?'OWNED ✓':inCart?'REMOVE FROM CART':'ADD TO CART';action.disabled=info.owned;action.addEventListener('click',()=>attributeStoreToggleCart(item));card.appendChild(action);return card;}
 function attributeStoreRenderCatalog(){const grid=document.getElementById('attributeStoreGrid'),title=document.getElementById('attributeStoreCatalogTitle'),count=document.getElementById('attributeStoreCatalogCount');if(!grid)return;const items=attributeStoreVisibleItems();if(title)title.textContent=attributeStoreCharacterName(attributeStoreState.characterId)+' ATTRIBUTES';if(count)count.textContent=items.length+' item'+(items.length===1?'':'s');grid.textContent='';for(const item of items)grid.appendChild(attributeStoreCreateItem(item));if(!items.length){const empty=document.createElement('div');empty.className='attributeStoreEmpty';const hasAny=ATM_ITEM_CATALOG.some(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,attributeStoreState.characterId));empty.innerHTML=hasAny?'<strong>No matching attributes</strong>Change the attribute type.':`<strong>No ${lockerCharacterName(attributeStoreState.characterId)} attribute layers yet</strong>This character catalog is ready. New modular ${lockerCharacterName(attributeStoreState.characterId)} assets will appear automatically when they are added to the item catalog.`;grid.appendChild(empty);}}
 function attributeStoreSelectedPaymentLabel(){return attributeStoreState.paymentCategory==='cash'?'CASH':String(attributeStoreState.cryptoAsset||'atm').toUpperCase();}
-async function attributeStoreRefreshCommerce(){
+function applyPublishedAttributes(rows){
+  const items=baseAttributeItems.slice();attributeEffectOverrides.clear();
+  for(const row of rows||[]){
+    if(!row||!ALLOWED_CHARACTERS.includes(row.character_id)||!/^[a-z]+:[a-z0-9-]+$/.test(row.item_id)||typeof row.name!=='string'||/[<>&"]/.test(row.name))continue;
+    const index=items.findIndex(item=>item.id===row.item_id);const existing=index>=0?items[index]:null;
+    if(!existing&&!row.sprite_url)continue;
+    const item={...(existing||{type:'equipment',ownership:'store',rarity:'Store',emoji:'◈',xrpl:null}),id:row.item_id,name:row.name,slot:row.slot,compatibleCharacterIds:[row.character_id],storeCharacterIds:[row.character_id]};
+    if(row.sprite_url){let url;try{url=new URL(row.sprite_url);}catch{continue;}if(url.origin!=='https://xnyjurertwohlqczaeux.supabase.co'||!url.pathname.startsWith('/storage/v1/object/public/attribute-sprites/'))continue;const config={src:url.href,cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:row.slot};ATM_EQUIPMENT_SHEETS[row.item_id]=config;item.dynamicSprite=true;const prior=equipmentSheetImgs[row.item_id];if(!prior||prior.src!==url.href){const img=new Image();img.crossOrigin='anonymous';img.decoding='async';img.src=url.href;equipmentSheetImgs[row.item_id]=img;}}
+    attributeEffectOverrides.set(row.item_id,row.effects||{});if(index>=0)items[index]=item;else items.push(item);
+  }
+  ATM_ITEM_CATALOG=items;
+}
+let attributeCommerceRefreshPromise=null;
+async function attributeStoreRefreshCommerce(){if(attributeCommerceRefreshPromise)return attributeCommerceRefreshPromise;attributeCommerceRefreshPromise=attributeStoreRefreshCommerceNow().finally(()=>{attributeCommerceRefreshPromise=null;});return attributeCommerceRefreshPromise;}
+async function attributeStoreRefreshCommerceNow(){
+
   try{
     const response=await fetch('/api/xaman-vending-start?commerce=attribute-store&mode=catalog',{cache:'no-store'}),data=await response.json().catch(()=>({}));
-    if(response.ok){attributeStoreServerPrices=data?.prices&&typeof data.prices==='object'?data.prices:Object.create(null);attributeStoreCommerceLoaded=true;}
+    if(response.ok){applyPublishedAttributes(data.attributes);attributeStoreServerPrices=data?.prices&&typeof data.prices==='object'?data.prices:Object.create(null);attributeStoreCommerceLoaded=true;}
   }catch(error){console.warn('Attribute Store pricing refresh failed:',error);}
   if(authSession?.access_token){
     try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store&mode=entitlements');lockerPurchasedItems.clear();for(const id of data?.item_ids||[])lockerPurchasedItems.add(String(id));}
@@ -6944,3 +6970,8 @@ attributeStoreUpdateButton();
 document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(document.getElementById('arcadeLeaderboardPanel')?.classList.contains('open')){event.preventDefault();arcadeLeaderboardClose();return;}if(document.getElementById('tradeNftPanel')?.classList.contains('open')){event.preventDefault();tradeNftClose();}});
 Object.values(characterSheetImgs).forEach(image=>image?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();}));Object.values(equipmentSheetImgs).forEach(image=>image?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();}));jetpackOverlayImg?.addEventListener?.('load',()=>{if(lockerState.open)lockerRender();});
 lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:classic';lockerSaveLoadout();lockerRender();
+
+// Publish and movement changes reach active clients within one minute.
+setTimeout(()=>attributeStoreRefreshCommerce(),1000);
+setInterval(()=>{if(!document.hidden)attributeStoreRefreshCommerce();},60000);
+window.addEventListener('focus',()=>attributeStoreRefreshCommerce());

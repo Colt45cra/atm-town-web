@@ -198,7 +198,7 @@ for (const file of requiredFiles) {
   catch { errors.push(`Missing required file: ${file}`); }
 }
 
-const html = await readFile(path.join(root, 'index.html'), 'utf8');
+const html = (await readFile(path.join(root, 'index.html'), 'utf8')).replace(/(src="[^"]+\.js)\?[^"]*"/g,'$1"');
 const gameRuntimeParts = await Promise.all([
   readFile(path.join(root, 'js/runtime/game-core.js'), 'utf8'),
   readFile(path.join(root, 'js/runtime/sky-run.js'), 'utf8'),
@@ -489,7 +489,7 @@ if (!runtimeSource.includes('function getHordeStreetLightAlpha') || !runtimeSour
 if (!gameRuntimeParts[0].includes("issuer:'rsQJqZ7gbHR8hAfWP2fSzY2Zbg6akcMd2H'") || !gameRuntimeParts[0].includes('taxon:1')) errors.push('v235.10 You Are ATM collection issuer/taxon configuration is missing.');
 if (!gameRuntimeParts[0].includes("'head:paper-hat':{traitTypes:['Head'],values:['Paper Hat']}") || !gameRuntimeParts[0].includes("'back:green-katana':{traitTypes:['Katana'],values:['Green','Green Katana']}") || !gameRuntimeParts[0].includes("'back:yellow-katana':{traitTypes:['Katana'],values:['Yellow','Yellow Katana']}")) errors.push('v235.10 core You Are ATM headgear/katana trait mappings are missing.');
 if (!gameRuntimeParts[0].includes("'equipment:jetpack':{traitTypes:['Back'],values:['Jetpack','Jet Pack']}") || !gameRuntimeParts[0].includes("'face:gold':{traitTypes:['Face'],values:['Gold','Gold Face']}")) errors.push('v235.10 Jetpack/Gold Face NFT trait mappings are missing.');
-if (!gameRuntimeParts[0].includes("if(item.ownership==='development')return Object.freeze({...item,rarity:mapping?'You Are ATM / Store':'Store',ownership:'store'") || !gameRuntimeParts[0].includes('].map(atmMonetizeCatalogItem));')) errors.push('v235.10 development cosmetics are not converted into store-locked inventory.');
+if (!gameRuntimeParts[0].includes("if(item.ownership==='development')return Object.freeze({...item,rarity:mapping?'You Are ATM / Store':'Store',ownership:'store'") || !gameRuntimeParts[0].includes('].map(atmMonetizeCatalogItem);')) errors.push('v235.10 development cosmetics are not converted into store-locked inventory.');
 if (!gameRuntimeParts[0].includes('function lockerAttributeRuleMatches') || !gameRuntimeParts[0].includes("label:matches.length>1?'NFT OWNED ×'+matches.length:'NFT OWNED'") || !gameRuntimeParts[0].includes("label:'VERIFYING NFT'")) errors.push('v235.10 metadata-backed Locker entitlement verification is incomplete.');
 if (!gameRuntimeParts[0].includes('window.atmLockerPermanentJetpackEquipped') || !gameRuntimeParts[0].includes("permanent?'NFT OWNED · PERMANENT'")) errors.push('v235.10 permanent NFT Jetpack entitlement is missing.');
 if (!html.includes('id="lockerYouAreAtmCount"') || !html.includes('id="lockerNftUnlockCount"') || !html.includes('LOCKER v7 · OWNED ASSETS ONLY · v235.12.5')) errors.push('v235.12.5 Locker ownership UI markers are missing.');

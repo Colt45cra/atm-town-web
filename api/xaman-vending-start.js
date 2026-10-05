@@ -1,3 +1,4 @@
+import { loadAttributeDefinitions, publicAttributeDefinitions } from '../lib/attribute-catalog.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
 import {
@@ -337,6 +338,7 @@ async function handleAttributeStoreGet(req, res) {
     return res.status(200).json({
       network: 'mainnet',
       prices,
+      attributes: publicAttributeDefinitions(admin,await loadAttributeDefinitions(admin)),
       crypto_assets: Object.values(ATTRIBUTE_STORE_ASSETS).map(asset => ({ id: asset.id, label: asset.label }))
     });
   }
