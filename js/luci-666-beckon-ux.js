@@ -133,7 +133,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     if(action&&action.dataset.luciRewardPickup!=='1'){
       action.dataset.luciRewardPickup='1';
       action.addEventListener('click',()=>{
-        if(giftState.coin&&!giftState.pickupBusy&&!giftState.pickupAttempted)pickupCoin();
+        if(giftState.coin&&!giftState.pickupBusy)pickupCoin();
       },true);
     }
   }
@@ -193,7 +193,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   function looksLikeMissingWallet(message){return /link and verify xaman|sign in to atm town|wallet.*before|no linked/i.test(String(message||''));}
 
   async function resolveGiftState(force=false){
-    if(!panelOpen()||!giftSelected()||giftState.resolving)return;
+    if(!panelOpen()||!giftSelected()||giftState.resolving||giftState.pickupBusy||giftState.coin)return;
     const now=Date.now();if(!force&&now-giftState.lastCheck<POLL_MS)return;
     giftState.lastCheck=now;giftState.resolving=true;clearActions();
     try{
@@ -282,7 +282,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       if(Number.isFinite(px)&&Number.isFinite(py)){
         const dx=px-giftState.coin.x,dy=py-giftState.coin.y;
         const closeEnough=Math.abs(dx)<=110&&Math.abs(dy)<=125;
-        if(closeEnough&&!giftState.pickupBusy)pickupCoin();
+        if(closeEnough&&!giftState.pickupBusy&&!giftState.pickupAttempted)pickupCoin();
       }
     }catch(_error){}
   }
