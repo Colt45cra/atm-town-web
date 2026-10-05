@@ -1,6 +1,7 @@
 /* NPC reward buttons use server-owned Payload amounts and wallet/period locks. */
 (function(global){
  'use strict';
+ function tokenName(code='ATM'){if(!/^[A-F0-9]{40}$/i.test(code))return code;return code.match(/../g).map(byte=>String.fromCharCode(parseInt(byte,16))).join('').replace(/\0/g,'')||code;}
  const profiles=[
   {id:'classic',panel:'atmGuidePanel',speech:'atmGuideWorldSpeech'},
   {id:'fuzzy',panel:'fuzzyXrpPanel',speech:'fuzzyXrpWorldSpeech'},
@@ -21,7 +22,7 @@
    profile.host.hidden=result.enabled===false;
    const paid=result.already_claimed===true&&result.claim_status==='success';
    profile.button.disabled=result.enabled===false||paid;
-   profile.button.textContent=paid?'Reward already claimed':result.already_claimed?'Check pending payment':`Claim ${result.amount} ${result.currency}`;
+   profile.button.textContent=paid?'Reward already claimed':result.already_claimed?'Check pending payment':`Claim ${result.amount} ${tokenName(result.currency)}`;
    profile.message.textContent=paid?(result.interval==='once'?'You already received this reward.':`Next reward period starts ${new Date(result.period?.endsAt).toLocaleString()}.`):result.already_claimed?'Your reward is processing. Check again to confirm payment.':'';
   }catch(error){profile.host.hidden=false;profile.button.disabled=false;profile.button.textContent='Check NPC reward';profile.message.textContent=error.message;}
   finally{profile.loading=false;}
@@ -37,10 +38,10 @@
    event.stopPropagation();if(profile.loading)return;button.disabled=true;message.textContent='Checking your reward…';
    try{
     if(!profile.result){await refresh(profile);return;}
-    const trust=await global.atmApiWithAuth('/api/xaman-vending-start?commerce=npc-atm-trustline',{method:'GET'});
+    const trust=await global.atmApiWithAuth(`/api/xaman-vending-start?commerce=npc-token-trustline&npc_id=${profile.id}`,{method:'GET'});
     if(!trust.has_trustline){
-     const request=await global.atmApiWithAuth('/api/xaman-vending-start?commerce=npc-atm-trustline',{method:'POST',body:'{}'});
-     if(request.deeplink){const link=document.createElement('a');link.textContent='Approve ATM trustline in Xaman';link.href=request.deeplink;link.target='_blank';link.rel='noopener';host.append(link);message.textContent='Approve the trustline, then click Claim again.';button.disabled=false;return;}
+     const request=await global.atmApiWithAuth(`/api/xaman-vending-start?commerce=npc-token-trustline&npc_id=${profile.id}`,{method:'POST',body:'{}'});
+     if(request.deeplink){const link=document.createElement('a');link.textContent=`Approve ${tokenName(profile.result.currency)} trustline in Xaman`;link.href=request.deeplink;link.target='_blank';link.rel='noopener';host.append(link);message.textContent='Approve the trustline, then click Claim again.';button.disabled=false;return;}
     }
     const result=await api('rewards-npc-claim',profile.id);message.textContent=result.message;
     if(result.ok){button.textContent='Reward received';button.disabled=true;profile.result.already_claimed=true;
