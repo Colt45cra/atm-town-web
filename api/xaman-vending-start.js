@@ -10,7 +10,7 @@ import {
   xamanError
 } from '../lib/xaman-vending.js';
 import { payloadIntegrationRequest } from '../lib/payload-integration.js';
-import { npcReceipt } from '../lib/npc-rewards.js';
+import { npcReceipt, npcProgram, npcPath } from '../lib/npc-rewards.js';
 import {
   ATTRIBUTE_STORE_DESTINATION,
   ATTRIBUTE_STORE_PAYMENT_WINDOW_MINUTES,
@@ -429,6 +429,18 @@ export default async function handler(req, res) {
 
   try {
     const commerce = String(req.query?.commerce || '').toLowerCase();
+    if (commerce === 'npc-token-trustline') {
+      await requireUser(req);
+      const npc = npcProgram(String(req.query?.npc_id || ''));
+      const asset = await payloadIntegrationRequest(npcPath(npc, 'settings'), null, { method: 'GET' });
+      return await handleLuci666Trustline(req, res, asset.currency, asset.issuer);
+    }
+    if (commerce === 'arcade-token-trustline') {
+      const { admin } = await requireUser(req);
+      const { data: rule, error } = await admin.from('arcade_reward_rules').select('reward_currency,reward_issuer,payload_program_slug,enabled').eq('game_id', String(req.query?.game_id || '')).single();
+      if (error || !rule?.enabled || !rule.payload_program_slug) throw Object.assign(new Error('This game has no active reward token.'), { status: 409 });
+      return await handleLuci666Trustline(req, res, rule.reward_currency, rule.reward_issuer);
+    }
     if (commerce === 'npc-atm-trustline') {
       return await handleLuci666Trustline(req, res, ATM_CURRENCY, ATM_ISSUER);
     }

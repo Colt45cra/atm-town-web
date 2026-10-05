@@ -34,3 +34,10 @@ test('enabled reward settings must fit Payload session cap and a funded ATM vaul
  await assert.rejects(validateRewardProgram('town-arcade',{atm_per_coin:'0.01',max_coins:10000,daily_atm_limit:'4'},request),/exceeds/);
  assert.equal(rewardUnits('0.000001'),1n);assert.throws(()=>rewardUnits('1e8'));
 });
+test('sponsor payout verifies the immutable session token rather than ATM',async()=>{
+ const db=database();db.read().reward_currency='46555A5A59000000000000000000000000000000';db.read().reward_issuer='rhCAT4hRdi2Y9puNdkpMzxrdKa5wkppR62';
+ const request=async()=>({...response(db),currency:db.read().reward_currency,issuer:db.read().reward_issuer});
+ assert.equal((await payArcadeReward(db,db.read().id,{request})).status,'paid');
+ const wrong=database();wrong.read().reward_currency=db.read().reward_currency;wrong.read().reward_issuer=db.read().reward_issuer;
+ assert.equal((await payArcadeReward(wrong,wrong.read().id,{request:async()=>response(wrong)})).status,'queued');
+});
