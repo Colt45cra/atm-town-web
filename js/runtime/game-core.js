@@ -2553,6 +2553,7 @@ if(loungeInteractionImg.complete&&loungeInteractionImg.naturalWidth)setTimeout(l
 const ATM_SUPABASE_URL='https://xnyjurertwohlqczaeux.supabase.co';
 const ATM_SUPABASE_KEY='sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD';
 let authSession=null;
+let lockerAdminAttributeUserId=null;
 let playerAccount=null;
 // v235.11.4 entry stability: once the player has deliberately entered the
 // town, late auth/passkey callbacks must never reopen the access flow over
@@ -6374,6 +6375,7 @@ function lockerXrplMappingPending(item){
   });
 }
 function lockerOwnershipInfo(item){
+  if(item?.type==='equipment'&&lockerAdminAttributeUserId&&lockerAdminAttributeUserId===authSession?.user?.id)return {owned:true,quantity:1,label:'ADMIN ACCESS',source:'admin'};
   if(item?.ownership==='saved')return {owned:true,quantity:1,label:'SAVED BUILD',source:'saved'};
   const officialMatches=lockerState.nfts.filter(nft=>lockerOfficialAttributeMatches(item,nft));
   if(officialMatches.length)return {owned:true,quantity:officialMatches.length,label:officialMatches.length>1?'ATTRIBUTE NFT ×'+officialMatches.length:'ATTRIBUTE NFT',source:'attribute-nft',matches:officialMatches};
@@ -6516,14 +6518,15 @@ function lockerEquipItem(item){
   if(Array.isArray(item.compatibleCharacterIds)&&!item.compatibleCharacterIds.includes(selectedCharacter)){
     const target=item.compatibleCharacterIds[0]||'classic';selectCharacter(target);lockerLoadout.base=lockerItemForCharacter(target)?.id||'character:classic';
   }
-  if(item.slot!=='base'&&lockerLoadout[item.slot]===item.id&&(item.id!=='equipment:jetpack'||ownership.source==='xrpl')){
+  if(item.slot!=='base'&&lockerLoadout[item.slot]===item.id&&(item.id!=='equipment:jetpack'||['xrpl','purchase','admin'].includes(ownership.source))){
     delete lockerLoadout[item.slot];lockerSaveLoadout();lockerState.selectedItemId=null;lockerSetStatus(item.name+' unequipped.','ok');lockerRender();broadcastState(true);return;
   }
   if(item.slot==='base'){
     if(selectCharacter(item.characterId)===false)return;lockerLoadout.base=item.id;
   }else if(item.id==='equipment:jetpack'){
     lockerLoadout.back=item.id;
-    if(ownership.source==='xrpl')lockerSetStatus('Jetpack equipped permanently from your verified You Are ATM NFT.','ok');
+    if(ownership.source==='admin')lockerSetStatus('Jetpack equipped with admin access.','ok');
+    else if(ownership.source==='xrpl')lockerSetStatus('Jetpack equipped permanently from your verified You Are ATM NFT.','ok');
     else lockerSetStatus('Jetpack is equipped automatically while vending time remains.','ok');
   }else{
     lockerLoadout[item.slot]=item.id;
@@ -6567,7 +6570,7 @@ window.atmLockerInventoryChanged=()=>{if(lockerState.status==='ready'&&!lockerSt
 window.atmLockerAccountUpdated=()=>{lockerUpdateWalletBadge();lockerRefreshOnboardingCharacterLocks();if(lockerState.open&&lockerWalletAddress())lockerRefreshXrpl(true);else lockerRender();};
 window.atmInventory=Object.freeze({catalog:ATM_ITEM_CATALOG,collection:ATM_YOU_ARE_ATM_COLLECTION,traitRules:ATM_YOU_ARE_ATM_TRAIT_RULES,open:()=>lockerOpen(),refreshXrpl:()=>lockerRefreshXrpl(false),entitlements:()=>ATM_ITEM_CATALOG.filter(item=>lockerOwnershipInfo(item).source==='xrpl').map(item=>item.id),grantFoundItem:lockerGrantFoundItem,revokeFoundItem:lockerRevokeFoundItem});
 window.atmLockerOwns=(itemId)=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id===itemId);return !!item&&lockerOwnershipInfo(item).owned;};
-window.atmLockerPermanentJetpackEquipped=()=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id==='equipment:jetpack');const source=item?lockerOwnershipInfo(item).source:'';return lockerLoadout.back==='equipment:jetpack'&&!!item&&(source==='xrpl'||source==='purchase');};
+window.atmLockerPermanentJetpackEquipped=()=>{const item=ATM_ITEM_CATALOG.find(entry=>entry.id==='equipment:jetpack');const source=item?lockerOwnershipInfo(item).source:'';return lockerLoadout.back==='equipment:jetpack'&&!!item&&(source==='xrpl'||source==='purchase'||source==='admin');};
 
 function lockerUpdateWalletBadge(){
   const node=document.getElementById('lockerWalletBadge');if(!node)return;
@@ -6876,8 +6879,9 @@ async function attributeStoreRefreshCommerceNow(){
     if(response.ok){applyPublishedAttributes(data.attributes);attributeStoreServerPrices=data?.prices&&typeof data.prices==='object'?data.prices:Object.create(null);attributeStoreCommerceLoaded=true;}
   }catch(error){console.warn('Attribute Store pricing refresh failed:',error);}
   if(authSession?.access_token){
-    try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store&mode=entitlements');lockerPurchasedItems.clear();for(const id of data?.item_ids||[])lockerPurchasedItems.add(String(id));}
-    catch(error){console.warn('Attribute entitlement refresh failed:',error);}
+    const entitlementUserId=authSession.user.id;
+    try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store&mode=entitlements');if(authSession?.user?.id!==entitlementUserId)return;lockerAdminAttributeUserId=data.admin_attribute_access===true?entitlementUserId:null;lockerPurchasedItems.clear();for(const id of data?.item_ids||[])lockerPurchasedItems.add(String(id));}
+    catch(error){lockerAdminAttributeUserId=null;console.warn('Attribute entitlement refresh failed:',error);}
   }
   attributeStoreNormalizeCart();if(attributeStoreState.open)attributeStoreRender();if(lockerState.open)lockerRender();
 }
