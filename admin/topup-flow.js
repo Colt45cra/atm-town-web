@@ -33,3 +33,9 @@ export async function startFundingFlow({slug,amount,symbol,button,host,api,node,
  catch(error){stop();host.replaceChildren(node('p',error.message));status(error.message);}
  finally{button.disabled=false;}
 }
+
+export async function cancelFundingDraft({slug,cycleId,button,host,api,onCancelled,status}) {
+ host._stopFunding?.();button.disabled=true;
+ try{const result=await api('admin-wallet-topup-cancel',{slug,cycle_id:cycleId});if(result.cancelled!==true)throw new Error('Top-up cancellation was not confirmed.');host.replaceChildren();await onCancelled();status(result.message||'Top-up cancelled. Enter a new amount.');return true;}
+ catch(error){status(error.message);return false;}finally{button.disabled=false;}
+}
