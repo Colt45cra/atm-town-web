@@ -107,6 +107,8 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       if(text)text.textContent='Well, look who wandered into my corner of ATM Town. Pick a question, LightBringer. I deal in sixes — check my welcome gift for today’s reward.';
     }else if(id==='gift'&&state.rewardClaim?.enabled===false){
       if(text)text.textContent='My token rewards are currently turned off. You can still learn about $666 here.';
+    }else if(id==='gift'&&state.rewardClaim?.eligible===false){
+      if(text)text.textContent=state.rewardClaim.reason||'Your account is not ready for this reward yet.';
     }else if(id==='gift'&&state.rewardClaim?.already_claimed===true){
       if(text)text.textContent=claimedWelcome(state.rewardClaim);
     }else if(id==='gift'){
@@ -114,7 +116,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
     }else if(item){
       state.answered.add(id);if(text)text.textContent=item.answer;
     }
-    if(claim){claim.textContent=`CLAIM ${state.rewardClaim?.amount||'6'} $666`;claim.classList.toggle('visible',id==='gift'&&state.rewardClaim?.enabled!==false&&(state.rewardClaim?.already_claimed!==true||state.rewardClaim?.claim_status!=='success'));}
+    if(claim){claim.textContent=`CLAIM ${state.rewardClaim?.amount||'6'} $666`;claim.classList.toggle('visible',id==='gift'&&state.rewardClaim?.eligible!==false&&state.rewardClaim?.enabled!==false&&(state.rewardClaim?.already_claimed!==true||state.rewardClaim?.claim_status!=='success'));}
     renderQuestions();
   }
 
