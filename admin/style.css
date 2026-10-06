@@ -12,3 +12,5 @@ select{width:100%;padding:10px;border-radius:8px;border:1px solid #34405a;backgr
 
 .funding-note{grid-column:1/-1;color:#a8b6ca;line-height:1.5}
 
+
+.cancel-topup{grid-column:1/-1;background:transparent;border:1px solid #66748e;color:#dae3f4}
