@@ -202,6 +202,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       if(typeof global.ATMLuci666?.getRewardStatus==='function'){
         const claim=await global.ATMLuci666.getRewardStatus();
         if(claim?.enabled===false){giftState.mode='disabled';giftState.coin=null;document.getElementById('luci666PrivateCoin')?.classList.remove('visible');speechText('My rewards are currently turned off. You can still learn about $666 here.');return;}
+        if(claim?.eligible===false){giftState.mode='ineligible';giftState.coin=null;document.getElementById('luci666PrivateCoin')?.classList.remove('visible');speechText(claim.reason||'Your account is not ready for this reward yet.');return;}
         const coin=document.getElementById('luci666PrivateCoin');if(coin){coin.textContent=String(claim?.amount||'6');coin.dataset.reward=`${claim?.amount||'6'} $666`;coin.setAttribute('aria-label',`Pick up ${claim?.amount||'6'} $666`);}
         if(claim?.already_claimed===true&&claim?.claim_status!=='success'){
           giftState.mode='pending';giftState.coin=null;

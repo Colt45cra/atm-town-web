@@ -1,3 +1,4 @@
+import { luciEligibility } from '../lib/npc-security.js';
 import { loadAttributeDefinitions, publicAttributeDefinitions, adminAttributeAccess } from '../lib/attribute-catalog.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
@@ -241,12 +242,13 @@ async function resolveLuciRewardWallet(req) {
   if (!account?.wallet_verified_at || !XRPL_ADDRESS.test(wallet)) {
     throw Object.assign(new Error('Link and verify a Mainnet Xaman wallet in ATM Town before claiming Luci’s reward.'), { status: 409 });
   }
-  return { admin, user, wallet, walletSource: 'xaman_linked', walletLabel: 'Xaman linked wallet' };
+  return { admin, user, wallet, security: luciEligibility(user,account), walletSource: 'xaman_linked', walletLabel: 'Xaman linked wallet' };
 }
 
 async function handleLuci666RewardStatus(req, res) {
-  const { user, wallet, walletSource, walletLabel } = await resolveLuciRewardWallet(req);
-  const path = '/api/integrations/v1/reward-programs/luci-666-welcome/claim?walletAddress=' + encodeURIComponent(wallet);
+  const { user, wallet, walletSource, walletLabel, security } = await resolveLuciRewardWallet(req);
+  if(!security.eligible)return res.status(200).json({ok:true,network:'mainnet',wallet,wallet_source:walletSource,wallet_label:walletLabel,...security,already_claimed:false});
+  const path = '/api/integrations/v1/reward-programs/luci-666-welcome/claim?walletAddress=' + encodeURIComponent(wallet) + '&externalUserId=' + encodeURIComponent(user.id);
   const result = await payloadIntegrationRequest(path, null, { method: 'GET', timeoutMs: 15_000 });
   return res.status(200).json({
     ok: true,
@@ -270,8 +272,9 @@ async function handleLuci666RewardStatus(req, res) {
 }
 
 async function handleLuci666RewardClaim(req, res) {
-  const { user, wallet, walletSource, walletLabel } = await resolveLuciRewardWallet(req);
+  const { user, wallet, walletSource, walletLabel, security } = await resolveLuciRewardWallet(req);
 
+  if(!security.eligible)throw Object.assign(new Error(security.reason),{status:403});
   if (!(await checkLuci666Trustline(wallet))) {
     throw Object.assign(new Error('Create the $666 trustline before claiming Luci’s reward.'), { status: 409 });
   }
