@@ -3902,7 +3902,7 @@ function drawPlayerNameplate(x,labelBottom,name,activity=null){
   ctx.restore();
 }
 
-function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,characterId='classic',jetpackActive=false,jetpackThrusting=false,jetpackEquipped=false,equipmentLoadout=null,activity=null,suppressShadow=false){
+function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,characterId='classic',jetpackActive=false,jetpackThrusting=false,jetpackEquipped=false,equipmentLoadout=null,activity=null,suppressShadow=false,fishing=null){
   // Jetpack flight uses the directional idle frame. All other jumps freeze on
   // one directional walking-step frame so the legs are posed but not animated.
   if(jetpackActive){frame=1;bob=0;}
@@ -3910,6 +3910,8 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
   const directionAlias={upLeft:'up',upRight:'up',downLeft:'down',downRight:'down'};
   const visualDir=directionAlias[dir]||dir;
   if(!CHARACTER_SHEETS[characterId]&&!CHARACTER_SPRITES[characterId])characterId='classic';
+  const fishingPose=visualDir==='left'&&jumpAmount<=0.01&&!jetpackActive?window.ATMFishing?.armPose?.(fishing):null;
+  if(fishingPose){frame=1;bob=0;}
   const activeLoadout=equipmentLoadout||window.atmActiveLoadout||{};
   const bodyItemId=equippedLayerCompatible(activeLoadout.body,characterId)?activeLoadout.body:null;
   const bodySheetConfig=bodyItemId?ATM_EQUIPMENT_SHEETS[bodyItemId]:null;
@@ -3972,7 +3974,8 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
       ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba(88,241,230,.5)';ctx.beginPath();ctx.moveTo(hiddenNozzleX-2.5,hiddenNozzleY);ctx.lineTo(hiddenNozzleX+2.5,hiddenNozzleY);ctx.lineTo(hiddenNozzleX,hiddenNozzleY+12+hiddenFlamePulse);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(255,139,36,.72)';ctx.beginPath();ctx.moveTo(hiddenNozzleX-1.6,hiddenNozzleY+.5);ctx.lineTo(hiddenNozzleX+1.6,hiddenNozzleY+.5);ctx.lineTo(hiddenNozzleX,hiddenNozzleY+6+hiddenFlamePulse*.55);ctx.closePath();ctx.fill();ctx.restore();
     }
 
-    if(sourceRect)ctx.drawImage(image,sourceRect.sx,sourceRect.sy,sourceRect.sw,sourceRect.sh,drawX,drawY,dw,dh);
+    if(sourceRect&&fishingPose)window.ATMFishing.drawArmLayer(ctx,image,sourceRect.sx,sourceRect.sy,sourceRect.sw,sourceRect.sh,drawX,drawY,dw,dh,fishingPose);
+    else if(sourceRect)ctx.drawImage(image,sourceRect.sx,sourceRect.sy,sourceRect.sw,sourceRect.sh,drawX,drawY,dw,dh);
     else ctx.drawImage(image,drawX,drawY,dw,dh);
 
     // All ATM equipment sheets use the same expanded 3x4 frame standard.
@@ -3991,7 +3994,8 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
       const lay=Number.isFinite(layerConfig.anchorY)?layerConfig.anchorY:lfh-1;
       const ldw=Math.round(lfw*ls),ldh=Math.round(lfh*ls);
       const ldx=Math.round(x-lax*ls),ldy=Math.round(visualFootY-lay*ls);
-      ctx.drawImage(layerImage,lframe*lfw,lrow*lfh,lfw,lfh,ldx,ldy,ldw,ldh);
+      if(fishingPose&&layerConfig.slot==='hands')window.ATMFishing.drawArmLayer(ctx,layerImage,lframe*lfw,lrow*lfh,lfw,lfh,ldx,ldy,ldw,ldh,fishingPose,true);
+      else ctx.drawImage(layerImage,lframe*lfw,lrow*lfh,lfw,lfh,ldx,ldy,ldw,ldh);
     };
 
     if(CHARACTER_SHEETS[characterId]){
@@ -4127,10 +4131,10 @@ function drawHQPlayersAndOccluders(){
   }
 }
 
-function drawHordePlayerSprite({x,y,dir,frame,name='',alpha=1,bob=0,jump=0,character='classic',jetpackActive=false,jetpack=false,jetpackEquipped=false,loadout=null,activity=null,downed=false}){
+function drawHordePlayerSprite({x,y,dir,frame,name='',alpha=1,bob=0,jump=0,character='classic',jetpackActive=false,jetpack=false,jetpackEquipped=false,loadout=null,activity=null,downed=false,fishing=null}){
   ctx.save();
   if(downed){const pivotY=y+20;ctx.translate(x,pivotY);ctx.rotate(Math.PI/2);ctx.translate(-x,-pivotY);}
-  drawPlayerSprite(x,y,dir,frame,downed?'':name,alpha,bob,jump,character,jetpackActive,jetpack,jetpackEquipped,loadout,downed?null:activity,downed);
+  drawPlayerSprite(x,y,dir,frame,downed?'':name,alpha,bob,jump,character,jetpackActive,jetpack,jetpackEquipped,loadout,downed?null:activity,downed,downed?null:fishing);
   ctx.restore();
   if(downed&&name)drawPlayerNameplate(x,y-55,name,{label:'DOWN'});
 }
@@ -4189,7 +4193,7 @@ function drawDepthScene(t){
         if(remoteInvisible)continue;
         const propOverride=window.ATMPropHunt?.drawPlayerOverride?.(ctx,{sessionId:item.id,isLocal:false,map:item.p.map,x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,alpha:.92,name:item.p.name})===true;
         if(!propOverride){
-          drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
+          drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned,fishing:item.p.afk?null:item.p.fishing});
           window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
           if(!remoteDowned)window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
         }
@@ -4205,7 +4209,7 @@ function drawDepthScene(t){
         const localDowned=window.ATMZombieOutbreak?.isLocalDowned?.()===true;
         const localPropOverride=window.ATMPropHunt?.drawPlayerOverride?.(ctx,{sessionId:playerId,isLocal:true,map:currentMap,x:player.x,y:player.y,jumpAmount:jumpLift(),alpha:(powerUps.invisibility>0 ? .28 : 1),name:playerName})===true;
         if(!localPropOverride){
-          drawHordePlayerSprite({x:player.x,y:player.y,dir:player.dir,frame:player.frame,name:'',alpha:(powerUps.invisibility>0 ? .28 : 1),bob,jump:jumpLift(),character:selectedCharacter,jetpackActive:jetpackState.active,jetpack:jetpackState.thrusting,jetpackEquipped:canUseJetpack(),loadout:window.atmActiveLoadout||null,downed:localDowned});
+          drawHordePlayerSprite({x:player.x,y:player.y,dir:player.dir,frame:player.frame,name:'',alpha:(powerUps.invisibility>0 ? .28 : 1),bob,jump:jumpLift(),character:selectedCharacter,jetpackActive:jetpackState.active,jetpack:jetpackState.thrusting,jetpackEquipped:canUseJetpack(),loadout:window.atmActiveLoadout||null,downed:localDowned,fishing:window.ATMFishing?.publicState?.()});
           window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:localDowned,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});
         }
       }
@@ -7011,7 +7015,7 @@ setInterval(()=>{if(!onlineMode)return;const count=Math.max(1,atmPeopleOnlinePla
 
 window.ATMFishing?.init?.({
  ready:()=>townEntryActive&&!dialogOpen&&!vendingOpen,
- pose:()=>({x:player.x,y:player.y,map:currentMap,airborne:jumpState.active||jetpackState.active}),
+ pose:()=>({x:player.x,y:player.y,map:currentMap,character:selectedCharacter,airborne:jumpState.active||jetpackState.active}),
  face:dir=>{player.dir=dir;player.frame=1;},
  broadcast:()=>broadcastState(true),
  travel:async point=>{if(dialogOpen||vendingOpen||jumpState.active||jetpackState.active||window.ATMZombieOutbreak?.isLocalDowned?.())throw Error('Land and close the current activity before travelling.');if(currentMap!=='town')switchMap('town');await townWorldStream.ready;await townWorldStream.preloadPlayerNeighborhood(point.x,point.y);player.x=point.x;player.y=point.y;player.dir='left';joy.x=joy.y=0;endJoy();ensureTownPlayerWalkable('fishing-preview');broadcastState(true);}
