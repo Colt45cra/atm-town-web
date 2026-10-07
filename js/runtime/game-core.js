@@ -4022,6 +4022,11 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
       ctx.drawImage(jetpackOverlayImg,overlayFrame*overlayFrameWidth,overlayRowIndex*overlayFrameHeight,overlayFrameWidth,overlayFrameHeight,overlayDrawX,overlayDrawY,overlayDestW,overlayDestH);
     }
 
+    // The rod sits over the body, but the bent forearm and glove grip it from above.
+    if(fishing&&!suppressShadow&&currentMap==='town'){
+      window.ATMFishing?.drawHeldRod?.(ctx,fishing);
+      if(fishingPose&&sourceRect)window.ATMFishing.drawArmLayer(ctx,image,sourceRect.sx,sourceRect.sy,sourceRect.sw,sourceRect.sh,drawX,drawY,dw,dh,fishingPose,true);
+    }
     // Hands/gloves are a foreground layer and must remain visible over the jetpack.
     if(equippedLayerCompatible(activeLoadout.hands,characterId))drawEquipmentLayer(activeLoadout.hands);
 
@@ -5752,8 +5757,6 @@ function loop(t){
   window.ATMWorldEvents?.drawGround?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom});
   drawWorldAliveGroundEffects();
   drawDepthScene(t);
-  // Draw the rod over the posed hands so the grip stays visible.
-  if(currentMap==='town')window.ATMFishing?.draw?.(ctx,t,{x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},remotePlayers.values());
   window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
   drawWorldAliveOverlay(t);
   // Horde Nightfall restricts visibility to the player bubble and authored
