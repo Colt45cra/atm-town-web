@@ -3077,7 +3077,7 @@ function trackTownVisit(){
 function broadcastState(force=false){
   trackTownVisit();
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,...townPresenceIdentity(),name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,...townPresenceIdentity(),fishing:window.ATMFishing?.publicState?.()||null,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
 window.addEventListener('atm:world-event-triggered',(event)=>{
   if(!onlineMode||!realtimeChannel)return;
@@ -5731,7 +5731,7 @@ function drawMini(){
 
 function loop(t){
   pollGamepad(t);
-  const dt=Math.min((t-last)/1000,.033);last=t;update(dt);
+  const dt=Math.min((t-last)/1000,.033);last=t;update(dt);window.ATMFishing?.update?.(t);
   // Luci's reward pickup must use the authoritative player coordinates from
   // the game engine. The dynamically loaded NPC overlay cannot reliably read
   // this file's top-level lexical player binding on every mobile browser.
@@ -5749,6 +5749,7 @@ function loop(t){
   drawWorldAliveGroundEffects();
   drawDepthScene(t);
   window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
+  window.ATMFishing?.draw?.(ctx,t,{x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},remotePlayers.values());
   drawWorldAliveOverlay(t);
   // Horde Nightfall restricts visibility to the player bubble and authored
   // street lamps. The blackout is drawn first, then the street-light layer
@@ -7006,3 +7007,11 @@ window.addEventListener('focus',()=>attributeStoreRefreshCommerce());
 document.addEventListener('visibilitychange',()=>{if(onlineMode&&realtimeChannel){broadcastState(true);realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,...townPresenceIdentity(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}).catch(()=>{});}});
 
 setInterval(()=>{if(!onlineMode)return;const count=Math.max(1,atmPeopleOnlinePlayers().length);currentOnlineCount=count;window.ATMPeopleHub?.setOnlineCount?.(count);},1000);
+
+window.ATMFishing?.init?.({
+ ready:()=>townEntryActive&&!dialogOpen&&!vendingOpen,
+ pose:()=>({x:player.x,y:player.y,map:currentMap,airborne:jumpState.active||jetpackState.active}),
+ face:dir=>{player.dir=dir;player.frame=1;},
+ broadcast:()=>broadcastState(true),
+ travel:async point=>{if(dialogOpen||vendingOpen||jumpState.active||jetpackState.active||window.ATMZombieOutbreak?.isLocalDowned?.())throw Error('Land and close the current activity before travelling.');if(currentMap!=='town')switchMap('town');await townWorldStream.ready;await townWorldStream.preloadPlayerNeighborhood(point.x,point.y);player.x=point.x;player.y=point.y;player.dir='left';joy.x=joy.y=0;endJoy();ensureTownPlayerWalkable('fishing-preview');broadcastState(true);}
+});
