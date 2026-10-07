@@ -5747,9 +5747,10 @@ function loop(t){
   if(currentMap==='town')drawCoins(t);
   window.ATMWorldEvents?.drawGround?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom});
   drawWorldAliveGroundEffects();
+  // Fishing gear sits behind the character sprites and world occluders.
+  if(currentMap==='town')window.ATMFishing?.draw?.(ctx,t,{x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},remotePlayers.values());
   drawDepthScene(t);
   window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
-  window.ATMFishing?.draw?.(ctx,t,{x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},remotePlayers.values());
   drawWorldAliveOverlay(t);
   // Horde Nightfall restricts visibility to the player bubble and authored
   // street lamps. The blackout is drawn first, then the street-light layer
