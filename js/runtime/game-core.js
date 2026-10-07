@@ -3016,6 +3016,8 @@ async function connectMultiplayer(){
       },20000);
 
       realtimeChannel.subscribe(async channelStatus=>{
+        // Supabase invokes SUBSCRIBED again after reconnect, even after the join promise settles.
+        if(channelStatus==='SUBSCRIBED')window.ATMWorldEvents?.refresh?.('multiplayer-reconnected');
         if(settled)return;
         if(channelStatus==='SUBSCRIBED'){
           settled=true;
