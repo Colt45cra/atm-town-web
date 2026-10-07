@@ -13,7 +13,7 @@
     if(!value||typeof value!=='object')return null;
     const pay=value.atmPay||value;
     const userId=String(pay?.user_id||'');const handle=String(pay?.handle||'').toLowerCase();
-    return {session_id:String(value.session_id||''),user_id:userId,handle:/^[a-z0-9_]{3,20}$/.test(handle)?handle:'',display_name:String(pay?.display_name||value.name||'ATM Player').slice(0,30),character_id:String(pay?.character_id||value.character_id||'classic').slice(0,40),map:String(value.map||''),nearby:!!value.nearby,distance:Number.isFinite(value.distance)?Number(value.distance):null,is_self:!!value.is_self,atm_pay_ready:!!userId&&/^[a-z0-9_]{3,20}$/.test(handle)};
+    return {afk:!!value.afk,session_id:String(value.session_id||''),user_id:userId,handle:/^[a-z0-9_]{3,20}$/.test(handle)?handle:'',display_name:String(pay?.display_name||value.name||'ATM Player').slice(0,30),character_id:String(pay?.character_id||value.character_id||'classic').slice(0,40),map:String(value.map||''),nearby:!!value.nearby,distance:Number.isFinite(value.distance)?Number(value.distance):null,is_self:!!value.is_self,atm_pay_ready:!!userId&&/^[a-z0-9_]{3,20}$/.test(handle)};
   }
   function thumb(person){return CHARACTER_THUMBS[String(person?.character_id||'classic')]||CHARACTER_THUMBS.classic;}
   function avatar(person){return `<span class="peopleHubAvatar"><img src="${esc(thumb(person))}" alt=""></span>`;}
@@ -126,7 +126,7 @@
     const p=normalizePerson(person);if(!p)return '';
     const payReady=pay&&p.atm_pay_ready&&!p.is_self,pingReady=ping&&!!p.user_id&&!p.is_self;
     const actions=(pingReady||payReady)?`<span class="peopleHubPersonActions">${pingReady?`<button class="peopleHubPingBtn" type="button" data-people-ping="${esc(p.user_id)}">Ping</button>`:''}${payReady?`<button class="peopleHubPayBtn" type="button" data-people-pay="${esc(p.user_id)}">Pay</button>`:''}</span>`:'';
-    return `<div class="peopleHubPerson">${avatar(p)}<span class="peopleHubPersonMain"><b>${esc(p.display_name)}${p.is_self?' · You':''}</b>${p.handle?`<span class="peopleHubHandle">@${esc(p.handle)}</span>`:''}${showStatus?`<span>${esc(statusText(p))}</span>`:''}<span class="peopleHubBadges">${p.nearby&&!p.is_self?'<span class="peopleHubPill near">Nearby</span>':''}${p.atm_pay_ready?'<span class="peopleHubPill">ATM Pay</span>':''}</span></span>${actions}</div>`;
+    return `<div class="peopleHubPerson">${avatar(p)}<span class="peopleHubPersonMain"><b>${esc(p.display_name)}${p.is_self?' · You':''}</b>${p.handle?`<span class="peopleHubHandle">@${esc(p.handle)}</span>`:''}${showStatus?`<span>${esc((p.afk?'AFK · ':'')+statusText(p))}</span>`:''}<span class="peopleHubBadges">${p.nearby&&!p.is_self?'<span class="peopleHubPill near">Nearby</span>':''}${p.atm_pay_ready?'<span class="peopleHubPill">ATM Pay</span>':''}</span></span>${actions}</div>`;
   }
   function bindPersonButtons(host){host?.querySelectorAll('[data-people-pay]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePay||''));if(person)payPerson(person);}));host?.querySelectorAll('[data-people-ping]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePing||''));if(person)openPingComposer(person);}));}
   function renderOnline(){

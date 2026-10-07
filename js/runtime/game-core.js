@@ -450,6 +450,7 @@ function hasCurrentCharacterSelectionIntent(){
   const currentUserId=String(authSession?.user?.id||'');
   return !characterSelectionOwnerUserId||characterSelectionOwnerUserId===currentUserId;
 }
+function townPresenceIdentity(){let guestId=safeStorageGet('atm-town-visitor','');if(!guestId){guestId=crypto.randomUUID();safeStorageSet('atm-town-visitor',guestId);}return {account_id:window.atmEntryMode==='guest'?null:(authSession?.user?.id||null),guest_id:guestId,afk:document.hidden};}
 let playerId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2));
 let roomName='atm-town-alpha';
 let supabaseClient=null, realtimeChannel=null, onlineMode=false;
@@ -2198,7 +2199,7 @@ function getGalleryPlayerRenderMetrics(item){
       top:item.p.drawY-52,
       bottom:item.p.drawY+20,
       draw(){
-        drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
+        drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
         window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
       }
     };
@@ -2389,7 +2390,7 @@ function buildArcadeForegroundPieces(){
   console.log('ATM Token Arcade foreground objects loaded:',arcadeForegroundPieces.length);
 }
 function getArcadePlayerRenderMetrics(item){
-  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
+  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
   const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0;
   return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
 }
@@ -2523,7 +2524,7 @@ function buildLoungeForegroundPieces(){
   console.log('Community Lounge foreground objects loaded:',loungeForegroundPieces.length);
 }
 function getLoungePlayerRenderMetrics(item){
-  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
+  if(item.type==='remote')return{x:item.p.drawX,y:item.p.drawY,footY:item.p.drawY+20,left:item.p.drawX-32,right:item.p.drawX+32,top:item.p.drawY-52,bottom:item.p.drawY+20,draw(){drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});}};
   const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*2:0;
   return{x:player.x,y:player.y,footY:player.y+20,left:player.x-32,right:player.x+32,top:player.y-52,bottom:player.y+20,draw(){drawPlayerSprite(player.x,player.y,player.dir,player.frame,'',(powerUps.invisibility>0 ? .28 : 1),bob,jumpLift(),selectedCharacter,jetpackState.active,jetpackState.thrusting,canUseJetpack(),window.atmActiveLoadout||null);window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:player.x,y:player.y,jumpAmount:jumpLift(),downed:false,fireActive:powerUps.fire>0,invisible:powerUps.invisibility>0,local:true});}};
 }
@@ -2965,7 +2966,7 @@ async function connectMultiplayer(){
         const id=String(meta.id||presenceKey||'');
         if(!id)continue;
         presencePlayers.set(id,{
-          id,
+          id,account_id:meta.account_id||null,guest_id:meta.guest_id||null,afk:!!meta.afk,
           name:String(meta.name||'Player').slice(0,30),
           map:String(meta.map||''),
           character:String(meta.character||'classic').slice(0,40),
@@ -2973,7 +2974,7 @@ async function connectMultiplayer(){
           atmPay:meta.atmPay&&typeof meta.atmPay==='object'?meta.atmPay:null
         });
       }
-      currentOnlineCount=Math.max(1,presencePlayers.size);
+      currentOnlineCount=Math.max(1,atmPeopleOnlinePlayers().length);
       if(window.ATMPeopleHub?.setOnlineCount)window.ATMPeopleHub.setOnlineCount(currentOnlineCount);
       else document.getElementById('onlineBadge').textContent=currentOnlineCount+' online';
       window.dispatchEvent(new CustomEvent('atm:online-players-changed'));
@@ -3004,7 +3005,7 @@ async function connectMultiplayer(){
       const amount=Number(payload.amountXrp||0);showXrplPaymentToast(`${payload.buyerName||'A player'} made a ${amount} XRP offer on your displayed NFT.`,'success',10000);
       lockerState.nftBuyOffers.delete(String(payload.tokenId||'').toUpperCase());
     });
-    realtimeChannel.on('broadcast',{event:'leave'},({payload})=>{remotePlayers.delete(payload.id);window.dispatchEvent(new CustomEvent('atm:online-players-changed'));});
+    realtimeChannel.on('broadcast',{event:'leave'},({payload})=>{remotePlayers.delete(payload.id);presencePlayers.delete(payload.id);window.dispatchEvent(new CustomEvent('atm:online-players-changed'));});
 
     await new Promise((resolve,reject)=>{
       let settled=false;
@@ -3021,7 +3022,7 @@ async function connectMultiplayer(){
           clearTimeout(timer);
           try{
             onlineMode=true;
-            await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
+            await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),...townPresenceIdentity(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
             broadcastState(true);
             if(authSession?.user&&window.atmEntryMode!=='guest'){
               const committedCharacter=selectedCharacter;
@@ -3076,7 +3077,7 @@ function trackTownVisit(){
 function broadcastState(force=false){
   trackTownVisit();
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,...townPresenceIdentity(),name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
 window.addEventListener('atm:world-event-triggered',(event)=>{
   if(!onlineMode||!realtimeChannel)return;
@@ -3192,7 +3193,7 @@ async function resumeMultiplayerConnection(){
     const channelReady=onlineMode&&realtimeChannel&&(realtimeChannel.state==='joined'||realtimeChannel.state==='subscribed');
     if(channelReady){
       try{
-        await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
+        await realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,online_at:new Date().toISOString(),...townPresenceIdentity(),atmPay:window.ATMPay?.getPublicIdentity?.()||null});
         broadcastState(true);
         setTimeout(()=>broadcastState(true),300);
         return;
@@ -3236,7 +3237,8 @@ window.atmSendChat=sendChat;
 function updateRemoteInterpolation(){
   const now=Date.now();
   for(const [id,p] of remotePlayers){
-    if(now-p.lastSeen>12000){remotePlayers.delete(id);continue;}
+    if(!window.ATMPlayerPresence.alive(p,now)){remotePlayers.delete(id);presencePlayers.delete(id);continue;}
+    if(window.ATMPlayerPresence.afk(p,now)){p.frame=1;p.jump=0;p.jetpackActive=false;}
     const beforeX=Number(p.drawX),beforeY=Number(p.drawY);
     p.drawX+=(p.x-p.drawX)*.22;
     p.drawY+=(p.y-p.drawY)*.22;
@@ -4071,7 +4073,7 @@ function getHQPlayerRenderMetrics(item){
       top:item.p.drawY-52,
       bottom:item.p.drawY+20,
       draw(){
-        drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name,.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
+        drawPlayerSprite(item.p.drawX,item.p.drawY,item.p.dir,item.p.frame,item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),.92,0,item.p.jump||0,item.p.character||'classic',!!item.p.jetpackActive,!!item.p.jetpack,!!item.p.jetpackEquipped,item.p.loadout||null,item.p.activity||null);
         window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:false,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
       }
     };
@@ -4180,7 +4182,7 @@ function drawDepthScene(t){
         if(remoteInvisible)continue;
         const propOverride=window.ATMPropHunt?.drawPlayerOverride?.(ctx,{sessionId:item.id,isLocal:false,map:item.p.map,x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,alpha:.92,name:item.p.name})===true;
         if(!propOverride){
-          drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name,alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
+          drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned});
           window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
           if(!remoteDowned)window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
         }
@@ -4641,7 +4643,7 @@ restoreAtmPeopleEncounters();
 function atmPeopleOnlinePlayers(){
   const now=Date.now();const out=[];const seen=new Set();
   const selfIdentity=normalizeRemoteAtmPayIdentity(window.ATMPay?.getPublicIdentity?.());
-  out.push({session_id:playerId,name:playerName||'You',map:currentMap,character_id:selectedCharacter,is_self:true,distance:0,nearby:false,atmPay:selfIdentity});
+  out.push({...townPresenceIdentity(),lastSeen:now,session_id:playerId,name:playerName||'You',map:currentMap,character_id:selectedCharacter,is_self:true,distance:0,nearby:false,atmPay:selfIdentity});
   seen.add(String(playerId));
 
   // Supabase Presence is the authoritative online roster. player_state broadcasts
@@ -4651,7 +4653,7 @@ function atmPeopleOnlinePlayers(){
   for(const [id,presence] of presencePlayers){
     const sessionId=String(id||'');if(!sessionId||sessionId===String(playerId))continue;
     const remote=remotePlayers.get(id)||remotePlayers.get(sessionId)||null;
-    const liveRemote=remote&&now-(remote.lastSeen||0)<=12000?remote:null;
+    const liveRemote=remote&&window.ATMPlayerPresence.alive(remote,now)?remote:null;
     const source=liveRemote||presence||{};
     const map=String(source.map||presence?.map||'');
     const sameMap=map===currentMap;
@@ -4659,20 +4661,20 @@ function atmPeopleOnlinePlayers(){
     const distance=liveRemote&&sameMap&&Number.isFinite(x)&&Number.isFinite(y)?Math.hypot(player.x-x,player.y-y):null;
     const identity=normalizeRemoteAtmPayIdentity(liveRemote?.atmPay||presence?.atmPay);
     if(identity&&distance!==null)rememberAtmPeopleEncounter(sessionId,liveRemote||presence,identity,distance);
-    out.push({session_id:sessionId,name:String(liveRemote?.name||presence?.name||identity?.display_name||'Player').slice(0,30),map,character_id:String(liveRemote?.character||presence?.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
+    out.push({account_id:source.account_id||presence?.account_id,guest_id:source.guest_id||presence?.guest_id,afk:liveRemote?window.ATMPlayerPresence.afk(liveRemote,now):!!presence.afk,lastSeen:liveRemote?.lastSeen||0,session_id:sessionId,name:String(liveRemote?.name||presence?.name||identity?.display_name||'Player').slice(0,30),map,character_id:String(liveRemote?.character||presence?.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
     seen.add(sessionId);
   }
 
   // A fresh player_state can arrive just before Presence sync. Keep that short race
   // visible, then Presence becomes authoritative on the next sync.
   for(const [id,p] of remotePlayers){
-    const sessionId=String(id||'');if(!sessionId||seen.has(sessionId)||now-(p.lastSeen||0)>12000)continue;
+    const sessionId=String(id||'');if(!sessionId||seen.has(sessionId)||!window.ATMPlayerPresence.alive(p,now))continue;
     const sameMap=p.map===currentMap;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);const distance=sameMap&&Number.isFinite(x)&&Number.isFinite(y)?Math.hypot(player.x-x,player.y-y):null;
     const identity=normalizeRemoteAtmPayIdentity(p.atmPay);if(identity&&distance!==null)rememberAtmPeopleEncounter(sessionId,p,identity,distance);
-    out.push({session_id:sessionId,name:String(p.name||identity?.display_name||'Player').slice(0,30),map:String(p.map||''),character_id:String(p.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
+    out.push({account_id:p.account_id,guest_id:p.guest_id,afk:window.ATMPlayerPresence.afk(p,now),lastSeen:p.lastSeen,session_id:sessionId,name:String(p.name||identity?.display_name||'Player').slice(0,30),map:String(p.map||''),character_id:String(p.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
   }
   out.sort((a,b)=>Number(b.nearby)-Number(a.nearby)||Number(b.map===currentMap)-Number(a.map===currentMap)||(a.distance??1e9)-(b.distance??1e9)||a.name.localeCompare(b.name));
-  return out;
+  return window.ATMPlayerPresence.unique(out);
 }
 function atmPeopleRecentEncounters(){return [...atmPeopleEncounters.values()].sort((a,b)=>(b.seen_at||0)-(a.seen_at||0)).slice(0,12).map(item=>({...item,atmPay:item.atmPay?{...item.atmPay}:null}));}
 function sendAtmPlayerPing(payload){
@@ -6993,3 +6995,7 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
 setTimeout(()=>attributeStoreRefreshCommerce(),1000);
 setInterval(()=>{if(!document.hidden)attributeStoreRefreshCommerce();},60000);
 window.addEventListener('focus',()=>attributeStoreRefreshCommerce());
+
+document.addEventListener('visibilitychange',()=>{if(onlineMode&&realtimeChannel){broadcastState(true);realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,...townPresenceIdentity(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}).catch(()=>{});}});
+
+setInterval(()=>{if(!onlineMode)return;const count=Math.max(1,atmPeopleOnlinePlayers().length);currentOnlineCount=count;window.ATMPeopleHub?.setOnlineCount?.(count);},1000);
