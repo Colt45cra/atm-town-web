@@ -939,7 +939,7 @@
     for (const shot of Array.isArray(payload.shots) ? payload.shots : []) {
       applyWeaponShot(weapon, shot, isAuthority());
     }
-    if (isAuthority()) sendSnapshot(true);
+    if (isAuthority()) sendSnapshot(false);
     return true;
   }
   function updateFx(dt) {
@@ -1075,10 +1075,18 @@
     state.pickupPulse = Math.max(0, state.pickupPulse - dt);
   }
 
+  function visibleBounds(args = {}) {
+    const x=Number(args.cameraX),y=Number(args.cameraY),w=Number(args.viewportWidth),h=Number(args.viewportHeight);
+    return [x,y,w,h].every(Number.isFinite)&&w>0&&h>0?{x,y,right:x+w,bottom:y+h}:null;
+  }
+  function visibleRect(view,x1,y1,x2,y2,padding=0){
+    return !view || !(Math.max(x1,x2)+padding<view.x || Math.min(x1,x2)-padding>view.right || Math.max(y1,y2)+padding<view.y || Math.min(y1,y2)-padding>view.bottom);
+  }
   function drawGround(ctx, args = {}) {
     if (!isZombieEvent() || state.phase !== 'active' || args.map !== 'town') return;
-    const now = performance.now();
+    const now = performance.now(), view=visibleBounds(args);
     for (const pickup of state.event?.weapon_pickups || []) {
+      if(!visibleRect(view,Number(pickup.x),Number(pickup.y),Number(pickup.x),Number(pickup.y),80))continue;
       const rapid = pickup.type === 'rapid', active = state.weaponMode === pickup.type;
       const pulse = 1 + Math.sin(now * .005 + Number(pickup.id || 0)) * .06;
       ctx.save();
@@ -1101,7 +1109,14 @@
 
   function getDepthActors(args = {}) {
     if (!isZombieEvent() || state.phase !== 'active' || args.map !== 'town') return [];
-    return state.zombies.filter((z) => !z.dead && spawned(z)).map((z) => ({ id: z.id, x: z.x, y: z.y, depth: z.y + 20, zombie: z }));
+    const view=visibleBounds(args);
+    return state.zombies.filter((z) => {
+      if(z.dead||!spawned(z))return false;
+      const sheet=hordeSheet(z.type),image=hordeSheetImgs[z.type]||hordeSheetImgs.gutter;
+      const scale=Number(z.scale||sheet.displayScale||.33),fw=(image?.naturalWidth||256)/(sheet.cols||3),fh=(image?.naturalHeight||384)/(sheet.rows||4);
+      const ax=Number(sheet.anchorX||fw/2),ay=Number(sheet.anchorY||fh-1),foot=z.y+PLAYER_GROUND_FOOT_OFFSET;
+      return visibleRect(view,z.x-ax*scale,foot-ay*scale,z.x+(fw-ax)*scale,foot+Math.max((fh-ay)*scale,20),40);
+    }).map((z) => ({ id: z.id, x: z.x, y: z.y, depth: z.y + 20, zombie: z }));
   }
 
   function drawActor(ctx, actor) {
@@ -1163,19 +1178,24 @@
 
   function drawAir(ctx, args = {}) {
     if (!isZombieEvent() || state.phase !== 'active' || args.map !== 'town') return;
+    const view=visibleBounds(args);
     for (const b of state.defaultBullets) {
+      if(!visibleRect(view,b.x,b.y,b.x,b.y,12))continue;
       ctx.save(); ctx.fillStyle = '#ffe477'; ctx.shadowBlur = 6; ctx.shadowColor = '#ffe477'; ctx.beginPath(); ctx.arc(b.x, b.y, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     for (const s of state.microStreaks) {
       const alpha = Math.max(0, s.life / s.maxLife), mag = Math.hypot(s.vx, s.vy) || 1, dx = s.vx / mag, dy = s.vy / mag;
+      if(!visibleRect(view,s.x-dx*s.length,s.y-dy*s.length,s.x,s.y,4))continue;
       ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = 'rgba(171,255,250,.96)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(s.x - dx * s.length, s.y - dy * s.length); ctx.lineTo(s.x, s.y); ctx.stroke(); ctx.restore();
     }
     for (const t of state.spreadTracers) {
+      if(!visibleRect(view,t.x1,t.y1,t.x2,t.y2,4))continue;
       ctx.save(); ctx.globalAlpha = Math.max(0, t.life / t.maxLife); ctx.strokeStyle = 'rgba(255,213,106,.9)'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke(); ctx.restore();
     }
     for (const m of state.muzzleFx) {
+      if(!visibleRect(view,m.x,m.y,m.x,m.y,45))continue;
       const alpha = Math.max(0, m.life / m.maxLife);
       const max = Math.hypot(Number(m.ax)||0, Number(m.ay)||0) || 1;
       const maxX = (Number(m.ax)||0) / max, maxY = (Number(m.ay)||0) / max;
@@ -1183,6 +1203,7 @@
       ctx.beginPath(); ctx.arc(m.x + maxX * 26, m.y + maxY * 26, 5 + alpha * 6, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     for (const h of state.hitFx) {
+      if(!visibleRect(view,h.x,h.y,h.x,h.y,24))continue;
       const p = 1 - h.life / h.maxLife;
       ctx.save(); ctx.globalAlpha = 1 - p; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(h.x, h.y, 7 + p * 14, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     }

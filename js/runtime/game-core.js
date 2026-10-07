@@ -833,29 +833,30 @@ function getHordeStreetLightAlpha(timeMs=getSharedTownTimeMs()){
   else if(cycle>4480&&cycle<4545)alpha=.48;
   return Math.max(.3,Math.min(1,1-(1-alpha)*hordeNightfallAlpha));
 }
+let hordeVisionCache=null;
 function drawHordeVisionDarkness(target=ctx,cameraX=cam.x,cameraY=cam.y){
   const intensity=Math.max(0,Math.min(1,hordeNightfallAlpha));
   if(intensity<=.001||currentMap!=='town')return;
-  const viewW=W/zoom,viewH=H/zoom;
-  const cx=player.x,cy=player.y-18;
-  const inner=HORDE_NIGHTFALL.visionInner,outer=HORDE_NIGHTFALL.visionOuter;
-  const maxDark=HORDE_NIGHTFALL.darkness*intensity;
-  // Important: this stays source-over. The previous destination-out approach
-  // erased already-rendered world/player pixels from the main canvas, which is
-  // why the local character disappeared inside the supposed vision circle.
-  // A transparent-center radial veil keeps the player and nearby map readable
-  // while still pushing everything outside the vision bubble toward black.
-  const gradient=target.createRadialGradient(cx,cy,inner,cx,cy,outer);
-  gradient.addColorStop(0,'rgba(1,3,8,0)');
-  gradient.addColorStop(.34,`rgba(1,3,8,${(maxDark*.08).toFixed(3)})`);
-  gradient.addColorStop(.62,`rgba(1,3,8,${(maxDark*.50).toFixed(3)})`);
-  gradient.addColorStop(.84,`rgba(1,3,8,${(maxDark*.82).toFixed(3)})`);
-  gradient.addColorStop(1,`rgba(1,3,8,${maxDark.toFixed(3)})`);
-  target.save();
-  target.globalCompositeOperation='source-over';
-  target.fillStyle=gradient;
-  target.fillRect(cameraX-4,cameraY-4,viewW+8,viewH+8);
-  target.restore();
+  const viewW=W/zoom,viewH=H/zoom,cx=player.x,cy=player.y-18;
+  const inner=HORDE_NIGHTFALL.visionInner,outer=HORDE_NIGHTFALL.visionOuter,darkness=HORDE_NIGHTFALL.darkness;
+  const pixels=Math.max(1,Math.ceil(outer*2*zoom*DPR)),key=[inner,outer,darkness,pixels].join(':');
+  if(hordeVisionCache?.key!==key){
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=pixels;
+    const C=canvas.getContext('2d'),scale=pixels/(outer*2);C.scale(scale,scale);
+    const gradient=C.createRadialGradient(outer,outer,inner,outer,outer,outer);
+    for(const [stop,factor] of [[0,0],[.34,.08],[.62,.50],[.84,.82],[1,1]])gradient.addColorStop(stop,`rgba(1,3,8,${darkness*factor})`);
+    C.fillStyle=gradient;C.fillRect(0,0,outer*2,outer*2);
+    hordeVisionCache={key,canvas};
+  }
+  const left=cameraX-4,top=cameraY-4,right=left+viewW+8,bottom=top+viewH+8;
+  const x=cx-outer,y=cy-outer,size=outer*2;
+  target.save();target.globalCompositeOperation='source-over';target.globalAlpha*=intensity;
+  target.fillStyle=`rgba(1,3,8,${darkness})`;
+  const fill=(x1,y1,x2,y2)=>{if(x2>x1&&y2>y1)target.fillRect(x1,y1,x2-x1,y2-y1);};
+  fill(left,top,right,Math.min(bottom,y));fill(left,Math.max(top,y+size),right,bottom);
+  const bandTop=Math.max(top,y),bandBottom=Math.min(bottom,y+size);
+  fill(left,bandTop,Math.min(right,x),bandBottom);fill(Math.max(left,x+size),bandTop,right,bandBottom);
+  target.drawImage(hordeVisionCache.canvas,x,y,size,size);target.restore();
 }
 
 function getSourceRectForImage(img,fallbackW=1152,fallbackH=1536){
@@ -4137,7 +4138,7 @@ function drawDepthScene(t){
     for(const bot of townBots){
       items.push({depth:bot.drawY+20,type:'bot',bot});
     }
-    for(const actor of window.ATMZombieOutbreak?.getDepthActors?.({map:currentMap})||[]){
+    for(const actor of window.ATMZombieOutbreak?.getDepthActors?.({map:currentMap,cameraX:cam.x,cameraY:cam.y,viewportWidth:W/zoom,viewportHeight:H/zoom})||[]){
       items.push({depth:Number(actor.depth)||Number(actor.y)||0,type:'zombie',actor});
     }
     items.push({depth:player.y+20,type:'local'});
@@ -5731,7 +5732,7 @@ function loop(t){
   ctx.save();ctx.scale(zoom,zoom);ctx.translate(-snappedCamX,-snappedCamY);
   if(currentMap==='hq')ctx.drawImage(hq,0,0);else if(currentMap==='gallery')ctx.drawImage(gallery,0,0);else if(currentMap==='arcade')ctx.drawImage(arcade,0,0);else if(currentMap==='lounge')ctx.drawImage(lounge,0,0);else drawVisibleTownChunks();
   if(currentMap==='town')drawCoins(t);
-  window.ATMWorldEvents?.drawGround?.(ctx,{map:currentMap,now:t});
+  window.ATMWorldEvents?.drawGround?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom});
   drawWorldAliveGroundEffects();
   drawDepthScene(t);
   window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
