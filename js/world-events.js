@@ -3,6 +3,7 @@
 
   const POLL_MS = 1400;
   const HIDDEN_POLL_MS = 7000;
+  const IDLE_POLL_MS = 15000;
   const CLAIM_SCAN_MS = 32;
   const PICKUP_RADIUS = 54;
   const MAX_PICKUPS_PER_CLAIM = 8;
@@ -28,6 +29,7 @@
     lastPhase: 'none',
     pollTimer: null,
     pollBusy: false,
+    pollAgain: false,
     lastClaimScan: 0,
     lastAuthWarning: 0,
     controlContext: null,
@@ -289,13 +291,22 @@
     global.dispatchEvent(new CustomEvent('atm:world-event-state', { detail: { event: incoming, phase, serverOffsetMs: state.serverOffsetMs, reason } }));
   }
 
+  function nextPollDelay() {
+    // Keep active events, result settlement, and open controls at their existing cadence.
+    if (document.hidden) return HIDDEN_POLL_MS;
+    if (state.event || state.fundingBusy || state.fundingDraft ||
+        document.getElementById('atmWorldEventOverlay')?.classList.contains('open')) return POLL_MS;
+    return IDLE_POLL_MS;
+  }
+
   async function poll(reason = 'poll') {
-    if (state.pollBusy) return;
+    if (state.pollBusy) { if (reason !== 'poll') state.pollAgain = true; return; }
     state.pollBusy = true;
     try { applyState(await fetchState(), reason); }
     catch (error) { console.warn('ATM World Event poll failed.', error); }
     finally {
-      state.pollBusy = false; clearTimeout(state.pollTimer); state.pollTimer = setTimeout(poll, document.hidden ? HIDDEN_POLL_MS : POLL_MS);
+      state.pollBusy = false; clearTimeout(state.pollTimer); const queued = state.pollAgain; state.pollAgain = false;
+      state.pollTimer = setTimeout(() => poll(queued ? 'queued-refresh' : 'poll'), queued ? 80 : nextPollDelay());
     }
   }
 
@@ -508,6 +519,7 @@
     state.controlContext = { map: String(context.map || ''), x: Number(context.x), y: Number(context.y) };
     renderControlPanel();
     document.getElementById('atmWorldEventOverlay').classList.add('open');
+    scheduleImmediateRefresh('controls-open');
     state.panelArmTimer = setTimeout(() => { state.panelArmTimer = null; renderControlPanel(); }, PANEL_LAUNCH_GUARD_MS + 40);
   }
   function closeControlPanel() {
@@ -585,6 +597,7 @@
             method: 'POST', body: JSON.stringify({ ...currentLaunchPayload(), draft_token: draft.draft_token }),
           });
           applyState(data); clearFundingDraft(); closeControlPanel();
+          global.dispatchEvent(new CustomEvent('atm:world-event-triggered', { detail: { event_id: String(data?.event?.id || ''), type: String(data?.event?.type || 'money_rain') } }));
           const label = draft.asset?.type === 'xrp' ? 'XRP' : draft.asset?.currency || 'token';
           toast(`💸 ${draft.pool_amount} ${label} Money Rain provided by ${sponsorLabel(data.event)}!`, 4800);
           return;
