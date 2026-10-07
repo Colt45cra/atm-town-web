@@ -3236,6 +3236,13 @@ function sendChat(){
 window.atmSendChat=sendChat;
 function updateRemoteInterpolation(){
   const now=Date.now();
+  // Session IDs change on restart. Render one representative per account/browser,
+  // with the local session taking priority over its previous AFK connection.
+  const sessions=[{...townPresenceIdentity(),account_id:townPresenceIdentity().account_id||window.ATMPay?.getPublicIdentity?.()?.user_id,session_id:playerId,is_self:true,lastSeen:now}];
+  for(const [id,p] of remotePlayers)sessions.push({...p,account_id:p.account_id||p.atmPay?.user_id,session_id:id,afk:window.ATMPlayerPresence.afk(p,now)});
+  const visible=new Set(window.ATMPlayerPresence.unique(sessions).map(p=>p.session_id));
+  for(const id of remotePlayers.keys())if(!visible.has(id))remotePlayers.delete(id);
+
   for(const [id,p] of remotePlayers){
     if(!window.ATMPlayerPresence.alive(p,now)){remotePlayers.delete(id);presencePlayers.delete(id);continue;}
     if(window.ATMPlayerPresence.afk(p,now)){p.frame=1;p.jump=0;p.jetpackActive=false;}
@@ -4674,7 +4681,7 @@ function atmPeopleOnlinePlayers(){
     out.push({account_id:p.account_id,guest_id:p.guest_id,afk:window.ATMPlayerPresence.afk(p,now),lastSeen:p.lastSeen,session_id:sessionId,name:String(p.name||identity?.display_name||'Player').slice(0,30),map:String(p.map||''),character_id:String(p.character||identity?.character_id||'classic').slice(0,40),is_self:false,distance,nearby:distance!==null&&distance<=180,atmPay:identity});
   }
   out.sort((a,b)=>Number(b.nearby)-Number(a.nearby)||Number(b.map===currentMap)-Number(a.map===currentMap)||(a.distance??1e9)-(b.distance??1e9)||a.name.localeCompare(b.name));
-  return window.ATMPlayerPresence.unique(out);
+  return window.ATMPlayerPresence.unique(out.map(p=>({...p,account_id:p.account_id||p.atmPay?.user_id})));
 }
 function atmPeopleRecentEncounters(){return [...atmPeopleEncounters.values()].sort((a,b)=>(b.seen_at||0)-(a.seen_at||0)).slice(0,12).map(item=>({...item,atmPay:item.atmPay?{...item.atmPay}:null}));}
 function sendAtmPlayerPing(payload){
