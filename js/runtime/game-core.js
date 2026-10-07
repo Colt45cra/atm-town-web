@@ -3063,7 +3063,16 @@ async function connectMultiplayer(){
     townEntryInProgress=false;
   }
 }
+let lastVisitorPing=0;
+function trackTownVisit(){
+ if(!onlineMode||!townEntryActive||Date.now()-lastVisitorPing<60000)return;
+ lastVisitorPing=Date.now();
+ let guestId;
+ try{guestId=localStorage.getItem('atm-town-visitor');if(!guestId){guestId=crypto.randomUUID();localStorage.setItem('atm-town-visitor',guestId);}}catch{guestId=playerId;}
+ fetch('/api/leaderboards',{method:'POST',headers:{'Content-Type':'application/json',...(authSession?.access_token?{Authorization:'Bearer '+authSession.access_token}:{})},body:JSON.stringify({action:'rewards-visit',guest_id:guestId})}).then(r=>{if(!r.ok)lastVisitorPing=Date.now()-50000;}).catch(()=>{lastVisitorPing=Date.now()-50000;});
+}
 function broadcastState(force=false){
+  trackTownVisit();
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
   realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
