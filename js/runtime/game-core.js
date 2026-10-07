@@ -4131,7 +4131,7 @@ function drawDepthScene(t){
   if(currentMap==='town'){
     ensureTownBotsReady();
     updateTownForegroundStreaming();
-    items.push(...(window.ATMWorldObjects?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom})||[]));
+    items.push(...(window.ATMWorldObjects?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},townForegroundPieces)||[]));
     for(const piece of townForegroundPieces) if(townForegroundNearView(piece,160)) items.push({depth:piece.depth,type:'townpiece',piece});
     for(const [id,p] of remotePlayers){
       if(p.map!==currentMap)continue;
