@@ -3016,6 +3016,8 @@ async function connectMultiplayer(){
       },20000);
 
       realtimeChannel.subscribe(async channelStatus=>{
+        // Supabase invokes SUBSCRIBED again after reconnect, even after the join promise settles.
+        if(channelStatus==='SUBSCRIBED')window.ATMWorldEvents?.refresh?.('multiplayer-reconnected');
         if(settled)return;
         if(channelStatus==='SUBSCRIBED'){
           settled=true;
@@ -7009,7 +7011,9 @@ lockerLoadout.base=lockerItemForCharacter(selectedCharacter)?.id||'character:cla
 
 // Publish and movement changes reach active clients within one minute.
 setTimeout(()=>attributeStoreRefreshCommerce(),1000);
-setInterval(()=>{if(!document.hidden)attributeStoreRefreshCommerce();},60000);
+// Closed shopping panels still reconcile ownership periodically; open panels keep the existing minute cadence.
+let lastBackgroundCommerceRefresh=0;
+setInterval(()=>{if(document.hidden)return;const now=Date.now();if(attributeStoreState.open||lockerState.open||now-lastBackgroundCommerceRefresh>=300000){lastBackgroundCommerceRefresh=now;attributeStoreRefreshCommerce();}},60000);
 window.addEventListener('focus',()=>attributeStoreRefreshCommerce());
 
 document.addEventListener('visibilitychange',()=>{if(onlineMode&&realtimeChannel){broadcastState(true);realtimeChannel.track({id:playerId,name:playerName,map:currentMap,character:selectedCharacter,...townPresenceIdentity(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}).catch(()=>{});}});
