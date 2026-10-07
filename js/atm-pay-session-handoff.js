@@ -1,63 +1,28 @@
-/* Secure cross-origin session handoff from ATM Town to standalone ATM Pay.
- * The shared Supabase project owns the session; this bridge only copies an
- * already-authenticated session to a specifically allow-listed ATM Pay origin.
- * Tokens are sent with postMessage to the opener and never placed in the URL.
+/* ATM Pay no longer shares authentication sessions with ATM Town.
+ *
+ * This file intentionally performs no token handoff. It is kept temporarily so
+ * older cached ATM Town HTML that still references the script fails closed rather
+ * than throwing or attempting to transfer Supabase access/refresh tokens across
+ * product origins.
+ *
+ * The replacement integration is an explicit account-link flow: ATM Town opens
+ * ATM Pay, the user authenticates on the ATM Pay domain, approves the link, and
+ * only an opaque association/public capability result is returned to Town.
  */
-(function installAtmPaySessionHandoff(global){
+(function retireAtmPaySessionHandoff(global){
   'use strict';
 
-  const params=new URLSearchParams(global.location.search);
-  if(params.get('atmPayHandoff')!=='1')return;
+  const params = new URLSearchParams(global.location.search);
+  if (params.get('atmPayHandoff') !== '1') return;
 
-  const requestedOrigin=String(params.get('origin')||'');
-  const allowedOrigins=new Set([
-    'https://atm-pay-two.vercel.app',
-    'https://atm-pay-colton-adams-s-projects.vercel.app',
-    'https://atm-pay-git-main-colton-adams-s-projects.vercel.app',
-    'https://pay.atmtown.fun'
-  ]);
+  console.warn('ATM Pay session handoff is retired. ATM Town and ATM Pay now use separate authentication boundaries.');
 
-  if(!allowedOrigins.has(requestedOrigin)||!global.opener){
-    console.warn('ATM Pay handoff rejected: untrusted or missing opener origin.');
-    return;
-  }
-
-  let delivered=false;
-  let subscription=null;
-
-  function finish(session){
-    if(delivered||!session?.access_token||!session?.refresh_token)return false;
-    delivered=true;
-    try{
+  try {
+    if (global.opener) {
       global.opener.postMessage({
-        type:'ATM_PAY_SESSION_HANDOFF',
-        accessToken:session.access_token,
-        refreshToken:session.refresh_token
-      },requestedOrigin);
-    }catch(_error){
-      delivered=false;
-      return false;
+        type: 'ATM_PAY_SESSION_HANDOFF_RETIRED',
+        reason: 'separate_auth_boundaries'
+      }, '*');
     }
-    try{subscription?.unsubscribe?.();}catch(_error){}
-    global.setTimeout(()=>{try{global.close();}catch(_error){}},120);
-    return true;
-  }
-
-  async function start(){
-    try{
-      if(typeof global.getSupabaseClient!=='function')return;
-      const client=await global.getSupabaseClient();
-      const {data}=await client.auth.getSession();
-      if(finish(data?.session))return;
-
-      const listener=client.auth.onAuthStateChange((_event,session)=>{
-        if(session)finish(session);
-      });
-      subscription=listener?.data?.subscription||null;
-    }catch(error){
-      console.warn('ATM Pay handoff could not initialize.',error);
-    }
-  }
-
-  start();
+  } catch (_error) {}
 })(window);
