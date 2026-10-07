@@ -1167,6 +1167,7 @@ function landAtFootprint(px,py){
   return samples.every(([ox,oy])=>landAtPoint(px+ox,py+oy));
 }
 function obstacleAtPoint(px,py){
+  if(currentMap==='town'&&window.ATMWorldObjects?.blocked?.(px,py))return true;
   const value=townWorldStream.collisionAt(px,py);
   // Missing/pending collision data is treated as blocked so the player can never
   // outrun the streamed gameplay mask into an unvalidated area.
@@ -4130,6 +4131,7 @@ function drawDepthScene(t){
   if(currentMap==='town'){
     ensureTownBotsReady();
     updateTownForegroundStreaming();
+    items.push(...(window.ATMWorldObjects?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom})||[]));
     for(const piece of townForegroundPieces) if(townForegroundNearView(piece,160)) items.push({depth:piece.depth,type:'townpiece',piece});
     for(const [id,p] of remotePlayers){
       if(p.map!==currentMap)continue;
@@ -4168,6 +4170,8 @@ function drawDepthScene(t){
           ctx.drawImage(nightPiece.img,nightPiece.x,nightPiece.y,nightPiece.w,nightPiece.h);
           ctx.restore();
         }
+      }else if(item.type==='worldobject'){
+        window.ATMWorldObjects?.draw?.(ctx,item.object);
       }else if(item.type==='remote'){
         const remoteDowned=!!item.p?.zombieCombat?.downed,remoteInvisible=!!item.p?.powers?.invisibility;
         // Remote invisibility is complete: no body, nameplate, shadow, weapon,

@@ -1,3 +1,4 @@
+import { mountObjectEditor } from './objects.js?v=world-objects-1';
 import { mountAdminStats } from './stats.js?v=admin-stats-1';
 import { saveArcadeSettings } from './arcade-settings.js?v=saved-rewards-1';
 import { fundingStep } from './funding-step.js?v=cancel-topup-1';
@@ -85,7 +86,7 @@ $('checkAccess').addEventListener('click',()=>refreshAccess().catch(error=>statu
 // Auth callbacks stay synchronous; defer requests until Supabase releases its auth lock.
 client.auth.onAuthStateChange(()=>setTimeout(()=>refreshAccess().catch(error=>status(error.message)),0));
 $('refresh').addEventListener('click',()=>load().catch(error=>status(error.message)));$('search').addEventListener('input',renderPrices);
-for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',()=>{for(const other of document.querySelectorAll('[data-tab]')){const active=other===button;other.setAttribute('aria-pressed',String(active));$(other.dataset.tab).hidden=!active;}});
+for(const button of document.querySelectorAll('[data-tab]'))button.addEventListener('click',()=>{for(const other of document.querySelectorAll('[data-tab]')){const active=other===button;other.setAttribute('aria-pressed',String(active));$(other.dataset.tab).hidden=!active;if(active&&other.dataset.tab==='objects')objectEditor.open();}});
 refreshAccess().catch(error=>status(error.message));
 
 $('character').addEventListener('change',renderPrices);$('walletRefresh').addEventListener('click',loadWallets);setInterval(()=>{if(state&&!document.hidden)loadWallets();},60000);
@@ -128,3 +129,5 @@ const attributeEditor=mountAttributeEditor({host:$('attributeEditor'),client,api
 
 
 const adminStats=mountAdminStats({api,node});
+
+const objectEditor=mountObjectEditor({host:$('objectEditor'),client,api,node,status});
