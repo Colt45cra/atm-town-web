@@ -7,7 +7,7 @@ export function footprintPoints(object){
 const cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
 function onSegment(a,b,p){return Math.abs(cross(a,b,p))<1e-7&&p.x>=Math.min(a.x,b.x)-1e-7&&p.x<=Math.max(a.x,b.x)+1e-7&&p.y>=Math.min(a.y,b.y)-1e-7&&p.y<=Math.max(a.y,b.y)+1e-7;}
 function intersects(a,b,c,d){const abC=cross(a,b,c),abD=cross(a,b,d),cdA=cross(c,d,a),cdB=cross(c,d,b);return (abC*abD<0&&cdA*cdB<0)||onSegment(a,b,c)||onSegment(a,b,d)||onSegment(c,d,a)||onSegment(c,d,b);}
-export function validateFootprint(c){
+function validateShape(c){
  if(c===null||c===undefined)return null;
  const coordinate=v=>Number.isFinite(v)&&Math.abs(v)<=2048;
  if(c.type==='rectangle'){
@@ -23,4 +23,14 @@ export function footprintContains(object,x,y){
  const p=footprintPoints(object);x-=object.x;y-=object.y;let inside=false;
  for(let i=0,j=p.length-1;i<p.length;j=i++){const a=p[j],b=p[i];if(onSegment(a,b,{x,y}))return true;if((a.y>y)!==(b.y>y)&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)inside=!inside;}
  return inside;
+}
+
+// Additional zones share the existing collision JSON storage, preserving old objects.
+export function validateFootprint(c){
+ const base=validateShape(c);if(!base)return base;
+ const masks={};for(const key of ['depth','stairs','action'])if(c.masks?.[key])masks[key]=validateShape(c.masks[key]);
+ const result={...base};if(Object.keys(masks).length)result.masks=masks;
+ if(masks.depth){if(!Number.isFinite(c.depthLine)||Math.abs(c.depthLine)>2048)throw Error('Set a depth line within 2048 pixels.');result.depthLine=c.depthLine;}
+ if(masks.action){const a=c.action;if(!a||!['message','enter','vending','events'].includes(a.type))throw Error('Choose an action.');if(a.type==='enter'&&!['hq','gallery','arcade','lounge'].includes(a.destination))throw Error('Choose an interior.');result.action={type:a.type,destination:a.destination||'hq',text:String(a.text||'').slice(0,500)};}
+ return result;
 }

@@ -1141,6 +1141,7 @@ const bridgeWalkRects=[]; // Disabled: no legacy bridge collision overrides.
 const stairRects=[];
 function authoredMaskAt(mask,px,py){
   if(!mask||!mask.layer)return false;
+  if(mask.layer==='stairs'&&window.ATMWorldObjects?.stairs?.(px,py))return true;
   const value=mask.layer==='stairs'?townWorldStream.stairsAt(px,py):townWorldStream.collisionAt(px,py);
   return value===1;
 }
@@ -4717,6 +4718,7 @@ function nearestHordeRevivePlayer(maxDistance=78){
   for(const [id,p] of remotePlayers){if(p?.map!=='town'||now-Number(p.lastSeen||0)>3500||!p?.zombieCombat?.downed)continue;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);if(!Number.isFinite(x)||!Number.isFinite(y))continue;const d=Math.hypot(player.x-x,player.y-y);if(d<bestDistance){bestDistance=d;best={id:'horde-revive:'+id,type:'horde-revive',name:'REVIVE '+String(p.name||'PLAYER').toUpperCase(),text:'Bring this player back into The Horde.',remoteId:String(id),x,y,radius:maxDistance};}}return best;
 }
 function nearestThing(){
+  const objectAction=currentMap==='town'&&window.ATMWorldObjects?.interaction?.(player.x,player.y+22);if(objectAction)return objectAction;
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
   const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget)return reviveTarget;
   const propHuntTarget=window.ATMPropHunt?.nearestTarget?.();if(propHuntTarget)return propHuntTarget;
@@ -5299,6 +5301,7 @@ function interact(){
   if(vending&&!vendingOpen){openVending();return;}
   if(dialogOpen)return;
   const t=nearestThing();
+  if(t&&t.type==='world-action'){const a=t.action;if(a.type==='enter'){townReturnPoint={x:player.x,y:player.y};switchMap(a.destination);}else if(a.type==='vending')openVending();else if(a.type==='events')window.ATMWorldEvents?.openControlPanel?.({map:currentMap,x:player.x,y:player.y});else showDialog(t.name,a.text||t.name);return;}
   if(t&&t.type==='vending'){openVending();return;}
   if(t&&t.type==='prop-hunt-target'){window.ATMPropHunt?.tagTarget?.(t);return;}
   if(currentMap==='town'&&t){

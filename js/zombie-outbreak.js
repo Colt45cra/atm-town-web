@@ -428,7 +428,9 @@
     };
   }
   function zombieNavCellKey(gx, gy) { return `${gx},${gy}`; }
+  let navWalkabilityCache=new Map(),navDeadline=Infinity;
   function zombieNavWalkable(gx, gy) {
+    const cacheKey=zombieNavCellKey(gx,gy);if(navWalkabilityCache.has(cacheKey))return navWalkabilityCache.get(cacheKey);
     const bounds = state.mapBounds;
     const p = zombieNavWorldFromCell(gx, gy);
     if (bounds) {
@@ -439,7 +441,7 @@
     // obstacleAtFootprint already checks the authored collision footprint, so a
     // single world-space query here is intentionally cheaper than probing many
     // pixels per A* node.
-    return !state.isBlocked(p.x, p.y);
+    const clear=!state.isBlocked(p.x,p.y);navWalkabilityCache.set(cacheKey,clear);return clear;
   }
   function zombieNavNearestWalkable(cell, radius = 3) {
     if (zombieNavWalkable(cell.gx, cell.gy)) return cell;
@@ -498,7 +500,7 @@
     let index = 0;
     while (index < points.length) {
       let chosen = index;
-      for (let probe = points.length - 1; probe >= index; probe -= 1) {
+      for (let probe = Math.min(points.length - 1,index+3); probe >= index; probe -= 1) {
         const p = points[probe], dx = p.x - fromX, dy = p.y - fromY;
         const distance = Math.hypot(dx, dy);
         if (distance <= 1 || zombiePathClear({ ...zombie, x: fromX, y: fromY }, dx, dy, distance)) { chosen = probe; break; }
@@ -511,7 +513,7 @@
     return simplified;
   }
   function planZombieRoute(zombie, target, nowMs) {
-    if (typeof state.isBlocked !== 'function' || state.navPlansRemaining <= 0) return false;
+    if (typeof state.isBlocked !== 'function' || performance.now()>=navDeadline || state.navPlansRemaining <= 0) return false;
     if (nowMs < Number(zombie.navFailUntil || 0)) return false;
     state.navPlansRemaining -= 1;
 
@@ -536,7 +538,7 @@
     nodes.set(startKey, startNode); bestG.set(startKey, 0); heapPush(open, startNode);
     const dirs = [[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.414],[-1,1,1.414],[1,-1,1.414],[-1,-1,1.414]];
     let visited = 0, foundKey = '';
-    while (open.length && visited < HORDE_NAV_MAX_NODES) {
+    while (open.length && visited < HORDE_NAV_MAX_NODES && performance.now()<navDeadline) {
       const current = heapPop(open); if (!current) break;
       const key = zombieNavCellKey(current.gx, current.gy);
       if (closed.has(key)) continue;
@@ -556,6 +558,7 @@
         nodes.set(nextKey, node); heapPush(open, node);
       }
     }
+    if (!foundKey && performance.now()>=navDeadline) { zombie.navFailUntil=nowMs+120;return false; }
     if (!foundKey) {
       zombie.navPath = []; zombie.navIndex = 0; zombie.navFailUntil = nowMs + 900;
       return false;
@@ -598,7 +601,7 @@
         if (Math.hypot(p.x - zombie.x, p.y - zombie.y) > 24) break;
         zombie.navIndex += 1;
       }
-      for (let i = zombie.navPath.length - 1; i > zombie.navIndex; i -= 1) {
+      for (let i = Math.min(zombie.navPath.length - 1,zombie.navIndex+2); i > zombie.navIndex; i -= 1) {
         const p = zombie.navPath[i], dx = p.x - zombie.x, dy = p.y - zombie.y, d = Math.hypot(dx, dy);
         if (d > 1 && zombiePathClear(zombie, dx, dy, d)) { zombie.navIndex = i; break; }
       }
@@ -1030,6 +1033,7 @@
       // route or uses cheap edge steering until a planning slot opens. That
       // prevents a wall encounter by a large pack from turning into a CPU spike.
       const navNow = performance.now();
+      navWalkabilityCache.clear();navDeadline=navNow+3;
       if (navNow >= Number(state.navBudgetRefillAt || 0)) {
         state.navPlansRemaining = 2;
         state.navBudgetRefillAt = navNow + 120;
