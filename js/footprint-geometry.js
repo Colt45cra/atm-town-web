@@ -30,7 +30,8 @@ export function validateFootprint(c){
  const base=validateShape(c);if(!base)return base;
  const masks={};for(const key of ['depth','stairs','action'])if(c.masks?.[key])masks[key]=validateShape(c.masks[key]);
  const result={...base};if(Object.keys(masks).length)result.masks=masks;
- if(masks.depth){if(!Number.isFinite(c.depthLine)||Math.abs(c.depthLine)>2048)throw Error('Set a depth line within 2048 pixels.');result.depthLine=c.depthLine;}
+ if(masks.depth||c.depthMode==='silhouette'){if(!Number.isFinite(c.depthLine)||Math.abs(c.depthLine)>2048)throw Error('Set a depth line within 2048 pixels.');result.depthLine=c.depthLine;}
+ if(c.depthMode==='silhouette')result.depthMode='silhouette';
  if(masks.action){const a=c.action;if(!a||!['message','enter','vending','events'].includes(a.type))throw Error('Choose an action.');if(a.type==='enter'&&!['hq','gallery','arcade','lounge'].includes(a.destination))throw Error('Choose an interior.');result.action={type:a.type,destination:a.destination||'hq',text:String(a.text||'').slice(0,500)};}
  return result;
 }

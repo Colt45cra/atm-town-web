@@ -8,7 +8,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v248-object-zones-1';
+const BUILD_CACHE = 'atm-town-shell-v249-object-steps-2';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = ASSET_CACHE;
 const CACHE_PREFIX = 'atm-town-';
@@ -28,6 +28,7 @@ const SHELL = [
   '/js/fishing.js',
   '/js/world-objects.js',
   '/js/footprint-geometry.js',
+  '/js/object-silhouette.js',
   '/js/player-presence.js',
   '/js/world-events.js',
   '/js/zombie-outbreak.js',
