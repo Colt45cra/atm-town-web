@@ -4181,14 +4181,14 @@ function drawDepthScene(t){
           if(dayAlpha>0){
             ctx.save();
             ctx.globalAlpha=dayAlpha;
-            ctx.drawImage(piece.img,piece.x,piece.y,piece.w,piece.h);
+            if(window.ATMWorldObjects?.drawMapPiece)window.ATMWorldObjects.drawMapPiece(ctx,piece.img,piece);else ctx.drawImage(piece.img,piece.x,piece.y,piece.w,piece.h);
             ctx.restore();
           }
         }
         if(nightAlpha>0){
           ctx.save();
           ctx.globalAlpha=nightAlpha;
-          ctx.drawImage(nightPiece.img,nightPiece.x,nightPiece.y,nightPiece.w,nightPiece.h);
+          if(window.ATMWorldObjects?.drawMapPiece)window.ATMWorldObjects.drawMapPiece(ctx,nightPiece.img,nightPiece);else ctx.drawImage(nightPiece.img,nightPiece.x,nightPiece.y,nightPiece.w,nightPiece.h);
           ctx.restore();
         }
       }else if(item.type==='worldobject'){
