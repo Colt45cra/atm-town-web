@@ -5740,9 +5740,23 @@ function drawMini(){
   mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(px,py,4,0,Math.PI*2);mctx.fill();
 }
 
+// Preserve elapsed game time on slow devices without enlarging collision steps.
+// Bound catch-up after a stall; returning from a hidden tab starts a fresh frame.
+const GAME_MAX_STEP_SECONDS=0.033;
+const GAME_MAX_CATCHUP_SECONDS=0.25;
+function advanceGameSimulation(elapsedSeconds){
+  const elapsed=Number.isFinite(elapsedSeconds)?Math.max(0,elapsedSeconds):0;
+  const total=Math.min(elapsed,document.hidden?GAME_MAX_STEP_SECONDS:GAME_MAX_CATCHUP_SECONDS);
+  if(total<=0)return;
+  const steps=Math.ceil(total/GAME_MAX_STEP_SECONDS);
+  const dt=total/steps;
+  for(let step=0;step<steps;step++)update(dt);
+}
+document.addEventListener('visibilitychange',()=>{last=performance.now();});
+
 function loop(t){
   pollGamepad(t);
-  const dt=Math.min((t-last)/1000,.033);last=t;update(dt);window.ATMFishing?.update?.(t);
+  const elapsedSeconds=(t-last)/1000;last=t;advanceGameSimulation(elapsedSeconds);window.ATMFishing?.update?.(t);
   // Luci's reward pickup must use the authoritative player coordinates from
   // the game engine. The dynamically loaded NPC overlay cannot reliably read
   // this file's top-level lexical player binding on every mobile browser.
