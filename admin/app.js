@@ -1,4 +1,4 @@
-import { mountObjectEditor } from './objects.js?v=footprints-1';
+import { mountObjectEditor } from './objects.js?v=objects-1000-1';
 import { mountAdminStats } from './stats.js?v=admin-stats-1';
 import { saveArcadeSettings } from './arcade-settings.js?v=saved-rewards-1';
 import { fundingStep } from './funding-step.js?v=cancel-topup-1';

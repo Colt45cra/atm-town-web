@@ -7,7 +7,7 @@ export function mountObjectEditor({host,client,api,node,status}){
  function field(title,key,type,value){const label=node('label',title),input=node('input');input.type=type;input.value=value??'';if(type==='checkbox')input.checked=value;label.append(input);form.append(label);fields[key]=input;return input;}
  field('Object name','name','text','NFT Donation Box').maxLength=70;
  const upload=field('PNG · transparency optional · up to 6 MB / 2048 × 2048','file','file');upload.accept='image/png';
- const width=field('Width in world pixels','width','number',100);width.min=16;width.max=512;
+ const width=field('Width in world pixels','width','number',100);width.min=16;width.max=1000;
  field('X position','x','number',0).step='any';field('Y position (base)','y','number',0).step='any';
  field('Visible in town','active','checkbox',true);field('Solid base (blocks walking)','solid','checkbox',false);
  const collisionLabel=node('label','Blocked footprint shape'),shape=node('select');for(const [value,title] of [['rectangle','Rectangle'],['polygon','Custom polygon']]){const option=node('option',title);option.value=value;shape.append(option);}collisionLabel.append(shape);form.append(collisionLabel);
