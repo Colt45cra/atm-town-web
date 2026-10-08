@@ -14,3 +14,12 @@ export function defaultBuildingFootprint(data,imageWidth,imageHeight,worldWidth,
  return {type:'rectangle',width:x2-x1,depth:y2-y1,offsetX:(x1+x2)/2,offsetY:(y1+y2)/2};
 }
 export function splitObjectPixels(data){const body=new Uint8ClampedArray(data),shade=new Uint8ClampedArray(data);for(let i=3;i<data.length;i+=4){if(data[i]>=230)shade[i]=0;else body[i]=0;}return {body,shade};}
+// Preserve the lower silhouette as horizontal pixel runs, rather than its bounding box.
+export function silhouetteFootprint(data,imageWidth,imageHeight,worldWidth,padding=7,depthLine=0){
+ const scale=worldWidth/imageWidth,rects=[];let previous=new Map();
+ for(let y=Math.max(0,Math.floor(imageHeight+depthLine/scale));y<imageHeight;y++){
+  const next=new Map();for(let x=0;x<imageWidth;){if(data[(y*imageWidth+x)*4+3]<230){x++;continue;}const left=x;while(x<imageWidth&&data[(y*imageWidth+x)*4+3]>=230)x++;const key=left+':'+x;let rect=previous.get(key);if(rect)rect[3]+=scale;else{const top=Math.max((y-imageHeight)*scale,depthLine);rect=[(left-imageWidth/2)*scale-padding,top-padding,(x-left)*scale+2*padding,(y+1-imageHeight)*scale-top+2*padding];rects.push(rect);}next.set(key,rect);}previous=next;
+ }
+ if(!rects.length)return null;const minX=Math.min(...rects.map(r=>r[0])),minY=Math.min(...rects.map(r=>r[1])),maxX=Math.max(...rects.map(r=>r[0]+r[2])),maxY=Math.max(...rects.map(r=>r[1]+r[3]));
+ return {type:'raster',rects,width:maxX-minX,depth:maxY-minY,offsetX:(minX+maxX)/2,offsetY:(minY+maxY)/2};
+}
