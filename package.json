@@ -18,6 +18,10 @@
     "tile:world": "python3 scripts/tile-world.py",
     "validate:world": "python3 scripts/validate-world.py",
     "security:headers": "node scripts/generate-security-headers.mjs",
-    "validate:nft-metadata": "node scripts/validate-nft-metadata.mjs"
+    "validate:nft-metadata": "node scripts/validate-nft-metadata.mjs",
+    "build:nft-codec": "node scripts/build-nft-codec.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.4"
   }
 }

@@ -21,3 +21,5 @@ References:
 - https://xrpl.org/docs/concepts/transactions/batch-transactions
 - https://docs.xaman.dev/concepts/special-transaction-types/batch-multiple-inner-signers
 - https://github.com/XRPLF/rippled/blob/develop/src/libxrpl/protocol/Indexes.cpp (NFTokenOffer keylet namespace)
+
+The production codec is bundled into CommonJS to support Vercel instrumentation without requiring ESM-only dependencies. Regenerate it with `npm run build:nft-codec`; tests compare its transaction hashes against the XRPL SDK.

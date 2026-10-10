@@ -1,4 +1,6 @@
 import test from 'node:test';
+import { execFileSync } from 'node:child_process';
+import codec from '../lib/xrpl-swap-codec.cjs';
 import assert from 'node:assert/strict';
 import { Wallet, hashes, signMultiBatch, encode, decode } from 'xrpl';
 import { buildNftSwapBatch, verifySwapResults, nftOfferId, ALL_OR_NOTHING, INNER_BATCH } from '../lib/xrpl-nft-swap.js';
@@ -85,4 +87,9 @@ test('swap operations require authentication and reject invalid request methods'
     let res = response(); await handler({ method: 'POST', headers: {}, query: { action: 'swap-propose' } }, res); assert.equal(res.statusCode, 401);
     res = response(); await handler({ method: 'GET', headers: {}, query: { action: 'swap-finalize' } }, res); assert.equal(res.statusCode, 405);
   } finally { console.error = oldError; }
+});
+
+test('bundled codec matches SDK transaction hashes and loads without require-ESM support', () => {
+  for (const { RawTransaction: tx } of batch.RawTransactions) assert.equal(codec.hashSignedTx(tx), hashes.hashSignedTx(tx));
+  execFileSync(process.execPath, ['--no-experimental-require-module', '--input-type=module', '-e', "await import('./api/xrpl-nft-trade.js'); await import('./server/xrpl-nft-swap.js');"], { cwd: process.cwd() });
 });
