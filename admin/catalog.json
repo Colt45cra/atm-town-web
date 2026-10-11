@@ -701,6 +701,31 @@
       "characterIds": [
         "classic"
       ]
+    },
+    {
+      "id": "equipment:fishing-pole",
+      "name": "Fishing Pole",
+      "category": "equipment",
+      "slot": "tool",
+      "sprite_src": null,
+      "characterIds": [
+        "classic",
+        "fuzzy",
+        "miracle",
+        "luci",
+        "triskeleton",
+        "phnix",
+        "bear",
+        "xoge",
+        "flippy",
+        "salute",
+        "brad",
+        "david",
+        "kaj",
+        "daniel",
+        "army",
+        "anunnaki"
+      ]
     }
   ]
 }

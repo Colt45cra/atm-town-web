@@ -3080,7 +3080,7 @@ function trackTownVisit(){
 function broadcastState(force=false){
   trackTownVisit();
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,...townPresenceIdentity(),fishing:window.ATMFishing?.publicState?.()||null,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,...townPresenceIdentity(),fishing:window.ATMFishing?.publicState?.()||null,nftDrop:window.ATMNftDrops?.publicState?.()||null,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
 window.addEventListener('atm:world-event-triggered',(event)=>{
   if(!onlineMode||!realtimeChannel)return;
@@ -4152,6 +4152,7 @@ function drawDepthScene(t){
   if(currentMap==='town'){
     ensureTownBotsReady();
     updateTownForegroundStreaming();
+    items.push(...(window.ATMNftDrops?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},Array.from(remotePlayers.values()))||[]));
     items.push(...(window.ATMWorldObjects?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},townForegroundPieces)||[]));
     for(const piece of townForegroundPieces) if(townForegroundNearView(piece,160)) items.push({depth:piece.depth,type:'townpiece',piece});
     for(const [id,p] of remotePlayers){
@@ -4191,6 +4192,8 @@ function drawDepthScene(t){
           if(window.ATMWorldObjects?.drawMapPiece)window.ATMWorldObjects.drawMapPiece(ctx,nightPiece.img,nightPiece);else ctx.drawImage(nightPiece.img,nightPiece.x,nightPiece.y,nightPiece.w,nightPiece.h);
           ctx.restore();
         }
+      }else if(item.type==='nftdrop'){
+        window.ATMNftDrops?.draw?.(ctx,item.row,item.row.x,item.row.y,item.carried);
       }else if(item.type==='worldobject'){
         window.ATMWorldObjects?.draw?.(ctx,item.object);
       }else if(item.type==='remote'){
@@ -4718,6 +4721,7 @@ function nearestHordeRevivePlayer(maxDistance=78){
   for(const [id,p] of remotePlayers){if(p?.map!=='town'||now-Number(p.lastSeen||0)>3500||!p?.zombieCombat?.downed)continue;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);if(!Number.isFinite(x)||!Number.isFinite(y))continue;const d=Math.hypot(player.x-x,player.y-y);if(d<bestDistance){bestDistance=d;best={id:'horde-revive:'+id,type:'horde-revive',name:'REVIVE '+String(p.name||'PLAYER').toUpperCase(),text:'Bring this player back into The Horde.',remoteId:String(id),x,y,radius:maxDistance};}}return best;
 }
 function nearestThing(){
+  const nftDropTarget=window.ATMNftDrops?.nearest?.();if(nftDropTarget)return nftDropTarget;
   const objectAction=currentMap==='town'&&window.ATMWorldObjects?.interaction?.(player.x,player.y+22);if(objectAction)return objectAction;
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
   const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget)return reviveTarget;
@@ -5294,6 +5298,7 @@ window.addEventListener('pagehide',saveAccountLocation);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAccountLocation();});
 function interact(){
   if(window.ATMZombieOutbreak?.isLocalDowned?.()===true){window.ATMWorldEvents?.toast?.('💀 YOU ARE DOWN · WAIT FOR A REVIVE',1400);return;}
+  const nftTarget=window.ATMNftDrops?.nearest?.();if(nftTarget&&!dialogOpen){if(nftTarget.type==='nft-donation-box')window.ATMNftDrops.open(true);else window.ATMNftDrops.claim(nftTarget);return;}
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget&&!dialogOpen){tradeNftOpen(tradeTarget);return;}
   const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget&&!dialogOpen){window.ATMZombieOutbreak?.requestRevive?.(reviveTarget.remoteId);return;}
   // Vending keeps priority over normal world objects after player Trade Beacons.
@@ -6142,7 +6147,8 @@ const ATM_LOCKER_SLOTS=Object.freeze([
   {id:'katana',label:'KATANA',icon:'⚔️'},
   {id:'hands',label:'GLOVES',icon:'🥊'},
   {id:'feet',label:'SHOES',icon:'🥾'},
-  {id:'aura',label:'AURA',icon:'✨'}
+  {id:'aura',label:'AURA',icon:'✨'},
+  {id:'tool',label:'TOOL',icon:'🎣'}
 ]);
 let ATM_ITEM_CATALOG=[
   {id:'character:classic',name:'ATM',type:'character',slot:'base',characterId:'classic',rarity:'Starter',ownership:'starter',emoji:'🟩',xrpl:null},
@@ -6222,6 +6228,7 @@ let ATM_ITEM_CATALOG=[
   {id:'shoes:green',name:'Green Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:red',name:'Red Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:tan',name:'Tan Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
+  {id:'equipment:fishing-pole',name:'Fishing Pole',type:'equipment',slot:'tool',rarity:'Store',ownership:'store',emoji:'🎣',xrpl:null,storeCharacterIds:["classic","fuzzy","miracle","luci","triskeleton","phnix","bear","xoge","flippy","salute","brad","david","kaj","daniel","army","anunnaki"],description:'A permanent fishing pole for every character. Purchase once in the market; automatically used at the southern pier. Currently practice fishing; NFT rewards are not enabled yet.'},
   {id:'equipment:jetpack',name:'Jetpack Module',type:'equipment',slot:'back',rarity:'Session',ownership:'session',emoji:'🚀',xrpl:null,description:'Purchased from an ATM Town vending machine. Each purchase adds 30 seconds.'}
 ].map(atmMonetizeCatalogItem);
 const baseAttributeItems=ATM_ITEM_CATALOG.slice();
@@ -6236,6 +6243,7 @@ if(!Array.isArray(lockerSavedCharacters))lockerSavedCharacters=[];
 let lockerActiveSavedCharacterId=null;
 window.atmActiveLoadout={...lockerLoadout};
 const lockerPurchasedItems=new Set();
+let fishingPoleEntitlementUserId=null;
 let lockerState={open:false,tab:'character',slot:'body',filter:'my-characters',direction:'down',nfts:[],ledgerIndex:null,validated:false,status:'idle',error:'',selectedItemId:null,nftMetadata:new Map(),nftMetadataLoading:new Set(),nftBuyOffers:new Map(),nftOffersLoading:new Set(),nftSearch:'',nftSort:'serial-desc',selectedNftId:null,nftHydrationGeneration:0,truncated:false};
 let lockerPreviewFrame=1;
 let lockerNftRenderTimer=0;
@@ -6687,7 +6695,7 @@ function lockerRenderNftDetail(){
   const actions=document.createElement('div');actions.className='lockerNftFutureActions';
   const showcase=document.createElement('button');showcase.type='button';showcase.className='tradeBeaconAction'+(activeForThis&&tradeBeaconState.mode==='showcase'?' active':'');showcase.textContent=activeForThis&&tradeBeaconState.mode==='showcase'?'SHOWCASING':'SHOWCASE';showcase.title='Display this NFT above your character.';showcase.addEventListener('click',()=>tradeBeaconSet(nft,'showcase'));actions.appendChild(showcase);
   const trade=document.createElement('button');trade.type='button';trade.className='tradeBeaconAction'+(activeForThis&&tradeBeaconState.mode==='open_to_trade'?' active':'');trade.textContent=activeForThis&&tradeBeaconState.mode==='open_to_trade'?'OPEN TO TRADE ✓':'OPEN TO TRADE';trade.title='Display this NFT above your character and invite other players to inspect it.';trade.addEventListener('click',()=>tradeBeaconSet(nft,'open_to_trade'));actions.appendChild(trade);
-  if(tradeBeaconIsLocalActive()){const clear=document.createElement('button');clear.type='button';clear.className='tradeBeaconClear';clear.textContent=activeForThis?'CLEAR BEACON':'CLEAR CURRENT';clear.title=activeForThis?'Remove this NFT from above your player.':'Remove the currently active Trade Beacon.';clear.addEventListener('click',()=>tradeBeaconClear());actions.appendChild(clear);}else{const sell=document.createElement('button');sell.type='button';sell.disabled=true;sell.textContent='SELL';sell.title='Public sell listings are the next marketplace phase.';actions.appendChild(sell);}const offersButton=document.createElement('button');offersButton.type='button';offersButton.className='tradeBeaconAction';offersButton.textContent=lockerState.nftOffersLoading.has(tokenId)?'LOADING OFFERS…':lockerState.nftBuyOffers.has(tokenId)?'REFRESH BUY OFFERS':'BUY OFFERS';offersButton.disabled=lockerState.nftOffersLoading.has(tokenId)||!nft.transferable;offersButton.addEventListener('click',()=>lockerLoadBuyOffers(nft,true));actions.appendChild(offersButton);body.appendChild(actions);
+  if(tradeBeaconIsLocalActive()){const clear=document.createElement('button');clear.type='button';clear.className='tradeBeaconClear';clear.textContent=activeForThis?'CLEAR BEACON':'CLEAR CURRENT';clear.title=activeForThis?'Remove this NFT from above your player.':'Remove the currently active Trade Beacon.';clear.addEventListener('click',()=>tradeBeaconClear());actions.appendChild(clear);}else{const sell=document.createElement('button');sell.type='button';sell.disabled=true;sell.textContent='SELL';sell.title='Public sell listings are the next marketplace phase.';actions.appendChild(sell);}const dropButton=document.createElement('button');dropButton.type='button';dropButton.textContent='CREATE FREE DROP';dropButton.disabled=!nft.transferable;dropButton.onclick=()=>{lockerClose();window.ATMNftDrops?.open?.();};actions.appendChild(dropButton);const offersButton=document.createElement('button');offersButton.type='button';offersButton.className='tradeBeaconAction';offersButton.textContent=lockerState.nftOffersLoading.has(tokenId)?'LOADING OFFERS…':lockerState.nftBuyOffers.has(tokenId)?'REFRESH BUY OFFERS':'BUY OFFERS';offersButton.disabled=lockerState.nftOffersLoading.has(tokenId)||!nft.transferable;offersButton.addEventListener('click',()=>lockerLoadBuyOffers(nft,true));actions.appendChild(offersButton);body.appendChild(actions);
   if(lockerState.nftBuyOffers.has(tokenId)||lockerState.nftOffersLoading.has(tokenId)){const offersBox=document.createElement('div');offersBox.className='lockerNftOffers';const oh=document.createElement('div');oh.className='lockerNftOffersHeader';const os=document.createElement('strong');os.textContent='XRPL BUY OFFERS';const oc=document.createElement('span');const offerRows=lockerState.nftBuyOffers.get(tokenId)||[];oc.textContent=lockerState.nftOffersLoading.has(tokenId)?'CHECKING LEDGER':offerRows.length+' ACTIVE';oh.append(os,oc);offersBox.appendChild(oh);if(lockerState.nftOffersLoading.has(tokenId)){const empty=document.createElement('div');empty.className='lockerNftOffersEmpty';empty.textContent='Reading active buy offers from the validated XRP Ledger…';offersBox.appendChild(empty);}else if(!offerRows.length){const empty=document.createElement('div');empty.className='lockerNftOffersEmpty';empty.textContent='No active XRP buy offers were found for this NFT.';offersBox.appendChild(empty);}else for(const offer of offerRows){const row=document.createElement('div');row.className='lockerNftOfferRow';const copy=document.createElement('div');const amount=document.createElement('strong');amount.textContent=offer.amount_xrp+' XRP';const who=document.createElement('small');who.textContent=(offer.buyer_name||'XRPL buyer')+' · '+(offer.buyer_wallet||'wallet');copy.append(amount,who);const accept=document.createElement('button');accept.type='button';accept.className='lockerNftOfferAccept';accept.textContent='ACCEPT';accept.addEventListener('click',()=>startAcceptNftBuyOffer(nft,offer));row.append(copy,accept);offersBox.appendChild(row);}body.appendChild(offersBox);}
   const note=document.createElement('div');note.className='lockerNftFutureNote';note.textContent='XRP offers and atomic NFT-for-NFT trades are available through Xaman. Open NFT TRADES to review incoming proposals.';body.appendChild(note);host.appendChild(body);
 }
@@ -6903,7 +6911,7 @@ function attributeStoreUpdateButton(){const button=document.getElementById('attr
 function attributeStoreCharacterThumbnail(characterId){return lockerItemPreview(lockerItemForCharacter(characterId));}
 function attributeStoreCreateCharacters(){const host=document.getElementById('attributeStoreCharacters');if(!host)return;host.textContent='';for(const character of attributeStoreCharacters()){const count=ATM_ITEM_CATALOG.filter(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,character.characterId)).length;const button=document.createElement('button');button.type='button';button.className='attributeStoreCharacter'+(attributeStoreState.characterId===character.characterId?' active':'');const preview=attributeStoreCharacterThumbnail(character.characterId);button.innerHTML=(preview?`<img alt="${character.name}" src="${preview}">`:`<span class="fallback">${character.emoji||'◈'}</span>`)+`<span><strong>${character.name}</strong><small>${count} ATTRIBUTE${count===1?'':'S'}</small></span>`;button.addEventListener('click',()=>{attributeStoreState.characterId=character.characterId;attributeStoreState.filter='all';attributeStoreRender();});host.appendChild(button);}}
 function attributeStoreCreateFilters(){const host=document.getElementById('attributeStoreFilters');if(!host)return;host.textContent='';const filters=[['all','ALL'],['body','BODY'],['chest','CHEST'],['face','FACE'],['head','HEAD'],['back','BACKPACK'],['katana','KATANA'],['hands','GLOVES'],['feet','SHOES'],['utility','UTILITY']];for(const [id,label] of filters){const button=document.createElement('button');button.type='button';button.className='attributeStoreFilter'+(attributeStoreState.filter===id?' active':'');button.textContent=label;button.addEventListener('click',()=>{attributeStoreState.filter=id;attributeStoreRender();});host.appendChild(button);}}
-function attributeStoreSlotMatch(item,filter){if(filter==='all')return true;if(filter==='utility')return item.id==='equipment:jetpack'||item.slot==='aura';return item.slot===filter;}
+function attributeStoreSlotMatch(item,filter){if(filter==='all')return true;if(filter==='utility')return item.id==='equipment:jetpack'||item.slot==='aura'||item.slot==='tool';return item.slot===filter;}
 function attributeStoreVisibleItems(){return ATM_ITEM_CATALOG.filter(item=>attributeStoreItemIsCatalogProduct(item)&&attributeStoreItemInCharacter(item,attributeStoreState.characterId)&&attributeStoreSlotMatch(item,attributeStoreState.filter));}
 function attributeStoreToggleCart(item){const info=lockerOwnershipInfo(item);if(info.owned){attributeStoreSetStatus(item.name+' is already owned and is available in your Locker.','ok');return;}const index=attributeStoreState.cart.indexOf(item.id);if(index>=0){attributeStoreState.cart.splice(index,1);attributeStoreSetStatus(item.name+' removed from cart.');}else{attributeStoreState.cart.push(item.id);attributeStoreSetStatus(item.name+' added to cart.','ok');}attributeStorePersistCart();attributeStoreRender();}
 function attributeStoreCreateItem(item){const info=lockerOwnershipInfo(item),inCart=attributeStoreState.cart.includes(item.id),card=document.createElement('article');card.className='attributeStoreItem'+(info.owned?' owned':'')+(inCart?' inCart':'');const preview=lockerItemPreview(item);const art=preview?`<img alt="${item.name}" src="${preview}">`:`<span class="fallback">${item.emoji||'◈'}</span>`;const badge=info.owned?(info.source==='xrpl'?'NFT OWNED':info.source==='purchase'?'PURCHASED':'OWNED'):(inCart?'IN CART':lockerHasXrplMapping(item)?'NFT OR STORE':'STORE');card.innerHTML=`<span class="attributeStoreItemBadge">${badge}</span><div class="attributeStoreItemArt">${art}</div><div class="attributeStoreItemName">${item.name}</div><div class="attributeStoreItemMeta">${lockerSlotName(item.slot)} · ${attributeStoreCharacterName(attributeStoreState.characterId)}</div><div class="attributeStoreItemPrice">${info.owned?'IN YOUR LOCKER':attributeStorePriceText(item)}</div>`;const action=document.createElement('button');action.type='button';action.className='attributeStoreItemAction';action.textContent=info.owned?'OWNED ✓':inCart?'REMOVE FROM CART':'ADD TO CART';action.disabled=info.owned;action.addEventListener('click',()=>attributeStoreToggleCart(item));card.appendChild(action);return card;}
@@ -6915,7 +6923,7 @@ function applyPublishedAttributes(rows){
     if(!row||!ALLOWED_CHARACTERS.includes(row.character_id)||!/^[a-z]+:[a-z0-9-]+$/.test(row.item_id)||typeof row.name!=='string'||/[<>&"]/.test(row.name))continue;
     const index=items.findIndex(item=>item.id===row.item_id);const existing=index>=0?items[index]:null;
     if(!existing&&!row.sprite_url)continue;
-    const item={...(existing||{type:'equipment',ownership:'store',rarity:'Store',emoji:'◈',xrpl:null}),id:row.item_id,name:row.name,slot:row.slot,compatibleCharacterIds:[row.character_id],storeCharacterIds:[row.character_id]};
+    const item={...(existing||{type:'equipment',ownership:'store',rarity:'Store',emoji:'◈',xrpl:null}),id:row.item_id,name:row.name,slot:row.slot,compatibleCharacterIds:row.item_id==='equipment:fishing-pole'?ALLOWED_CHARACTERS.slice():[row.character_id],storeCharacterIds:row.item_id==='equipment:fishing-pole'?ALLOWED_CHARACTERS.slice():[row.character_id]};
     if(row.sprite_url){let url;try{url=new URL(row.sprite_url);}catch{continue;}if(url.origin!=='https://xnyjurertwohlqczaeux.supabase.co'||!url.pathname.startsWith('/storage/v1/object/public/attribute-sprites/'))continue;const config={src:url.href,cols:3,rows:4,rowOrder:['down','left','up','right'],anchorX:128,anchorY:303,displayScale:.33,slot:row.slot};ATM_EQUIPMENT_SHEETS[row.item_id]=config;item.dynamicSprite=true;const prior=equipmentSheetImgs[row.item_id];if(!prior||prior.src!==url.href){const img=new Image();img.crossOrigin='anonymous';img.decoding='async';img.src=url.href;equipmentSheetImgs[row.item_id]=img;}}
     attributeEffectOverrides.set(row.item_id,row.effects||{});if(index>=0)items[index]=item;else items.push(item);
   }
@@ -6931,7 +6939,7 @@ async function attributeStoreRefreshCommerceNow(){
   }catch(error){console.warn('Attribute Store pricing refresh failed:',error);}
   if(authSession?.access_token){
     const entitlementUserId=authSession.user.id;
-    try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store&mode=entitlements');if(authSession?.user?.id!==entitlementUserId)return;lockerAdminAttributeUserId=data.admin_attribute_access===true?entitlementUserId:null;lockerPurchasedItems.clear();for(const id of data?.item_ids||[])lockerPurchasedItems.add(String(id));}
+    try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store&mode=entitlements');if(authSession?.user?.id!==entitlementUserId)return;lockerAdminAttributeUserId=data.admin_attribute_access===true?entitlementUserId:null;fishingPoleEntitlementUserId=entitlementUserId;lockerPurchasedItems.clear();for(const id of data?.item_ids||[])lockerPurchasedItems.add(String(id));}
     catch(error){lockerAdminAttributeUserId=null;console.warn('Attribute entitlement refresh failed:',error);}
   }
   attributeStoreNormalizeCart();if(attributeStoreState.open)attributeStoreRender();if(lockerState.open)lockerRender();
@@ -7038,9 +7046,23 @@ document.addEventListener('visibilitychange',()=>{if(onlineMode&&realtimeChannel
 setInterval(()=>{if(!onlineMode)return;const count=Math.max(1,atmPeopleOnlinePlayers().length);currentOnlineCount=count;window.ATMPeopleHub?.setOnlineCount?.(count);},1000);
 
 window.ATMFishing?.init?.({
+ hasPole:()=>{const id=authSession?.user?.id;return !!id&&((lockerAdminAttributeUserId===id)||(fishingPoleEntitlementUserId===id&&lockerPurchasedItems.has('equipment:fishing-pole')));},
+ market:()=>attributeStoreOpen(selectedCharacter),
  ready:()=>townEntryActive&&!dialogOpen&&!vendingOpen,
  pose:()=>({x:player.x,y:player.y,map:currentMap,character:selectedCharacter,airborne:jumpState.active||jetpackState.active}),
  face:dir=>{player.dir=dir;player.frame=1;},
  broadcast:()=>broadcastState(true),
  travel:async point=>{if(dialogOpen||vendingOpen||jumpState.active||jetpackState.active||window.ATMZombieOutbreak?.isLocalDowned?.())throw Error('Land and close the current activity before travelling.');if(currentMap!=='town')switchMap('town');await townWorldStream.ready;await townWorldStream.preloadPlayerNeighborhood(point.x,point.y);player.x=point.x;player.y=point.y;player.dir='left';joy.x=joy.y=0;endJoy();ensureTownPlayerWalkable('fishing-preview');broadcastState(true);}
+});
+
+window.ATMNftDrops?.init?.({
+ ready:()=>townEntryActive,
+ userId:()=>authSession?.user?.id||null,
+ api:apiWithAuth,
+ pose:()=>({x:player.x,y:player.y,map:currentMap,airborne:jumpState.active||jetpackState.active}),
+ blocked:(x,y)=>blocked(x,y),
+ broadcast:()=>broadcastState(true),
+ donationBox:()=>window.ATMWorldObjects?.donationBox?.(),
+ refreshWallet:()=>lockerRefreshXrpl(true),
+ nfts:async()=>{if(!authSession?.access_token)throw Error('Sign in and link Xaman first.');await lockerRefreshXrpl(true);return lockerState.nfts.filter(n=>n.transferable).map(n=>({token_id:lockerNftTokenId(n),name:lockerNftDisplayName(n),image_url:lockerNftMetadata(n)?.image_url||''}));}
 });

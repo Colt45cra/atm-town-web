@@ -16,5 +16,5 @@ import {footprintContains} from './footprint-geometry.js';import {splitObjectPix
  }
  function draw(ctx,o){const img=objectImage(o);if(!img.complete||!img.naturalWidth)return;const h=o.width*o.image_height/o.image_width;if(o._silhouettePass){const layer=objectLayers(o,img)[o._silhouettePass];if(layer)ctx.drawImage(layer,o.x-o.width/2,o.y-h,o.width,h);return;}if(o._depthPass){ctx.save();ctx.beginPath();if(o._depthPass==='base')ctx.rect(o.x-o.width/2,o.y-h,o.width,h);const c=o.collision.masks.depth;const vertices=c.type==='polygon'?c.points:[{x:c.offsetX-c.width/2,y:c.offsetY-c.depth/2},{x:c.offsetX+c.width/2,y:c.offsetY-c.depth/2},{x:c.offsetX+c.width/2,y:c.offsetY+c.depth/2},{x:c.offsetX-c.width/2,y:c.offsetY+c.depth/2}];vertices.forEach((v,i)=>ctx[i?'lineTo':'moveTo'](o.x+v.x,o.y+v.y));ctx.closePath();ctx.clip('evenodd');}ctx.drawImage(img,o.x-o.width/2,o.y-h,o.width,h);if(o._depthPass)ctx.restore();}
  function blocked(x,y){return objects.some(o=>o.solid&&o.active!==false&&footprintContains(o,x,y));}
- global.ATMWorldObjects=Object.freeze({actors,draw,drawMapPiece,blocked,refresh,stairs,interaction});
+ global.ATMWorldObjects=Object.freeze({actors,draw,drawMapPiece,blocked,refresh,stairs,interaction,donationBox:()=>objects.find(o=>o.active!==false&&o.id==='a8c7e168-1620-42af-a9d5-1f21fdb2c71e')});
 })(window);

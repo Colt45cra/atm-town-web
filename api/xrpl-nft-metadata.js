@@ -194,7 +194,7 @@ function cleanPlainJson(value, depth = 0) {
   return out;
 }
 
-async function resolveMetadata(uriHex, tokenId) {
+export async function resolveMetadata(uriHex, tokenId) {
   const decodedUri = decodeHexUri(uriHex);
   if (!decodedUri) return { status: 'missing', uri: '', name: '', description: '', image_url: '' };
 

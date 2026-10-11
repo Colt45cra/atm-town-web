@@ -5,6 +5,10 @@ import acceptHandler from '../server/xrpl-nft-offer-accept-start.js';
 
 export default async function handler(req, res) {
   const action = String(req.query?.action || '').toLowerCase();
+  if (action.startsWith('drop-')) {
+    const { default: dropsHandler } = await import('../server/nft-drops.js');
+    return dropsHandler(req, res);
+  }
   if (action.startsWith('swap-')) {
     try {
       const { default: swapHandler } = await import('../server/xrpl-nft-swap.js');

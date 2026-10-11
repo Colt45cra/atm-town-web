@@ -68,6 +68,9 @@
   "functions": {
     "api/leaderboards.js": {
       "maxDuration": 60
+    },
+    "api/xrpl-nft-trade.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
