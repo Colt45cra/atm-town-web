@@ -40,7 +40,7 @@
       clearInterval(timer);timer=setInterval(inspect,3000);
       if(/Android|iPhone|iPad/i.test(navigator.userAgent))window.location.assign(r.deeplink);else window.open(r.deeplink,'_blank','noopener');
     }));
-    body.append(text('p','NFT exchanges use the selected mainnet wallet. ATM Pay donation and XRP buy-offer signing are not enabled here yet.'),button('Check connection',inspect),button('Close',()=>{dialog.close();opened=false;}));
+    body.append(text('p','NFT exchanges, sales, purchases, and sale cancellation use your selected mainnet ATM Pay wallet. Free drops and creating XRP buy offers use Xaman.'),button('Check connection',inspect),button('Close',()=>{dialog.close();opened=false;}));
   }
   async function show(){opened=true;if(!dialog.open)dialog.showModal();render();try{await refresh();render();}catch(e){body.appendChild(text('p',e.message));}}
   dialog.addEventListener('close',()=>{opened=false;});
