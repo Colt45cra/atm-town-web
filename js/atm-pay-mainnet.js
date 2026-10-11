@@ -44,7 +44,9 @@
   }
   async function show(){opened=true;if(!dialog.open)dialog.showModal();render();try{await refresh();render();}catch(e){body.appendChild(text('p',e.message));}}
   dialog.addEventListener('close',()=>{opened=false;});
-  for(const host of [document.getElementById('linkWalletBtn')?.parentElement,document.getElementById('lockerNftSort')?.parentElement])if(host)host.appendChild(button('ATM PAY MAINNET',show));
+  document.getElementById('atmPayMainnetBtn')?.addEventListener('click',show);
+  const lockerHost=document.getElementById('lockerNftSort')?.parentElement;
+  if(lockerHost){const b=button('ATM PAY MAINNET',show);b.className='flowSecondary cyan';b.style.gridColumn='1 / -1';lockerHost.appendChild(b);}
   window.ATMMainnetWallet={refresh,address:fallback=>userId===authSession?.user?.id&&state?.wallet?String(state.wallet.wallet_address||''):fallback,provider:()=>userId===authSession?.user?.id?state?.wallet?.provider:'xaman',open:show};
   window.addEventListener('focus',()=>{if(authSession?.user){refresh().then(inspect).catch(()=>{});}});
 })();
