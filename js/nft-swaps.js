@@ -5,6 +5,8 @@
   const seen = new Set();
   const completedRefresh = new Set();
   let list = [], busy = false, opened = false, currentUser = '', selectedId = '', generation = 0, lastFocus = null;
+  let invitation = null, previousDialog = false;
+  const invitedAt = new Map();
   const panel = document.createElement('dialog'); panel.id = 'nftSwapPanel'; panel.setAttribute('aria-labelledby', 'nftSwapTitle');
   panel.innerHTML = '<div class="nftSwapHeader"><h2 id="nftSwapTitle">NFT trades</h2><button type="button" aria-label="Close NFT trades">×</button></div><p class="nftSwapSafety">Both NFTs exchange together, or neither moves. Review both token IDs in Xaman. The proposing player pays the network fee, including if the exchange fails.</p><div id="nftSwapContent"></div><p id="nftSwapStatus" role="status"></p>';
   document.body.appendChild(panel);
@@ -14,11 +16,47 @@
   function node(tag, text, cls) { const el = document.createElement(tag); if (text != null) el.textContent = text; if (cls) el.className = cls; return el; }
   function message(text, error = false) { status.textContent = text; status.classList.toggle('error', error); }
   function button(text, fn) { const el = node('button', text); el.type = 'button'; el.addEventListener('click', async () => { if (busy) return; busy = true; el.disabled = true; try { await fn(); } catch (e) { message(e.message || 'Trade request failed.', true); } finally { busy = false; if (el.isConnected) el.disabled = false; } }); return el; }
-  function close() { opened = false; generation++; panel.close(); lastFocus?.focus?.(); }
+  function close() { opened = false; invitation = null; generation++; panel.close(); dialogOpen = previousDialog; lastFocus?.focus?.(); }
   panel.querySelector('.nftSwapHeader button').addEventListener('click', close);
   panel.addEventListener('cancel', e => { e.preventDefault(); close(); });
   panel.addEventListener('keydown', e => e.stopPropagation());
-  function show() { if (!opened) { lastFocus = document.activeElement; panel.showModal(); } opened = true; }
+  function show() {
+    if (!opened) {
+      lastFocus = document.activeElement;
+      if (document.getElementById('tradeNftPanel')?.classList.contains('open')) tradeNftClose();
+      previousDialog = dialogOpen;
+      panel.showModal();
+    }
+    opened = true; dialogOpen = true; joy.x = joy.y = 0; knob.style.transform = 'translate(0,0)';
+  }
+  function announce(target, type, id = '') {
+    if (!realtimeChannel || !onlineMode || !target?.remoteId) return;
+    realtimeChannel.send({ type: 'broadcast', event: 'nft_swap_ui', payload: { type, id, senderId: playerId, targetId: target.remoteId, tokenId: target.beacon.tokenId } });
+  }
+  async function receiveNotice(payload) {
+    if (!payload || payload.targetId !== playerId || payload.senderId === playerId || !authSession?.user || !lockerWalletAddress()) return;
+    const remote = remotePlayers.get(payload.senderId), own = tradeBeaconBroadcastPayload();
+    if (!remote || remote.map !== currentMap || Date.now() - (remote.lastSeen || 0) > 12000) return;
+    if (payload.type === 'invite') {
+      if (opened || dialogOpen || vendingOpen || !own || own.mode !== 'open_to_trade' || own.tokenId !== payload.tokenId || Math.hypot(player.x - remote.x, player.y - remote.y) > 150) return;
+      if (Date.now() - (invitedAt.get(payload.senderId) || 0) < 60000) return;
+      invitedAt.set(payload.senderId, Date.now());
+      show(); generation++; selectedId = ''; invitation = payload.senderId; content.textContent = '';
+      content.append(node('h3', (remote.name || 'A player') + ' wants to trade'), node('p', 'Your trade beacon: ' + own.name));
+      message('Waiting for the other player to choose their NFT. You will review both NFTs before signing in Xaman.');
+    } else if (payload.type === 'proposal' && /^[0-9a-f-]{36}$/i.test(payload.id || '')) {
+      // Broadcasts only hint at a trade. The authenticated API supplies its terms
+      // and verifies that this wallet is the intended recipient.
+      try {
+        const data = await apiWithAuth('/api/xrpl-nft-trade?action=swap-status&id=' + encodeURIComponent(payload.id));
+        if (data.role !== 'recipient' || data.wallet_b !== lockerWalletAddress() || data.status !== 'offered') return;
+        if ((opened && (invitation !== payload.senderId || selectedId)) || (!opened && (dialogOpen || vendingOpen))) {
+          showXrplPaymentToast('Incoming NFT trade. Open NFT TRADES to review.', '', 10000); return;
+        }
+        show(); generation++; invitation = null; renderTrade(data);
+      } catch (_) { /* Ignore unverified or stale hints. Inbox polling recovers missed hints. */ }
+    }
+  }
   async function request(action, body = null) {
     return apiWithAuth('/api/xrpl-nft-trade?action=swap-' + action, body ? { method: 'POST', body: JSON.stringify(body) } : {});
   }
@@ -43,7 +81,7 @@
   function renderList() {
     content.textContent = ''; selectedId = '';
     const rows = [...list.filter(s => active.has(s.status)), ...list.filter(s => !active.has(s.status))];
-    if (!rows.length) content.appendChild(node('p', 'No NFT trades yet. Approach a player’s OPEN TO TRADE beacon and choose OFFER MY NFT.'));
+    if (!rows.length) content.appendChild(node('p', 'No NFT trades yet. Approach a player’s OPEN TO TRADE beacon and press the action button.'));
     for (const swap of rows) {
       const row = node('div', null, 'nftSwapRow');
       row.append(node('strong', (swap.role === 'recipient' ? 'Incoming: ' : 'Sent: ') + swap.offered_name + ' ↔ ' + swap.requested_name), node('small', swap.status.toUpperCase()));
@@ -58,12 +96,13 @@
     for (const s of list) {
       if (s.role === 'recipient' && s.status === 'offered' && !seen.has(s.id)) {
         seen.add(s.id);
-        showXrplPaymentToast('Incoming NFT trade. Open Locker → XRPL NFTs → NFT TRADES to review.', '', 10000);
+        if (!opened && !dialogOpen && !vendingOpen) { show(); generation++; renderTrade(s); }
+        else showXrplPaymentToast('Incoming NFT trade. Open NFT TRADES to review.', '', 10000);
       }
     }
   }
   async function openInbox() {
-    show(); content.textContent = ''; message('Loading your trades…');
+    show(); generation++; selectedId = ''; invitation = null; content.textContent = ''; message('Loading your trades…');
     try { await refreshList(); renderList(); message('Select a trade to inspect both NFTs and wallet addresses.'); } catch (e) { message(e.message, true); }
   }
   function renderTrade(s) {
@@ -87,27 +126,38 @@
     if (data.status === 'completed' && !completedRefresh.has(id)) { completedRefresh.add(id); await lockerRefreshXrpl(true); tradeBeaconValidateOwnership(); }
   }
   async function openProposal(target) {
-    show(); generation++; content.textContent = ''; message('Loading your transferable NFTs…');
+    if (opened && busy) return;
+    show(); const gen = ++generation; selectedId = ''; invitation = null; content.textContent = ''; message('Loading your transferable NFTs…');
     try {
       requireWallet();
       const beacon = target?.beacon;
       if (!beacon || beacon.mode !== 'open_to_trade' || beacon.transferable === false) throw new Error('This NFT is not open to trade.');
+      announce(target, 'invite');
       const capability = await fetch('/api/xrpl-nft-trade?action=swap-capability', { cache: 'no-store' }).then(r => r.json());
       if (!capability.enabled) throw new Error('XRPL atomic trades are currently unavailable.');
       await lockerRefreshXrpl(true);
+      if (!opened || gen !== generation) return;
       const eligible = lockerState.nfts.filter(n => n.transferable !== false && (Number(n.Flags || 0) & 8) !== 0);
       if (!eligible.length) throw new Error('Your verified wallet has no transferable NFTs available.');
       const select = document.createElement('select'); select.setAttribute('aria-label', 'NFT you offer');
+      select.appendChild(node('option', 'Choose an NFT…')); select.firstChild.value = '';
       eligible.forEach(n => { const option = node('option', lockerNftDisplayName(n) + ' · ' + lockerNftShortToken(n)); option.value = lockerNftTokenId(n); select.appendChild(option); });
+      const localBeacon = tradeBeaconBroadcastPayload();
+      const beaconNft = localBeacon?.mode === 'open_to_trade' && eligible.find(n => lockerNftTokenId(n) === localBeacon.tokenId);
+      select.value = beaconNft ? lockerNftTokenId(beaconNft) : '';
       const preview = node('div');
-      function update() { const nft = eligible.find(n => lockerNftTokenId(n) === select.value); preview.textContent = ''; const art = lockerNftImageNode(nft); art.classList.add('nftSwapPreview'); preview.append(art, terms({ role: 'proposer', offered_name: lockerNftDisplayName(nft), offered_token_id: select.value, requested_name: beacon.name, requested_token_id: beacon.tokenId })); }
-      select.addEventListener('change', update); content.append(node('label', 'CHOOSE THE NFT YOU OFFER'), select, preview); update();
-      content.appendChild(button('SEND TRADE PROPOSAL', async () => {
+      async function propose() {
         const nft = eligible.find(n => lockerNftTokenId(n) === select.value);
+        if (!nft) throw new Error('Choose the NFT you want to trade.');
         const data = await request('propose', { counterparty_wallet: beacon.wallet, offered_token_id: select.value, requested_token_id: beacon.tokenId, offered_name: lockerNftDisplayName(nft), requested_name: beacon.name });
+        announce(target, 'proposal', data.id);
         await showTrade(data.id);
-      }));
+      }
+      const send = button('SEND TRADE PROPOSAL', propose);
+      function update() { const nft = eligible.find(n => lockerNftTokenId(n) === select.value); preview.textContent = ''; send.disabled = !nft; if (!nft) return; const art = lockerNftImageNode(nft); art.classList.add('nftSwapPreview'); preview.append(art, terms({ role: 'proposer', offered_name: lockerNftDisplayName(nft), offered_token_id: select.value, requested_name: beacon.name, requested_token_id: beacon.tokenId })); }
+      select.addEventListener('change', update); content.append(node('label', 'CHOOSE THE NFT YOU OFFER'), select, preview, send); update();
       message('Sending a proposal moves no assets. The other player signs first, then you sign the exchange. Keep both wallets free of other transactions while signing.');
+      if (beaconNft) { busy = true; try { message('Opening a trade using your beacon NFT…'); await propose(); } finally { busy = false; } }
     } catch (e) { message(e.message, true); }
   }
   // Only database reads run in the background. Ledger verification runs while a
@@ -120,7 +170,7 @@
     setTimeout(pollInbox, 30000);
   }
   window.addEventListener('focus', () => { if (opened && selectedId) showTrade(selectedId).catch(e => message(e.message, true)); });
-  window.atmNftSwaps = Object.freeze({ openInbox, openProposal });
+  window.atmNftSwaps = Object.freeze({ openInbox, openProposal, receiveNotice });
   setTimeout(pollInbox, 15000);
   setInterval(() => { if (opened && selectedId && !busy && !document.hidden) showTrade(selectedId).catch(e => message(e.message, true)); }, 5000);
 })();

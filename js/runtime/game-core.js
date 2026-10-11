@@ -3006,6 +3006,9 @@ async function connectMultiplayer(){
       const amount=Number(payload.amountXrp||0);showXrplPaymentToast(`${payload.buyerName||'A player'} made a ${amount} XRP offer on your displayed NFT.`,'success',10000);
       lockerState.nftBuyOffers.delete(String(payload.tokenId||'').toUpperCase());
     });
+    realtimeChannel.on('broadcast',{event:'nft_swap_ui'},({payload})=>{
+      window.atmNftSwaps?.receiveNotice?.(payload);
+    });
     realtimeChannel.on('broadcast',{event:'leave'},({payload})=>{remotePlayers.delete(payload.id);presencePlayers.delete(payload.id);window.dispatchEvent(new CustomEvent('atm:online-players-changed'));});
 
     await new Promise((resolve,reject)=>{
@@ -5299,7 +5302,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAccount
 function interact(){
   if(window.ATMZombieOutbreak?.isLocalDowned?.()===true){window.ATMWorldEvents?.toast?.('💀 YOU ARE DOWN · WAIT FOR A REVIVE',1400);return;}
   const nftTarget=window.ATMNftDrops?.nearest?.();if(nftTarget&&!dialogOpen){if(nftTarget.type==='nft-donation-box')window.ATMNftDrops.open(true);else window.ATMNftDrops.claim(nftTarget);return;}
-  const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget&&!dialogOpen){tradeNftOpen(tradeTarget);return;}
+  const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget&&!dialogOpen){if(tradeTarget.beacon.mode==='open_to_trade'&&tradeTarget.beacon.transferable!==false)window.atmNftSwaps?.openProposal(tradeTarget);else tradeNftOpen(tradeTarget);return;}
   const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget&&!dialogOpen){window.ATMZombieOutbreak?.requestRevive?.(reviveTarget.remoteId);return;}
   // Vending keeps priority over normal world objects after player Trade Beacons.
   const vending=nearestVendingMachine();
