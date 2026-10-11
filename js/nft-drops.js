@@ -108,7 +108,7 @@
  async function claim(row){
    panel.hidden=false;boxMode=false;boxControls();mode='claim';list.replaceChildren();list.append(el('h3',row.name||'Discovered NFT'),el('p','Accept this NFT free through your own Xaman wallet. XRPL network fees apply.'));
    if(row.image_url){const img=el('img');img.src=row.image_url;img.alt='Discovered NFT';img.width=160;img.height=160;list.append(img);}
-   const sign=el('button','Claim NFT · 0 XRP');sign.onclick=()=>run(async()=>{status('Preparing your NFT claim… Please wait.');const data=await api('drop-claim',{id:row.id});list.replaceChildren();signing(data,true);});list.append(sign);status('The NFT is held by the game. Your claim offer is restricted to your linked wallet.');
+   const sign=el('button','Claim NFT · 0 XRP');sign.onclick=()=>run(async()=>{status('Preparing your NFT claim… Please wait.');const data=await api('drop-claim',{id:row.id,...game.pose()});list.replaceChildren();signing(data,true);});list.append(sign);status('The NFT is held by the game. Your claim offer is restricted to your linked wallet.');
  }
  function nearest(){
    if(!game?.ready())return null;const p=game.pose();if(p.map!=='town')return null;

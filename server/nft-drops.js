@@ -115,7 +115,12 @@ async function reconcileCustody(admin,row) {
     row=await update(admin,row,{offer_index:index,tx_hash:signed.hash,failure_reason:'Approved. The holding wallet is receiving your NFT…'});
   }
   if(row.status==='pending'&&row.offer_index){
-    const result=await pool({action:'receive',drop_id:row.id,donor_address:row.wallet_address,token_id:row.token_id,offer_index:row.offer_index,kind:row.kind,map:row.map,x:row.x,y:row.y});
+    let result;
+    try{result=await pool({action:'receive',drop_id:row.id,donor_address:row.wallet_address,token_id:row.token_id,offer_index:row.offer_index,kind:row.kind,map:row.map,x:row.x,y:row.y});}
+    catch(e){
+      if(String(e.message).startsWith('NFT transfer failed:')&&await findOwnedNft(row.wallet_address,row.token_id))return update(admin,row,{status:'failed',failure_reason:e.message+' Your NFT is still in your wallet. Choose Try again.'});
+      throw e;
+    }
     if(!result.inventory_id)return row;
     row=await update(admin,row,{payload_inventory_id:result.inventory_id,custody_tx_hash:result.receipt_tx_hash,status:row.kind==='donation'?'received':'placed',failure_reason:null});
   }
@@ -254,6 +259,7 @@ export default async function handler(req,res) {
       if(wallet===row.wallet_address) throw fail('You already own this NFT. You can carry it again instead.',409);
       if(row.custody){
         const old=check(await admin.from('town_nft_drop_claims').select('*').eq('drop_id',row.id).eq('user_id',user.id).in('status',['preparing','pending']).maybeSingle());
+        if(!old){const at=placement(body);if(Math.hypot(at.x-row.x,at.y-row.y)>95)throw fail('Walk up to this NFT drop to claim it.',409);}
         let claim=old||check(await admin.from('town_nft_drop_claims').insert({drop_id:row.id,user_id:user.id,wallet_address:wallet}).select('*').single());
         if(claim.wallet_address!==wallet)throw fail('Use the wallet that reserved this NFT.',409);
         if(old?.payload_uuid){const signed=await signature(old.payload_uuid,wallet);if(['expired','rejected','failed'].includes(signed.status)){await cancelXamanTransaction(old.payload_uuid);check(await admin.from('town_nft_drop_claims').update({payload_uuid:null,status:'preparing'}).eq('id',old.id).eq('payload_uuid',old.payload_uuid));}}
