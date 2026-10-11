@@ -9,7 +9,8 @@
  function user(){return game?.userId?.()||null;}
  function signing(data,claim=false){
    persist({id:data.id,claim,user:user(),deeplink:data.deeplink});
-   status(data.kind==='drop'?'Approve this public free drop in Xaman. Anyone can accept it, including outside Town. Return here for confirmation.':'Open Xaman below to approve. Return here and wait for confirmation.');
+   status(data.kind==='drop'?'Approve the transfer to the game’s holding wallet in Xaman. Your drop appears after receipt is confirmed. Return here to check progress.':'Open Xaman below to approve. Return here and wait for confirmation.');
+   if(!data.deeplink){status('The holding wallet is preparing your personal NFT offer…');startPoll();return;}
    const link=el('a','Open Xaman to sign');link.href=data.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.append(link);
    if(data.qr_png){const qr=el('img');qr.src=data.qr_png;qr.alt='Scan in Xaman';qr.width=180;qr.height=180;list.append(qr);}
    startPoll();
@@ -42,7 +43,8 @@
      if(!pending||pending.user!==user())return;
      try{
        const data=await api((pending.claim?'drop-claim-status':'drop-status')+'&id='+encodeURIComponent(pending.id));
-       if(['pending','preparing'].includes(data.status)&&data.deeplink&&!pending.deeplink){persist({...pending,deeplink:data.deeplink});render();}
+       if(data.phase==='receiving'){list.replaceChildren(el('p','Transfer approved. The holding wallet is receiving your NFT…'));status('Waiting for confirmed receipt. Your NFT will appear at your chosen spot automatically.');}
+       if(['pending','preparing'].includes(data.status)&&data.deeplink&&!pending.deeplink){const isClaim=pending.claim;list.replaceChildren();signing(data,isClaim);return;}
        if(!['pending','preparing'].includes(data.status)){
          const wasClaim=pending.claim;persist(null);await refresh(true);
          if(boxMode)await showBox();else{mode='mine';render();}
@@ -69,7 +71,7 @@
    if(busy)return;
    if(!user()){list.replaceChildren();status('Sign in and link Xaman to create or claim NFT drops.');return;}
    mode=donate?'donate':'create';list.replaceChildren(el('p','Loading NFTs from your linked wallet…'));
-   status(donate?'Donate to the existing game rewards wallet. The NFT enters the pool only after acceptance.':'Choose an NFT to carry. Walk to your spot, tap Place NFT here, then sign in Xaman. The free offer is published when you place it.');
+   status(donate?'Donate to the existing game rewards wallet. The NFT enters the pool only after acceptance.':'Choose an NFT to carry. Walk to your spot, tap Place NFT here, then sign in Xaman. Signing transfers the NFT into the game’s holding wallet. It becomes available at your spot after receipt is confirmed.');
    try{
      const nfts=await game.nfts();list.replaceChildren();
      if(!nfts.length)list.append(el('p','No transferable NFTs found. Link Xaman and refresh your Locker.'));
@@ -106,7 +108,7 @@
  async function claim(row){
    panel.hidden=false;boxMode=false;boxControls();mode='claim';list.replaceChildren();list.append(el('h3',row.name||'Discovered NFT'),el('p','Accept this NFT free through your own Xaman wallet. XRPL network fees apply.'));
    if(row.image_url){const img=el('img');img.src=row.image_url;img.alt='Discovered NFT';img.width=160;img.height=160;list.append(img);}
-   const sign=el('button','Claim NFT · 0 XRP');sign.onclick=()=>run(async()=>{status('Preparing your NFT claim… Please wait.');const data=await api('drop-claim',{id:row.id});list.replaceChildren();signing(data,true);});list.append(sign);status('The NFT remains in the offering player’s wallet until XRPL confirms acceptance.');
+   const sign=el('button','Claim NFT · 0 XRP');sign.onclick=()=>run(async()=>{status('Preparing your NFT claim… Please wait.');const data=await api('drop-claim',{id:row.id});list.replaceChildren();signing(data,true);});list.append(sign);status('The NFT is held by the game. Your claim offer is restricted to your linked wallet.');
  }
  function nearest(){
    if(!game?.ready())return null;const p=game.pose();if(p.map!=='town')return null;

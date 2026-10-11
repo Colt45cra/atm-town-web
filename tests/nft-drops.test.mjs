@@ -1,3 +1,4 @@
+import {generateKeyPairSync} from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freeOfferTransaction, matchesFreeOffer, validFreeOffer, placement, offerIndex, REWARDS_NFT_WALLET } from '../lib/nft-drops.js';
@@ -21,16 +22,18 @@ test('placement rejects other maps, nonfinite coordinates and out-of-bounds land
  assert.equal(offerIndex({AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}),offer);
 });
 
-function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false,xamanError=null,accepted=false,incomplete=false}={}){
+function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false,xamanError=null,accepted=false,incomplete=false,poolResponse=null}={}){
  process.env.SUPABASE_URL='https://nft-test.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test-service-key';process.env.XAMAN_API_KEY='test';process.env.XAMAN_API_SECRET='test';
+ process.env.PAYLOAD_API_BASE_URL='https://payload-test.invalid';process.env.PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64=generateKeyPairSync('ed25519').privateKey.export({format:'der',type:'pkcs8'}).toString('base64');
  const tables={town_nft_drops:[structuredClone(row)],town_nft_drop_claims:[],player_accounts:[{user_id:user,wallet_address:donor,wallet_verified_at:'2026-01-01'}]};
  const requests=[];const original=globalThis.fetch;
  globalThis.fetch=async(input,options={})=>{
    const url=new URL(input),headers=new Headers(options.headers);requests.push({url,options});
+   if(url.hostname==='payload-test.invalid'){const b=JSON.parse(options.body);if(poolResponse)return Response.json(await poolResponse(b));return Response.json(b.action==='status'?{ready:true,address:REWARDS_NFT_WALLET,network:'mainnet'}:b.action==='box'?{tokens:[{token_id:token}]}:{status:'waiting_receipt'});}
    if(url.pathname.endsWith('/auth/v1/user'))return Response.json({id:user,email:'test@example.invalid'});
    if(url.pathname.includes('/rest/v1/')){
      const name=url.pathname.split('/').at(-1),rows=tables[name]||[];
-     const match=r=>[...url.searchParams].every(([k,v])=>['select','order','limit'].includes(k)||v.startsWith('eq.')&&String(r[k])===v.slice(3)||v.startsWith('in.')&&v.slice(4,-1).split(',').includes(String(r[k])));
+     const match=r=>[...url.searchParams].every(([k,v])=>['select','order','limit','or'].includes(k)||v==='is.null'&&r[k]==null||v.startsWith('eq.')&&String(r[k])===v.slice(3)||v.startsWith('in.')&&v.slice(4,-1).split(',').includes(String(r[k])));
      let found=rows.filter(match);
      if(options.method==='PATCH'){const patch=JSON.parse(options.body);found.forEach(r=>Object.assign(r,patch));}
      if(options.method==='POST'){const body=JSON.parse(options.body);found=[{id:'44444444-4444-4444-8444-444444444444',status:'preparing',...body}];rows.push(...found);tables[name]=rows;}
@@ -40,7 +43,7 @@ function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,w
    if(url.pathname.endsWith('/payload')&&options.method==='POST'&&xamanError)return Response.json({error:xamanError},{status:400});
    if(url.pathname.endsWith('/payload')&&options.method==='POST')return Response.json({uuid:'55555555-5555-4555-8555-555555555555',next:{always:'https://xaman.app/sign/test'}});
    const body=JSON.parse(options.body||'{}');
-   if(body.method==='tx')return Response.json({result:tx||{validated:true,tx_json:freeOfferTransaction(row.wallet_address,token),meta:{TransactionResult:'tesSUCCESS',AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}}});
+   if(body.method==='tx')return Response.json({result:tx||{validated:true,tx_json:freeOfferTransaction(row.wallet_address,token,row.custody?REWARDS_NFT_WALLET:null),meta:{TransactionResult:'tesSUCCESS',AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}}});
    if(body.method==='ledger_entry')return Response.json({result:offerActive?{node:ledgerOffer}:{status:'error',error:'entryNotFound'}});
    if(body.method==='account_tx')return Response.json({result:{validated:true,transactions:accepted?[{validated:true,tx_json:{TransactionType:'NFTokenAcceptOffer'},meta:{TransactionResult:'tesSUCCESS',AffectedNodes:[{DeletedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}}]:[]}});
    if(body.method==='account_nfts'&&incomplete)return Response.json({result:{}});
@@ -112,4 +115,33 @@ test('box contents come from the rewards wallet actual inventory',async()=>{
 
 test('a claimed label cannot block carrying when the creator still owns the NFT',async()=>{
  const s=setup({row:{...base,status:'claimed',offer_index:offer},offerActive:false,owned:true});try{const r=await call('drop-status');assert.equal(r.output.status,'carried');assert.equal(r.output.offer_index,null);assert.equal(s.requests.some(r=>r.options.method==='POST'&&r.url.pathname.endsWith('/payload')),false);}finally{s.restore();}
+});
+
+test('protected signatures stay pending until Payload confirms receipt, then become placed rather than claimed',async()=>{
+ let ready=false;const row={...base,custody:true,map:'town',x:1500,y:3800};
+ const s=setup({row,signed:true,poolResponse:async b=>b.action==='receive'&&!ready?{status:'waiting_receipt'}:{status:'allocated',inventory_id:'66666666-6666-4666-8666-666666666666',receipt_tx_hash:hash,allocation:'ground'}});
+ try{let r=await call('drop-status');assert.equal(r.output.status,'pending');assert.equal(r.output.deeplink,undefined);assert.equal(s.tables.town_nft_drops[0].offer_index,offer);
+ ready=true;r=await call('drop-status');assert.equal(r.output.status,'placed');assert.equal(r.output.custody,true);assert.equal(s.tables.town_nft_drops[0].custody_tx_hash,hash);
+ const receive=JSON.parse(s.requests.find(r=>r.url.hostname==='payload-test.invalid'&&JSON.parse(r.options.body).action==='receive').options.body);assert.equal(receive.kind,'drop');assert.equal(receive.map,'town');
+ }finally{s.restore();}
+});
+test('protected map drops reject public or redirected signatures',async()=>{
+ for(const destination of [null,finder]){const s=setup({row:{...base,custody:true},signed:true,tx:{validated:true,tx_json:freeOfferTransaction(donor,token,destination),meta:{TransactionResult:'tesSUCCESS'}}});try{const r=await call('drop-status');assert.equal(r.output.status,'failed');assert.equal(s.requests.some(r=>r.url.hostname==='payload-test.invalid'),false);}finally{s.restore();}}
+});
+test('a reserved map NFT cannot be carried away by its donor',async()=>{
+ const s=setup({row:{...base,custody:true,status:'placed',offer_index:offer,payload_inventory_id:'66666666-6666-4666-8666-666666666666',map:'town',x:1500,y:3800},poolResponse:async()=>({status:'reserved'})});
+ try{const r=await call('drop-carry',{id:base.id});assert.equal(r.code,409);assert.equal(s.tables.town_nft_drops[0].status,'placed');}finally{s.restore();}
+});
+test('donation box excludes map NFTs even while the holding wallet owns them',async()=>{
+ const s=setup({poolResponse:async()=>({tokens:[]})});try{const r=await call('drop-box');assert.equal(r.code,200);assert.deepEqual(r.output.nfts,[]);}finally{s.restore();}
+});
+test('a finder resumes one reserved claim and signs only the recipient offer',async()=>{
+ const row={...base,custody:true,status:'placed',offer_index:offer,payload_inventory_id:'66666666-6666-4666-8666-666666666666',map:'town',x:1500,y:3800};
+ const recipientOffer='D'.repeat(64);let claimId;
+ const s=setup({row,poolResponse:async b=>b.action==='claim'?(claimId=b.claim_id,{status:'offer_ready',recipient_address:finder,claim_key:b.claim_id,offer_index:recipientOffer}):{status:'allocated',inventory_id:row.payload_inventory_id}});
+ s.tables.player_accounts[0].wallet_address=finder;
+ try{const r=await call('drop-claim',{id:base.id});assert.equal(r.code,201);assert.equal(r.output.status,'pending');assert.ok(r.output.deeplink);assert.equal(s.tables.town_nft_drop_claims.length,1);
+ const signed=JSON.parse(s.requests.find(r=>r.url.pathname.endsWith('/payload')&&r.options.method==='POST').options.body).txjson;assert.equal(signed.Account,finder);assert.equal(signed.NFTokenSellOffer,recipientOffer);assert.notEqual(signed.NFTokenSellOffer,offer);
+ await call('drop-claim',{id:base.id});assert.equal(s.tables.town_nft_drop_claims.length,1);assert.equal(s.requests.filter(r=>r.url.pathname.endsWith('/payload')&&r.options.method==='POST').length,1);assert.equal(claimId,r.output.id);
+ }finally{s.restore();}
 });
