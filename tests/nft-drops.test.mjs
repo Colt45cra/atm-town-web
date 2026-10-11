@@ -21,7 +21,7 @@ test('placement rejects other maps, nonfinite coordinates and out-of-bounds land
  assert.equal(offerIndex({AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}),offer);
 });
 
-function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false}={}){
+function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false,xamanError=null}={}){
  process.env.SUPABASE_URL='https://nft-test.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test-service-key';process.env.XAMAN_API_KEY='test';process.env.XAMAN_API_SECRET='test';
  const tables={town_nft_drops:[structuredClone(row)],town_nft_drop_claims:[],player_accounts:[{user_id:user,wallet_address:donor,wallet_verified_at:'2026-01-01'}]};
  const requests=[];const original=globalThis.fetch;
@@ -37,6 +37,7 @@ function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,w
      return Response.json(headers.get('Accept')?.includes('vnd.pgrst.object')?found[0]||null:found);
    }
    if(url.pathname.includes('/payload/'))return Response.json({meta:{resolved:signed,signed},response:{account:wrongWallet?finder:row.wallet_address,txid:hash,dispatched_nodetype:'MAINNET'}});
+   if(url.pathname.endsWith('/payload')&&options.method==='POST'&&xamanError)return Response.json({error:xamanError},{status:400});
    if(url.pathname.endsWith('/payload')&&options.method==='POST')return Response.json({uuid:'55555555-5555-4555-8555-555555555555',next:{always:'https://xaman.app/sign/test'}});
    const body=JSON.parse(options.body||'{}');
    if(body.method==='tx')return Response.json({result:tx||{validated:true,tx_json:freeOfferTransaction(row.wallet_address,token),meta:{TransactionResult:'tesSUCCESS',AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}}});
@@ -71,4 +72,16 @@ test('finder signs their own free acceptance; delivery requires validated succes
    assert.deepEqual(submitted,{TransactionType:'NFTokenAcceptOffer',Account:finder,NFTokenSellOffer:offer});
    const result=await call('drop-claim-status',null,created.output.id);assert.equal(result.output.status,'claimed');assert.equal(result.output.tx_hash,hash);assert.equal(s.tables.town_nft_drops[0].status,'claimed');
  }finally{s.restore();}
+});
+
+test('failed creation keeps the Xaman error, can retry, and only a pending offer gets a resume link',async()=>{
+ const s=setup({row:{...base,status:'failed'},xamanError:{code:413,reference:'test-reference'}});
+ try{
+   const r=await call('drop-start',{token_id:token});assert.equal(r.code,502);
+   const created=s.tables.town_nft_drops.at(-1);assert.equal(created.status,'failed');assert.match(created.failure_reason,/code 413/);
+   const request=JSON.parse(s.requests.find(r=>r.url.pathname.endsWith('/payload')&&r.options.method==='POST').options.body);
+   assert.equal(request.custom_meta.identifier,created.id);assert.ok(request.custom_meta.instruction.length<100);assert.equal(request.txjson.Amount,'0');
+   assert.equal((await call('drop-mine')).output.drops.every(r=>!r.deeplink),true);
+ }finally{s.restore();}
+ const pending=setup();try{assert.equal((await call('drop-status')).output.deeplink,'https://xumm.app/sign/'+base.payload_uuid);assert.equal((await call('drop-mine')).output.drops[0].deeplink,'https://xumm.app/sign/'+base.payload_uuid);}finally{pending.restore();}
 });

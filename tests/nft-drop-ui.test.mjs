@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+class Element {
+  constructor(tag='div'){this.tag=tag;this.children=[];this.queries=new Map();this.attributes={};}
+  set textContent(v){this.text=v;this.children=[];}
+  get textContent(){return (this.text||'')+this.children.map(n=>n.textContent).join('');}
+  set innerHTML(v){this.html=v;}
+  setAttribute(k,v){this.attributes[k]=v;}
+  append(...v){this.children.push(...v);}
+  prepend(...v){this.children.unshift(...v);}
+  replaceChildren(...v){this.text='';this.children=[...v];}
+  querySelector(k){if(!this.queries.has(k))this.queries.set(k,new Element(k.startsWith('[data-')&&!k.includes('status')&&!k.includes('list')?'button':'div'));return this.queries.get(k);}
+  querySelectorAll(){return [...this.queries.entries()].filter(([k])=>k!=='[data-close]').map(([,v])=>v).filter(v=>v.tag==='button').concat(this.children.flatMap(n=>n.tag==='button'?[n]:n.querySelectorAll()));}
+  focus(){}
+  scrollIntoView(){}
+}
+function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'})){
+ const body=new Element(),calls=[],store=new Map();
+ const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async()=>({ok:true,json:async()=>({drops:[]})}),setTimeout(){},clearTimeout(){},setInterval(){},URL,Date,Math});
+ vm.runInContext(fs.readFileSync(new URL('../js/nft-drops.js',import.meta.url),'utf8'),context);
+ context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>[{name:'Ticket',token_id:'A'.repeat(64)}],api:async(url,options)=>{calls.push(url);if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
+ const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store};
+}
+test('creation immediately shows progress, prevents duplicate clicks, and gives an explicit signing link',async()=>{
+ let release;const wait=new Promise(r=>release=r),t=setup([],()=>wait);await t.api.open();await t.panel.querySelector('[data-create]').onclick();
+ const choose=t.list.children[0].children.find(n=>n.tag==='button');const work=choose.onclick();
+ assert.match(t.note.textContent,/Preparing/);assert.equal(t.panel.querySelector('[data-create]').disabled,true);
+ await choose.onclick();assert.equal(t.calls.filter(u=>u.includes('drop-start')).length,1);
+ release({id:'drop',deeplink:'https://xumm.app/sign/request'});await work;
+ assert.match(t.note.textContent,/Open Xaman/);assert.equal(t.list.children.find(n=>n.tag==='a').href,'https://xumm.app/sign/request');assert.equal(t.panel.querySelector('[data-create]').disabled,false);
+});
+test('rejected creation displays the actual error and retry control',async()=>{
+ const t=setup([],async()=>{throw Error('Xaman rejected request (code 413).');});await t.api.open();await t.panel.querySelector('[data-create]').onclick();await t.list.children[0].children.find(n=>n.tag==='button').onclick();
+ assert.match(t.note.textContent,/413/);assert.equal(t.list.children.find(n=>n.tag==='button').textContent,'Try again');assert.equal(t.panel.attributes['aria-busy'],'false');
+});
+test('saved pending request resumes the same link without creating another offer',async()=>{
+ const t=setup([{id:'saved',status:'pending',kind:'drop',token_id:'A'.repeat(64),deeplink:'https://xumm.app/sign/saved'}]);await t.api.open();t.list.children[0].children.find(n=>n.tag==='button').onclick();
+ assert.equal(t.list.children.find(n=>n.tag==='a').href,'https://xumm.app/sign/saved');assert.equal(t.calls.some(u=>u.includes('drop-start')),false);
+});
