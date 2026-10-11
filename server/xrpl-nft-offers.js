@@ -1,3 +1,4 @@
+import { nftWallet } from '../lib/atm-pay-town.js';
 import { setCors, requireUser, sendError } from '../lib/auth.js';
 import { XRPL_ADDRESS, NFT_ID, findOwnedNft, getBuyOffers } from '../lib/xrpl-nft-trading.js';
 
@@ -9,8 +10,7 @@ export default async function handler(req, res) {
     const { admin, user } = await requireUser(req);
     const tokenId = String(req.query?.token_id || '').toUpperCase();
     if (!NFT_ID.test(tokenId)) return res.status(400).json({ error: 'Invalid NFTokenID.' });
-    const { data: player, error: playerError } = await admin.from('player_accounts').select('wallet_address').eq('user_id', user.id).maybeSingle();
-    if (playerError) throw playerError;
+    const player = await nftWallet(admin,user.id);
     const ownerWallet = String(player?.wallet_address || '');
     if (!XRPL_ADDRESS.test(ownerWallet)) return res.status(409).json({ error: 'Link and verify Xaman first.' });
     const nft = await findOwnedNft(ownerWallet, tokenId);

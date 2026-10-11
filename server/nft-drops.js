@@ -1,3 +1,4 @@
+import { nftWallet } from '../lib/atm-pay-town.js';
 import { randomUUID } from 'node:crypto';
 import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
 import { NFT_ID, OFFER_ID, XRPL_ADDRESS, findOwnedNft, rpc, createXamanTransaction, cancelXamanTransaction } from '../lib/xrpl-nft-trading.js';
@@ -10,6 +11,7 @@ const parts = r => ({ tx: r.tx_json || r.tx || r.transaction || r, meta: r.meta 
 const success = r => r.validated === true && parts(r).meta.TransactionResult === 'tesSUCCESS';
 const publicRow = row => ({ id: row.id, kind: row.kind, status: row.status, token_id: row.token_id, name: row.name, image_url: row.image_url, map: row.map, x: row.x, y: row.y, offer_index: row.offer_index, wallet_address: row.wallet_address, failure_reason: row.failure_reason });
 async function walletFor(admin, user) {
+  if ((await nftWallet(admin,user.id)).provider === 'atm_pay') throw fail('Select Xaman in ATM PAY MAINNET for NFT drop signing. ATM Pay currently supports NFT exchanges.',409);
   const account = check(await admin.from('player_accounts').select('wallet_address,wallet_verified_at').eq('user_id', user.id).maybeSingle());
   if (!account?.wallet_verified_at || !XRPL_ADDRESS.test(account.wallet_address || '')) throw fail('Link and verify your Xaman wallet first.', 409);
   return account.wallet_address;

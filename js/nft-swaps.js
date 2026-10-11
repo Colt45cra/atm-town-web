@@ -1,4 +1,4 @@
-/* Atomic NFT-for-NFT trading. Wallet secrets stay in Xaman. */
+/* Atomic NFT-for-NFT trading. Wallet secrets stay in the chosen wallet. */
 (function () {
   'use strict';
   const active = new Set(['offered', 'preparing', 'signing', 'ready', 'finalizing', 'settling']);
@@ -8,7 +8,7 @@
   let invitation = null, previousDialog = false;
   const invitedAt = new Map();
   const panel = document.createElement('dialog'); panel.id = 'nftSwapPanel'; panel.setAttribute('aria-labelledby', 'nftSwapTitle');
-  panel.innerHTML = '<div class="nftSwapHeader"><h2 id="nftSwapTitle">NFT trades</h2><button type="button" aria-label="Close NFT trades">×</button></div><p class="nftSwapSafety">Both NFTs exchange together, or neither moves. This exchange requires Xaman support for BatchV1_1 (documented for version 5.4.0 onward). Xaman shows four steps for this one exchange. Review both token IDs in Xaman. The proposing player pays the network fee, including if the exchange fails.</p><div id="nftSwapContent"></div><p id="nftSwapStatus" role="status"></p>';
+  panel.innerHTML = '<div class="nftSwapHeader"><h2 id="nftSwapTitle">NFT trades</h2><button type="button" aria-label="Close NFT trades">×</button></div><p class="nftSwapSafety">Both NFTs exchange together, or neither moves. Approve with ATM Pay or compatible Xaman (5.4.0 or newer). Review both token IDs in your wallet. The proposing player pays the network fee, including if the exchange fails.</p><div id="nftSwapContent"></div><p id="nftSwapStatus" role="status"></p>';
   document.body.appendChild(panel);
   const content = panel.querySelector('#nftSwapContent'), status = panel.querySelector('#nftSwapStatus');
   const toolbar = document.getElementById('lockerNftSort')?.parentElement;
@@ -60,7 +60,7 @@
   async function request(action, body = null) {
     return apiWithAuth('/api/xrpl-nft-trade?action=swap-' + action, body ? { method: 'POST', body: JSON.stringify(body) } : {});
   }
-  function requireWallet() { if (!authSession?.user || !lockerWalletAddress()) throw new Error('Sign in and link a verified Xaman wallet before trading NFTs.'); }
+  function requireWallet() { if (!authSession?.user || !lockerWalletAddress()) throw new Error('Sign in and connect ATM Pay or a verified Xaman wallet before trading NFTs.'); }
   function terms(s) {
     const a = s.role === 'proposer';
     const box = node('div', null, 'nftSwapTerms');
@@ -72,10 +72,10 @@
   }
   function signLink(s) {
     const sign = s.sign_request; if (!sign?.deeplink) return;
-    const url = new URL(sign.deeplink); if (url.protocol !== 'https:' || !['xumm.app', 'xaman.app'].includes(url.hostname)) throw new Error('Invalid Xaman signing link.');
-    message('Review BOTH NFTs in Xaman. Sign, then return to ATM Town.');
+    const url = new URL(sign.deeplink); if (url.protocol !== 'https:' || !['xumm.app', 'xaman.app', 'atm-pay-two.vercel.app'].includes(url.hostname)) throw new Error('Invalid Xaman signing link.');
+    message('Review BOTH NFTs in your wallet. Approve, then return to ATM Town.');
     if (sign.qr_png && /^https:\/\//.test(sign.qr_png)) { const qr = document.createElement('img'); qr.src = sign.qr_png; qr.alt = 'Scan with Xaman to review this trade'; qr.className = 'nftSwapQR'; content.appendChild(qr); }
-    const link = node('a', 'OPEN XAMAN', 'nftSwapSignLink'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener'; content.appendChild(link);
+    const link = node('a', sign.provider === 'atm_pay' ? 'OPEN ATM PAY' : 'OPEN XAMAN', 'nftSwapSignLink'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener'; content.appendChild(link);
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) window.location.assign(url.href);
   }
   function renderList() {
@@ -111,10 +111,10 @@
     content.append(node('p', 'Other wallet: ' + (s.role === 'proposer' ? s.wallet_b : s.wallet_a), 'nftSwapWallet'));
     content.appendChild(node('p', 'Status: ' + s.status.toUpperCase() + (s.fee_drops ? ' · Network fee: ' + Number(s.fee_drops) / 1000000 + ' XRP' : '')));
     if (s.error) message(s.error, true);
-    else message(({ offered: s.role === 'recipient' ? 'Review both NFTs before approving. Signing approves the entire exchange.' : 'Waiting for the other player to review and sign.', signing: 'Waiting for the receiving player’s Xaman signature.', ready: s.role === 'proposer' ? 'The other player approved. Review and sign the final exchange in Xaman.' : 'You approved. Waiting for the proposing player to sign.', settling: 'Awaiting the final Xaman signature and validation of all four XRPL transactions.', completed: 'Trade complete. Both NFT transfers were verified on XRPL.', expired: 'This proposal expired. Start a new trade.', cancelled: 'This proposal was cancelled.', rejected: 'The Xaman request was rejected.', failed: 'This trade did not complete. Check its ledger result before making a new proposal.' })[s.status] || 'Preparing the secure sign request…');
-    if (s.role === 'recipient' && s.status === 'offered') content.appendChild(button('REVIEW & SIGN WITH XAMAN', async () => { const next = await request('sign', { id: s.id }); renderTrade(next); signLink(next); }));
+    else message(({ offered: s.role === 'recipient' ? 'Review both NFTs before approving. Signing approves the entire exchange.' : 'Waiting for the other player to review and sign.', signing: 'Waiting for the receiving player’s wallet approval.', ready: s.role === 'proposer' ? 'The other player approved. Review and sign the final exchange in your wallet.' : 'You approved. Waiting for the proposing player to sign.', settling: 'Awaiting the final wallet signature and validation of all four XRPL transactions.', completed: 'Trade complete. Both NFT transfers were verified on XRPL.', expired: 'This proposal expired. Start a new trade.', cancelled: 'This proposal was cancelled.', rejected: 'The wallet request was rejected.', failed: 'This trade did not complete. Check its ledger result before making a new proposal.' })[s.status] || 'Preparing the secure sign request…');
+    if (s.role === 'recipient' && s.status === 'offered') content.appendChild(button(s.wallet_provider === 'atm_pay' ? 'REVIEW & SIGN WITH ATM PAY' : 'REVIEW & SIGN WITH XAMAN', async () => { const next = await request('sign', { id: s.id }); renderTrade(next); signLink(next); }));
     if (s.role === 'proposer' && s.status === 'ready') content.appendChild(button('SIGN & EXCHANGE BOTH NFTS', async () => { const next = await request('finalize', { id: s.id }); renderTrade(next); signLink(next); }));
-    if (s.sign_request) content.appendChild(button('OPEN XAMAN REQUEST', () => signLink(s)));
+    if (s.sign_request) content.appendChild(button(s.wallet_provider === 'atm_pay' ? 'OPEN ATM PAY REQUEST' : 'OPEN XAMAN REQUEST', () => signLink(s)));
     if (['offered', 'signing', 'ready'].includes(s.status)) content.appendChild(button(s.role === 'recipient' ? 'DECLINE / CANCEL' : 'CANCEL PROPOSAL', async () => renderTrade(await request('cancel', { id: s.id }))));
     if (s.tx_hash) { const link = node('a', 'VIEW XRPL TRANSACTION'); link.href = 'https://livenet.xrpl.org/transactions/' + s.tx_hash; link.target = '_blank'; link.rel = 'noopener'; content.appendChild(link); }
     content.appendChild(button('ALL TRADES', () => openInbox()));

@@ -1,3 +1,4 @@
+import { nftWallet } from '../lib/atm-pay-town.js';
 import { randomUUID } from 'node:crypto';
 import { setCors, requireUser, sendError } from '../lib/auth.js';
 import { XRPL_ADDRESS, NFT_ID, findOwnedNft, createXamanTransaction, cancelXamanTransaction } from '../lib/xrpl-nft-trading.js';
@@ -20,6 +21,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'POST required.' }); }
   try {
     const { admin, user } = await requireUser(req);
+    if ((await nftWallet(admin,user.id)).provider === 'atm_pay') return res.status(409).json({error:'ATM Pay currently supports NFT exchanges. Select Xaman in ATM PAY MAINNET to sign XRP buy offers.'});
     const tokenId = String(req.body?.token_id || '').toUpperCase();
     const sellerWallet = String(req.body?.seller_wallet || '').trim();
     const amountDrops = xrpToDrops(req.body?.amount_xrp);

@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import codec from '../lib/xrpl-swap-codec.cjs';
+import { nftWallet, nftWalletOwner, payRequest } from '../lib/atm-pay-town.js';
 import { setCors, requireUser, sendError } from '../lib/auth.js';
 import { NFT_ID, XRPL_ADDRESS, cancelXamanTransaction } from '../lib/xrpl-nft-trading.js';
 import { batchCapability, prepareSwapBatch, checkSwapOwnership, checkSwapSequences, createSwapPayload, signatureState, settleSwap, terminalSwap, swapError, cleanupObsoleteSwapRequest } from '../lib/xrpl-nft-swap.js';
@@ -18,6 +20,7 @@ function visible(swap, userId) {
     offered_name: swap.name_a, requested_name: swap.name_b,
     wallet_a: swap.wallet_a, wallet_b: swap.wallet_b, created_at: swap.created_at, expires_at: swap.expires_at,
     fee_drops: swap.batch_json?.Fee || null, tx_hash: swap.tx_hash, error: swap.failure_reason,
+    wallet_provider: isA ? swap.provider_a : swap.provider_b,
     sign_request: !isA && status === 'signing' ? swap.inner_payload : isA && status === 'settling' ? swap.final_payload : null };
 }
 async function resolve(admin, swap) {
@@ -37,12 +40,13 @@ async function resolve(admin, swap) {
   }
   if (Date.parse(swap.expires_at) <= Date.now()) {
     const expired = await write(admin, swap.id, swap.status, { status: 'expired' });
-    await cancelXamanTransaction(swap.inner_payload?.uuid);
+    if (swap.inner_payload?.provider !== 'atm_pay') await cancelXamanTransaction(swap.inner_payload?.uuid);
     return expired;
   }
   if (swap.status === 'signing' && swap.inner_payload?.uuid) {
+    if (swap.inner_payload.provider === 'atm_pay') return swap;
     const result = await signatureState(swap.inner_payload.uuid, swap.wallet_b, swap.batch_json);
-    if (result.status === 'signed') return write(admin, swap.id, swap.status, { status: 'ready' });
+    if (result.status === 'signed') return write(admin, swap.id, swap.status, { status: 'ready', inner_signed_blob:result.signed_blob });
     if (terminalSwap(result.status)) return write(admin, swap.id, swap.status, { status: result.status, failure_reason: result.error || null });
   }
   return swap;
@@ -56,9 +60,8 @@ export default async function handler(req, res) {
     // Capability is public and read-only; all trade operations require a verified account.
     if (action === 'capability') return res.json({ enabled: await batchCapability(), network: 'mainnet', mode: 'all_or_nothing', wallet: 'Xaman 5.4.0 or newer' });
     const { admin, user } = await requireUser(req);
-    const { data: player, error: playerError } = await admin.from('player_accounts').select('wallet_address,wallet_verified_at').eq('user_id', user.id).maybeSingle();
-    if (playerError) throw playerError;
-    if (!XRPL_ADDRESS.test(player?.wallet_address || '') || !player?.wallet_verified_at) throw swapError('Link and verify Xaman before trading NFTs.');
+    const player = await nftWallet(admin,user.id);
+    if (!XRPL_ADDRESS.test(player?.wallet_address || '') || !player?.wallet_verified_at) throw swapError('Connect ATM Pay or verify Xaman before trading NFTs.');
     if (action === 'list') {
       const { data, error } = await admin.from(TABLE).select('*').or(`user_a.eq.${user.id},user_b.eq.${user.id}`).order('created_at', { ascending: false }).limit(30);
       if (error) throw error;
@@ -73,14 +76,13 @@ export default async function handler(req, res) {
       const walletB = String(req.body?.counterparty_wallet || '').trim();
       const tokenA = String(req.body?.offered_token_id || '').toUpperCase(), tokenB = String(req.body?.requested_token_id || '').toUpperCase();
       if (!XRPL_ADDRESS.test(walletB) || !NFT_ID.test(tokenA) || !NFT_ID.test(tokenB) || walletB === player.wallet_address || tokenA === tokenB) throw swapError('Choose your NFT and a different player’s NFT.', 400);
-      const { data: recipients, error: recipientError } = await admin.from('player_accounts').select('user_id,wallet_verified_at').eq('wallet_address', walletB).not('wallet_verified_at', 'is', null).limit(2);
-      if (recipientError) throw recipientError;
-      if (recipients?.length !== 1 || recipients[0].user_id === user.id) throw swapError('The other player must have one verified ATM Town account linked to this wallet.');
+      const recipient = await nftWalletOwner(admin,walletB);
+      if (!recipient || recipient.user_id === user.id) throw swapError('The other player must have one verified ATM Town account using this NFT wallet.');
       const { count, error: countError } = await admin.from(TABLE).select('id', { count: 'exact', head: true }).eq('user_a', user.id).gte('created_at', new Date(Date.now() - 3600000).toISOString());
       if (countError) throw countError;
       if (count >= 20) throw swapError('You have sent many proposals. Wait before sending more.', 429);
       if (!await batchCapability()) throw swapError('Atomic NFT trades are currently unavailable on XRPL.', 503);
-      const swap = { id: randomUUID(), user_a: user.id, user_b: recipients[0].user_id, wallet_a: player.wallet_address, wallet_b: walletB,
+      const swap = { id: randomUUID(), user_a: user.id, user_b: recipient.user_id, wallet_a: player.wallet_address, wallet_b: walletB, provider_a:player.provider, provider_b:recipient.provider,
         token_a: tokenA, token_b: tokenB, name_a: String(req.body?.offered_name || 'Your NFT').slice(0, 100), name_b: String(req.body?.requested_name || 'Requested NFT').slice(0, 100),
         status: 'offered', expires_at: new Date(Date.now() + 30 * 60000).toISOString() };
       await checkSwapOwnership(swap);
@@ -97,9 +99,9 @@ export default async function handler(req, res) {
     const swap = await resolve(admin, original);
     if (action === 'status') return res.json(visible(swap, user.id));
     if (action === 'cancel') {
-      if (!['offered', 'signing', 'ready'].includes(swap.status)) throw swapError('This trade cannot be cancelled here. A final Xaman request must be rejected in Xaman.');
+      if (!['offered', 'signing', 'ready'].includes(swap.status) && !(swap.status === 'settling' && swap.final_payload?.provider === 'atm_pay' && !swap.tx_hash)) throw swapError('This trade cannot be cancelled here. A final Xaman request must be rejected in Xaman.');
       const cancelled = await write(admin, id, swap.status, { status: 'cancelled' });
-      await cancelXamanTransaction(swap.inner_payload?.uuid);
+      if (swap.inner_payload?.provider !== 'atm_pay') await cancelXamanTransaction(swap.inner_payload?.uuid);
       return res.json(visible(cancelled, user.id));
     }
     if (action === 'sign') {
@@ -110,11 +112,11 @@ export default async function handler(req, res) {
       let payload;
       try {
         const batch = await prepareSwapBatch(swap);
-        payload = await createSwapPayload(batch, { id, signer: swap.wallet_b, submit: false });
+        payload = swap.provider_b === 'atm_pay' ? payRequest('swap_inner',id) : await createSwapPayload(batch, { id, signer: swap.wallet_b, submit: false });
         const signed = await write(admin, id, 'preparing', { status: 'signing', batch_json: batch, inner_payload: payload, expires_at: new Date(Date.now() + 10 * 60000).toISOString() });
         return res.json(visible(signed, user.id));
       } catch (err) {
-        await cancelXamanTransaction(payload?.uuid);
+        if (payload?.provider !== 'atm_pay') await cancelXamanTransaction(payload?.uuid);
         await write(admin, id, 'preparing', { status: 'failed', failure_reason: err.message });
         throw err;
       }
@@ -128,11 +130,12 @@ export default async function handler(req, res) {
       try {
         if (!await batchCapability()) throw swapError('XRPL Batch is unavailable.', 503);
         await checkSwapSequences(swap);
-        payload = await createSwapPayload({ ...swap.batch_json, BatchSigners: [swap.inner_payload.uuid] }, { id, signer: swap.wallet_a, submit: true });
+        const batch = {...swap.batch_json, BatchSigners:swap.inner_signed_blob ? codec.decode(swap.inner_signed_blob).BatchSigners : [swap.inner_payload.uuid]};
+        payload = swap.provider_a === 'atm_pay' ? payRequest('swap_final',id) : await createSwapPayload(batch, { id, signer: swap.wallet_a, submit: true });
         const final = await write(admin, id, 'finalizing', { status: 'settling', final_payload: payload });
         return res.json(visible(final, user.id));
       } catch (err) {
-        await cancelXamanTransaction(payload?.uuid);
+        if (payload?.provider !== 'atm_pay') await cancelXamanTransaction(payload?.uuid);
         await write(admin, id, 'finalizing', { status: 'failed', failure_reason: err.message });
         throw err;
       }

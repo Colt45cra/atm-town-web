@@ -6388,7 +6388,7 @@ function lockerSetStatus(message,tone=''){
   const node=document.getElementById('lockerStatus');if(!node)return;
   node.textContent=message||'';node.style.color=tone==='error'?'#ff9bbf':tone==='ok'?'#70f9c8':'#9fc3cc';
 }
-function lockerWalletAddress(){return String(playerAccount?.wallet_address||'');}
+function lockerWalletAddress(){return window.ATMMainnetWallet?.address(String(playerAccount?.wallet_address||''))??String(playerAccount?.wallet_address||'');}
 function lockerShortWallet(value){return value?shortWallet(value):'Not linked';}
 function lockerDecodeHexUri(hex){
   if(!hex||typeof hex!=='string'||hex.length%2)return '';
@@ -6731,6 +6731,7 @@ async function lockerHydrateNftMetadata(){
 }
 async function lockerRefreshXrpl(silent=false){
   const button=document.getElementById('lockerRefreshButton');
+  if(authSession?.user&&window.ATMMainnetWallet){try{await window.ATMMainnetWallet.refresh();}catch(error){lockerSetStatus(error.message,'error');return;}}
   if(!authSession?.user){lockerState.status='guest';lockerState.nfts=[];lockerState.selectedNftId=null;lockerEnforceEquipmentOwnership();lockerSetStatus('Sign in and link Xaman to verify XRPL NFT ownership.','error');lockerRender();return;}
   if(!lockerWalletAddress()){lockerState.status='unlinked';lockerState.nfts=[];lockerState.selectedNftId=null;lockerEnforceEquipmentOwnership();lockerSetStatus('Link a Xaman wallet from your account screen before refreshing XRPL ownership.','error');lockerRender();return;}
   if(lockerState.status==='loading')return;

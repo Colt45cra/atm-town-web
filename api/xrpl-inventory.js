@@ -1,4 +1,5 @@
 import { setCors, requireUser, sendError } from '../lib/auth.js';
+import { nftWallet } from '../lib/atm-pay-town.js';
 
 const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const PAGE_LIMIT = 400;
@@ -135,16 +136,11 @@ export default async function handler(req, res) {
 
   try {
     const { admin, user } = await requireUser(req);
-    const { data: player, error: playerError } = await admin
-      .from('player_accounts')
-      .select('wallet_address,wallet_verified_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (playerError) throw playerError;
+    const player = await nftWallet(admin,user.id);
 
     const account = String(player?.wallet_address || '').trim();
     if (!XRPL_ADDRESS.test(account)) {
-      return res.status(409).json({ error: 'Link and verify a Xaman wallet before viewing XRPL NFTs.', code: 'wallet_unlinked' });
+      return res.status(409).json({ error: 'Connect ATM Pay or verify Xaman before viewing XRPL NFTs.', code: 'wallet_unlinked' });
     }
 
     const inventory = await fetchInventory(account);
@@ -155,6 +151,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'private, no-store');
     return res.status(200).json({
       account,
+      wallet_provider:player.provider,
       wallet_verified: Boolean(player?.wallet_verified_at),
       nfts,
       count: nfts.length,
