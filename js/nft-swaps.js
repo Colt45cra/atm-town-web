@@ -8,7 +8,7 @@
   let invitation = null, previousDialog = false;
   const invitedAt = new Map();
   const panel = document.createElement('dialog'); panel.id = 'nftSwapPanel'; panel.setAttribute('aria-labelledby', 'nftSwapTitle');
-  panel.innerHTML = '<div class="nftSwapHeader"><h2 id="nftSwapTitle">NFT trades</h2><button type="button" aria-label="Close NFT trades">×</button></div><p class="nftSwapSafety">Both NFTs exchange together, or neither moves. Review both token IDs in Xaman. The proposing player pays the network fee, including if the exchange fails.</p><div id="nftSwapContent"></div><p id="nftSwapStatus" role="status"></p>';
+  panel.innerHTML = '<div class="nftSwapHeader"><h2 id="nftSwapTitle">NFT trades</h2><button type="button" aria-label="Close NFT trades">×</button></div><p class="nftSwapSafety">Both NFTs exchange together, or neither moves. Use Xaman 5.4.0 or newer. Xaman shows four steps for this one exchange. Review both token IDs in Xaman. The proposing player pays the network fee, including if the exchange fails.</p><div id="nftSwapContent"></div><p id="nftSwapStatus" role="status"></p>';
   document.body.appendChild(panel);
   const content = panel.querySelector('#nftSwapContent'), status = panel.querySelector('#nftSwapStatus');
   const toolbar = document.getElementById('lockerNftSort')?.parentElement;

@@ -34,7 +34,7 @@ async function resolve(admin, swap) {
     return expired;
   }
   if (swap.status === 'signing' && swap.inner_payload?.uuid) {
-    const result = await signatureState(swap.inner_payload.uuid, swap.wallet_b);
+    const result = await signatureState(swap.inner_payload.uuid, swap.wallet_b, swap.batch_json);
     if (result.status === 'signed') return write(admin, swap.id, swap.status, { status: 'ready' });
     if (terminalSwap(result.status)) return write(admin, swap.id, swap.status, { status: result.status, failure_reason: result.error || null });
   }
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
   if (req.method !== (['capability', 'list', 'status'].includes(action) ? 'GET' : 'POST')) return res.status(405).json({ error: 'Unsupported request method.' });
   try {
     // Capability is public and read-only; all trade operations require a verified account.
-    if (action === 'capability') return res.json({ enabled: await batchCapability(), network: 'mainnet', mode: 'all_or_nothing', wallet: 'Xaman 4.5 or newer' });
+    if (action === 'capability') return res.json({ enabled: await batchCapability(), network: 'mainnet', mode: 'all_or_nothing', wallet: 'Xaman 5.4.0 or newer' });
     const { admin, user } = await requireUser(req);
     const { data: player, error: playerError } = await admin.from('player_accounts').select('wallet_address,wallet_verified_at').eq('user_id', user.id).maybeSingle();
     if (playerError) throw playerError;
@@ -116,7 +116,7 @@ export default async function handler(req, res) {
       try {
         if (!await batchCapability()) throw swapError('XRPL Batch is unavailable.', 503);
         await checkSwapSequences(swap);
-        payload = await createSwapPayload({ ...swap.batch_json, BatchSigners: [swap.inner_payload.uuid] }, { id, submit: true });
+        payload = await createSwapPayload({ ...swap.batch_json, BatchSigners: [swap.inner_payload.uuid] }, { id, signer: swap.wallet_a, submit: true });
         const final = await write(admin, id, 'finalizing', { status: 'settling', final_payload: payload });
         return res.json(visible(final, user.id));
       } catch (err) {

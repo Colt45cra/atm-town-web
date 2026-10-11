@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import codec from '../lib/xrpl-swap-codec.cjs';
 import assert from 'node:assert/strict';
 import { Wallet, hashes, signMultiBatch, encode, decode } from 'xrpl';
-import { buildNftSwapBatch, verifySwapResults, nftOfferId, ALL_OR_NOTHING, INNER_BATCH } from '../lib/xrpl-nft-swap.js';
+import { buildNftSwapBatch, verifySwapResults, verifyInnerBatchSignature, signatureState, nftOfferId, ALL_OR_NOTHING, INNER_BATCH } from '../lib/xrpl-nft-swap.js';
 const a = Wallet.generate(), b = Wallet.generate();
 const batch = buildNftSwapBatch({ walletA: a.address, walletB: b.address, tokenA: 'A'.repeat(64), tokenB: 'B'.repeat(64), sequenceA: 100, sequenceB: 200, ledgerIndex: 107000000, expiration: 850000000, fee: '140' });
 const hash = 'C'.repeat(64);
@@ -61,9 +61,9 @@ test('Xaman inner approval is sign-only; final request submits with the same fro
   global.fetch = async (_url, opts) => { sent.push(JSON.parse(opts.body)); return new Response(JSON.stringify({ uuid: '00000000-0000-0000-0000-000000000001', next: { always: 'https://xumm.app/sign/test' } })); };
   try {
     await createSwapPayload(batch, { id: 'test', signer: b.address, submit: false });
-    await createSwapPayload({ ...batch, BatchSigners: ['00000000-0000-0000-0000-000000000001'] }, { id: 'test', submit: true });
+    await createSwapPayload({ ...batch, BatchSigners: ['00000000-0000-0000-0000-000000000001'] }, { id: 'test', signer: a.address, submit: true });
     assert.equal(sent[0].options.submit, false); assert.equal(sent[0].options.signer, b.address);
-    assert.equal(sent[1].options.submit, true); assert.equal(sent[1].options.signer, undefined);
+    assert.equal(sent[1].options.submit, true); assert.equal(sent[1].options.signer, a.address);
     assert.deepEqual(sent[0].txjson.RawTransactions, sent[1].txjson.RawTransactions);
     assert.equal(sent[1].txjson.Account, a.address);
   } finally { global.fetch = oldFetch; }
@@ -72,6 +72,26 @@ test('rejects a signed request from a wallet other than the counterparty', async
   const { signatureState } = await import('../lib/xrpl-nft-swap.js'); const oldFetch = global.fetch;
   global.fetch = async () => new Response(JSON.stringify({ meta: { resolved: true, signed: true }, response: { account: a.address } }));
   try { assert.equal((await signatureState('00000000-0000-0000-0000-000000000001', b.address)).status, 'failed'); } finally { global.fetch = oldFetch; }
+});
+test('inner approval verifies the BatchSigner even when response account is the outer payer', async () => {
+  const signed = structuredClone(batch); signMultiBatch(b, signed);
+  const blob = encode(signed), oldFetch = global.fetch;
+  assert.equal(verifyInnerBatchSignature(blob, b.address, batch), true);
+  global.fetch = async () => new Response(JSON.stringify({ meta: { resolved: true, signed: true }, response: { account: a.address, hex: blob } }));
+  try { assert.equal((await signatureState('00000000-0000-0000-0000-000000000001', b.address, batch)).status, 'signed'); }
+  finally { global.fetch = oldFetch; }
+});
+test('rejects a different BatchSigner, forged signature and altered payer or NFT terms', () => {
+  const signed = structuredClone(batch); signMultiBatch(b, signed);
+  assert.equal(verifyInnerBatchSignature(encode(signed), a.address, batch), false);
+  const forged = structuredClone(signed); forged.BatchSigners[0].BatchSigner.TxnSignature = '00'.repeat(64);
+  assert.equal(verifyInnerBatchSignature(encode(forged), b.address, batch), false);
+  const changed = structuredClone(signed); changed.RawTransactions[0].RawTransaction.NFTokenID = 'D'.repeat(64);
+  assert.equal(verifyInnerBatchSignature(encode(changed), b.address, batch), false);
+  const changedPayer = structuredClone(signed); changedPayer.Account = b.address;
+  assert.equal(verifyInnerBatchSignature(encode(changedPayer), b.address, changedPayer), false);
+  const unsigned = structuredClone(batch);
+  assert.equal(verifyInnerBatchSignature(encode(unsigned), b.address, batch), false);
 });
 test('feature gating requires Mainnet and the repaired BatchV1_1 amendment', async () => {
   const { batchCapability, BATCH_AMENDMENT } = await import('../lib/xrpl-nft-swap.js'); const oldFetch = global.fetch;
