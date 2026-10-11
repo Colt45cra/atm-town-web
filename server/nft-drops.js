@@ -215,6 +215,13 @@ export default async function handler(req,res) {
     if(req.method==='GET'&&action==='drop-box') return res.json(await boxContents(req.query?.marker));
     if(req.method==='GET'&&action==='drop-list') {
       const admin=adminClient();
+      // Approved deposits continue receiving even after the donor closes the modal.
+      const queued=check(await admin.from('town_nft_drops').select('*').eq('custody',true).eq('status','pending').not('offer_index','is',null).lt('updated_at',new Date(Date.now()-15000).toISOString()).order('created_at',{ascending:true}).limit(2));
+      const started=Date.now();
+      for(const row of queued){
+        try{await reconcileCustody(admin,row);}catch(e){await update(admin,row,{failure_reason:'Receiving delayed: '+String(e.message).slice(0,500)});}
+        if(Date.now()-started>25000)break;
+      }
       const rows=check(await admin.from('town_nft_drops').select('*').eq('status','placed').order('created_at',{ascending:false}).limit(200));
       // Ledger state is rechecked before claiming; rendering alone never transfers anything.
       return res.json({drops:rows.map(publicRow),donation_box_id:DONATION_BOX_ID,rewards_wallet:REWARDS_NFT_WALLET});

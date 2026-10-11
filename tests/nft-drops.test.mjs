@@ -33,7 +33,7 @@ function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,w
    if(url.pathname.endsWith('/auth/v1/user'))return Response.json({id:user,email:'test@example.invalid'});
    if(url.pathname.includes('/rest/v1/')){
      const name=url.pathname.split('/').at(-1),rows=tables[name]||[];
-     const match=r=>[...url.searchParams].every(([k,v])=>['select','order','limit','or'].includes(k)||v==='is.null'&&r[k]==null||v.startsWith('eq.')&&String(r[k])===v.slice(3)||v.startsWith('in.')&&v.slice(4,-1).split(',').includes(String(r[k])));
+     const match=r=>[...url.searchParams].every(([k,v])=>['select','order','limit','or'].includes(k)||v==='is.null'&&r[k]==null||v==='not.is.null'&&r[k]!=null||v.startsWith('lt.')&&String(r[k])<v.slice(3)||v.startsWith('eq.')&&String(r[k])===v.slice(3)||v.startsWith('in.')&&v.slice(4,-1).split(',').includes(String(r[k])));
      let found=rows.filter(match);
      if(options.method==='PATCH'){const patch=JSON.parse(options.body);found.forEach(r=>Object.assign(r,patch));}
      if(options.method==='POST'){const body=JSON.parse(options.body);found=[{id:'44444444-4444-4444-8444-444444444444',status:'preparing',...body}];rows.push(...found);tables[name]=rows;}
@@ -150,4 +150,10 @@ test('protected claims require approaching the map NFT before reservation',async
  const row={...base,custody:true,status:'placed',offer_index:offer,payload_inventory_id:'66666666-6666-4666-8666-666666666666',map:'town',x:1500,y:3800};
  const s=setup({row,poolResponse:async()=>({status:'allocated',inventory_id:row.payload_inventory_id})});s.tables.player_accounts[0].wallet_address=finder;
  try{const r=await call('drop-claim',{id:base.id,map:'town',x:1700,y:3800});assert.equal(r.code,409);assert.equal(s.tables.town_nft_drop_claims.length,0);}finally{s.restore();}
+});
+
+test('map refresh finishes an approved deposit and exposes it at the saved location',async()=>{
+ const row={...base,custody:true,status:'pending',offer_index:offer,map:'town',x:1500,y:3800,updated_at:'2026-01-01'};
+ const s=setup({row,poolResponse:async()=>({status:'allocated',inventory_id:'66666666-6666-4666-8666-666666666666',receipt_tx_hash:hash})});
+ try{const r=await call('drop-list');assert.equal(r.code,200);assert.equal(r.output.drops.length,1);assert.equal(r.output.drops[0].status,'placed');assert.equal(r.output.drops[0].x,1500);assert.equal(r.output.drops[0].y,3800);assert.equal(s.requests.some(r=>r.url.pathname.endsWith('/payload')),false);}finally{s.restore();}
 });
