@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { setCors, requireUser, sendError } from '../lib/auth.js';
 import { NFT_ID, XRPL_ADDRESS, cancelXamanTransaction } from '../lib/xrpl-nft-trading.js';
-import { batchCapability, prepareSwapBatch, checkSwapOwnership, checkSwapSequences, createSwapPayload, signatureState, settleSwap, terminalSwap, swapError } from '../lib/xrpl-nft-swap.js';
+import { batchCapability, prepareSwapBatch, checkSwapOwnership, checkSwapSequences, createSwapPayload, signatureState, settleSwap, terminalSwap, swapError, cleanupObsoleteSwapRequest } from '../lib/xrpl-nft-swap.js';
 const TABLE = 'nft_atomic_swaps';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function write(admin, id, previous, patch) {
@@ -21,7 +21,14 @@ function visible(swap, userId) {
     sign_request: !isA && status === 'signing' ? swap.inner_payload : isA && status === 'settling' ? swap.final_payload : null };
 }
 async function resolve(admin, swap) {
-  if (terminalSwap(swap.status)) return swap;
+  if (terminalSwap(swap.status)) {
+    // Diagnose the existing receipt without asking the player to sign again.
+    if (swap.status === 'failed' && !swap.final_payload && swap.batch_json && swap.inner_payload?.uuid && /Could not verify the expected wallet/.test(swap.failure_reason || '')) {
+      const result = await signatureState(swap.inner_payload.uuid, swap.wallet_b, swap.batch_json);
+      if (result.error) swap = await write(admin, swap.id, swap.status, { failure_reason: result.error });
+    }
+    return swap;
+  }
   if (['preparing', 'finalizing'].includes(swap.status) && Date.parse(swap.updated_at) < Date.now() - 120000) return write(admin, swap.id, swap.status, { status: 'failed', failure_reason: 'Sign request preparation was interrupted. Create a new proposal.' });
   if (swap.status === 'settling') {
     const result = await settleSwap(swap);
@@ -55,6 +62,11 @@ export default async function handler(req, res) {
     if (action === 'list') {
       const { data, error } = await admin.from(TABLE).select('*').or(`user_a.eq.${user.id},user_b.eq.${user.id}`).order('created_at', { ascending: false }).limit(30);
       if (error) throw error;
+      await Promise.all(data.map(async s => {
+        try {
+          if (await cleanupObsoleteSwapRequest(s)) await write(admin, s.id, s.status, { inner_payload: { ...s.inner_payload, cleanup_done: true } });
+        } catch (err) { console.warn('NFT swap request cleanup will retry:', err?.message); }
+      }));
       return res.json({ swaps: data.map(s => visible(s, user.id)) });
     }
     if (action === 'propose') {
