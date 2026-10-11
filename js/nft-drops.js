@@ -57,6 +57,7 @@
    return card;
  }
  async function selectNfts(donate=false){
+   if(!user()){list.replaceChildren();status('Sign in and link Xaman to create or claim NFT drops.');return;}
    mode=donate?'donate':'create';list.replaceChildren(el('p','Loading NFTs from your linked wallet…'));
    status(donate?'Donate to the existing game rewards wallet. The NFT enters the pool only after acceptance.':'Create a public free NFT offer. The NFT stays in your wallet until accepted. Public offers can also be accepted outside ATM Town, even before placement.');
    try{
@@ -73,7 +74,7 @@
  }
  async function open(donate=false){
    if(!game?.ready())return;panel.hidden=false;mode='mine';status('Loading NFT drops…');await refresh(true);render();
-   if(donate)await selectNfts(true);else status('NFT drops come directly from players’ wallets.');
+   if(donate)await selectNfts(true);else if(user())status('NFT drops come directly from players’ wallets.');
    if(pending&&pending.user===user())startPoll();panel.querySelector('[data-close]').focus();
  }
  async function claim(row){
@@ -104,7 +105,7 @@
  }
  function init(adapter){
    game=adapter;const style=el('style');style.textContent='#nftDropButton{position:fixed;right:12px;top:340px;z-index:32;min-height:44px;border:1px solid #deb85a;border-radius:12px;background:#142c36;color:#ffdc7a;padding:6px 10px}#nftDropPanel{position:fixed;right:12px;top:max(70px,10vh);width:min(330px,calc(100vw - 24px));max-height:75dvh;overflow:auto;z-index:85;padding:14px;background:#0b2634;color:#eaffff;border:1px solid #ffd166;border-radius:16px;font:14px system-ui}#nftDropPanel[hidden]{display:none}#nftDropPanel button,.nftDropSign{display:inline-block;min-height:44px;padding:10px;margin:4px;border:1px solid #63c5ad;border-radius:8px;background:#183e46;color:#eaffff;text-decoration:none;cursor:pointer}#nftDropPanel p{line-height:1.45}#nftDropPanel small{display:block;overflow-wrap:anywhere;color:#a9c7ce}.nftDropCard{padding:10px 0;border-bottom:1px solid #3a535b}.nftDropCard img{object-fit:contain;float:left;margin-right:8px}#nftDropCarry{position:fixed;right:12px;bottom:max(155px,22vh);z-index:33;padding:12px;background:#173c33;color:#ffe39e;border:1px solid #ffd166;border-radius:12px;max-width:170px;min-height:44px}';document.head.append(style);
-   button=el('button','◈ NFT drops');button.id='nftDropButton';button.type='button';button.onclick=()=>open();document.body.append(button);
+   button=el('button','◈ NFT drops');button.id='nftDropButton';button.type='button';button.hidden=!game.ready();button.onclick=()=>open();document.body.append(button);
    const place=el('button','◈ Place NFT here');place.id='nftDropCarry';place.type='button';place.hidden=true;place.onclick=()=>run(async()=>{const p=game.pose();if(!carry||p.map!=='town'||p.airborne||game.blocked(p.x,p.y))throw Error('Stand on walkable outdoor land to place this NFT.');await api('drop-place',{id:carry.id,map:p.map,x:p.x,y:p.y});carry=null;game.broadcast();await refresh(true);});document.body.append(place);
    panel=el('section');panel.id='nftDropPanel';panel.hidden=true;panel.setAttribute('aria-label','NFT drops');panel.innerHTML='<button data-close type="button" aria-label="Close NFT drops">×</button><h2>NFT drops</h2><button data-create type="button">Create drop</button><button data-mine type="button">My NFT drops</button><p data-status role="status" aria-live="polite"></p><div data-list></div>';document.body.append(panel);note=panel.querySelector('[data-status]');list=panel.querySelector('[data-list]');panel.querySelector('[data-close]').onclick=()=>{panel.hidden=true;button.focus();};panel.querySelector('[data-create]').onclick=()=>selectNfts(false);panel.querySelector('[data-mine]').onclick=()=>run(async()=>{mode='mine';await refresh(true);render();});
    try{pending=JSON.parse(localStorage.getItem(storageKey)||'null');}catch{}
