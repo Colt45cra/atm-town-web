@@ -263,7 +263,7 @@ export default async function handler(req,res) {
       let row=check(await admin.from('town_nft_drops').select('*').eq('id',body.id).single());
       row=await reconcile(admin,row);
       if(row.kind!=='drop'||row.status!=='placed'||!OFFER_ID.test(row.offer_index||'')) throw fail('This NFT drop is no longer available.',409);
-      if(wallet===row.wallet_address) throw fail('You already own this NFT. You can carry it again instead.',409);
+      if(!row.custody&&wallet===row.wallet_address) throw fail('You already own this NFT. You can carry it again instead.',409);
       if(row.custody){
         const old=check(await admin.from('town_nft_drop_claims').select('*').eq('drop_id',row.id).eq('user_id',user.id).in('status',['preparing','pending']).maybeSingle());
         if(!old){const at=placement(body);if(Math.hypot(at.x-row.x,at.y-row.y)>95)throw fail('Walk up to this NFT drop to claim it.',409);}

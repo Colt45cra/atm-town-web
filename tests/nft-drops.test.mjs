@@ -146,6 +146,17 @@ test('a finder resumes one reserved claim and signs only the recipient offer',as
  }finally{s.restore();}
 });
 
+test('the depositor can reclaim a protected drop from the holding wallet',async()=>{
+ const row={...base,custody:true,status:'placed',offer_index:offer,payload_inventory_id:'66666666-6666-4666-8666-666666666666',map:'town',x:1500,y:3800};
+ const recipientOffer='D'.repeat(64);let claimId;
+ const s=setup({row,poolResponse:async b=>b.action==='claim'?(claimId=b.claim_id,{status:'offer_ready',recipient_address:donor,claim_key:b.claim_id,offer_index:recipientOffer}):{status:'allocated',inventory_id:row.payload_inventory_id}});
+ s.tables.player_accounts[0].wallet_address=donor;
+ try{const r=await call('drop-claim',{id:base.id,map:'town',x:1500,y:3800});assert.equal(r.code,201);assert.equal(r.output.status,'pending');assert.ok(r.output.deeplink);assert.equal(s.tables.town_nft_drop_claims.length,1);
+ const signed=JSON.parse(s.requests.find(r=>r.url.pathname.endsWith('/payload')&&r.options.method==='POST').options.body).txjson;assert.equal(signed.Account,donor);assert.equal(signed.NFTokenSellOffer,recipientOffer);assert.notEqual(signed.NFTokenSellOffer,offer);
+ await call('drop-claim',{id:base.id,map:'town',x:1500,y:3800});assert.equal(s.tables.town_nft_drop_claims.length,1);assert.equal(s.requests.filter(r=>r.url.pathname.endsWith('/payload')&&r.options.method==='POST').length,1);assert.equal(claimId,r.output.id);
+ }finally{s.restore();}
+});
+
 test('protected claims require approaching the map NFT before reservation',async()=>{
  const row={...base,custody:true,status:'placed',offer_index:offer,payload_inventory_id:'66666666-6666-4666-8666-666666666666',map:'town',x:1500,y:3800};
  const s=setup({row,poolResponse:async()=>({status:'allocated',inventory_id:row.payload_inventory_id})});s.tables.player_accounts[0].wallet_address=finder;
