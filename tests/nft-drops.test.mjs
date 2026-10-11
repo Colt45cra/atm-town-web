@@ -109,3 +109,7 @@ test('an incorrectly claimed row with a still-active exact offer becomes carryab
 test('box contents come from the rewards wallet actual inventory',async()=>{
  const s=setup();try{const r=await call('drop-box');assert.equal(r.code,200);assert.equal(r.output.nfts[0].token_id,token);const query=s.requests.map(r=>{try{return JSON.parse(r.options.body);}catch{return null;}}).find(r=>r?.method==='account_nfts');assert.equal(query.params[0].account,REWARDS_NFT_WALLET);}finally{s.restore();}
 });
+
+test('a claimed label cannot block carrying when the creator still owns the NFT',async()=>{
+ const s=setup({row:{...base,status:'claimed',offer_index:offer},offerActive:false,owned:true});try{const r=await call('drop-status');assert.equal(r.output.status,'carried');assert.equal(r.output.offer_index,null);assert.equal(s.requests.some(r=>r.options.method==='POST'&&r.url.pathname.endsWith('/payload')),false);}finally{s.restore();}
+});

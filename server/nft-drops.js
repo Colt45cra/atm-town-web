@@ -73,6 +73,7 @@ async function reconcile(admin, row) {
   }
   if (row.status === 'claimed' && row.offer_index) {
     if (await activeOffer(row)) return update(admin,row,{status:row.map === 'town' && Number.isFinite(row.x) && Number.isFinite(row.y) ? 'placed' : 'carried',failure_reason:null});
+    if (await findOwnedNft(row.wallet_address,row.token_id)) return update(admin,row,{status:'carried',offer_index:null,payload_uuid:null,tx_hash:null,map:null,x:null,y:null,failure_reason:null});
     return {...row,_claim_verified:await acceptedOffer(row)};
   }
   if (row.status === 'pending') {
