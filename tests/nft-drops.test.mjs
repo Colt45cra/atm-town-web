@@ -21,7 +21,7 @@ test('placement rejects other maps, nonfinite coordinates and out-of-bounds land
  assert.equal(offerIndex({AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}),offer);
 });
 
-function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false,xamanError=null}={}){
+function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false,xamanError=null,accepted=false,incomplete=false}={}){
  process.env.SUPABASE_URL='https://nft-test.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test-service-key';process.env.XAMAN_API_KEY='test';process.env.XAMAN_API_SECRET='test';
  const tables={town_nft_drops:[structuredClone(row)],town_nft_drop_claims:[],player_accounts:[{user_id:user,wallet_address:donor,wallet_verified_at:'2026-01-01'}]};
  const requests=[];const original=globalThis.fetch;
@@ -42,6 +42,8 @@ function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,w
    const body=JSON.parse(options.body||'{}');
    if(body.method==='tx')return Response.json({result:tx||{validated:true,tx_json:freeOfferTransaction(row.wallet_address,token),meta:{TransactionResult:'tesSUCCESS',AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}}});
    if(body.method==='ledger_entry')return Response.json({result:offerActive?{node:ledgerOffer}:{status:'error',error:'entryNotFound'}});
+   if(body.method==='account_tx')return Response.json({result:{validated:true,transactions:accepted?[{validated:true,tx_json:{TransactionType:'NFTokenAcceptOffer'},meta:{TransactionResult:'tesSUCCESS',AffectedNodes:[{DeletedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}}]:[]}});
+   if(body.method==='account_nfts'&&incomplete)return Response.json({result:{}});
    if(body.method==='account_nfts')return Response.json({result:{account_nfts:owned?[{NFTokenID:token,Flags:8}]:[]}});
    throw Error('Unexpected test request '+url+' '+body.method);
  };
@@ -60,7 +62,7 @@ test('cancelled offers remove carried/placed objects, and pending signatures can
  s=setup();try{assert.equal((await call('drop-place',{id:base.id,map:'town',x:1500,y:3800})).code,409);}finally{s.restore();}
 });
 test('competing ledger acceptance removes an object before another claim is prepared',async()=>{
- const s=setup({row:{...base,status:'placed',offer_index:offer,map:'town',x:1500,y:3800},offerActive:false,owned:false});
+ const s=setup({row:{...base,status:'placed',offer_index:offer,map:'town',x:1500,y:3800},offerActive:false,owned:false,accepted:true});
  try{const result=await call('drop-claim',{id:base.id});assert.equal(result.code,409);assert.equal(s.tables.town_nft_drops[0].status,'claimed');assert.equal(s.tables.town_nft_drop_claims.length,0);}finally{s.restore();}
 });
 test('finder signs their own free acceptance; delivery requires validated success and ownership',async()=>{
@@ -77,11 +79,33 @@ test('finder signs their own free acceptance; delivery requires validated succes
 test('failed creation keeps the Xaman error, can retry, and only a pending offer gets a resume link',async()=>{
  const s=setup({row:{...base,status:'failed'},xamanError:{code:413,reference:'test-reference'}});
  try{
-   const r=await call('drop-start',{token_id:token});assert.equal(r.code,502);
+   const r=await call('drop-donate',{token_id:token});assert.equal(r.code,502);
    const created=s.tables.town_nft_drops.at(-1);assert.equal(created.status,'failed');assert.match(created.failure_reason,/code 413/);
    const request=JSON.parse(s.requests.find(r=>r.url.pathname.endsWith('/payload')&&r.options.method==='POST').options.body);
    assert.equal(request.custom_meta.identifier,created.id);assert.ok(request.custom_meta.instruction.length<100);assert.equal(request.txjson.Amount,'0');
    assert.equal((await call('drop-mine')).output.drops.every(r=>!r.deeplink),true);
  }finally{s.restore();}
  const pending=setup();try{assert.equal((await call('drop-status')).output.deeplink,'https://xumm.app/sign/'+base.payload_uuid);assert.equal((await call('drop-mine')).output.drops[0].deeplink,'https://xumm.app/sign/'+base.payload_uuid);}finally{pending.restore();}
+});
+
+test('new map drops are carryable drafts without publishing an offer until placement',async()=>{
+ const s=setup({row:{...base,status:'failed'}});try{
+  const draft=await call('drop-start',{token_id:token});assert.equal(draft.code,201);assert.equal(draft.output.status,'carried');assert.equal(draft.output.deeplink,undefined);assert.equal(s.requests.some(r=>r.options.method==='POST'&&r.url.pathname.endsWith('/payload')),false);
+  const placed=await call('drop-place',{id:draft.output.id,map:'town',x:1500,y:3800});assert.equal(placed.output.status,'pending');assert.ok(placed.output.deeplink);assert.equal(s.tables.town_nft_drops.at(-1).x,1500);
+ }finally{s.restore();}
+});
+test('placement only appears after the exact signed offer is validated',async()=>{
+ const s=setup({row:{...base,map:'town',x:1500,y:3800},signed:true});try{assert.equal((await call('drop-status')).output.status,'placed');}finally{s.restore();}
+});
+test('a missing offer and missing inventory alone cannot prove an NFT was claimed',async()=>{
+ const s=setup({row:{...base,status:'placed',offer_index:offer,map:'town',x:1500,y:3800},offerActive:false,owned:false});try{const r=await call('drop-status');assert.equal(r.code,409);assert.equal(s.tables.town_nft_drops[0].status,'placed');}finally{s.restore();}
+});
+test('incomplete inventory is an outage rather than evidence of a pickup',async()=>{
+ const s=setup({row:{...base,status:'placed',offer_index:offer,map:'town',x:1500,y:3800},offerActive:false,incomplete:true});try{assert.equal((await call('drop-status')).code,502);assert.equal(s.tables.town_nft_drops[0].status,'placed');}finally{s.restore();}
+});
+test('an incorrectly claimed row with a still-active exact offer becomes carryable again',async()=>{
+ const s=setup({row:{...base,status:'claimed',offer_index:offer}});try{assert.equal((await call('drop-status')).output.status,'carried');}finally{s.restore();}
+});
+test('box contents come from the rewards wallet actual inventory',async()=>{
+ const s=setup();try{const r=await call('drop-box');assert.equal(r.code,200);assert.equal(r.output.nfts[0].token_id,token);const query=s.requests.map(r=>{try{return JSON.parse(r.options.body);}catch{return null;}}).find(r=>r?.method==='account_nfts');assert.equal(query.params[0].account,REWARDS_NFT_WALLET);}finally{s.restore();}
 });

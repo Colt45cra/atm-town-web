@@ -10,7 +10,7 @@ const check = ({ data, error }) => { if (error) throw error; return data; };
 const parts = r => ({ tx: r.tx_json || r.tx || r.transaction || r, meta: r.meta || r.metaData || {} });
 const success = r => r.validated === true && parts(r).meta.TransactionResult === 'tesSUCCESS';
 const ownerRow = row => ({ ...publicRow(row), ...(row.status === 'pending' && /^[0-9a-f-]{36}$/i.test(row.payload_uuid || '') ? { deeplink: `https://xumm.app/sign/${row.payload_uuid}` } : {}) });
-const publicRow = row => ({ id: row.id, kind: row.kind, status: row.status, token_id: row.token_id, name: row.name, image_url: row.image_url, map: row.map, x: row.x, y: row.y, offer_index: row.offer_index, wallet_address: row.wallet_address, failure_reason: row.failure_reason });
+const publicRow = row => ({ id: row.id, kind: row.kind, status: row.status === 'claimed' && !row._claim_verified ? 'checking' : row.status, token_id: row.token_id, name: row.name, image_url: row.image_url, map: row.map, x: row.x, y: row.y, offer_index: row.offer_index, wallet_address: row.wallet_address, failure_reason: row.failure_reason, claim_verified: Boolean(row._claim_verified) });
 async function walletFor(admin, user) {
   if ((await nftWallet(admin,user.id)).provider === 'atm_pay') throw fail('Select Xaman in ATM PAY MAINNET for NFT drop signing. Free drops currently use Xaman.',409);
   const account = check(await admin.from('player_accounts').select('wallet_address,wallet_verified_at').eq('user_id', user.id).maybeSingle());
@@ -23,7 +23,9 @@ async function update(admin, row, values) {
 async function activeOffer(row) {
   try {
     const r = await rpc('ledger_entry', { nft_offer: row.offer_index, ledger_index: 'validated' });
-    return validFreeOffer(r.node, row) ? r.node : null;
+    if (!r.node) throw fail('XRPL did not return the NFT offer. Please check again.',502);
+    if (!validFreeOffer(r.node,row)) throw fail('This offer no longer matches the agreed free drop.',409);
+    return r.node;
   } catch (e) {
     if (['entryNotFound', 'objectNotFound'].includes(e.xrplCode)) return null;
     throw e; // Provider outages never prove that an offer is gone.
@@ -46,7 +48,33 @@ async function signature(uuid, expectedWallet) {
   if (!success(result)) return { status: 'failed', error: 'The NFT transaction did not succeed on XRPL.' };
   return { status: 'validated', hash, ...parts(result) };
 }
+async function acceptedOffer(row) {
+  const result = await rpc('account_tx', { account: row.wallet_address, ledger_index_min: -1, ledger_index_max: -1, limit: 100, forward: false, binary: false, api_version: 2 });
+  return (result.transactions || []).some(entry => {
+    const {tx,meta} = parts(entry);
+    return (entry.validated === true || result.validated === true) && meta.TransactionResult === 'tesSUCCESS' && tx.TransactionType === 'NFTokenAcceptOffer' &&
+      (meta.AffectedNodes || []).some(n => n.DeletedNode?.LedgerEntryType === 'NFTokenOffer' && n.DeletedNode.LedgerIndex === row.offer_index);
+  });
+}
+async function boxContents(marker) {
+  if (marker && (typeof marker !== 'string' || marker.length > 256)) throw fail('Invalid NFT page.');
+  const result = await rpc('account_nfts', { account: REWARDS_NFT_WALLET, ledger_index: 'validated', limit: 20, ...(marker ? {marker} : {}), api_version: 2 });
+  if (!Array.isArray(result.account_nfts)) throw fail('The rewards wallet inventory could not be verified.',502);
+  const nfts = await Promise.all(result.account_nfts.map(async nft => {
+    const metadata = await resolveMetadata(nft.URI,nft.NFTokenID);
+    return { token_id:nft.NFTokenID, name:metadata.name || 'XRPL NFT', image_url:metadata.image_url || null };
+  }));
+  return {nfts,marker:result.marker || null};
+}
 async function reconcile(admin, row) {
+  if (row.kind === 'drop' && row.status === 'carried' && !row.offer_index) {
+    if (!await findOwnedNft(row.wallet_address,row.token_id)) return update(admin,row,{status:'unavailable',failure_reason:'This NFT is no longer in the wallet that prepared it.'});
+    return row;
+  }
+  if (row.status === 'claimed' && row.offer_index) {
+    if (await activeOffer(row)) return update(admin,row,{status:row.map === 'town' && Number.isFinite(row.x) && Number.isFinite(row.y) ? 'placed' : 'carried',failure_reason:null});
+    return {...row,_claim_verified:await acceptedOffer(row)};
+  }
   if (row.status === 'pending') {
     const signed = await signature(row.payload_uuid, row.wallet_address);
     if (['rejected','expired','failed'].includes(signed.status)) return update(admin, row, { status: signed.status, failure_reason: signed.error || `Xaman request ${signed.status}.` });
@@ -54,13 +82,15 @@ async function reconcile(admin, row) {
       if (!matchesFreeOffer(signed.tx, row)) return update(admin, row, { status: 'failed', failure_reason: 'The validated transaction did not match this free NFT offer.' });
       const index = offerIndex(signed.meta);
       if (!index) return row;
-      row = await update(admin, row, { status: row.kind === 'donation' ? 'offered' : 'carried', tx_hash: signed.hash, offer_index: index });
+      row = await update(admin, row, { status: row.kind === 'donation' ? 'offered' : row.map === 'town' && Number.isFinite(row.x) && Number.isFinite(row.y) ? 'placed' : 'carried', tx_hash: signed.hash, offer_index: index });
     }
   }
   if (['carried','placed','offered'].includes(row.status) && !await activeOffer(row)) {
     const stillOwned = await findOwnedNft(row.wallet_address, row.token_id);
     if (row.kind === 'donation' && !stillOwned && await findOwnedNft(REWARDS_NFT_WALLET, row.token_id)) return update(admin, row, { status: 'received' });
-    return update(admin, row, { status: stillOwned ? 'unavailable' : 'claimed', failure_reason: stillOwned ? 'The free offer was cancelled or expired.' : null });
+    if (stillOwned) return update(admin,row,{status:'unavailable',failure_reason:'The free offer was cancelled or expired.'});
+    if (await acceptedOffer(row)) return {...await update(admin,row,{status:'claimed',failure_reason:null}),_claim_verified:true};
+    throw fail('The NFT offer is unavailable, but its pickup has not been confirmed. Check again shortly.',409);
   }
   return row;
 }
@@ -74,6 +104,7 @@ async function start(admin, user, body, kind) {
   if (!nft || (Number(nft.Flags || 0) & 8) === 0) throw fail('This linked wallet must own a transferable NFT.',409);
   const id = randomUUID(), metadata = await resolveMetadata(nft.URI, tokenId);
   const row = check(await admin.from('town_nft_drops').insert({ id, user_id: user.id, wallet_address: wallet, token_id: tokenId, kind, name: String(metadata.name || 'XRPL NFT').slice(0,180), image_url: metadata.image_url || null, status: 'preparing' }).select('*').single());
+  if (kind === 'drop') return publicRow(await update(admin,row,{status:'carried'}));
   let created;
   try {
     created = await createXamanTransaction(freeOfferTransaction(wallet, tokenId, kind === 'donation' ? REWARDS_NFT_WALLET : null), {
@@ -107,6 +138,7 @@ export default async function handler(req,res) {
   res.setHeader('Cache-Control','no-store');
   const action=String(req.query?.action || '');
   try {
+    if(req.method==='GET'&&action==='drop-box') return res.json(await boxContents(req.query?.marker));
     if(req.method==='GET'&&action==='drop-list') {
       const admin=adminClient();
       const rows=check(await admin.from('town_nft_drops').select('*').eq('status','placed').order('created_at',{ascending:false}).limit(200));
@@ -117,7 +149,7 @@ export default async function handler(req,res) {
     const {admin,user}=await requireUser(req),body=req.body||{};
     if(action==='drop-mine'&&req.method==='GET') {
       const rows=check(await admin.from('town_nft_drops').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(30));
-      const recent=await Promise.all(rows.map(r=>['pending','carried','placed','offered'].includes(r.status)?reconcile(admin,r):r));
+      const recent=await Promise.all(rows.map(async r=>{try{return ['pending','carried','placed','offered','claimed'].includes(r.status)?await reconcile(admin,r):r;}catch(e){return {...r,failure_reason:'Confirmation unavailable: '+e.message};}}));
       return res.json({drops:recent.map(ownerRow),rewards_wallet:REWARDS_NFT_WALLET});
     }
     if(action==='drop-status'&&req.method==='GET') {
@@ -134,6 +166,14 @@ export default async function handler(req,res) {
       if(!['carried','placed'].includes(row.status)) throw fail('This NFT has no active free offer to place.',409);
       if(await walletFor(admin,user)!==row.wallet_address) throw fail('Use the wallet that created this NFT drop.',409);
       const point=action==='drop-place'?placement(body):{map:null,x:null,y:null};
+      if (action === 'drop-place' && !row.offer_index) {
+        let created;
+        try {
+          created = await createXamanTransaction(freeOfferTransaction(row.wallet_address,row.token_id),{identifier:randomUUID(),instruction:'Place a public free NFT drop in ATM Town. Anyone can accept this NFT after signing.'});
+          const saved = await update(admin,row,{...point,status:'pending',payload_uuid:created.uuid,failure_reason:null});
+          return res.json({...publicRow(saved),deeplink:created.next.always,qr_png:created.refs?.qr_png});
+        } catch(e) { await cancelXamanTransaction(created?.uuid); throw e; }
+      }
       return res.json(publicRow(await update(admin,row,{...point,status:action==='drop-place'?'placed':'carried'})));
     }
     if(action==='drop-claim') {
