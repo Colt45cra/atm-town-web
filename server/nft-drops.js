@@ -65,8 +65,11 @@ async function boxContents(marker) {
   if (!Array.isArray(result.account_nfts)) throw fail('The rewards wallet inventory could not be verified.',502);
   const inventory=await pool({action:'box'});const donationTokens=new Set((inventory.tokens||[]).map(n=>n.token_id));
   const nfts = await Promise.all(result.account_nfts.filter(n=>donationTokens.has(n.NFTokenID)).map(async nft => {
-    const metadata = await resolveMetadata(nft.URI,nft.NFTokenID);
-    return { token_id:nft.NFTokenID, name:metadata.name || 'XRPL NFT', image_url:metadata.image_url || null };
+    // Never block ownership/inventory display when a metadata gateway is down.
+    let metadata={};
+    try{metadata=await resolveMetadata(nft.URI,nft.NFTokenID);}catch{}
+    return { token_id:nft.NFTokenID, uri:nft.URI||'', name:metadata.name || 'XRPL NFT',
+      image_url:metadata.image_url || null, image_candidates:metadata.image_candidates||[] };
   }));
   return {nfts,marker:result.marker || null};
 }
@@ -227,6 +230,20 @@ export default async function handler(req,res) {
       const metadata=nft?await resolveMetadata(nft.URI,row.token_id):{};
       if(metadata.image_url)check(await admin.from('town_nft_drops').update({image_url:metadata.image_url,name:metadata.name||row.name}).eq('id',row.id).eq('status','placed'));
       return res.json({name:metadata.name||row.name,image_url:metadata.image_url||null,image_candidates:metadata.image_candidates||[]});
+    }
+    if(req.method==='GET'&&action==='drop-box-art') {
+      const tokenId=String(req.query?.token_id||'').toUpperCase();
+      if(!/^[A-F0-9]{64}$/.test(tokenId))throw fail('Invalid NFT token.',400);
+      // Only recover art for an actual donation-pool NFT still in the rewards
+      // wallet; don't expose a general-purpose arbitrary URL fetch/proxy.
+      const inventory=await pool({action:'box'});
+      if(!(inventory.tokens||[]).some(n=>n.token_id===tokenId))throw fail('NFT is not in the donation box.',404);
+      const nft=await findOwnedNft(REWARDS_NFT_WALLET,tokenId);
+      if(!nft)throw fail('NFT is no longer in the rewards wallet.',404);
+      const metadata=await resolveMetadata(nft.URI,tokenId,{refresh:true});
+      res.setHeader('Cache-Control','public, max-age=30');
+      return res.json({token_id:tokenId,name:metadata.name||'XRPL NFT',
+        image_url:metadata.image_url||null,image_candidates:metadata.image_candidates||[],uri:nft.URI||''});
     }
     if(req.method==='GET'&&action==='drop-box') return res.json(await boxContents(req.query?.marker));
     if(req.method==='GET'&&action==='drop-list') {
