@@ -9,6 +9,10 @@ class Element {
   get textContent(){return (this.text||'')+this.children.map(n=>n.textContent).join('');}
   set innerHTML(v){this.html=v;}
   setAttribute(k,v){this.attributes[k]=v;}
+  removeAttribute(k){delete this.attributes[k];}
+  hasAttribute(k){return k in this.attributes;}
+  get childNodes(){return this.children;}
+  get isConnected(){return true;}
   append(...v){this.children.push(...v);}
   prepend(...v){this.children.unshift(...v);}
   replaceChildren(...v){this.text='';this.children=[...v];}
@@ -17,9 +21,9 @@ class Element {
   focus(){}
   scrollIntoView(){}
 }
-function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'}),box=[]){
+function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'}),box=[],art=null){
  const body=new Element(),calls=[],store=new Map();
- const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async()=>({ok:true,json:async()=>({drops:[],nfts:box})}),setTimeout(){},clearTimeout(){},setInterval(){},URL,Date,Math});
+ const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')?art:({drops:[],nfts:box})}),setTimeout(){},clearTimeout(){},setInterval(){},URL,Date,Math});
  vm.runInContext(fs.readFileSync(new URL('../js/nft-drops.js',import.meta.url),'utf8'),context);
  context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>[{name:'Ticket',token_id:'A'.repeat(64)}],api:async(url,options)=>{calls.push(url);if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
  const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store};
@@ -46,4 +50,12 @@ test('carrying a draft tells the player to choose a spot instead of opening Xama
 });
 test('donation box opens a thumbnail grid with a clear donate button',async()=>{
  const t=setup([],undefined,[{name:'In box',token_id:'A'.repeat(64),image_url:'https://example.invalid/nft.png'}]);await t.api.open(true);assert.equal(t.panel.querySelector('h2').textContent,'NFT Donation Box');assert.equal(t.panel.querySelector('[data-create]').textContent,'Donate an NFT');assert.equal(t.list.children[0].className,'nftDropGrid');assert.match(t.list.textContent,/In box/);assert.equal(t.calls.some(u=>u.includes('drop-start')),false);
+});
+
+test('finding a drop with missing artwork loads its actual NFT image above the claim button',async()=>{
+ const t=setup([],undefined,[],{image_url:'https://example.invalid/found.png'});
+ await t.api.claim({id:'found',name:'NFT'});await new Promise(r=>setImmediate(r));
+ assert.equal(t.panel.querySelector('h2').textContent,'You just found an NFT!');
+ const image=t.list.children[0].children.find(n=>n.tag==='img');assert.equal(image.src,'https://example.invalid/found.png');
+ assert.equal(t.list.children[1].textContent,'Click to claim');
 });

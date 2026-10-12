@@ -212,6 +212,17 @@ export default async function handler(req,res) {
   const action=String(req.query?.action || '');
   try {
     if(req.method==='GET'&&action==='drop-config'){const data=await pool({action:'status'});return res.json({ready:data.ready===true,address:data.address,network:data.network});}
+    if(req.method==='GET'&&action==='drop-art') {
+      if(!/^[0-9a-f-]{36}$/i.test(req.query.id||''))throw fail('Invalid NFT drop.',400);
+      const admin=adminClient();
+      const row=check(await admin.from('town_nft_drops').select('*').eq('id',req.query.id).eq('kind','drop').eq('status','placed').maybeSingle());
+      if(!row)throw fail('This NFT drop is no longer available.',404);
+      if(row.image_url)return res.json({name:row.name,image_url:row.image_url});
+      const nft=await findOwnedNft(row.custody?REWARDS_NFT_WALLET:row.wallet_address,row.token_id);
+      const metadata=nft?await resolveMetadata(nft.URI,row.token_id):{};
+      if(metadata.image_url)check(await admin.from('town_nft_drops').update({image_url:metadata.image_url,name:metadata.name||row.name}).eq('id',row.id).eq('status','placed'));
+      return res.json({name:metadata.name||row.name,image_url:metadata.image_url||null,image_candidates:metadata.image_candidates||[]});
+    }
     if(req.method==='GET'&&action==='drop-box') return res.json(await boxContents(req.query?.marker));
     if(req.method==='GET'&&action==='drop-list') {
       const admin=adminClient();

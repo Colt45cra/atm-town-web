@@ -22,7 +22,7 @@ test('placement rejects other maps, nonfinite coordinates and out-of-bounds land
  assert.equal(offerIndex({AffectedNodes:[{CreatedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}),offer);
 });
 
-function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false,xamanError=null,accepted=false,incomplete=false,poolResponse=null}={}){
+function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,wrongWallet=false,xamanError=null,accepted=false,incomplete=false,poolResponse=null,uri=null}={}){
  process.env.SUPABASE_URL='https://nft-test.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test-service-key';process.env.XAMAN_API_KEY='test';process.env.XAMAN_API_SECRET='test';
  process.env.PAYLOAD_API_BASE_URL='https://payload-test.invalid';process.env.PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64=generateKeyPairSync('ed25519').privateKey.export({format:'der',type:'pkcs8'}).toString('base64');
  const tables={town_nft_drops:[structuredClone(row)],town_nft_drop_claims:[],player_accounts:[{user_id:user,wallet_address:donor,wallet_verified_at:'2026-01-01'}]};
@@ -47,7 +47,7 @@ function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,w
    if(body.method==='ledger_entry')return Response.json({result:offerActive?{node:ledgerOffer}:{status:'error',error:'entryNotFound'}});
    if(body.method==='account_tx')return Response.json({result:{validated:true,transactions:accepted?[{validated:true,tx_json:{TransactionType:'NFTokenAcceptOffer'},meta:{TransactionResult:'tesSUCCESS',AffectedNodes:[{DeletedNode:{LedgerEntryType:'NFTokenOffer',LedgerIndex:offer}}]}}]:[]}});
    if(body.method==='account_nfts'&&incomplete)return Response.json({result:{}});
-   if(body.method==='account_nfts')return Response.json({result:{account_nfts:owned?[{NFTokenID:token,Flags:8}]:[]}});
+   if(body.method==='account_nfts')return Response.json({result:{account_nfts:owned?[{NFTokenID:token,Flags:8,...(uri?{URI:uri}:{})}]:[]}});
    throw Error('Unexpected test request '+url+' '+body.method);
  };
  return {tables,requests,restore(){globalThis.fetch=original;}};
@@ -167,4 +167,13 @@ test('map refresh finishes an approved deposit and exposes it at the saved locat
  const row={...base,custody:true,status:'pending',offer_index:offer,map:'town',x:1500,y:3800,updated_at:'2026-01-01'};
  const s=setup({row,poolResponse:async()=>({status:'allocated',inventory_id:'66666666-6666-4666-8666-666666666666',receipt_tx_hash:hash})});
  try{const r=await call('drop-list');assert.equal(r.code,200);assert.equal(r.output.drops.length,1);assert.equal(r.output.drops[0].status,'placed');assert.equal(r.output.drops[0].x,1500);assert.equal(r.output.drops[0].y,3800);assert.equal(s.requests.some(r=>r.url.pathname.endsWith('/payload')),false);}finally{s.restore();}
+});
+
+test('discovery artwork is recovered from the holding wallet and saved without changing placement',async()=>{
+ const uri=Buffer.from('data:application/json,'+encodeURIComponent(JSON.stringify({name:'Found art',image:'https://example.invalid/art.png'}))).toString('hex');
+ const s=setup({row:{...base,custody:true,status:'placed',offer_index:offer,image_url:null},uri});
+ try{const r=await call('drop-art');assert.equal(r.code,200);assert.equal(r.output.image_url,'https://example.invalid/art.png');assert.equal(s.tables.town_nft_drops[0].image_url,r.output.image_url);assert.equal(s.tables.town_nft_drops[0].status,'placed');
+ const inventory=s.requests.find(r=>JSON.parse(r.options.body||'{}').method==='account_nfts');assert.equal(JSON.parse(inventory.options.body).params[0].account,REWARDS_NFT_WALLET);
+ assert.equal(s.requests.some(r=>r.url.pathname.endsWith('/payload')),false);
+ }finally{s.restore();}
 });
