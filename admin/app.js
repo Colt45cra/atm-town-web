@@ -6,7 +6,7 @@ import { startFundingFlow, cancelFundingDraft } from './topup-flow.js?v=cancel-t
 import { attachUsdEstimate } from './usd-estimate.js?v=usd-estimate-1';
 import { mountAttributeEditor } from './attribute-editor.js?v=attribute-editor-1';
 import { sendAdminSignInLink } from './auth.js';
-import { renderWeeklyBudgets } from './weekly-budgets.js?v=weekly-budgets-1';
+import { renderWeeklyBudgets } from './weekly-budgets.js?v=funded-budget-v2';
 const client=window.supabase.createClient('https://xnyjurertwohlqczaeux.supabase.co','sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,experimental:{passkey:true}}});
 const $=id=>document.getElementById(id);let state=null;let stateRequest=0;let walletLoading=false;let walletRequest=0;let sponsorPrograms=[];let rewardWallets=[];
 const topupDrafts=new Map();
@@ -30,7 +30,7 @@ function renderCharacters(){const selected=$('character').value||'classic';$('ch
 async function loadWallets(){
  if(walletLoading||!state)return;walletLoading=true;const request=++walletRequest;$('walletRefresh').disabled=true;
  try{const result=await api('admin-wallets');if(!state||request!==walletRequest)return;rewardWallets=result.wallets||[];
- renderWeeklyBudgets({host:$('budgetRows'),wallets:rewardWallets,node,programName,tokenName,balanceText,api,status,onSaved:async()=>{walletLoading=false;await loadWallets();}});
+ renderWeeklyBudgets({host:$('budgetRows'),wallets:rewardWallets,node,programName,tokenName,balanceText,api,status,onSaved:async()=>{walletLoading=false;await loadWallets();},beginTopup,cancelTopup:async(slug,cycleId,button,host)=>cancelFundingDraft({slug,cycleId,button,host,api,status,onCancelled:async()=>{walletLoading=false;await loadWallets();}})});
  const host=$('walletRows');host.replaceChildren();const groups=new Map();
  for(const wallet of rewardWallets){if(wallet.slug==='atm-town-npc-miracle'&&wallet.currency==='ATM')continue;if(wallet.error){host.append(node('p',`${programName(wallet.slug)}: ${wallet.error}`));continue;}const address=wallet.walletAddress;let group=groups.get(address);if(!group){group={address,tokens:new Map()};groups.set(address,group);}const key=`${wallet.currency}:${wallet.issuer||''}`;if(!group.tokens.has(key))group.tokens.set(key,[]);group.tokens.get(key).push(wallet);}
  for(const group of groups.values()){const row=node('article');row.className='row reward-wallet';row.append(node('h3','ATM Town rewards wallet'));const address=node('a',group.address);address.className='wallet';address.href=`https://livenet.xrpl.org/accounts/${group.address}`;address.target='_blank';address.rel='noopener';row.append(address);const list=node('div');list.className='token-list';const native=rewardWallets.find(w=>w.walletAddress===group.address&&w.xrpBalance!=null);const xrp=node('div');xrp.className='token-line';xrp.append(node('strong','XRP balance'),node('span',balanceText(native?.xrpBalance)));list.append(xrp);
