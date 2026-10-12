@@ -64,12 +64,27 @@ async function boxContents(marker) {
   const result = await rpc('account_nfts', { account: REWARDS_NFT_WALLET, ledger_index: 'validated', limit: 20, ...(marker ? {marker} : {}), api_version: 2 });
   if (!Array.isArray(result.account_nfts)) throw fail('The rewards wallet inventory could not be verified.',502);
   const inventory=await pool({action:'box'});const donationTokens=new Set((inventory.tokens||[]).map(n=>n.token_id));
-  const nfts = await Promise.all(result.account_nfts.filter(n=>donationTokens.has(n.NFTokenID)).map(async nft => {
-    // Never block ownership/inventory display when a metadata gateway is down.
+  const verified=result.account_nfts.filter(n=>donationTokens.has(n.NFTokenID));
+  // Donation art is already saved by the transaction flow. Reuse that known
+  // metadata rather than making every player re-fetch it from unstable IPFS
+  // gateways each time they open the box.
+  const saved=new Map();
+  if(verified.length){
+    try{
+      const rows=check(await adminClient().from('town_nft_drops').select('token_id,name,image_url')
+        .in('token_id',verified.map(n=>n.NFTokenID)).eq('kind','donation').eq('status','received')
+        .order('created_at',{ascending:false}).limit(200));
+      for(const row of rows)if(!saved.has(row.token_id))saved.set(row.token_id,row);
+    }catch{/* The verified ledger inventory still loads if presentation cache fails. */}
+  }
+  const nfts = await Promise.all(verified.map(async nft => {
+    const stored=saved.get(nft.NFTokenID);
     let metadata={};
-    try{metadata=await resolveMetadata(nft.URI,nft.NFTokenID);}catch{}
-    return { token_id:nft.NFTokenID, uri:nft.URI||'', name:metadata.name || 'XRPL NFT',
-      image_url:metadata.image_url || null, image_candidates:metadata.image_candidates||[] };
+    if(!stored?.image_url){
+      try{metadata=await resolveMetadata(nft.URI,nft.NFTokenID);}catch{}
+    }
+    return { token_id:nft.NFTokenID, uri:nft.URI||'', name:stored?.name&&stored.name!=='XRPL NFT'?stored.name:metadata.name||'XRPL NFT',
+      image_url:stored?.image_url||metadata.image_url||null, image_candidates:metadata.image_candidates||[] };
   }));
   return {nfts,marker:result.marker || null};
 }
@@ -241,6 +256,13 @@ export default async function handler(req,res) {
       const nft=await findOwnedNft(REWARDS_NFT_WALLET,tokenId);
       if(!nft)throw fail('NFT is no longer in the rewards wallet.',404);
       const metadata=await resolveMetadata(nft.URI,tokenId,{refresh:true});
+      if(metadata.image_url){
+        // One successful recovery improves the gallery for all later players.
+        // This updates display metadata only, never ownership or payout state.
+        try{check(await adminClient().from('town_nft_drops')
+          .update({image_url:metadata.image_url,name:metadata.name||'XRPL NFT'})
+          .eq('token_id',tokenId).eq('kind','donation').eq('status','received'));}catch{}
+      }
       res.setHeader('Cache-Control','public, max-age=30');
       return res.json({token_id:tokenId,name:metadata.name||'XRPL NFT',
         image_url:metadata.image_url||null,image_candidates:metadata.image_candidates||[],uri:nft.URI||''});
