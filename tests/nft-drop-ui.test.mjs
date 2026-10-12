@@ -17,17 +17,17 @@ class Element {
   prepend(...v){for(const n of v)n.parent=this;this.children.unshift(...v);}
   replaceChildren(...v){this.text='';this.children=[...v];}
   replaceWith(n){const i=this.parent?.children.indexOf(this);if(i>=0){this.parent.children[i]=n;n.parent=this.parent;}}
-  querySelector(k){const child=this.children.find(n=>k.startsWith('.')?n.className===k.slice(1):n.tag===k);if(child)return child;if(!this.queries.has(k))this.queries.set(k,new Element(k.startsWith('[data-')&&!k.includes('status')&&!k.includes('list')?'button':'div'));return this.queries.get(k);}
+  querySelector(k){if(k.includes(' ')){const [first,...rest]=k.split(' ');return this.querySelector(first)?.querySelector(rest.join(' '));}const child=this.children.find(n=>k.startsWith('.')?n.className===k.slice(1):n.tag===k);if(child)return child;if(!this.queries.has(k))this.queries.set(k,new Element(k.startsWith('[data-')&&!k.includes('status')&&!k.includes('list')?'button':'div'));return this.queries.get(k);}
   querySelectorAll(){return [...this.queries.entries()].filter(([k])=>k!=='[data-close]').map(([,v])=>v).filter(v=>v.tag==='button').concat(this.children.flatMap(n=>n.tag==='button'?[n]:n.querySelectorAll()));}
   focus(){}
   scrollIntoView(){}
 }
 function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'}),box=[],art=null,nfts=[{name:'Ticket',token_id:'A'.repeat(64)}]){
- const body=new Element(),calls=[],store=new Map();
- const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')?art:({drops:[],nfts:box})}),setTimeout(){},clearTimeout(){},setInterval(){},URL,Date,Math});
+ const body=new Element(),calls=[],store=new Map(),timers=[];
+ const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')?art:({drops:[],nfts:box})}),setTimeout(fn,delay){timers.push({fn,delay});return timers.length;},clearTimeout(){},setInterval(){},URL,Date,Math});
  vm.runInContext(fs.readFileSync(new URL('../js/nft-drops.js',import.meta.url),'utf8'),context);
  context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
- const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store};
+ const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store,timers};
 }
 test('creation immediately shows progress, prevents duplicate clicks, and gives an explicit signing link',async()=>{
  let release;const wait=new Promise(r=>release=r),t=setup([],()=>wait);await t.api.open();await t.panel.querySelector('[data-create]').onclick();
@@ -65,4 +65,16 @@ test('donation picker updates missing names and artwork after metadata arrives',
  const t=setup([],undefined,[],{name:'Recovered NFT',image_url:'https://example.invalid/recovered.png'},[{name:'XRPL NFT',token_id:'A'.repeat(64),uri:'ABCD'}]);
  await t.api.open(true);await t.panel.querySelector('[data-create]').onclick();await new Promise(r=>setImmediate(r));
  const card=t.list.children.find(n=>n.tag==='article');assert.equal(card.querySelector('strong').textContent,'Recovered NFT');assert.equal(card.querySelector('.nftDropThumb').children.find(n=>n.tag==='img').src,'https://example.invalid/recovered.png');assert.equal(card.children.find(n=>n.tag==='button').textContent,'Donate this NFT');
+});
+
+test('a late fallback timer cannot hide or replace artwork that already loaded',async()=>{
+ const t=setup([],undefined,[],null,[{name:'Art',token_id:'A'.repeat(64),image_url:'https://example.invalid/art.png'}]);await t.api.open();await t.panel.querySelector('[data-create]').onclick();
+ const img=t.list.children.find(n=>n.tag==='article').querySelector('.nftDropThumb img');img.complete=true;img.naturalWidth=160;img.onload();
+ for(const timer of t.timers.filter(r=>r.delay===4500))timer.fn();assert.equal(img.hidden,false);assert.equal(img.src,'https://example.invalid/art.png');
+});
+test('a metadata retry finishing after an image loads preserves the working thumbnail',async()=>{
+ let finish;const pending=new Promise(r=>finish=r);const t=setup([],undefined,[],pending,[{name:'Art',token_id:'A'.repeat(64),uri:'ABCD',image_url:'https://example.invalid/working.png'}]);await t.api.open();await t.panel.querySelector('[data-create]').onclick();
+ const card=t.list.children.find(n=>n.tag==='article'),img=card.querySelector('.nftDropThumb img'),toolbar=t.list.children.find(n=>n.className==='nftPickerTools');const work=toolbar.children.find(n=>n.tag==='button').onclick();
+ img.complete=true;img.naturalWidth=160;img.onload();finish({name:'Art resolved',image_url:'https://example.invalid/retry.png'});await work;
+ assert.equal(card.querySelector('.nftDropThumb img'),img);assert.equal(img.src,'https://example.invalid/working.png');
 });
