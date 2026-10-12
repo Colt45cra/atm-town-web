@@ -7,6 +7,15 @@ export function budgetUsage(used,limit){
  return {percent,label:hundredths>=10000n?'Limit reached':hundredths>=9500n?'Almost at limit':hundredths>=8000n?'Near limit':'Within budget',level:hundredths>=10000n?'reached':hundredths>=9500n?'critical':hundredths>=8000n?'warning':'ok'};
 }
 
+export function fundedBudgetUsage(committed,total){
+ if(total==null||committed==null)return {percent:0,label:'Funding data unavailable',level:'none'};
+ const units=value=>{const m=String(value).match(/^(\\d+)(?:\\.(\\d{0,12}))?$/);if(!m)throw Error('Invalid funded-budget amount');return BigInt(m[1])*1000000000000n+BigInt((m[2]||'').padEnd(12,'0'));};
+ const cap=units(total),spent=units(committed);
+ if(cap===0n)return {percent:100,label:'Not funded',level:'reached'};
+ const hundredths=spent*10000n/cap;
+ return {percent:Number(hundredths>10000n?10000n:hundredths)/100,label:hundredths>=10000n?'Funded limit reached':hundredths>=9500n?'Almost out of funded tokens':hundredths>=8000n?'Funded allocation running low':'Funded allocation available',level:hundredths>=10000n?'reached':hundredths>=9500n?'critical':hundredths>=8000n?'warning':'ok'};
+}
+
 const drafts=new Map();
 export function renderWeeklyBudgets({host,wallets,node,programName,tokenName,balanceText,api,status,onSaved,beginTopup,cancelTopup}){
  host.replaceChildren();
@@ -18,11 +27,13 @@ export function renderWeeklyBudgets({host,wallets,node,programName,tokenName,bal
    row.append(node('p',wallet.error||'Weekly usage unavailable. Refresh to try again.'));host.append(row);continue;
   }
   const symbol=tokenName(wallet.currency),usage=budgetUsage(wallet.weeklyTokensUsed,wallet.weeklyTokenBudget);
+  const fundedUsage=fundedBudgetUsage(wallet.fundedTokensCommitted,wallet.fundedBudgetTotal);
   const fundedRemaining=wallet.payoutBudgetRemaining==null?null:Number(wallet.payoutBudgetRemaining);
   const fundedExhausted=fundedRemaining!==null&&Number.isFinite(fundedRemaining)&&fundedRemaining<=0;
   const rewardAmount=wallet.maxAmountPerSession==null?null:Number(wallet.maxAmountPerSession);
   const belowReward=rewardAmount!==null&&Number.isFinite(rewardAmount)&&fundedRemaining!==null&&Number.isFinite(fundedRemaining)&&fundedRemaining<rewardAmount;
   row.dataset.level=fundedExhausted||belowReward?'reached':usage.level;
+  row.dataset.fundedLevel=fundedUsage.level;
   const badge=node('strong',fundedExhausted?`${symbol} · Funded allowance exhausted`:belowReward?`${symbol} · Not enough funded for one reward`:`${symbol} · ${usage.label}`);
   badge.className='budget-status';row.append(badge);
   if(wallet.weeklyTokenBudget!=null){const progress=node('progress');progress.max=100;progress.value=usage.percent;progress.setAttribute('aria-label',`${symbol} weekly token budget used: ${usage.percent}%`);row.append(progress);}
@@ -41,6 +52,11 @@ export function renderWeeklyBudgets({host,wallets,node,programName,tokenName,bal
    funded.append(node('strong',`Funded remaining: ${balanceText(wallet.payoutBudgetRemaining)} ${symbol}`));
   }else{
    funded.append(node('p',`Funded remaining: ${balanceText(wallet.payoutBudgetRemaining)} ${symbol}. Full breakdown unavailable until the funding service updates.`));
+  }
+  if(wallet.fundedBudgetTotal!=null&&wallet.fundedTokensCommitted!=null){
+   const progress=node('progress');progress.max=100;progress.value=fundedUsage.percent;
+   progress.setAttribute('aria-label',`${symbol} funded allocation used: ${fundedUsage.percent}%`);
+   funded.append(progress,node('p',`${fundedUsage.percent}% of all-time funded allocation committed · ${fundedUsage.label}`));
   }
   funded.append(node('p',`Actual reward-wallet token balance: ${balanceText(wallet.payoutBalance)} ${symbol}. This balance is shared; it is not the amount approved for this program.`));
   if(fundedExhausted)funded.append(node('p','No funded allowance remains. New rewards cannot be reserved even if the weekly cap is unlimited or tokens remain in the wallet.'));
