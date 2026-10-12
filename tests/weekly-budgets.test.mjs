@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {budgetUsage} from '../admin/weekly-budgets.js';
+import {budgetUsage,fundedBudgetUsage} from '../admin/weekly-budgets.js';
 test('warnings include committed tokens and exact 80/95/100 thresholds',()=>{
  assert.equal(budgetUsage('79.999999','100').level,'ok');
  assert.equal(budgetUsage('80','100').level,'warning');
@@ -12,4 +12,15 @@ test('zero pauses reservations; blank cap is explicit; large decimals remain exa
  assert.equal(budgetUsage('0','0').level,'reached');
  assert.equal(budgetUsage('500',null).label,'No weekly cap');
  assert.equal(budgetUsage('950000000000000000','1000000000000000000').level,'critical');
+});
+
+test('cumulative funded usage warns even without a weekly cap',()=>{
+ assert.equal(fundedBudgetUsage('1194','1200').level,'critical');
+ assert.equal(fundedBudgetUsage('1194','1200').percent,99.5);
+ assert.equal(fundedBudgetUsage('0','1200').level,'ok');
+ assert.equal(fundedBudgetUsage('960','1200').level,'warning');
+ assert.equal(fundedBudgetUsage('1200','1200').level,'reached');
+ assert.equal(fundedBudgetUsage('0','0').label,'Not funded');
+ assert.equal(fundedBudgetUsage('0.000000000001','1').level,'ok');
+ assert.equal(fundedBudgetUsage(null,null).level,'none');
 });
