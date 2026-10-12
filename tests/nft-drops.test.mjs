@@ -52,7 +52,7 @@ function setup({row={...base},signed=false,tx=null,offerActive=true,owned=true,w
  };
  return {tables,requests,restore(){globalThis.fetch=original;}};
 }
-async function call(action,body=null,id=base.id){let code=200,output;const res={setHeader(){},status(n){code=n;return this;},json(v){output=v;return this;}};await handler({method:body?'POST':'GET',query:{action,id},headers:{authorization:'Bearer test-access-token'},body},res);return {code,output};}
+async function call(action,body=null,id=base.id,query={}){let code=200,output;const res={setHeader(){},status(n){code=n;return this;},json(v){output=v;return this;}};await handler({method:body?'POST':'GET',query:{action,id,...query},headers:{authorization:'Bearer test-access-token'},body},res);return {code,output};}
 test('unsigned requests create no carried object; exact validated signatures create one',async()=>{
  let s=setup();try{const result=await call('drop-status');assert.equal(result.output.status,'pending');assert.equal(s.tables.town_nft_drops[0].offer_index,undefined);}finally{s.restore();}
  s=setup({signed:true});try{const result=await call('drop-status');assert.equal(result.output.status,'carried');assert.equal(result.output.offer_index,offer);assert.equal(s.tables.town_nft_drops[0].tx_hash,hash);}finally{s.restore();}
@@ -176,4 +176,23 @@ test('discovery artwork is recovered from the holding wallet and saved without c
  const inventory=s.requests.find(r=>JSON.parse(r.options.body||'{}').method==='account_nfts');assert.equal(JSON.parse(inventory.options.body).params[0].account,REWARDS_NFT_WALLET);
  assert.equal(s.requests.some(r=>r.url.pathname.endsWith('/payload')),false);
  }finally{s.restore();}
+});
+
+test('donation box returns alternate artwork candidates and supports validated artwork recovery',async()=>{
+ const metadata={name:'Box NFT',image:'ipfs://bafybeigdyrztbadprimary/image.png',thumbnail:'https://example.invalid/backup.png'};
+ const uri=Buffer.from('data:application/json,'+encodeURIComponent(JSON.stringify(metadata))).toString('hex').toUpperCase();
+ const s=setup({uri});
+ try{
+  const box=await call('drop-box');assert.equal(box.code,200);
+  assert.equal(box.output.nfts[0].name,'Box NFT');
+  assert.equal(box.output.nfts[0].image_candidates.includes('https://example.invalid/backup.png'),true);
+  assert.equal(box.output.nfts[0].uri,uri);
+  const art=await call('drop-box-art',null,base.id,{token_id:token});
+  assert.equal(art.code,200);assert.equal(art.output.name,'Box NFT');
+  assert.equal(art.output.image_candidates.includes('https://example.invalid/backup.png'),true);
+ }finally{s.restore();}
+});
+test('donation-box artwork recovery refuses NFTs outside the verified inventory',async()=>{
+ const s=setup({poolResponse:async body=>body.action==='box'?{tokens:[]}:{ready:true}});
+ try{const result=await call('drop-box-art',null,base.id,{token_id:token});assert.equal(result.code,404);}finally{s.restore();}
 });
