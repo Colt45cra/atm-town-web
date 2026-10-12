@@ -194,13 +194,21 @@ function cleanPlainJson(value, depth = 0) {
   return out;
 }
 
-export async function resolveMetadata(uriHex, tokenId) {
+const metadataRequests=globalThis.__atmNftMetadataRequests||new Map();
+globalThis.__atmNftMetadataRequests=metadataRequests;
+export async function resolveMetadata(uriHex,tokenId,options={}){
+  const key=`${tokenId}:${uriHex}`;
+  if(metadataRequests.has(key))return metadataRequests.get(key);
+  const pending=resolveMetadataOnce(uriHex,tokenId,options);metadataRequests.set(key,pending);
+  try{return await pending;}finally{if(metadataRequests.get(key)===pending)metadataRequests.delete(key);}
+}
+async function resolveMetadataOnce(uriHex, tokenId, {refresh=false}={}) {
   const decodedUri = decodeHexUri(uriHex);
   if (!decodedUri) return { status: 'missing', uri: '', name: '', description: '', image_url: '' };
 
   const cacheKey = `${tokenId}:${uriHex}`;
   const cached = metadataCache.get(cacheKey);
-  if (cached) {
+  if (cached && !(refresh && !cached.value?.image_url)) {
     const ttl = cached.value?.status === 'unavailable' ? FAILURE_CACHE_TTL_MS : CACHE_TTL_MS;
     if (Date.now() - cached.savedAt < ttl) return cached.value;
   }
@@ -320,7 +328,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'NFT URI must be valid XRPL hex data.' });
     }
 
-    const metadata = await resolveMetadata(uriHex, tokenId);
+    const metadata = await resolveMetadata(uriHex, tokenId,{refresh:req.body?.refresh===true});
     res.setHeader('Cache-Control', 'private, max-age=300');
     return res.status(200).json({ nftoken_id: tokenId, ...metadata });
   } catch (error) {

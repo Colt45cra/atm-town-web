@@ -7074,5 +7074,5 @@ window.ATMNftDrops?.init?.({
  broadcast:()=>broadcastState(true),
  donationBox:()=>window.ATMWorldObjects?.donationBox?.(),
  refreshWallet:()=>lockerRefreshXrpl(true),
- nfts:async()=>{if(!authSession?.access_token)throw Error('Sign in and link Xaman first.');await lockerRefreshXrpl(true);return lockerState.nfts.filter(n=>n.transferable).map(n=>({token_id:lockerNftTokenId(n),name:lockerNftDisplayName(n),image_url:lockerNftMetadata(n)?.image_url||''}));}
+ nfts:async()=>{if(!authSession?.access_token)throw Error('Sign in and link Xaman first.');await lockerRefreshXrpl(true);return lockerState.nfts.filter(n=>n.transferable).map(n=>({token_id:lockerNftTokenId(n),name:lockerNftDisplayName(n),uri:n.URI||'',image_url:lockerNftMetadata(n)?.image_url||'',image_candidates:lockerNftMetadata(n)?.image_candidates||[]}));}
 });
