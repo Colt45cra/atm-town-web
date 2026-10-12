@@ -231,9 +231,13 @@ export default async function handler(req,res) {
     if(req.method==='GET'&&action==='drop-box') return res.json(await boxContents(req.query?.marker));
     if(req.method==='GET'&&action==='drop-list') {
       const admin=adminClient();
-      // Approved deposits continue receiving even after the donor closes the modal.
-      const queued=check(await admin.from('town_nft_drops').select('*').eq('custody',true).eq('status','pending').not('offer_index','is',null).lt('updated_at',new Date(Date.now()-15000).toISOString()).order('created_at',{ascending:true}).limit(2));
       const started=Date.now();
+      // Signed batch donations keep receiving while any player is in town,
+      // even if the donor closes ATM Pay or the donation dialog.
+      const donations=check(await admin.from('town_nft_donation_requests').select('id').in('status',['submitting','receiving']).lt('updated_at',new Date(Date.now()-15000).toISOString()).order('created_at',{ascending:true}).limit(1));
+      for(const donation of donations){try{await reconcileDonation(admin,donation.id);}catch{/* Leave the same request available for retry. */}}
+      // Approved deposits continue receiving even after the donor closes the modal.
+      const queued=Date.now()-started>25000?[]:check(await admin.from('town_nft_drops').select('*').eq('custody',true).eq('status','pending').not('offer_index','is',null).lt('updated_at',new Date(Date.now()-15000).toISOString()).order('created_at',{ascending:true}).limit(2));
       for(const row of queued){
         try{await reconcileCustody(admin,row);}catch(e){await update(admin,row,{failure_reason:'Receiving delayed: '+String(e.message).slice(0,500)});}
         if(Date.now()-started>25000)break;
