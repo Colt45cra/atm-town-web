@@ -18,8 +18,9 @@ export async function prepareMapUpload(files,{api,status,signal,label,baseRevisi
 
 // Two workers limit pressure on mobile networks. Completed immutable files are resumed.
 export async function uploadMapFiles(files,{api,status,signal,id,resumed=false,fetchFile=fetch,wait=retryWait}){
- let next=0,completed=0,failure;
- async function worker(){while(!failure&&next<files.length){const index=next++,file=files[index];try{
+ signal?.throwIfAborted();status('Checking saved uploads in one batch…');const saved=await api('admin-map-upload',{id,check_only:true});signal?.throwIfAborted();const uploaded=new Set(saved.uploaded||[]),pending=files.map((file,index)=>({file,index})).filter(({file})=>!uploaded.has(file.path)),skipped=files.length-pending.length;
+ let next=0,completed=0,failure;const progress=()=>status(`Skipped ${skipped} saved files · Uploaded ${completed} of ${pending.length} remaining…`);progress();
+ async function worker(){while(!failure&&next<pending.length){const {index,file}=pending[next++];try{
   for(let attempt=0;attempt<5;attempt++){
    signal?.throwIfAborted();const {links}=await api('admin-map-upload',{id,paths:[file.path]});const link=links.find(l=>l.path===file.path);if(!link)throw Error('Missing upload link.');if(link.uploaded)break;
    const url=new URL(link.url);if(url.origin!=='https://xnyjurertwohlqczaeux.supabase.co'||!url.pathname.startsWith('/storage/v1/object/upload/sign/world-maps/'))throw Error('Invalid upload destination.');
@@ -29,7 +30,7 @@ export async function uploadMapFiles(files,{api,status,signal,id,resumed=false,f
    finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
    if(attempt===4)throw problem;status(`Retrying file ${index+1} of ${files.length} (${attempt+1}/4)…`);await wait(Math.min(8000,750*2**attempt),signal);
   }
-  completed++;status(`${resumed?'Resuming':'Uploading'}: ${completed} of ${files.length} files ready…`);
+  completed++;progress();
  }catch(error){failure ||= error;}}}
  await Promise.all([worker(),worker()]);if(failure)throw failure;
 }
