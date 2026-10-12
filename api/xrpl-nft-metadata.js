@@ -208,7 +208,7 @@ async function resolveMetadataOnce(uriHex, tokenId, {refresh=false}={}) {
 
   const cacheKey = `${tokenId}:${uriHex}`;
   const cached = metadataCache.get(cacheKey);
-  if (cached && !(refresh && !cached.value?.image_url)) {
+  if (cached && !refresh) {
     const ttl = cached.value?.status === 'unavailable' ? FAILURE_CACHE_TTL_MS : CACHE_TTL_MS;
     if (Date.now() - cached.savedAt < ttl) return cached.value;
   }
@@ -277,10 +277,16 @@ function firstMediaUri(source) {
 
 function metadataFromJson(json, decodedUri, metadataUrl) {
   const source = json && typeof json === 'object' ? json : {};
-  const imageRaw = metadataUriValue(source.image) || metadataUriValue(source.image_url) || metadataUriValue(source.imageUrl) ||
-    metadataUriValue(source.thumbnail) || metadataUriValue(source.thumbnail_url) || metadataUriValue(source.preview) ||
-    metadataUriValue(source.properties?.image) || firstMediaUri(source);
-  const imageCandidates = contentUriCandidates(imageRaw, metadataUrl);
+  // Older NFT issuers often publish a dead primary image while a thumbnail,
+  // properties.image or files[] entry still works. Keep *all* valid artwork
+  // sources, including every IPFS gateway, instead of abandoning the NFT after
+  // the first unreachable image. The display client will try them in order.
+  const imageValues = [
+    source.image, source.image_url, source.imageUrl, source.image_uri,
+    source.thumbnail, source.thumbnail_url, source.preview,
+    source.properties?.image, source.properties?.thumbnail, firstMediaUri(source)
+  ].map(metadataUriValue).filter(Boolean);
+  const imageCandidates = uniqueStrings(imageValues.flatMap(uri => contentUriCandidates(uri, metadataUrl))).slice(0, 35);
   return {
     status: 'resolved',
     uri: decodedUri,
