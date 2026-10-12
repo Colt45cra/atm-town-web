@@ -1,4 +1,5 @@
 import { nftWallet } from '../lib/atm-pay-town.js';
+import { reconcileDonation } from './nft-donation-batch.js';
 import { payloadIntegrationRequest } from '../lib/payload-integration.js';
 import { randomUUID } from 'node:crypto';
 import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
@@ -12,7 +13,7 @@ const check = ({ data, error }) => { if (error) throw error; return data; };
 const parts = r => ({ tx: r.tx_json || r.tx || r.transaction || r, meta: r.meta || r.metaData || {} });
 const success = r => r.validated === true && parts(r).meta.TransactionResult === 'tesSUCCESS';
 const ownerRow = row => ({ ...publicRow(row), ...(row.status === 'pending' && !row.offer_index && /^[0-9a-f-]{36}$/i.test(row.payload_uuid || '') ? { deeplink: `https://xumm.app/sign/${row.payload_uuid}` } : {}) });
-const publicRow = row => ({ id: row.id, kind: row.kind, status: row.status === 'claimed' && !row._claim_verified ? 'checking' : row.status, token_id: row.token_id, name: row.name, image_url: row.image_url, map: row.map, x: row.x, y: row.y, offer_index: row.offer_index, wallet_address: row.wallet_address, failure_reason: row.failure_reason, claim_verified: Boolean(row._claim_verified), custody:Boolean(row.custody), phase:row.custody&&row.status==='pending'&&row.offer_index?'receiving':null, payload_inventory_id:row.payload_inventory_id });
+const publicRow = row => ({ id: row.id, donation_request_id:row.donation_request_id, kind: row.kind, status: row.status === 'claimed' && !row._claim_verified ? 'checking' : row.status, token_id: row.token_id, name: row.name, image_url: row.image_url, map: row.map, x: row.x, y: row.y, offer_index: row.offer_index, wallet_address: row.wallet_address, failure_reason: row.failure_reason, claim_verified: Boolean(row._claim_verified), custody:Boolean(row.custody), phase:row.custody&&row.status==='pending'&&row.offer_index?'receiving':null, payload_inventory_id:row.payload_inventory_id });
 async function walletFor(admin, user) {
   if ((await nftWallet(admin,user.id)).provider === 'atm_pay') throw fail('Select Xaman in ATM PAY MAINNET for NFT drop signing. Free drops currently use Xaman.',409);
   const account = check(await admin.from('player_accounts').select('wallet_address,wallet_verified_at').eq('user_id', user.id).maybeSingle());
@@ -70,6 +71,10 @@ async function boxContents(marker) {
   return {nfts,marker:result.marker || null};
 }
 async function reconcile(admin, row) {
+  if(row.donation_request_id){
+    await reconcileDonation(admin,row.donation_request_id);
+    return check(await admin.from('town_nft_drops').select('*').eq('id',row.id).single());
+  }
   if(row.custody) return reconcileCustody(admin,row);
 
   if (row.kind === 'drop' && row.status === 'carried' && !row.offer_index) {

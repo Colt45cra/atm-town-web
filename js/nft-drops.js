@@ -8,7 +8,12 @@
  function persist(value){pending=value;try{if(value)localStorage.setItem(storageKey,JSON.stringify(value));else localStorage.removeItem(storageKey);}catch{}}
  function user(){return game?.userId?.()||null;}
  function signing(data,claim=false){
-   persist({id:data.id,claim,user:user(),deeplink:data.deeplink});
+   persist({id:data.id,claim,donation:Boolean(data.donation_request),user:user(),deeplink:data.deeplink});
+   if(data.donation_request){
+     list.replaceChildren();status(data.status==='signing'?'Review your selected NFTs in '+(data.provider==='atm_pay'?'ATM Pay':'Xaman')+'.':'Donation approved. Received '+data.received+' of '+data.total+' NFTs.');
+     if(data.deeplink){const link=el('a','Open '+(data.provider==='atm_pay'?'ATM Pay':'Xaman')+' to approve');link.href=data.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.append(link);}
+     startPoll();return;
+   }
    status(claim?'Sign in Xaman to claim your NFT.':data.kind==='drop'?'Approve the transfer to the game’s holding wallet in Xaman. Your drop appears after receipt is confirmed. Return here to check progress.':'Open Xaman below to approve. Return here and wait for confirmation.');
    if(!data.deeplink){status('The holding wallet is preparing your personal NFT offer…');startPoll();return;}
    const link=el('a','Open Xaman to sign');link.href=data.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.append(link);
@@ -42,7 +47,12 @@
    clearTimeout(poll);let attempts=0;const check=async()=>{
      if(!pending||pending.user!==user())return;
      try{
-       const data=await api((pending.claim?'drop-claim-status':'drop-status')+'&id='+encodeURIComponent(pending.id));
+       const data=pending.donation?await api('donation-status',{id:pending.id}):await api((pending.claim?'drop-claim-status':'drop-status')+'&id='+encodeURIComponent(pending.id));
+       if(pending.donation){
+         status(data.status==='signing'?'Waiting for your wallet approval…':data.status==='submitting'?'Checking your donation on XRPL…':'Received '+data.received+' of '+data.total+' NFTs.');
+         if(['signing','submitting','receiving'].includes(data.status)){poll=setTimeout(check,3500);return;}
+         persist(null);await refresh(true);if(boxMode)await showBox();else{mode='mine';render();}status(data.status==='received'?'Donation complete! All '+data.total+' NFTs are in the box.':data.error||'Donation '+data.status+'.');return;
+       }
        if(data.phase==='receiving'){list.replaceChildren(el('p','Transfer approved. The holding wallet is receiving your NFT…'));status('Waiting for confirmed receipt. Your NFT will appear at your chosen spot automatically.');}
        if(['pending','preparing'].includes(data.status)&&data.deeplink&&!pending.deeplink){const isClaim=pending.claim;list.replaceChildren();signing(data,isClaim);return;}
        if(!['pending','preparing'].includes(data.status)){
@@ -62,7 +72,8 @@
    if(row.kind==='drop'&&['carried','placed'].includes(row.status)){
      const pick=el('button',row.status==='placed'?'Carry again':carry?.id===row.id?'Carrying':'Carry this NFT');pick.type='button';pick.onclick=()=>run(async()=>{if(row.status==='placed')await api('drop-carry',{id:row.id});await refresh(true);carry=mine.find(r=>r.id===row.id&&r.status==='carried')||null;game.broadcast();panel.hidden=true;});card.append(pick);
    }
-   if(['pending','preparing'].includes(row.status)){const resume=el('button','Resume signing / check status');resume.onclick=()=>{list.replaceChildren();const deeplink=row.deeplink||(pending?.id===row.id?pending.deeplink:null);if(deeplink)signing({...row,deeplink});else{persist({id:row.id,claim:false,user:user()});status('Waiting for the signing request to be prepared. Checking status…');startPoll();}};card.append(resume);}
+   if(row.donation_request_id&&['pending','preparing'].includes(row.status)){const resume=el('button','Check donation / resume approval');resume.onclick=()=>run(async()=>signing(await api('donation-status',{id:row.donation_request_id})));card.append(resume);}
+   else if(['pending','preparing'].includes(row.status)){const resume=el('button','Resume signing / check status');resume.onclick=()=>{list.replaceChildren();const deeplink=row.deeplink||(pending?.id===row.id?pending.deeplink:null);if(deeplink)signing({...row,deeplink});else{persist({id:row.id,claim:false,user:user()});status('Waiting for the signing request to be prepared. Checking status…');startPoll();}};card.append(resume);}
    if(['failed','rejected','expired'].includes(row.status)){const retry=el('button','Try again');retry.onclick=()=>run(()=>beginOffer(row,row.kind==='donation'));card.append(retry);}
    if(row.failure_reason)card.append(el('small',row.failure_reason));
    return card;
@@ -74,12 +85,18 @@
    status(donate?'Donate to the existing game rewards wallet. The NFT enters the pool only after acceptance.':'Choose an NFT to carry. Walk to your spot, tap Place NFT here, then sign in Xaman. Signing transfers the NFT into the game’s holding wallet. It becomes available at your spot after receipt is confirmed.');
    try{
      const nfts=await game.nfts();list.replaceChildren();
+     let donationConfig=null;
+     if(donate){try{donationConfig=await api('donation-config',{});}catch(e){status('Batch status unavailable. Single-NFT donations are still available.');}}
+     const batchReady=donate&&donationConfig?.batch_enabled&&(donationConfig.provider==='atm_pay'||donationConfig.xaman_batch_ready);
+     const selected=new Set();let donateSelected;
+     if(batchReady){donateSelected=el('button','Donate selected (0 / 8)');donateSelected.type='button';donateSelected.disabled=true;donateSelected.onclick=()=>run(async()=>{list.replaceChildren();status('Preparing your donation…');const data=await api('donation-start',{token_ids:[...selected]});signing(data);});list.append(donateSelected);status('Select up to 8 NFTs. Review once in ATM Pay. Each NFT enters the box after confirmed receipt.');}
+     else if(donate&&donationConfig?.provider==='xaman'){list.append(el('p','Donate one NFT through Xaman, or connect ATM Pay to donate up to 8 with one approval.'));}
      const tools=el('div');tools.className='nftPickerTools';const search=el('input');search.type='search';search.placeholder='Find an NFT by name or token ID';search.setAttribute('aria-label','Search your NFTs');
      const retryArt=el('button','Reload missing artwork');retryArt.type='button';const progress=el('small');tools.append(search,retryArt,progress);list.append(tools);
      const cards=[];const filter=()=>{const q=search.value?.trim().toLowerCase()||'';for(const item of cards)item.card.hidden=!((item.nft.name||'')+' '+item.nft.token_id).toLowerCase().includes(q);};search.oninput=filter;
 
      if(!nfts.length)list.append(el('p','No transferable NFTs found. Link Xaman and refresh your Locker.'));
-     for(const nft of nfts){const card=el('article');card.className='nftDropCard';card.append(el('strong',nft.name||'XRPL NFT'),el('small',nft.token_id.slice(0,8)+'…'+nft.token_id.slice(-8)));card.prepend(thumbnail(nft));const choose=el('button',donate?'Donate this NFT':'Carry this NFT');choose.type='button';choose.onclick=()=>run(()=>beginOffer(nft,donate));card.append(choose);list.append(card);cards.push({nft,card});}
+     for(const nft of nfts){const card=el('article');card.className='nftDropCard';card.append(el('strong',nft.name||'XRPL NFT'),el('small',nft.token_id.slice(0,8)+'…'+nft.token_id.slice(-8)));card.prepend(thumbnail(nft));const choose=el('button',donate?'Donate this NFT':'Carry this NFT');choose.type='button';choose.onclick=()=>run(async()=>{if(donate&&donationConfig?.provider==='atm_pay'){list.replaceChildren();status('Preparing your donation…');signing(await api('donation-start',{token_ids:[nft.token_id]}));}else await beginOffer(nft,donate);});card.append(choose);if(batchReady){const label=el('label','Select for donation '),checkbox=el('input');checkbox.type='checkbox';checkbox.setAttribute('aria-label','Select '+(nft.name||nft.token_id));checkbox.onchange=()=>{if(checkbox.checked&&selected.size>=8){checkbox.checked=false;status('You can select up to 8 NFTs.');return;}if(checkbox.checked)selected.add(nft.token_id);else selected.delete(nft.token_id);donateSelected.textContent='Donate selected ('+selected.size+' / 8)';donateSelected.disabled=selected.size===0;};label.append(checkbox);card.append(label);}list.append(card);cards.push({nft,card});}
      const hydrate=async(force=false)=>{retryArt.disabled=true;let cursor=0,done=0;const pending=cards.filter(({nft,card})=>{const img=card.querySelector('.nftDropThumb img');return nft.uri&&!(img?.complete&&img.naturalWidth>0)&&(force||!nft.image_url);});progress.textContent=pending.length?'Loading artwork…':'';await Promise.all(Array.from({length:Math.min(4,pending.length)},async()=>{while(cursor<pending.length){const item=pending[cursor++];if(!item.card.isConnected)break;try{const meta=await game.api('/api/xrpl-nft-metadata',{method:'POST',body:JSON.stringify({nftoken_id:item.nft.token_id,uri:item.nft.uri,refresh:force})});if(item.card.isConnected){Object.assign(item.nft,{name:meta.name||item.nft.name,image_url:meta.image_url||item.nft.image_url,image_candidates:meta.image_candidates||item.nft.image_candidates});item.card.querySelector('strong').textContent=item.nft.name||'XRPL NFT';const current=item.card.querySelector('.nftDropThumb img');if(!(current?.complete&&current.naturalWidth>0))item.card.querySelector('.nftDropThumb').replaceWith(thumbnail(item.nft));filter();}}catch{}finally{done++;progress.textContent='Artwork checked: '+done+' / '+pending.length;}  }}));retryArt.disabled=false;};
      retryArt.onclick=()=>hydrate(true);hydrate();
    }catch(e){list.replaceChildren();status(e.message);}
@@ -103,6 +120,7 @@
    try{const r=await fetch('/api/xrpl-nft-trade?action=drop-box'+(marker?'&marker='+encodeURIComponent(marker):''),{cache:'no-store'});if(!r.ok)throw Error('Could not load the donation box. Tap NFTs in the box to retry.');const data=await r.json();if(mode!=='box')return;if(!marker)list.replaceChildren();
      if(!data.nfts?.length&&!marker)list.append(el('p','The box is empty. Be the first to donate an NFT.'));
      const grid=el('div');grid.className='nftDropGrid';for(const nft of data.nfts||[]){const card=el('article');card.className='nftDropTile';card.append(thumbnail(nft),el('strong',nft.name||'XRPL NFT'));grid.append(card);}list.append(grid);
+     if(!marker&&user()){try{const history=await api('donation-mine',{});for(const request of history.requests||[]){const card=el('article');card.className='nftDropCard';card.append(el('strong','Your donation · '+request.received+' / '+request.total+' received'));if(['signing','submitting','receiving'].includes(request.status)){const resume=el('button',request.status==='signing'?'Resume approval':'Check donation');resume.onclick=()=>run(async()=>signing(await api('donation-status',{id:request.id})));card.append(resume);}else card.append(el('small',request.status==='received'?'Donation complete':request.error||request.status));list.append(card);}}catch{}}
      if(data.marker){const more=el('button','Show more NFTs');more.onclick=()=>run(async()=>{more.hidden=true;try{await showBox(data.marker);}catch(e){more.hidden=false;throw e;}});list.append(more);}
    }catch(e){list.replaceChildren(el('p','Box contents unavailable.'));status(e.message);}
  }

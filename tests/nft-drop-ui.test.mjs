@@ -22,11 +22,11 @@ class Element {
   focus(){}
   scrollIntoView(){}
 }
-function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'}),box=[],art=null,nfts=[{name:'Ticket',token_id:'A'.repeat(64)}]){
+function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'}),box=[],art=null,nfts=[{name:'Ticket',token_id:'A'.repeat(64)}],donationConfig=null){
  const body=new Element(),calls=[],store=new Map(),timers=[];
  const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')?art:({drops:[],nfts:box})}),setTimeout(fn,delay){timers.push({fn,delay});return timers.length;},clearTimeout(){},setInterval(){},URL,Date,Math});
  vm.runInContext(fs.readFileSync(new URL('../js/nft-drops.js',import.meta.url),'utf8'),context);
- context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
+ context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('donation-config'))return donationConfig;if(url.includes('donation-status'))return {status:'signing'};if(url.includes('donation-start'))return start(JSON.parse(options.body));if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
  const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store,timers};
 }
 test('creation immediately shows progress, prevents duplicate clicks, and gives an explicit signing link',async()=>{
@@ -77,4 +77,13 @@ test('a metadata retry finishing after an image loads preserves the working thum
  const card=t.list.children.find(n=>n.tag==='article'),img=card.querySelector('.nftDropThumb img'),toolbar=t.list.children.find(n=>n.className==='nftPickerTools');const work=toolbar.children.find(n=>n.tag==='button').onclick();
  img.complete=true;img.naturalWidth=160;img.onload();finish({name:'Art resolved',image_url:'https://example.invalid/retry.png'});await work;
  assert.equal(card.querySelector('.nftDropThumb img'),img);assert.equal(img.src,'https://example.invalid/working.png');
+});
+
+test('ATM Pay donations select at most eight NFTs and open one approval for the selected set',async()=>{
+ const nfts=Array.from({length:9},(_,i)=>({name:'NFT '+i,token_id:(i+1).toString(16).padStart(64,'0').toUpperCase()}));let body;
+ const t=setup([],async b=>{body=b;return {kind:'donation',donation_request:true,provider:'atm_pay',id:'batch',status:'signing',received:0,total:8,deeplink:'https://atm-pay-two.vercel.app/town#request'};},[],null,nfts,{provider:'atm_pay',batch_enabled:true});
+ await t.api.open(true);await t.panel.querySelector('[data-create]').onclick();
+ const cards=t.list.children.filter(n=>n.tag==='article');for(const c of cards){const checkbox=c.children.find(n=>n.tag==='label').children[0];checkbox.checked=true;checkbox.onchange();}
+ assert.equal(cards[8].children.find(n=>n.tag==='label').children[0].checked,false);
+ const donate=t.list.children.find(n=>n.tag==='button');assert.equal(donate.textContent,'Donate selected (8 / 8)');await donate.onclick();assert.equal(body.token_ids.length,8);assert.equal(t.calls.filter(u=>u.includes('donation-start')).length,1);assert.equal(t.list.children.find(n=>n.tag==='a').textContent,'Open ATM Pay to approve');assert.equal(JSON.parse(t.store.get('atm_nft_drop_pending_v1')).donation,true);
 });
