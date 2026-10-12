@@ -82,6 +82,11 @@ async function boxContents(marker) {
     let metadata={};
     if(!stored?.image_url){
       try{metadata=await resolveMetadata(nft.URI,nft.NFTokenID);}catch{}
+      if(metadata.image_url){
+        try{check(await adminClient().from('town_nft_drops')
+          .update({image_url:metadata.image_url,name:metadata.name||stored?.name||'XRPL NFT'})
+          .eq('token_id',nft.NFTokenID).eq('kind','donation').eq('status','received'));}catch{}
+      }
     }
     return { token_id:nft.NFTokenID, uri:nft.URI||'', name:stored?.name&&stored.name!=='XRPL NFT'?stored.name:metadata.name||'XRPL NFT',
       image_url:stored?.image_url||metadata.image_url||null, image_candidates:metadata.image_candidates||[] };
