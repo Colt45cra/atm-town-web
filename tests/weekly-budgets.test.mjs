@@ -24,3 +24,14 @@ test('cumulative funded usage warns even without a weekly cap',()=>{
  assert.equal(fundedBudgetUsage('0.000000000001','1').level,'ok');
  assert.equal(fundedBudgetUsage(null,null).level,'none');
 });
+
+test('funded budget accepts normal and scientific notation and never blanks the wallet panel',()=>{
+ assert.equal(fundedBudgetUsage('1194','1200').percent,99.5);
+ assert.equal(fundedBudgetUsage(1194,1200).percent,99.5);
+ assert.equal(fundedBudgetUsage('1.194e3','1.2E3').percent,99.5);
+ assert.equal(fundedBudgetUsage('1194.000000000000000','1200.000000000000000').percent,99.5);
+ assert.equal(fundedBudgetUsage('invalid','1200').level,'none');
+ assert.equal(fundedBudgetUsage('1194','invalid').label,'Funding data unavailable');
+ assert.equal(budgetUsage('1.200000000000','2.000000000000').percent,60);
+ assert.equal(budgetUsage('not available','100').level,'none');
+});
