@@ -1,19 +1,37 @@
+
+// Normalize decimal and scientific-notation values without floating-point rounding.
+// A malformed value must never take down the admin wallet or budget panels.
+function budgetUnits(value){
+ if(value==null)return null;
+ const match=String(value).trim().match(/^(\d+)(?:\.(\d*))?(?:e([+-]?\d+))?$/i);
+ if(!match)return null;
+ const fractional=match[2]||'';
+ const exponent=Number(match[3]||0);
+ if(!Number.isSafeInteger(exponent)||Math.abs(exponent)>100)return null;
+ const shift=12-fractional.length+exponent;
+ const digits=BigInt(match[1]+fractional);
+ return shift>=0?digits*10n**BigInt(shift):digits/10n**BigInt(-shift);
+}
+function budgetLevel(spent,cap,zeroLabel){
+ if(spent===null||cap===null)return {percent:0,label:'Budget usage unavailable',level:'none'};
+ if(cap===0n)return {percent:100,label:zeroLabel,level:'reached'};
+ const hundredths=spent*10000n/cap;
+ return {percent:Number(hundredths>10000n?10000n:hundredths)/100,
+  label:hundredths>=10000n?'Limit reached':hundredths>=9500n?'Almost at limit':hundredths>=8000n?'Near limit':'Within budget',
+  level:hundredths>=10000n?'reached':hundredths>=9500n?'critical':hundredths>=8000n?'warning':'ok'};
+}
 export function budgetUsage(used,limit){
  if(limit==null)return {percent:0,label:'No weekly cap',level:'none'};
- const toUnits=value=>{const match=String(value).match(/^(\d+)(?:\.(\d{0,6}))?$/);if(!match)throw Error('Weekly usage unavailable');return BigInt(match[1])*1000000n+BigInt((match[2]||'').padEnd(6,'0'));};
- const cap=toUnits(limit),spent=toUnits(used);
- const hundredths=cap===0n?10000n:spent*10000n/cap;
- const percent=Number(hundredths>10000n?10000n:hundredths)/100;
- return {percent,label:hundredths>=10000n?'Limit reached':hundredths>=9500n?'Almost at limit':hundredths>=8000n?'Near limit':'Within budget',level:hundredths>=10000n?'reached':hundredths>=9500n?'critical':hundredths>=8000n?'warning':'ok'};
+ const result=budgetLevel(budgetUnits(used),budgetUnits(limit),'Limit reached');
+ if(result.level==='none')result.label='Weekly usage unavailable';
+ return result;
 }
-
 export function fundedBudgetUsage(committed,total){
  if(total==null||committed==null)return {percent:0,label:'Funding data unavailable',level:'none'};
- const units=value=>{const m=String(value).match(/^(\\d+)(?:\\.(\\d{0,12}))?$/);if(!m)throw Error('Invalid funded-budget amount');return BigInt(m[1])*1000000000000n+BigInt((m[2]||'').padEnd(12,'0'));};
- const cap=units(total),spent=units(committed);
- if(cap===0n)return {percent:100,label:'Not funded',level:'reached'};
- const hundredths=spent*10000n/cap;
- return {percent:Number(hundredths>10000n?10000n:hundredths)/100,label:hundredths>=10000n?'Funded limit reached':hundredths>=9500n?'Almost out of funded tokens':hundredths>=8000n?'Funded allocation running low':'Funded allocation available',level:hundredths>=10000n?'reached':hundredths>=9500n?'critical':hundredths>=8000n?'warning':'ok'};
+ const result=budgetLevel(budgetUnits(committed),budgetUnits(total),'Not funded');
+ if(result.level==='none')return {percent:0,label:'Funding data unavailable',level:'none'};
+ return {...result,label:result.level==='reached'?(total==='0'||Number(total)===0?'Not funded':'Funded limit reached'):
+  result.level==='critical'?'Almost out of funded tokens':result.level==='warning'?'Funded allocation running low':'Funded allocation available'};
 }
 
 const drafts=new Map();
