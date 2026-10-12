@@ -1,4 +1,4 @@
-import { fundingStep } from './funding-step.js?v=funding-steps-1';
+import { fundingStep } from './funding-step.js?v=existing-xrp-v1';
 
 export async function startFundingFlow({slug,amount,symbol,button,host,api,node,status,loadWallets}) {
  let timer=null,busy=false,stopped=false,cycle=null;
