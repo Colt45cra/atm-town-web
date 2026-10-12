@@ -2,7 +2,7 @@ import { mountObjectEditor } from './objects.js?v=object-overlay-6';
 import { mountAdminStats } from './stats.js?v=admin-stats-1';
 import { saveArcadeSettings } from './arcade-settings.js?v=saved-rewards-1';
 import { fundingStep } from './funding-step.js?v=cancel-topup-1';
-import { startFundingFlow, cancelFundingDraft } from './topup-flow.js?v=cancel-topup-1';
+import { startFundingFlow, cancelFundingDraft } from './topup-flow.js?v=existing-xrp-v1';
 import { attachUsdEstimate } from './usd-estimate.js?v=usd-estimate-1';
 import { mountAttributeEditor } from './attribute-editor.js?v=attribute-editor-1';
 import { sendAdminSignInLink } from './auth.js';
