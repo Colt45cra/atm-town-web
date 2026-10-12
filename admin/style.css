@@ -34,3 +34,19 @@ nav.admin-nav button[aria-pressed=true]{background:#183944;border:1px solid #65d
 #fishingRows .fields{grid-template-columns:repeat(2,minmax(0,1fr));max-width:680px}#fishingRows .save{grid-column:1/-1;min-height:48px}#fishingRows input[type=checkbox]{accent-color:#65dfe5}
 @media(max-width:650px){header{padding:14px 16px}main{padding:18px 14px 70px}nav.admin-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}nav.admin-nav button{min-height:46px;padding:10px;font-size:12px}.admin-overview .summary{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-jump{align-items:stretch;flex-direction:column;gap:6px}.admin-jump select{max-width:none}#fishingRows .fields{grid-template-columns:1fr}}
 .weekly-budget{min-width:0}.weekly-budget .budget-status{display:block;margin:10px 0;color:#8be7b3}.weekly-budget[data-level="warning"] .budget-status,.budget-count[data-level="warning"]{color:#ffcf66}.weekly-budget[data-level="critical"] .budget-status,.weekly-budget[data-level="reached"] .budget-status,.budget-count[data-level="critical"],.budget-count[data-level="reached"]{color:#ff8c91}.weekly-budget progress{display:block;width:100%;height:14px;accent-color:#81dab4}.weekly-budget[data-level="warning"] progress{accent-color:#ffcf66}.weekly-budget[data-level="critical"] progress,.weekly-budget[data-level="reached"] progress{accent-color:#ff8c91}.weekly-budget-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:20px}.weekly-budget-form p,.weekly-budget-form button{grid-column:1/-1}.weekly-budget-form label{min-width:0}.weekly-budget-form input{width:100%;min-width:0;box-sizing:border-box}.weekly-budget p{overflow-wrap:anywhere}.weekly-budget-form button{justify-self:start}@media(max-width:600px){.weekly-budget-form{grid-template-columns:1fr}#budgetRows{grid-template-columns:1fr}}
+
+/* Separate the all-time funded allowance from the weekly spending limits. */
+.weekly-budget h4{font-size:14px;margin:16px 0 8px;color:#f5f0df}
+.funded-budget{border:1px solid #415274;border-radius:12px;padding:14px;margin:18px 0;background:#182136}
+.funded-budget>p{margin:5px 0;font-size:13px}
+.funded-budget>strong{display:block;color:#65dfe5;font-variant-numeric:tabular-nums;margin:10px 0;font-size:17px}
+.weekly-budget[data-level="reached"] .funded-budget>strong{color:#ff8c91}
+.funded-budget-editor{border-top:1px solid #ffffff25;margin-top:14px;padding-top:12px}
+.funded-budget-editor summary{cursor:pointer;font-size:14px;font-weight:800;color:#ffd166}
+.funded-budget-editor p{font-size:12px}
+.funded-budget-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin:12px 0 4px;max-width:none}
+.funded-budget-form button{min-height:43px}
+.funded-budget-form p,.funded-budget-form .cancel-topup{grid-column:1/-1}
+.funded-request-status{margin-top:10px}
+.funded-request-status a{color:#65dfe5;overflow-wrap:anywhere}
+@media(max-width:600px){.funded-budget-form{grid-template-columns:1fr}.funded-budget-form button{width:100%}}
