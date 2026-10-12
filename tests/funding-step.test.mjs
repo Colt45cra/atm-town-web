@@ -19,3 +19,13 @@ test('token funding confirmation refreshes balances only when active',async()=>{
 import {cancelFundingDraft} from '../admin/topup-flow.js';
 test('cancel top-up stops polling, clears the old request and enables a fresh amount',async()=>{const host=node('div'),button=node('button');let stopped=0,reset=0;host._stopFunding=()=>stopped++;host.append(node('a','old request'));let request;const ok=await cancelFundingDraft({slug:'luci',cycleId:'pending',button,host,status:()=>{},onCancelled:async()=>reset++,api:async(action,body)=>{request={action,body};return {cancelled:true};}});assert.equal(ok,true);assert.equal(stopped,1);assert.equal(reset,1);assert.equal(host.children.length,0);assert.equal(button.disabled,false);assert.deepEqual(request,{action:'admin-wallet-topup-cancel',body:{slug:'luci',cycle_id:'pending'}});});
 test('failed cancellation keeps the previous request and does not reset the amount',async()=>{const host=node('div'),button=node('button');host.append(node('a','old request'));let reset=0;assert.equal(await cancelFundingDraft({slug:'luci',cycleId:'pending',button,host,status:()=>{},onCancelled:async()=>reset++,api:async()=>{throw Error('Close the open Xaman request');}}),false);assert.equal(reset,0);assert.equal(host.children.length,1);assert.equal(button.disabled,false);});
+
+test('Luci funding with wallet XRP skips extra XRP deposit in the instructions',()=>{
+ const skipped=fundingStep({...cycle,fundingStage:'payout',xrpReceived:'0',payoutBudget:'600',payoutDepositRequired:'612.00000000102'},'666');
+ assert.equal(skipped.stage,'token');
+ assert.equal(skipped.label,'Continue: send 612.00000000102 666');
+ assert.match(skipped.message,/no additional XRP deposit is required/i);
+ assert.match(skipped.message,/Reward budget: 600 666/);
+ const separatelyFunded=fundingStep({...cycle,fundingStage:'payout',xrpReceived:'0.01'},'666');
+ assert.doesNotMatch(separatelyFunded.message,/no additional XRP deposit is required/i);
+});
