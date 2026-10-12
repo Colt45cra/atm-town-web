@@ -32,9 +32,10 @@ export function renderWeeklyBudgets({host,wallets,node,programName,tokenName,bal
   const fundedExhausted=fundedRemaining!==null&&Number.isFinite(fundedRemaining)&&fundedRemaining<=0;
   const rewardAmount=wallet.maxAmountPerSession==null?null:Number(wallet.maxAmountPerSession);
   const belowReward=rewardAmount!==null&&Number.isFinite(rewardAmount)&&fundedRemaining!==null&&Number.isFinite(fundedRemaining)&&fundedRemaining<rewardAmount;
-  row.dataset.level=fundedExhausted||belowReward?'reached':usage.level;
+  const levels={none:0,ok:0,warning:1,critical:2,reached:3};
+  row.dataset.level=fundedExhausted||belowReward?'reached':(levels[fundedUsage.level]>levels[usage.level]?fundedUsage.level:usage.level);
   row.dataset.fundedLevel=fundedUsage.level;
-  const badge=node('strong',fundedExhausted?`${symbol} · Funded allowance exhausted`:belowReward?`${symbol} · Not enough funded for one reward`:`${symbol} · ${usage.label}`);
+  const badge=node('strong',fundedExhausted?`${symbol} · Funded allowance exhausted`:belowReward?`${symbol} · Not enough funded for one reward`:fundedUsage.level==='critical'?`${symbol} · Funded allocation almost exhausted`:fundedUsage.level==='warning'?`${symbol} · Funded allocation running low`:`${symbol} · Weekly: ${usage.label}`);
   badge.className='budget-status';row.append(badge);
   if(wallet.weeklyTokenBudget!=null){const progress=node('progress');progress.max=100;progress.value=usage.percent;progress.setAttribute('aria-label',`${symbol} weekly token budget used: ${usage.percent}%`);row.append(progress);}
   row.append(node('p',`Paid: ${balanceText(wallet.weeklyTokensPaid)} ${symbol} · Pending: ${balanceText(wallet.weeklyTokensPending)} ${symbol}`));
