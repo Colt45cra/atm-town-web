@@ -6,7 +6,7 @@ import { startFundingFlow, cancelFundingDraft } from './topup-flow.js?v=cancel-t
 import { attachUsdEstimate } from './usd-estimate.js?v=usd-estimate-1';
 import { mountAttributeEditor } from './attribute-editor.js?v=attribute-editor-1';
 import { sendAdminSignInLink } from './auth.js';
-import { renderWeeklyBudgets } from './weekly-budgets.js?v=funded-budget-v4';
+import { renderWeeklyBudgets } from './weekly-budgets.js?v=funded-budget-fix-1';
 const client=window.supabase.createClient('https://xnyjurertwohlqczaeux.supabase.co','sb_publishable_MspBOZia1KQFBItNYn6Z-Q_0xASDJzD',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,experimental:{passkey:true}}});
 const $=id=>document.getElementById(id);let state=null;let stateRequest=0;let walletLoading=false;let walletRequest=0;let sponsorPrograms=[];let rewardWallets=[];
 const topupDrafts=new Map();
