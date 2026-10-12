@@ -2,6 +2,32 @@
  'use strict';
  let game=null,panel=null,list=null,note=null,button=null,carry=null,visible=[],mine=[],lastRefresh=0,refreshing=false,poll=null,busy=false,pending=null,mode='mine',boxMode=false;
  const images=new Map(),storageKey='atm_nft_drop_pending_v1';
+ const artworkKey='atm_nft_box_art_v1';
+ function rememberedArt(tokenId){
+   try{const r=JSON.parse(localStorage.getItem(artworkKey)||'{}')[tokenId];return r&&Date.now()-r.at<30*86400000&&/^https:\/\//i.test(r.url)?r.url:'';}catch{return '';}
+ }
+ function rememberArt(tokenId,url){
+   if(!/^[a-f0-9]{64}$/i.test(tokenId||'')||!/^https:\/\//i.test(url||''))return;
+   try{const saved=JSON.parse(localStorage.getItem(artworkKey)||'{}');saved[tokenId]={url,at:Date.now()};
+     const keys=Object.keys(saved);if(keys.length>120){keys.sort((a,b)=>(saved[a].at||0)-(saved[b].at||0));for(const key of keys.slice(0,keys.length-120))delete saved[key];}
+     localStorage.setItem(artworkKey,JSON.stringify(saved));}catch{}
+ }
+ function artworkCandidates(nft){
+   const provided=[rememberedArt(nft.token_id),nft.image_url,...(nft.image_candidates||[])].filter(Boolean);
+   const gateways=['https://w3s.link/ipfs/','https://dweb.link/ipfs/','https://nftstorage.link/ipfs/','https://gateway.pinata.cloud/ipfs/','https://ipfs.io/ipfs/'];
+   const urls=[];
+   for(const raw of provided){
+     const url=String(raw||'').trim();
+     if(!url||!(url.startsWith('https://')||url.startsWith('http://')||/^data:image\//i.test(url)))continue;
+     if(!urls.includes(url))urls.push(url);
+     try{
+       const path=new URL(url).pathname.match(/^\/ipfs\/(.+)$/i);
+       if(path)for(const gateway of gateways){const mirror=gateway+path[1];if(!urls.includes(mirror))urls.push(mirror);}
+     }catch{}
+   }
+   return urls.slice(0,35);
+ }
+
  const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
  function status(text){if(note){note.textContent=text;note.scrollIntoView?.({block:'nearest'});}}
  function setBusy(value){busy=value;if(panel){panel.setAttribute('aria-busy',String(value));for(const b of panel.querySelectorAll('button:not([data-close])'))b.disabled=value;}}
@@ -107,19 +133,75 @@
    for(const row of mine)list.append(rowCard(row));if(!mine.length)list.append(el('p','Choose Create drop, carry an NFT, then sign in Xaman when placing it.'));
    if(pending&&pending.user===user()&&pending.deeplink){const link=el('a','Resume in Xaman');link.href=pending.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.prepend(link);}
  }
- function thumbnail(nft){
+ function thumbnail(nft,{eager=false,onUnavailable}={}){
    const holder=el('span');holder.className='nftDropThumb';holder.append(el('span','◈'));
-   if(nft.image_url){const img=el('img');img.alt=nft.name||'NFT';img.width=84;img.height=84;img.loading='lazy';img.referrerPolicy='no-referrer';
-     const sources=[...new Set([nft.image_url,...(nft.image_candidates||[])])];try{const u=new URL(nft.image_url),path=u.pathname.match(/^\/ipfs\/(.+)$/);if(path)for(const gateway of ['https://w3s.link/ipfs/','https://nftstorage.link/ipfs/','https://dweb.link/ipfs/','https://gateway.pinata.cloud/ipfs/','https://ipfs.io/ipfs/'])if(!sources.includes(gateway+path[1]))sources.push(gateway+path[1]);}catch{}
-     let next=0,timer,settled=false;const advance=()=>{clearTimeout(timer);if(settled||!img.isConnected||(img.complete&&img.naturalWidth>0))return;if(++next<sources.length){img.src=sources[next];timer=setTimeout(advance,4500);}else img.hidden=true;};img.onerror=advance;img.onload=()=>{settled=img.naturalWidth>0;img.hidden=false;clearTimeout(timer);};img.src=sources[0];holder.append(img);if(typeof IntersectionObserver==='function'){const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){observer.disconnect();if(!settled&&!img.complete)timer=setTimeout(advance,4500);}},{root:panel,rootMargin:'120px'});observer.observe(img);}else{img.loading='eager';timer=setTimeout(advance,4500);}
-   }return holder;
+   const sources=artworkCandidates(nft);
+   if(!sources.length)return holder;
+   const img=el('img');img.alt=nft.name||'NFT';img.width=84;img.height=84;img.loading=eager?'eager':'lazy';img.decoding='async';img.referrerPolicy='no-referrer';
+   let next=0,timer,settled=false,started=false;
+   const advance=()=>{
+     clearTimeout(timer);
+     if(settled||!img.isConnected||(img.complete&&img.naturalWidth>0))return;
+     if(++next<sources.length){img.src=sources[next];timer=setTimeout(advance,4500);}
+     else{img.hidden=true;onUnavailable?.();}
+   };
+   img.onerror=advance;
+   img.onload=()=>{if(img.naturalWidth>0){settled=true;img.hidden=false;clearTimeout(timer);rememberArt(nft.token_id,img.src);}};
+   img.src=sources[0];holder.append(img);
+   // Lazy images don't actually start downloading before becoming visible.
+   // Only begin the slow-gateway timeout after entering the viewport.
+   if(eager){timer=setTimeout(advance,4500);}
+   else if(typeof IntersectionObserver==='function'){
+     const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){observer.disconnect();started=true;if(!settled)timer=setTimeout(advance,4500);}},{root:panel,rootMargin:'120px'});
+     observer.observe(img);
+   }else{img.loading='eager';timer=setTimeout(advance,4500);}
+   return holder;
  }
  function boxControls(){panel.removeAttribute('data-discovery');panel.querySelector('h2').textContent=boxMode?'NFT Donation Box':'NFT drops';panel.querySelector('[data-create]').textContent=boxMode?'Donate an NFT':'Create drop';panel.querySelector('[data-mine]').textContent=boxMode?'NFTs in the box':'My NFT drops';}
  async function showBox(marker=null){
    mode='box';if(!marker)list.replaceChildren(el('p','Loading NFTs in the box…'));status('These NFTs are held in the game rewards wallet. Donations appear here after receipt.');
    try{const r=await fetch('/api/xrpl-nft-trade?action=drop-box'+(marker?'&marker='+encodeURIComponent(marker):''),{cache:'no-store'});if(!r.ok)throw Error('Could not load the donation box. Tap NFTs in the box to retry.');const data=await r.json();if(mode!=='box')return;if(!marker)list.replaceChildren();
      if(!data.nfts?.length&&!marker)list.append(el('p','The box is empty. Be the first to donate an NFT.'));
-     const grid=el('div');grid.className='nftDropGrid';for(const nft of data.nfts||[]){const card=el('article');card.className='nftDropTile';card.append(thumbnail(nft),el('strong',nft.name||'XRPL NFT'));grid.append(card);}list.append(grid);
+     const grid=el('div');grid.className='nftDropGrid';const tiles=[];
+     const recover=async(item,manual=false)=>{
+       if(item.loading||mode!=='box'||!item.card.isConnected)return;
+       if(!manual&&item.automaticRetry)return;
+       if(!manual)item.automaticRetry=true;
+       item.loading=true;item.retry.disabled=true;
+       try{
+         const response=await fetch('/api/xrpl-nft-trade?action=drop-box-art&token_id='+encodeURIComponent(item.nft.token_id),{cache:'no-store'});
+         if(!response.ok)throw Error('Artwork lookup failed');
+         const art=await response.json();
+         if(mode!=='box'||!item.card.isConnected)return;
+         // Artwork can load while the metadata retry is running. Preserve it.
+         const current=item.card.querySelector('.nftDropThumb img');
+         if(current?.complete&&current.naturalWidth>0){item.retry.hidden=true;return;}
+         Object.assign(item.nft,{name:art.name&&art.name!=='XRPL NFT'?art.name:item.nft.name,
+           image_url:art.image_url||item.nft.image_url,image_candidates:[...new Set([...(art.image_candidates||[]),...(item.nft.image_candidates||[])])]});
+         const next=artworkCandidates(item.nft);
+         if(!next.length)throw Error('No accessible artwork source');
+         item.card.querySelector('.nftDropThumb').replaceWith(thumbnail(item.nft,{eager:true,onUnavailable:()=>{item.retry.hidden=false;}}));
+         item.card.querySelector('strong').textContent=item.nft.name||'XRPL NFT';
+         item.retry.hidden=true;
+       }catch{item.retry.hidden=false;}
+       finally{item.loading=false;item.retry.disabled=false;}
+     };
+     for(const nft of data.nfts||[]){
+       const card=el('article');card.className='nftDropTile';
+       const item={nft,card,automaticRetry:false,loading:false};
+       const retry=el('button','Retry artwork');retry.type='button';retry.className='nftDropArtRetry';retry.hidden=true;item.retry=retry;
+       retry.onclick=()=>recover(item,true);
+       card.append(thumbnail(nft,{eager:tiles.length<6,onUnavailable:()=>recover(item)}),el('strong',nft.name||'XRPL NFT'),retry);
+       grid.append(card);tiles.push(item);
+     }
+     list.append(grid);
+     // Show the donation inventory immediately, then recover missing metadata
+     // in the background with a small bounded concurrency on mobile.
+     const missing=tiles.filter(item=>!artworkCandidates(item.nft).length);
+     let cursor=0;
+     Promise.all(Array.from({length:Math.min(2,missing.length)},async()=>{
+       while(cursor<missing.length&&mode==='box')await recover(missing[cursor++]);
+     })).catch(()=>{});
      if(!marker&&user()){try{const history=await api('donation-mine',{});for(const request of history.requests||[]){const card=el('article');card.className='nftDropCard';card.append(el('strong','Your donation · '+request.received+' / '+request.total+' received'));if(['signing','submitting','receiving'].includes(request.status)){const resume=el('button',request.status==='signing'?'Resume approval':'Check donation');resume.onclick=()=>run(async()=>signing(await api('donation-status',{id:request.id})));card.append(resume);}else card.append(el('small',request.status==='received'?'Donation complete':request.error||request.status));list.append(card);}}catch{}}
      if(data.marker){const more=el('button','Show more NFTs');more.onclick=()=>run(async()=>{more.hidden=true;try{await showBox(data.marker);}catch(e){more.hidden=false;throw e;}});list.append(more);}
    }catch(e){list.replaceChildren(el('p','Box contents unavailable.'));status(e.message);}
