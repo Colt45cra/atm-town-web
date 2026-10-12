@@ -5,6 +5,10 @@ import acceptHandler from '../server/xrpl-nft-offer-accept-start.js';
 
 export default async function handler(req, res) {
   const action = String(req.query?.action || '').toLowerCase();
+  if (action.startsWith('fish-')) {
+    const {default: fishingHandler}=await import('../server/fishing.js');
+    return fishingHandler(req,res);
+  }
   if (action.startsWith('pay-market-')) {
     const { default: handler } = await import('../server/atm-pay-nft-market.js');
     return handler(req,res);

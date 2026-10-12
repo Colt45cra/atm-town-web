@@ -4724,6 +4724,7 @@ function nearestHordeRevivePlayer(maxDistance=78){
   for(const [id,p] of remotePlayers){if(p?.map!=='town'||now-Number(p.lastSeen||0)>3500||!p?.zombieCombat?.downed)continue;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);if(!Number.isFinite(x)||!Number.isFinite(y))continue;const d=Math.hypot(player.x-x,player.y-y);if(d<bestDistance){bestDistance=d;best={id:'horde-revive:'+id,type:'horde-revive',name:'REVIVE '+String(p.name||'PLAYER').toUpperCase(),text:'Bring this player back into The Horde.',remoteId:String(id),x,y,radius:maxDistance};}}return best;
 }
 function nearestThing(){
+  const fishingTarget=window.ATMFishing?.interaction?.();if(fishingTarget)return fishingTarget;
   const nftDropTarget=window.ATMNftDrops?.nearest?.();if(nftDropTarget)return nftDropTarget;
   const objectAction=currentMap==='town'&&window.ATMWorldObjects?.interaction?.(player.x,player.y+22);if(objectAction)return objectAction;
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
@@ -5194,7 +5195,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){let hint='';if(thing?.type==='player-nft-beacon')hint='';else if(thing?.type==='horde-revive')hint='Tap ACTION to revive '+String(thing.name||'player').replace(/^REVIVE /,'');else if(thing?.type==='prop-hunt-target')hint='Tap ACTION to tag this hidden prop';else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack','neon-racer'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
+function interactionHint(thing){let hint='';if(thing?.type==='fishing')hint='Tap '+thing.label+' to '+(thing.label==='CAST'?'cast your line':'reel in');else if(thing?.type==='player-nft-beacon')hint='';else if(thing?.type==='horde-revive')hint='Tap ACTION to revive '+String(thing.name||'player').replace(/^REVIVE /,'');else if(thing?.type==='prop-hunt-target')hint='Tap ACTION to tag this hidden prop';else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack','neon-racer'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -5301,6 +5302,7 @@ window.addEventListener('pagehide',saveAccountLocation);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAccountLocation();});
 function interact(){
   if(window.ATMZombieOutbreak?.isLocalDowned?.()===true){window.ATMWorldEvents?.toast?.('💀 YOU ARE DOWN · WAIT FOR A REVIVE',1400);return;}
+  if(window.ATMFishing?.interaction?.()&&!dialogOpen){window.ATMFishing.interact();return;}
   const nftTarget=window.ATMNftDrops?.nearest?.();if(nftTarget&&!dialogOpen){if(nftTarget.type==='nft-donation-box')window.ATMNftDrops.open(true);else window.ATMNftDrops.claim(nftTarget);return;}
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget&&!dialogOpen){if(tradeTarget.beacon.mode==='open_to_trade'&&tradeTarget.beacon.transferable!==false)window.atmNftSwaps?.openProposal(tradeTarget);else tradeNftOpen(tradeTarget);return;}
   const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget&&!dialogOpen){window.ATMZombieOutbreak?.requestRevive?.(reviveTarget.remoteId);return;}
@@ -5645,7 +5647,8 @@ function update(dt){
   hintEl.style.opacity=(nearThing&&hintText)?1:0;
   const registeredEntrance=nearThing&&currentMap==='town'&&ATM_MAPS.fromEntrance(nearThing.id);
   let actionLabel='ACTION';
-  if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';
+  if(nearThing?.type==='fishing')actionLabel=nearThing.label;
+  else if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';
   else if(nearThing?.type==='horde-revive')actionLabel='REVIVE';
   else if(nearThing?.type==='prop-hunt-target')actionLabel='TAG';
   else if(nearThing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack','neon-racer'].includes(nearThing.type))actionLabel='PLAY';
@@ -6231,7 +6234,7 @@ let ATM_ITEM_CATALOG=[
   {id:'shoes:green',name:'Green Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:red',name:'Red Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
   {id:'shoes:tan',name:'Tan Shoes',type:'equipment',slot:'feet',rarity:'Development',ownership:'development',emoji:'🥾',xrpl:null,compatibleCharacterIds:['classic']},
-  {id:'equipment:fishing-pole',name:'Fishing Pole',type:'equipment',slot:'tool',rarity:'Store',ownership:'store',emoji:'🎣',xrpl:null,storeCharacterIds:["classic","fuzzy","miracle","luci","triskeleton","phnix","bear","xoge","flippy","salute","brad","david","kaj","daniel","army","anunnaki"],description:'A permanent fishing pole for every character. Purchase once in the market; automatically used at the southern pier. Currently practice fishing; NFT rewards are not enabled yet.'},
+  {id:'equipment:fishing-pole',name:'Fishing Pole',type:'equipment',slot:'tool',rarity:'Store',ownership:'store',emoji:'🎣',xrpl:null,storeCharacterIds:["classic","fuzzy","miracle","luci","triskeleton","phnix","bear","xoge","flippy","salute","brad","david","kaj","daniel","army","anunnaki"],description:'A permanent fishing pole for every character. Purchase once in the market, equip from your Locker, then fish at the southern pier for donation-box NFTs.'},
   {id:'equipment:jetpack',name:'Jetpack Module',type:'equipment',slot:'back',rarity:'Session',ownership:'session',emoji:'🚀',xrpl:null,description:'Purchased from an ATM Town vending machine. Each purchase adds 30 seconds.'}
 ].map(atmMonetizeCatalogItem);
 const baseAttributeItems=ATM_ITEM_CATALOG.slice();
@@ -7052,7 +7055,8 @@ document.addEventListener('visibilitychange',()=>{if(onlineMode&&realtimeChannel
 setInterval(()=>{if(!onlineMode)return;const count=Math.max(1,atmPeopleOnlinePlayers().length);currentOnlineCount=count;window.ATMPeopleHub?.setOnlineCount?.(count);},1000);
 
 window.ATMFishing?.init?.({
- hasPole:()=>{const id=authSession?.user?.id;return !!id&&((lockerAdminAttributeUserId===id)||(fishingPoleEntitlementUserId===id&&lockerPurchasedItems.has('equipment:fishing-pole')));},
+ api:apiWithAuth,userId:()=>authSession?.user?.id||null,refreshWallet:()=>lockerRefreshXrpl(true),toast:text=>window.ATMWorldEvents?.toast?.(text,2500),
+ hasPole:()=>{const id=authSession?.user?.id;return lockerLoadout.tool==='equipment:fishing-pole'&&!!id&&((lockerAdminAttributeUserId===id)||(fishingPoleEntitlementUserId===id&&lockerPurchasedItems.has('equipment:fishing-pole')));},
  market:()=>attributeStoreOpen(selectedCharacter),
  ready:()=>townEntryActive&&!dialogOpen&&!vendingOpen,
  pose:()=>({x:player.x,y:player.y,map:currentMap,character:selectedCharacter,airborne:jumpState.active||jetpackState.active}),

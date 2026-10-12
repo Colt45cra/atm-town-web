@@ -299,3 +299,5 @@ export default async function handler(req,res) {
     throw fail('Unknown NFT drop action.');
   }catch(e){sendError(res,e);}
 }
+
+export {signature as verifyDropSignature};

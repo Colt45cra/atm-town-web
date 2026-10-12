@@ -1,0 +1,27 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import handler,{fishingPosition} from '../server/fishing.js';
+import {generateKeyPairSync} from 'node:crypto';
+const user='11111111-1111-4111-8111-111111111111',id='22222222-2222-4222-8222-222222222222',wallet='raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ',offer='A'.repeat(64),token='B'.repeat(64),hash='C'.repeat(64);
+function fixture({owned=true,isAdmin=false,signed=false,empty=false,poolError=false}={}){
+ process.env.SUPABASE_URL='https://fishing-test.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='fixture';process.env.XAMAN_API_KEY='fixture';process.env.XAMAN_API_SECRET='fixture';process.env.PAYLOAD_API_BASE_URL='https://pool-test.invalid';process.env.PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64=generateKeyPairSync('ed25519').privateKey.export({format:'der',type:'pkcs8'}).toString('base64');
+ const row={id,user_id:user,wallet_address:wallet,x:1510,y:3820,status:'casting',has_bite:true,bite_at:new Date(Date.now()+1800).toISOString()};
+ const tables={town_fishing_casts:[row],player_accounts:[{user_id:user,wallet_address:wallet,wallet_verified_at:'2026-01-01'}],town_admins:isAdmin?[{user_id:user}]:[],attribute_entitlements:owned?[{user_id:user,item_id:'equipment:fishing-pole'}]:[],town_fishing_settings:[{id:true,enabled:true,catch_percent:50,daily_nft_limit:10}]};
+ const original=globalThis.fetch,calls=[];
+ globalThis.fetch=async(input,options={})=>{const url=new URL(input),h=new Headers(options.headers),b=JSON.parse(options.body||'{}');calls.push({url,options,b});
+ if(url.pathname.endsWith('/auth/v1/user'))return Response.json({id:user});
+ if(url.hostname==='pool-test.invalid'){if(poolError)return Response.json({error:'Wallet busy'},{status:409});return Response.json(b.action==='fish-confirm'?{status:'delivered'}:empty?{status:'empty'}:{status:'offer_ready',claim_key:id,recipient_address:wallet,allocation:'fishing',token_id:token,offer_index:offer});}
+ if(url.pathname.includes('/rest/v1/rpc/')){if(url.pathname.endsWith('reel_town_fishing_cast'))row.status='reward_pending';return Response.json(row);}
+ if(url.pathname.includes('/rest/v1/')){const rs=tables[url.pathname.split('/').at(-1)]||[];const found=rs.filter(r=>[...url.searchParams].every(([k,v])=>['select','order','limit','or'].includes(k)||v==='is.null'&&r[k]==null||v.startsWith('eq.')&&String(r[k])===v.slice(3)||v.startsWith('in.')&&v.slice(4,-1).split(',').includes(r[k])));if(options.method==='PATCH')found.forEach(r=>Object.assign(r,b));return Response.json(h.get('Accept')?.includes('vnd.pgrst.object')?found[0]||null:found);}
+ if(url.pathname.endsWith('/payload'))return Response.json({uuid:'33333333-3333-4333-8333-333333333333',next:{always:'https://xaman.app/sign/fixture'}});
+ if(url.pathname.includes('/payload/'))return Response.json({meta:{resolved:signed,signed},response:{account:wallet,txid:hash,dispatched_nodetype:'MAINNET'}});
+ if(b.method==='account_nfts')return Response.json({result:{account_nfts:[{NFTokenID:token}]}});
+ if(b.method==='tx')return Response.json({result:{validated:true,tx_json:{TransactionType:'NFTokenAcceptOffer',Account:wallet,NFTokenSellOffer:offer},meta:{TransactionResult:'tesSUCCESS'}}});
+ throw Error('Unexpected fixture request '+url);
+ };
+ return{row,calls,restore(){globalThis.fetch=original;}};
+}
+async function call(action,body=null){let code=200,output;const res={setHeader(){},status(n){code=n;return this;},json(x){output=x;return this;}};await handler({method:body?'POST':'GET',query:{action,id},headers:{authorization:'Bearer fixture'},body},res);return{code,output};}
+test('only grounded positions inside the fishing area are accepted',()=>{assert.equal(fishingPosition({map:'town',x:1510,y:3820}).x,1510);for(const p of [{map:'arcade'},{x:NaN},{x:100},{airborne:true}])assert.throws(()=>fishingPosition({map:'town',x:1510,y:3820,...p}));});
+test('casts require verified pole ownership and settings require admin access',async()=>{const f=fixture({owned:false});try{assert.equal((await call('fish-cast',{map:'town',x:1510,y:3820})).code,409);assert.equal((await call('fish-admin')).code,403);assert.equal(f.calls.some(c=>c.url.hostname==='pool-test.invalid'),false);}finally{f.restore();}});
+test('a successful reel reserves one donation NFT; claiming reuses one Xaman link and verifies delivery',async()=>{const f=fixture({signed:true});try{assert.equal((await call('fish-cast',{map:'town',x:1510,y:3820})).code,201);const catchResult=await call('fish-reel',{id,map:'town',x:1510,y:3820});assert.equal(catchResult.output.status,'reward_ready');assert.equal(f.calls.filter(c=>c.url.pathname.endsWith('/payload')).length,0);const claim=await call('fish-claim',{id});assert.equal(claim.output.status,'pending');const tx=f.calls.find(c=>c.url.pathname.endsWith('/payload')).b.txjson;assert.equal(tx.Account,wallet);assert.equal(tx.NFTokenSellOffer,offer);const confirmed=await call('fish-status');assert.equal(confirmed.output.status,'claimed');assert.equal(f.row.status,'claimed');assert.equal(f.calls.filter(c=>c.url.pathname.endsWith('/payload')).length,1);}finally{f.restore();}});
+test('empty stock frees the daily slot; a busy wallet retains a resumable catch',async()=>{let f=fixture({empty:true});try{assert.equal((await call('fish-reel',{id,map:'town',x:1510,y:3820})).output.status,'empty');}finally{f.restore();}f=fixture({poolError:true});try{assert.equal((await call('fish-reel',{id,map:'town',x:1510,y:3820})).output.status,'reward_pending');assert.equal(f.row.status,'reward_pending');}finally{f.restore();}});
