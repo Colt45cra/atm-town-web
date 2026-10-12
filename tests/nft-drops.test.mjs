@@ -196,3 +196,14 @@ test('donation-box artwork recovery refuses NFTs outside the verified inventory'
  const s=setup({poolResponse:async body=>body.action==='box'?{tokens:[]}:{ready:true}});
  try{const result=await call('drop-box-art',null,base.id,{token_id:token});assert.equal(result.code,404);}finally{s.restore();}
 });
+
+test('donation box uses persisted NFT artwork without external metadata fetching',async()=>{
+ const s=setup({row:{...base,kind:'donation',status:'received',name:'Saved NFT',image_url:'https://example.invalid/saved.png'}});
+ try{
+  const r=await call('drop-box');
+  assert.equal(r.code,200);
+  assert.equal(r.output.nfts[0].name,'Saved NFT');
+  assert.equal(r.output.nfts[0].image_url,'https://example.invalid/saved.png');
+  assert.equal(s.requests.some(q=>q.url.hostname==='ipfs.io'||q.url.hostname==='dweb.link'),false);
+ }finally{s.restore();}
+});
