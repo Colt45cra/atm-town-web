@@ -1,7 +1,7 @@
 import {footprintContains} from './footprint-geometry.js';import {splitObjectPixels} from './object-silhouette.js';
 (function(global){
- 'use strict';let objects=[],lastRefresh=0,busy=false;const images=new Map(),layers=new Map();let mapPieceCache=new WeakMap();
- async function refresh(){if(busy||Date.now()-lastRefresh<60000)return;busy=true;lastRefresh=Date.now();try{const r=await fetch('/api/leaderboards?action=rewards-world-objects',{cache:'no-store'});if(!r.ok)throw Error('Objects unavailable');objects=(await r.json()).objects||[];mapPieceCache=new WeakMap();const urls=new Set(objects.map(o=>o.sprite_url));for(const [url] of images)if(!urls.has(url)){images.delete(url);layers.delete(url);}}catch(error){lastRefresh=Date.now()-50000;console.warn('Town objects:',error.message);}finally{busy=false;}}
+ 'use strict';let objects=[],lastRefresh=0,busy=false,lastMapVersion=null;const images=new Map(),layers=new Map();let mapPieceCache=new WeakMap();
+ async function refresh(){const version=global.ATMActiveMapVersion||'original';if(version!==lastMapVersion){lastMapVersion=version;lastRefresh=0;}if(busy||Date.now()-lastRefresh<60000)return;busy=true;lastRefresh=Date.now();try{const r=await fetch('/api/leaderboards?action=rewards-world-objects&map_version='+encodeURIComponent(version),{cache:'no-store'});if(!r.ok)throw Error('Objects unavailable');objects=(await r.json()).objects||[];mapPieceCache=new WeakMap();const urls=new Set(objects.map(o=>o.sprite_url));for(const [url] of images)if(!urls.has(url)){images.delete(url);layers.delete(url);}}catch(error){lastRefresh=Date.now()-50000;console.warn('Town objects:',error.message);}finally{busy=false;}}
  function zoneContains(o,key,x,y){const mask=o.collision?.masks?.[key];return !!mask&&footprintContains({...o,collision:mask},x,y);}
  function stairs(x,y){return objects.some(o=>o.active!==false&&(zoneContains(o,"stairs",x,y)||(o.collision?.cutouts||[]).some(r=>x-o.x>=r[0]&&x-o.x<=r[0]+r[2]&&y-o.y>=r[1]&&y-o.y<=r[1]+r[3])));}
  function interaction(x,y){const o=objects.find(o=>o.active!==false&&zoneContains(o,"action",x,y));return o?{id:o.id,type:"world-action",name:o.name,x,y,action:o.collision.action}:null;}
@@ -18,3 +18,4 @@ import {footprintContains} from './footprint-geometry.js';import {splitObjectPix
  function blocked(x,y){return objects.some(o=>o.solid&&o.active!==false&&footprintContains(o,x,y));}
  global.ATMWorldObjects=Object.freeze({actors,draw,drawMapPiece,blocked,refresh,stairs,interaction,donationBox:()=>objects.find(o=>o.active!==false&&o.id==='a8c7e168-1620-42af-a9d5-1f21fdb2c71e')});
 })(window);
+

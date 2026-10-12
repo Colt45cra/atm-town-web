@@ -16,6 +16,7 @@
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.decoding = 'async';
+      image.crossOrigin = 'anonymous';
       image.onload = () => resolve(image);
       image.onerror = () => reject(new Error(`Failed to decode world chunk: ${src}`));
       image.src = src;
@@ -46,13 +47,16 @@
     }
 
     async _loadManifest() {
-      const response = await fetch(this.manifestUrl, { cache: 'no-cache' });
+      let response;
+      if(this.manifestUrl==='assets/world/manifest.json'||this.manifestUrl==='/assets/world/manifest.json'){try{response=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(10000)});if(!response.ok)response=null;}catch{response=null;}}
+      response??=await fetch(this.manifestUrl,{cache:'no-cache'});
       if (!response.ok) throw new Error(`World manifest request failed (${response.status}): ${this.manifestUrl}`);
       const manifest = await response.json();
       if (!manifest || !Number.isFinite(manifest.chunkSize) || !manifest.bounds || !manifest.layers || !manifest.cells) {
         throw new Error('ATM Town world manifest is missing required chunk metadata.');
       }
       this.manifest = manifest;
+      global.ATMActiveMapVersion=manifest.mapVersion||'original';
       this.chunkSize = manifest.chunkSize;
       this.bounds = Object.freeze({ ...manifest.bounds });
       this.cells = manifest.cells;
@@ -147,7 +151,7 @@
 
     _assetPath(layerName, key) {
       const layer = this.manifest.layers[layerName];
-      return `${layer.path}/${key}.${layer.format}`;
+      return layer.sources?.[key] || `${layer.path}/${key}.${layer.format}`;
     }
 
     _ensureVisual(layerName, key) {
@@ -271,7 +275,7 @@
       const b = this.bounds;
       if (x < b.minX || y < b.minY || x >= b.maxX || y >= b.maxY) return null;
       const key = this.cellKeyAt(x, y);
-      const cell = this.cells[key];
+      const cell = this.manifest.layers[layerName]?.cells?.[key] || this.cells[key];
       if (!cell) return null;
       if (!this._layerHasChunk(layerName, key)) return 0;
       const cache = this.maskCaches.get(layerName);
@@ -284,7 +288,7 @@
       entry.lastUsed = nowMs();
       const localX = Math.floor(x - cell.x);
       const localY = Math.floor(y - cell.y);
-      if (localX < 0 || localY < 0 || localX >= entry.width || localY >= entry.height) return null;
+      if (localX < 0 || localY < 0 || localX >= entry.width || localY >= entry.height) return layerName==='collision'?null:0;
       const pixel = localY * entry.width + localX;
       if (entry.kind === 'bits') return (entry.data[pixel >> 3] >> (pixel & 7)) & 1;
       return entry.data[pixel] || 0;
@@ -464,7 +468,8 @@
       context.save();
       if (alpha < 1) context.globalAlpha *= alpha;
       for (const key of keys) {
-        const cell = this.cells[key];
+        const cell = this.manifest.layers[layerName]?.cells?.[key] || this.cells[key];
+        if(layerName==='night'&&this.manifest.nightFallbackChunks?.includes(key)){const terrain=this.visualCaches.get('terrain')?.get(key),target=this.cells[key];if(terrain?.status==='ready'){context.save();context.drawImage(terrain.image,target.x,target.y,target.width,target.height);context.globalAlpha*=.55;context.fillStyle='#07162a';context.fillRect(target.x,target.y,target.width,target.height);context.restore();}else this._ensureVisual('terrain',key);}
         if (!cell || !this._layerHasChunk(layerName, key)) continue;
         const entry = cache.get(key);
         if (!entry || entry.status !== 'ready' || !entry.image) {
@@ -500,3 +505,4 @@
 
   global.ATMWorldStreaming = Object.freeze({ create });
 })(window);
+
