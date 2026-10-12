@@ -50,3 +50,10 @@ nav.admin-nav button[aria-pressed=true]{background:#183944;border:1px solid #65d
 .funded-request-status{margin-top:10px}
 .funded-request-status a{color:#65dfe5;overflow-wrap:anywhere}
 @media(max-width:600px){.funded-budget-form{grid-template-columns:1fr}.funded-budget-form button{width:100%}}
+
+.funded-budget progress{display:block;width:100%;height:10px;accent-color:#65dfe5}
+.weekly-budget[data-funded-level="warning"] .funded-budget progress{accent-color:#ffcf66}
+.weekly-budget[data-funded-level="critical"] .funded-budget progress,
+.weekly-budget[data-funded-level="reached"] .funded-budget progress{accent-color:#ff8c91}
+.weekly-budget[data-funded-level="critical"] .funded-budget>strong,
+.weekly-budget[data-funded-level="reached"] .funded-budget>strong{color:#ff8c91}
