@@ -1,5 +1,5 @@
 import {mountBillboardAdmin} from './billboards.js?v=billboard-rentals-1';
-import {mountMapImporter} from './map-importer.js?v=map-import-1';
+import {mountMapImporter} from './map-importer.js?v=map-delta-1';
 import { mountObjectEditor } from './objects.js?v=object-overlay-6';
 import { mountAdminStats } from './stats.js?v=admin-stats-1';
 import { saveArcadeSettings } from './arcade-settings.js?v=saved-rewards-1';
