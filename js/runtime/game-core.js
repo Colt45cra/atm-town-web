@@ -1003,7 +1003,7 @@ function drawTownLightOverlay(target=ctx,alpha=1){
   const prevSmooth=target.imageSmoothingEnabled;
   const prevQuality=target.imageSmoothingQuality;
   target.imageSmoothingEnabled=true;
-  try{target.imageSmoothingQuality='high';}catch(_e){}
+  try{target.imageSmoothingQuality='low';}catch(_e){}
   townWorldStream.drawLayer(target,'lighting',view,Math.max(0,Math.min(1,Number(alpha)||0)));
   target.imageSmoothingEnabled=prevSmooth;
   try{target.imageSmoothingQuality=prevQuality||'low';}catch(_e){}
