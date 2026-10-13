@@ -101,6 +101,13 @@
    if(row.donation_request_id&&['pending','preparing'].includes(row.status)){const resume=el('button','Check donation / resume approval');resume.onclick=()=>run(async()=>signing(await api('donation-status',{id:row.donation_request_id})));card.append(resume);}
    else if(['pending','preparing'].includes(row.status)){const resume=el('button','Resume signing / check status');resume.onclick=()=>{list.replaceChildren();const deeplink=row.deeplink||(pending?.id===row.id?pending.deeplink:null);if(deeplink)signing({...row,deeplink});else{persist({id:row.id,claim:false,user:user()});status('Waiting for the signing request to be prepared. Checking status…');startPoll();}};card.append(resume);}
    if(['failed','rejected','expired'].includes(row.status)){const retry=el('button','Try again');retry.onclick=()=>run(()=>beginOffer(row,row.kind==='donation'));card.append(retry);}
+   if(row.can_cancel){const cancel=el('button','Cancel');cancel.type='button';cancel.onclick=()=>run(async()=>{
+     await api('drop-cancel',{id:row.id});
+     if(pending?.id===row.id){clearTimeout(poll);persist(null);}
+     if(carry?.id===row.id)carry=null;
+     mine=mine.filter(r=>r.id!==row.id);game.broadcast();render();
+     await refresh(true);render();status('Cancelled. You can now donate this NFT from your wallet.');
+   });card.append(cancel);}
    if(row.failure_reason)card.append(el('small',row.failure_reason));
    return card;
  }

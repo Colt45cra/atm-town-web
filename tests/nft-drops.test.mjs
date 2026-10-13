@@ -6,7 +6,7 @@ import handler from '../server/nft-drops.js';
 
 const donor='raDZ4t8WPXkmDfJWMLBcNZmmSHmBC523NZ',finder='rnCv6dCu3r1ANVD6vYuHikxV8TYphecdff';
 const token='A'.repeat(64),offer='B'.repeat(64),hash='C'.repeat(64),user='11111111-1111-4111-8111-111111111111';
-const base={id:'22222222-2222-4222-8222-222222222222',user_id:user,wallet_address:donor,kind:'drop',token_id:token,status:'pending',payload_uuid:'33333333-3333-4333-8333-333333333333'};
+const base={id:'22222222-2222-4222-8222-222222222222',user_id:user,wallet_address:donor,kind:'drop',token_id:token,status:'pending',payload_uuid:'33333333-3333-4333-8333-333333333333',updated_at:'2026-10-13T18:00:00.000Z'};
 const ledgerOffer={LedgerEntryType:'NFTokenOffer',Owner:donor,NFTokenID:token,Flags:1,Amount:'0'};
 test('player offers are public free sell offers; donations target only the existing rewards wallet',()=>{
  assert.deepEqual(freeOfferTransaction(donor,token),{TransactionType:'NFTokenCreateOffer',Account:donor,NFTokenID:token,Amount:'0',Flags:1});
@@ -206,4 +206,25 @@ test('donation box uses persisted NFT artwork without external metadata fetching
   assert.equal(r.output.nfts[0].image_url,'https://example.invalid/saved.png');
   assert.equal(s.requests.some(q=>q.url.hostname==='ipfs.io'||q.url.hostname==='dweb.link'),false);
  }finally{s.restore();}
+});
+
+test('failed unsigned drops cancel idempotently and release their active slot',async()=>{
+ const s=setup({row:{...base,status:'failed',payload_uuid:null}});
+ try{
+  const result=await call('drop-cancel',{id:base.id});assert.equal(result.code,200);assert.equal(result.output.cancelled,true);
+  assert.equal(s.tables.town_nft_drops[0].status,'unavailable');assert.equal(s.tables.town_nft_drops[0].failure_reason,'Cancelled by owner.');
+  assert.equal((await call('drop-cancel',{id:base.id})).code,200);
+  assert.equal(s.requests.some(r=>r.url.pathname.includes('/payload')),false);
+ }finally{s.restore();}
+});
+test('cancellation refuses custody, live offers, unresolved signing, and another user’s rows',async()=>{
+ for(const patch of [{status:'placed',offer_index:offer},{status:'carried',payload_inventory_id:'inventory'},{status:'failed',tx_hash:hash},{status:'failed'},{status:'failed',payload_uuid:null,user_id:'other'},{status:'failed',payload_uuid:null,donation_request_id:'batch'}]){
+  const s=setup({row:{...base,...patch}});try{const result=await call('drop-cancel',{id:base.id});assert.ok(result.code>=400);assert.notEqual(s.tables.town_nft_drops[0].failure_reason,'Cancelled by owner.');}finally{s.restore();}
+ }
+});
+test('retry resumes the same unsigned draft and donation replaces it rather than being blocked',async()=>{
+ let s=setup({row:{...base,status:'carried',payload_uuid:null,custody:true}});
+ try{const result=await call('drop-start',{token_id:token});assert.equal(result.output.id,base.id);assert.equal(s.tables.town_nft_drops.length,1);}finally{s.restore();}
+ s=setup({row:{...base,status:'carried',payload_uuid:null,custody:true}});
+ try{const result=await call('drop-donate',{token_id:token});assert.equal(result.code,201);assert.equal(result.output.status,'pending');assert.equal(s.tables.town_nft_drops[0].status,'unavailable');assert.equal(s.tables.town_nft_drops[1].kind,'donation');}finally{s.restore();}
 });
