@@ -268,7 +268,7 @@
   }
 
   function openDialogue(){
-    if(!inTown()||distanceToAtm()>TALK_RADIUS+18)return false;
+    if(worldEventRunning()||!inTown()||distanceToAtm()>TALK_RADIUS+18)return false;
     ensureUi();state.open=true;state.beckonUntil=0;state.ecosystemShown=false;state.mode='menu';state.answerId='welcome';
     const panel=document.getElementById('atmGuidePanel');if(panel){panel.classList.add('open');panel.setAttribute('aria-hidden','false');}
     const beckon=document.getElementById('atmGuideBeckon');if(beckon)beckon.style.display='none';
@@ -300,6 +300,7 @@
   }
 
   function triggerBeckon(now){
+    if(worldEventRunning())return;
     if(state.beckonUntil>now)return;
     const lines=['Hey — welcome to ATM Town. Want the tour?','You are all the money. Want to know what that means?','Town, payments, NFTs, XRPL tools — come ask me how it fits together.','New around here? I can show you the ATM ecosystem.'];
     state.beckonLine=lines[Math.floor(Math.random()*lines.length)];
@@ -313,8 +314,18 @@
     node.style.left=`${point.x}px`;node.style.top=`${point.y}px`;if(node.textContent!==state.beckonLine)node.textContent=state.beckonLine;
   }
 
+  function worldEventRunning(){
+    const phase=global.ATMWorldEvents?.getState?.()?.phase;
+    return phase==='announced'||phase==='active'||global.ATMZombieOutbreak?.isActive?.()===true;
+  }
   function tick(){
     ensureUi();const now=Date.now(),distance=distanceToAtm(),npc=getAtmNpc();
+    if(worldEventRunning()){
+      state.beckonUntil=0;state.seenInsideAwareness=false;
+      if(state.open)closeDialogue();
+      const node=document.getElementById('atmGuideBeckon');if(node)node.style.display='none';
+      requestAnimationFrame(tick);return;
+    }
     if(state.open){
       state.outsideAwarenessSince=0;
       if(!inTown()||distance>DIALOGUE_LEASH)closeDialogue();else facePlayer(npc);
@@ -334,18 +345,18 @@
 
   try{
     const originalNearestThing=nearestThing;
-    nearestThing=function(){if(inTown()&&distanceToAtm()<=TALK_RADIUS)return{id:'atm-ecosystem-guide',type:'npc',name:'ATM · ALL THE MONEY',text:'Talk with ATM about the All The Money ecosystem.',radius:TALK_RADIUS};return originalNearestThing();};
+    nearestThing=function(){if(!worldEventRunning()&&inTown()&&distanceToAtm()<=TALK_RADIUS)return{id:'atm-ecosystem-guide',type:'npc',name:'ATM · ALL THE MONEY',text:'Talk with ATM about the All The Money ecosystem.',radius:TALK_RADIUS};return originalNearestThing();};
   }catch(error){console.warn('ATM guide could not hook nearestThing.',error);}
 
   try{
     const originalInteract=interact;
-    interact=function(){if(inTown()&&distanceToAtm()<=TALK_RADIUS&&!state.open){openDialogue();return;}return originalInteract();};
+    interact=function(){if(!worldEventRunning()&&inTown()&&distanceToAtm()<=TALK_RADIUS&&!state.open){openDialogue();return;}return originalInteract();};
   }catch(error){console.warn('ATM guide could not hook interact.',error);}
 
   try{
     const originalUpdateTownBots=updateTownBots;
     updateTownBots=function(dt){
-      const npc=getAtmNpc(),now=Date.now(),locked=!!npc&&(state.open||now<state.beckonUntil);
+      const npc=getAtmNpc(),now=Date.now(),locked=!worldEventRunning()&&!!npc&&(state.open||now<state.beckonUntil);
       if(locked)npc.wait=Math.max(Number(npc.wait)||0,Math.max(.18,Number(dt)||0)+.12);
       originalUpdateTownBots(dt);
       if(locked){npc.wait=Math.max(Number(npc.wait)||0,.12);facePlayer(npc);}
