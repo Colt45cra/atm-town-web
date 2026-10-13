@@ -49,7 +49,7 @@
 
     async _loadManifest() {
       let response;
-      if(this.manifestUrl==='assets/world/manifest.json'||this.manifestUrl==='/assets/world/manifest.json'){try{response=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(10000)});if(!response.ok)response=null;}catch{response=null;}}
+      if((this.manifestUrl==='assets/world/manifest.json'||this.manifestUrl==='/assets/world/manifest.json')&&!(global.location&&new URLSearchParams(global.location.search).get('performance')==='1'&&new URLSearchParams(global.location.search).get('mapProfile')==='original')){try{response=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(10000)});if(!response.ok)response=null;}catch{response=null;}}
       response??=await fetch(this.manifestUrl,{cache:'no-cache'});
       if (!response.ok) throw new Error(`World manifest request failed (${response.status}): ${this.manifestUrl}`);
       const manifest = await response.json();

@@ -264,7 +264,7 @@ function updateLoungeTvEmbed(cameraX,cameraY){
 }
 loungeTvFrame?.addEventListener('load',()=>{loungeTvReady=true;if(currentMap==='lounge'){loungeTvCommand('mute');loungeTvCommand('playVideo');}});
 ctx.imageSmoothingEnabled=false; mctx.imageSmoothingEnabled=false;
-let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,3);
+let W=innerWidth,H=innerHeight,DPR=Math.min(devicePixelRatio||1,3);if(new URLSearchParams(location.search).get('performance')==='1'){const scale=Number(new URLSearchParams(location.search).get('renderScale'));if(scale>=1&&scale<=3)DPR=scale;}
 let stableGameW=Math.max(1,Math.round(innerWidth||1));
 let stableGameH=Math.max(1,Math.round(innerHeight||1));
 
@@ -303,7 +303,7 @@ function resize(){
     stableGameH=Math.max(1,Math.round(innerHeight||vv?.height||stableGameH));
   }
   W=stableGameW;H=stableGameH;
-  DPR=Math.min(devicePixelRatio||1,3);
+  DPR=Math.min(devicePixelRatio||1,3);if(new URLSearchParams(location.search).get('performance')==='1'){const scale=Number(new URLSearchParams(location.search).get('renderScale'));if(scale>=1&&scale<=3)DPR=scale;}
   canvas.width=Math.max(1,Math.round(W*DPR));
   canvas.height=Math.max(1,Math.round(H*DPR));
   canvas.style.position='fixed';
@@ -5743,6 +5743,8 @@ function drawMini(){
 
 // Preserve elapsed game time on slow devices without enlarging collision steps.
 // Bound catch-up after a stall; returning from a hidden tab starts a fresh frame.
+const ATM_FRAME_PROFILE=new URLSearchParams(location.search).get('performance')==='1';
+const atmFrameSamples=[];let atmFrameReportAt=performance.now();
 const GAME_MAX_STEP_SECONDS=0.033;
 const GAME_MAX_CATCHUP_SECONDS=0.25;
 function advanceGameSimulation(elapsedSeconds){
@@ -5756,8 +5758,10 @@ function advanceGameSimulation(elapsedSeconds){
 document.addEventListener('visibilitychange',()=>{last=performance.now();});
 
 function loop(t){
+  const frameStarted=ATM_FRAME_PROFILE?performance.now():0;
   pollGamepad(t);
   const elapsedSeconds=(t-last)/1000;last=t;advanceGameSimulation(elapsedSeconds);window.ATMFishing?.update?.(t);
+  const updateFinished=ATM_FRAME_PROFILE?performance.now():0;
   // Luci's reward pickup must use the authoritative player coordinates from
   // the game engine. The dynamically loaded NPC overlay cannot reliably read
   // this file's top-level lexical player binding on every mobile browser.
@@ -5770,10 +5774,12 @@ function loop(t){
   updateLoungeTvEmbed(snappedCamX,snappedCamY);
   ctx.save();ctx.scale(zoom,zoom);ctx.translate(-snappedCamX,-snappedCamY);
   if(currentMap==='hq')ctx.drawImage(hq,0,0);else if(currentMap==='gallery')ctx.drawImage(gallery,0,0);else if(currentMap==='arcade')ctx.drawImage(arcade,0,0);else if(currentMap==='lounge')ctx.drawImage(lounge,0,0);else drawVisibleTownChunks();
+  const backgroundFinished=ATM_FRAME_PROFILE?performance.now():0;
   if(currentMap==='town')drawCoins(t);
   window.ATMWorldEvents?.drawGround?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom});
   drawWorldAliveGroundEffects();
   drawDepthScene(t);
+  const depthFinished=ATM_FRAME_PROFILE?performance.now():0;
   window.ATMWorldEvents?.drawAir?.(ctx,{map:currentMap,now:t,cameraX:snappedCamX,cameraY:snappedCamY,viewportWidth:W/zoom,viewportHeight:H/zoom,zoom});
   drawWorldAliveOverlay(t);
   // Horde Nightfall restricts visibility to the player bubble and authored
@@ -5784,7 +5790,9 @@ function loop(t){
     drawTownLightOverlay(ctx,getHordeStreetLightAlpha(getSharedTownTimeMs()));
   }
   drawChatBubbles();
-  ctx.restore();updateTradeBeaconWorldOverlays(t);drawWorldAliveUi();drawMini();requestAnimationFrame(loop);
+  ctx.restore();updateTradeBeaconWorldOverlays(t);drawWorldAliveUi();drawMini();
+  if(ATM_FRAME_PROFILE){const finished=performance.now();atmFrameSamples.push({frame:elapsedSeconds*1000,update:updateFinished-frameStarted,background:backgroundFinished-updateFinished,depth:depthFinished-backgroundFinished,overlays:finished-depthFinished});if(finished-atmFrameReportAt>=4000){const report={map:currentMap,position:{x:Math.round(player.x),y:Math.round(player.y)},profile:new URLSearchParams(location.search).get('mapProfile')||'published',dpr:DPR,frames:atmFrameSamples.length};for(const key of ['frame','update','background','depth','overlays']){const values=atmFrameSamples.map(s=>s[key]).sort((a,b)=>a-b);report[key]={mean:+(values.reduce((a,b)=>a+b,0)/values.length).toFixed(2),p95:+values[Math.min(values.length-1,Math.floor(values.length*.95))].toFixed(2)};}console.info('ATM frame profile '+JSON.stringify(report));atmFrameSamples.length=0;atmFrameReportAt=finished;}}
+  requestAnimationFrame(loop);
 }
 syncTownWorldClock();
 setInterval(syncTownWorldClock,5*60*1000);
