@@ -4036,7 +4036,8 @@ function drawPlayerSprite(x,y,dir,frame,name='',alpha=1,bob=0,jumpAmount=0,chara
 
     // The rod sits over the body, but the bent forearm and glove grip it from above.
     if(fishing&&!suppressShadow&&currentMap==='town'){
-      window.ATMFishing?.drawHeldRod?.(ctx,fishing);
+      const grip=fishingPose?{handX:drawX+(130-24*Math.sin(fishingPose.angle))/256*dw,handY:drawY+(216+24*Math.cos(fishingPose.angle))/320*dh}:{};
+      window.ATMFishing?.drawHeldRod?.(ctx,{...fishing,x,y,...grip});
       if(fishingPose&&sourceRect)window.ATMFishing.drawArmLayer(ctx,image,sourceRect.sx,sourceRect.sy,sourceRect.sw,sourceRect.sh,drawX,drawY,dw,dh,fishingPose,true);
     }
     // Hands/gloves are a foreground layer and must remain visible over the jetpack.
@@ -4213,13 +4214,14 @@ function drawDepthScene(t){
         if(remoteInvisible)continue;
         const propOverride=window.ATMPropHunt?.drawPlayerOverride?.(ctx,{sessionId:item.id,isLocal:false,map:item.p.map,x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,alpha:.92,name:item.p.name})===true;
         if(!propOverride){
-          drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned,fishing:item.p.afk?null:item.p.fishing});
+          drawHordePlayerSprite({x:item.p.drawX,y:item.p.drawY,dir:item.p.dir,frame:item.p.frame,name:item.p.name+(window.ATMPlayerPresence.afk(item.p)?' · AFK':''),alpha:.92,jump:item.p.jump||0,character:item.p.character||'classic',jetpackActive:!!item.p.jetpackActive,jetpack:!!item.p.jetpack,jetpackEquipped:!!item.p.jetpackEquipped,loadout:item.p.loadout||null,activity:item.p.activity||null,downed:remoteDowned,fishing:item.p.afk?null:item.p.fishing?{...item.p.fishing,elapsed:Number(item.p.fishing.elapsed||0)+Math.max(0,Date.now()-item.p.lastSeen)}:null});
           window.ATMZombieOutbreak?.drawPlayerEffects?.(ctx,{x:item.p.drawX,y:item.p.drawY,jumpAmount:item.p.jump||0,downed:remoteDowned,fireActive:!!item.p?.powers?.fire,invisible:false,local:false});
           if(!remoteDowned)window.ATMZombieOutbreak?.drawRemoteWeapon?.(ctx,item.p);
         }
       }else if(item.type==='bot'){
         const bot=item.bot;
         drawPlayerSprite(bot.drawX,bot.drawY,bot.dir,bot.frame,bot.name,0.96,0,0,bot.characterId,false,false,false,bot.loadout||{},null);
+        window.ATMNpcDialogueStandard?.drawMarker?.(ctx,bot);
       }else if(item.type==='zombie'){
         window.ATMZombieOutbreak?.drawActor?.(ctx,item.actor);
       }else if(item.type==='local'){
@@ -4253,6 +4255,7 @@ function drawChatBubbles(){
   const now=Date.now();
   for(let i=chatBubbles.length-1;i>=0;i--){
     const b=chatBubbles[i];if(now>b.expires){chatBubbles.splice(i,1);continue;}if(b.map!==currentMap)continue;
+    if(townBotForBubbleId(b.id))continue;
     let bx=b.x,by=b.y,bubbleLift=0,lockedNpc=false;
     if(b.id!==playerId&&remotePlayers.has(b.id)){
       const p=remotePlayers.get(b.id);bx=p.drawX;by=p.drawY;bubbleLift=Math.max(0,Number(p.jump||0));
@@ -7072,7 +7075,7 @@ window.ATMNftDrops?.init?.({
  ready:()=>townEntryActive,
  userId:()=>authSession?.user?.id||null,
  api:apiWithAuth,
- pose:()=>({x:player.x,y:player.y,map:currentMap,airborne:jumpState.active||jetpackState.active}),
+ pose:()=>({x:player.x,y:player.y,map:currentMap,jump:jumpLift(),airborne:jumpState.active||jetpackState.active}),
  blocked:(x,y)=>blocked(x,y),
  broadcast:()=>broadcastState(true),
  donationBox:()=>window.ATMWorldObjects?.donationBox?.(),

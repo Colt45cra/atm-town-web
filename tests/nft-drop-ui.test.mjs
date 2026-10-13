@@ -23,11 +23,11 @@ class Element {
   scrollIntoView(){}
 }
 function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'}),box=[],art=null,nfts=[{name:'Ticket',token_id:'A'.repeat(64)}],donationConfig=null){
- const body=new Element(),calls=[],store=new Map(),timers=[],imageLoads=[];
+ const pose={map:'town',x:10,y:20,jump:0};const body=new Element(),calls=[],store=new Map(),timers=[],imageLoads=[];
  const context=vm.createContext({window:{},Image:class{constructor(){imageLoads.push(this);this.complete=false;this.naturalWidth=0;}},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')||String(url).includes('drop-box-art')?art:({drops:[],nfts:box})}),setTimeout(fn,delay){timers.push({fn,delay});return timers.length;},clearTimeout(){},setInterval(){},URL,Date,Math});
  vm.runInContext(fs.readFileSync(new URL('../js/nft-drops.js',import.meta.url),'utf8'),context);
- context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('drop-art'))return art;if(url.includes('drop-cancel')){const id=JSON.parse(options.body).id;rows.splice(rows.findIndex(r=>r.id===id),1);return {cancelled:true};}if(url.includes('donation-config'))return donationConfig;if(url.includes('donation-status'))return {status:'signing'};if(url.includes('donation-start'))return start(JSON.parse(options.body));if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
- const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store,timers,imageLoads};
+ context.window.ATMNftDrops.init({ready:()=>true,pose:()=>pose,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('drop-art'))return art;if(url.includes('drop-cancel')){const id=JSON.parse(options.body).id;rows.splice(rows.findIndex(r=>r.id===id),1);return {cancelled:true};}if(url.includes('donation-config'))return donationConfig;if(url.includes('donation-status'))return {status:'signing'};if(url.includes('donation-start'))return start(JSON.parse(options.body));if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
+ const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store,timers,imageLoads,pose};
 }
 test('creation immediately shows progress, prevents duplicate clicks, and gives an explicit signing link',async()=>{
  let release;const wait=new Promise(r=>release=r),t=setup([],()=>wait);await t.api.open();await t.panel.querySelector('[data-create]').onclick();
@@ -134,4 +134,10 @@ test('map artwork metadata can recover without opening the claim dialog',async()
 test('world artwork timeout advances a stalled gateway only once',()=>{
  const t=setup(),ctx=canvas(),row={id:'stalled',token_id:'D'.repeat(64),x:10,y:20,image_url:'https://example.invalid/slow.png',image_candidates:['https://example.invalid/fast.png']};
  t.api.draw(ctx,row);const timeout=t.timers.at(-1);timeout.fn();assert.equal(t.imageLoads.length,2);timeout.fn();assert.equal(t.imageLoads.length,2);
+});
+
+test('local and remote carried NFT artwork follows jump height while depth stays on the ground',async()=>{
+ const t=setup([{id:'carry',token_id:'A'.repeat(64),kind:'drop',status:'carried'}]);await t.api.open();t.pose.jump=50;
+ const actors=t.api.actors({x:0,y:0,w:100,h:100},[{map:'town',drawX:60,drawY:70,jump:40,nftDrop:{id:'remote',token_id:'B'.repeat(64)}}]);
+ const local=actors.find(a=>a.row.id==='carry'),remote=actors.find(a=>a.row.id==='remote');assert.equal(local.row.y,-22);assert.equal(local.depth,44);assert.equal(remote.row.y,38);assert.equal(remote.depth,94);
 });

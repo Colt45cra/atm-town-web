@@ -204,6 +204,7 @@
   }
 
   function triggerBeckon(now){
+    if(global.ATMNpcDialogueStandard?.STANDARD.passiveBeckon===false)return;
     if(state.beckonUntil>now)return;
     const lines=['Aye, traveler — spare a minute for a miracle?','One. One. One. That’s the knock. Curious?','Some stories deserve not to be forgotten. Come have a look.','We’ve been gathering wonders for twenty-five years. Want to know why?'];
     state.beckonLine=lines[Math.floor(Math.random()*lines.length)];state.beckonUntil=now+BECKON_MS;state.nextBeckonAt=now+BECKON_COOLDOWN_MS;

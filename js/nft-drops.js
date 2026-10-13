@@ -277,6 +277,12 @@
    }
    return entry.image;
  }
+ function prepareArtwork(row){return worldImage({...row,id:null},false);}
+ function drawArtwork(ctx,row,x,y,size=32){
+   const img=prepareArtwork(row);ctx.save();ctx.fillStyle='#142c36';ctx.strokeStyle='#ffd166';ctx.lineWidth=2;ctx.fillRect(x-size/2,y,size,size);ctx.strokeRect(x-size/2,y,size,size);
+   if(img?.complete&&img.naturalWidth)ctx.drawImage(img,x-size/2+2,y+2,size-4,size-4);
+   else{ctx.fillStyle='#ffd166';ctx.font='900 12px system-ui';ctx.textAlign='center';ctx.fillText('NFT',x,y+size/2+4);}ctx.restore();
+ }
  function draw(ctx,row,x=row.x,y=row.y,carried=false){
    if(!Number.isFinite(x)||!Number.isFinite(y))return;
    ctx.save();ctx.translate(x,y);ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(0,0,20,7,0,0,Math.PI*2);ctx.fill();
@@ -287,8 +293,8 @@
  }
  function actors(view,remotes=[]){
    refresh();const rows=visible.filter(r=>r.x+40>=view.x&&r.x-40<=view.x+view.w&&r.y+15>=view.y&&r.y-60<=view.y+view.h).map(row=>({type:'nftdrop',depth:row.y+5,row}));
-   const p=game.pose();if(carry&&p.map==='town')rows.push({type:'nftdrop',depth:p.y+24,row:{...carry,x:p.x+25,y:p.y+8},carried:true});
-   for(const remote of remotes)if(remote.map==='town'&&!remote.afk&&!remote.powers?.invisibility&&remote.nftDrop)rows.push({type:'nftdrop',depth:(remote.drawY??remote.y)+24,row:{...remote.nftDrop,x:(remote.drawX??remote.x)+25,y:(remote.drawY??remote.y)+8},carried:true});
+   const p=game.pose();if(carry&&p.map==='town')rows.push({type:'nftdrop',depth:p.y+24,row:{...carry,x:p.x+25,y:p.y+8-Math.max(0,Number(p.jump)||0)},carried:true});
+   for(const remote of remotes)if(remote.map==='town'&&!remote.afk&&!remote.powers?.invisibility&&remote.nftDrop)rows.push({type:'nftdrop',depth:(remote.drawY??remote.y)+24,row:{...remote.nftDrop,x:(remote.drawX??remote.x)+25,y:(remote.drawY??remote.y)+8-Math.max(0,Number(remote.jump)||0)},carried:true});
    return rows;
  }
  function init(adapter){
@@ -300,5 +306,5 @@
    let activeUser=null,wasReady=false;setInterval(()=>{button.hidden=!game.ready();place.hidden=!carry||!game.ready()||game.pose().map!=='town';if(activeUser!==user()||(!wasReady&&game.ready())){activeUser=user();carry=null;mine=[];clearTimeout(poll);if(game.ready()&&user())refresh(true).then(()=>{if(pending?.user===user())startPoll();});}wasReady=game.ready();},1000);
    document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh(true);if(pending?.user===user())startPoll();}});
  }
- global.ATMNftDrops=Object.freeze({init,open,claim,nearest,actors,draw,publicState,refresh});
+ global.ATMNftDrops=Object.freeze({init,open,claim,nearest,actors,draw,publicState,refresh,prepareArtwork,drawArtwork,artworkCandidates});
 })(window);
