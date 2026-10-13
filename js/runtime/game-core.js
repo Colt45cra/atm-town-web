@@ -955,18 +955,21 @@ const townForegroundNightPieces=townForegroundPieceDefs.map(def=>{
   return {...def,daySrc:def.src,nightSrc,src:nightSrc,img:null,loading:false,lastUsed:0};
 });
 const townForegroundNightPieceMap=new Map(townForegroundNightPieces.map(piece=>[piece.daySrc,piece]));
-const TOWN_FOREGROUND_STREAM_MARGIN=640;
+const TOWN_FOREGROUND_STREAM_MARGIN=384;
+const TOWN_FOREGROUND_MAX_LOADS=3;
+let townForegroundLoads=0;
 const TOWN_FOREGROUND_CACHE_GRACE_MS=15000;
 function townForegroundNearView(piece,margin=TOWN_FOREGROUND_STREAM_MARGIN){
   const viewW=W/zoom,viewH=H/zoom;
   return piece.x+piece.w>=cam.x-margin&&piece.x<=cam.x+viewW+margin&&piece.y+piece.h>=cam.y-margin&&piece.y<=cam.y+viewH+margin;
 }
 function ensureTownForegroundImage(piece){
-  if(piece.img||piece.loading)return;
-  piece.loading=true;
+  if(piece.img||piece.loading||townForegroundLoads>=TOWN_FOREGROUND_MAX_LOADS||performance.now()<(piece.retryAt||0))return;
+  piece.loading=true;townForegroundLoads++;
   const img=new Image();img.decoding='async';
-  img.onload=()=>{piece.img=img;piece.loading=false;piece.lastUsed=performance.now();};
-  img.onerror=()=>{piece.loading=false;console.error('Town foreground image failed to decode:',piece.src);};
+  const finish=()=>{townForegroundLoads--;piece.loading=false;img.onload=img.onerror=null;};
+  img.onload=()=>{finish();piece.img=img;piece.attempts=0;piece.retryAt=0;piece.lastUsed=performance.now();};
+  img.onerror=()=>{finish();piece.attempts=(piece.attempts||0)+1;piece.retryAt=performance.now()+Math.min(60000,2000*4**Math.min(piece.attempts-1,3));console.warn('Town foreground image unavailable; retry scheduled:',piece.src);};
   img.src=piece.src;
 }
 function releaseTownForegroundImage(piece){
@@ -980,11 +983,15 @@ function updateTownForegroundStreaming(){
   const needNight=(currentTownNightAlpha||0)>0.001;
   for(const piece of townForegroundPieces){
     if(townForegroundNearView(piece)){
-      piece.lastUsed=now;ensureTownForegroundImage(piece);
+      piece.lastUsed=now;
       const nightPiece=townForegroundNightPieceMap.get(piece.src);
-      if(needNight&&nightPiece){nightPiece.lastUsed=now;ensureTownForegroundImage(nightPiece);}
+      if(needNight&&nightPiece)nightPiece.lastUsed=now;
     }else if(piece.img&&now-piece.lastUsed>TOWN_FOREGROUND_CACHE_GRACE_MS)releaseTownForegroundImage(piece);
   }
+  // Prioritize visible art, then prefetch nearby pieces through a bounded queue.
+  const distance=piece=>Math.hypot(piece.x+piece.w/2-(cam.x+W/zoom/2),piece.y+piece.h/2-(cam.y+H/zoom/2));
+  const near=townForegroundPieces.filter(piece=>townForegroundNearView(piece)).sort((a,b)=>Number(townForegroundNearView(b,0))-Number(townForegroundNearView(a,0))||distance(a)-distance(b));
+  for(const piece of near){ensureTownForegroundImage(piece);if(needNight)ensureTownForegroundImage(townForegroundNightPieceMap.get(piece.src));}
   for(const piece of townForegroundNightPieces){
     if(!needNight&&piece.img&&now-piece.lastUsed>TOWN_FOREGROUND_CACHE_GRACE_MS)releaseTownForegroundImage(piece);
     else if(!townForegroundNearView(piece)&&piece.img&&now-piece.lastUsed>TOWN_FOREGROUND_CACHE_GRACE_MS)releaseTownForegroundImage(piece);
