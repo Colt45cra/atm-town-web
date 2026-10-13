@@ -711,7 +711,7 @@ function finishCanvasPointer(e){
     pinchStartDistance=0;
     pinchStartZoom=zoom;
   }
-  if(shouldJump)startJump();
+  if(shouldJump){if(window.ATMBillboards?.visitAtScreen?.(e.clientX,e.clientY))return;startJump();}
 }
 canvas.addEventListener('pointerup',finishCanvasPointer);
 canvas.addEventListener('pointercancel',finishCanvasPointer);
@@ -7080,4 +7080,4 @@ window.ATMNftDrops?.init?.({
 });
 
 
-window.ATMInitBillboards=()=>window.ATMBillboards?.init?.({api:apiWithAuth,userId:()=>authSession?.user?.id||null,ready:()=>townEntryActive&&currentMap==='town'&&!dialogOpen&&!vendingOpen,pose:()=>({x:player.x,y:player.y+22,map:currentMap,airborne:jumpState.active||jetpackState.active}),block:value=>{dialogOpen=value;for(const key in keys)keys[key]=false;joy.x=joy.y=0;endJoy();}});
+window.ATMInitBillboards=()=>window.ATMBillboards?.init?.({canvas:()=>canvas,screenPoint:(x,y)=>{const r=canvas.getBoundingClientRect();return{x:cam.x+(x-r.left)*W/r.width/zoom,y:cam.y+(y-r.top)*H/r.height/zoom};},api:apiWithAuth,userId:()=>authSession?.user?.id||null,ready:()=>townEntryActive&&currentMap==='town'&&!dialogOpen&&!vendingOpen,pose:()=>({x:player.x,y:player.y+22,map:currentMap,airborne:jumpState.active||jetpackState.active}),block:value=>{dialogOpen=value;for(const key in keys)keys[key]=false;joy.x=joy.y=0;endJoy();}});

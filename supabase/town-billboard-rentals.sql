@@ -30,3 +30,6 @@ grant execute on function public.begin_billboard_rental(uuid,uuid,uuid,text,inte
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('billboard-ads','billboard-ads',true,1572864,array['image/png']) on conflict(id) do nothing;
 
 alter table public.town_billboard_rentals add column if not exists last_checked_at timestamptz;
+
+alter table public.town_billboard_rentals add column if not exists website_url text;
+alter table public.town_billboard_rentals add column if not exists button_label text not null default 'Visit project';
