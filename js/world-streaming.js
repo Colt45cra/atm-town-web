@@ -476,6 +476,13 @@
       }
     }
 
+    _drawVisibleImage(context,image,cell,view){
+      const x=Math.max(cell.x,view.x-2),y=Math.max(cell.y,view.y-2),right=Math.min(cell.x+cell.width,view.x+view.w+2),bottom=Math.min(cell.y+cell.height,view.y+view.h+2);
+      if(right<=x||bottom<=y)return;
+      const width=image.naturalWidth||image.width||cell.width,height=image.naturalHeight||image.height||cell.height;
+      context.drawImage(image,(x-cell.x)*width/cell.width,(y-cell.y)*height/cell.height,(right-x)*width/cell.width,(bottom-y)*height/cell.height,x,y,right-x,bottom-y);
+    }
+
     drawLayer(context, layerName, viewRect, alpha = 1) {
       if (!this.manifest || alpha <= 0) return 0;
       const cache = this.visualCaches.get(layerName);
@@ -486,7 +493,7 @@
       if (alpha < 1) context.globalAlpha *= alpha;
       for (const key of keys) {
         const cell = this.manifest.layers[layerName]?.cells?.[key] || this.cells[key];
-        if(layerName==='night'&&this.manifest.nightFallbackChunks?.includes(key)){const terrain=this.visualCaches.get('terrain')?.get(key),target=this.cells[key];if(terrain?.status==='ready'){context.save();context.drawImage(terrain.image,target.x,target.y,target.width,target.height);context.globalAlpha*=.55;context.fillStyle='#07162a';context.fillRect(target.x,target.y,target.width,target.height);context.restore();}else this._ensureVisual('terrain',key);}
+        if(layerName==='night'&&this.manifest.nightFallbackChunks?.includes(key)){const terrain=this.visualCaches.get('terrain')?.get(key),target=this.cells[key];if(terrain?.status==='ready'){context.save();this._drawVisibleImage(context,terrain.image,target,viewRect);context.globalAlpha*=.55;context.fillStyle='#07162a';context.fillRect(target.x,target.y,target.width,target.height);context.restore();}else this._ensureVisual('terrain',key);}
         if (!cell || !this._layerHasChunk(layerName, key)) continue;
         const entry = cache.get(key);
         if (!entry || entry.status !== 'ready' || !entry.image) {
@@ -494,7 +501,7 @@
           continue;
         }
         entry.lastUsed = nowMs();
-        context.drawImage(entry.image, cell.x, cell.y, cell.width, cell.height);
+        this._drawVisibleImage(context,entry.image,cell,viewRect);
         drawn += 1;
       }
       context.restore();

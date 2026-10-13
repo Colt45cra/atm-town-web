@@ -877,15 +877,17 @@ function drawFloorMap(C,x,y,w,h){
   return true;
 }
 // An overview belongs to its authored footprint, never to a resized image canvas.
-function drawTownOverview(C){
+function drawTownOverview(C,view=null){
+  const clipped=b=>{const x=Math.max(b.minX,view?view.x-2:b.minX),y=Math.max(b.minY,view?view.y-2:b.minY),right=Math.min(b.minX+b.width,view?view.x+view.w+2:b.minX+b.width),bottom=Math.min(b.minY+b.height,view?view.y+view.h+2:b.minY+b.height);return{x,y,w:Math.max(0,right-x),h:Math.max(0,bottom-y)};};
+  const paint=(image,b)=>{if(!view){C.drawImage(image,b.minX,b.minY,b.width,b.height);return true;}if(!(image?.complete&&image.naturalWidth))return false;const r=clipped(b);if(!r.w||!r.h)return false;C.drawImage(image,(r.x-b.minX)*image.naturalWidth/b.width,(r.y-b.minY)*image.naturalHeight/b.height,r.w*image.naturalWidth/b.width,r.h*image.naturalHeight/b.height,r.x,r.y,r.w,r.h);return true;};
   const bounds=townWorldBounds(),overview=townWorldStream.getOverview(),day=townWorldStream.getOverviewImage('day');
-  if(day)C.drawImage(day,bounds.minX,bounds.minY,bounds.width,bounds.height);
-  else drawFloorMap(C,TOWN_FALLBACK_BOUNDS.minX,TOWN_FALLBACK_BOUNDS.minY,TOWN_FALLBACK_BOUNDS.width,TOWN_FALLBACK_BOUNDS.height);
+  if(day)paint(day,bounds);
+  else if(view)paint(floorMapImg,TOWN_FALLBACK_BOUNDS);else drawFloorMap(C,TOWN_FALLBACK_BOUNDS.minX,TOWN_FALLBACK_BOUNDS.minY,TOWN_FALLBACK_BOUNDS.width,TOWN_FALLBACK_BOUNDS.height);
   if(currentTownNightAlpha>0){
     const night=overview?.night&&overview.night!==overview.day?townWorldStream.getOverviewImage('night'):null;
     C.save();C.globalAlpha*=currentTownNightAlpha;
-    if(night)C.drawImage(night,bounds.minX,bounds.minY,bounds.width,bounds.height);
-    else{C.fillStyle='#07162a';const alpha=C.globalAlpha;C.globalAlpha*=.55;C.fillRect(bounds.minX,bounds.minY,bounds.width,bounds.height);C.globalAlpha=alpha;if(floorMapNightImg.complete&&floorMapNightImg.naturalWidth)C.drawImage(floorMapNightImg,0,0,3120,4320);}
+    if(night)paint(night,bounds);
+    else{C.fillStyle='#07162a';const alpha=C.globalAlpha;C.globalAlpha*=.55;const r=clipped(bounds);C.fillRect(r.x,r.y,r.w,r.h);C.globalAlpha=alpha;if(floorMapNightImg.complete&&floorMapNightImg.naturalWidth)paint(floorMapNightImg,TOWN_FALLBACK_BOUNDS);}
     C.restore();
   }
 }
@@ -1003,7 +1005,7 @@ function drawTownLightOverlay(target=ctx,alpha=1){
   const prevSmooth=target.imageSmoothingEnabled;
   const prevQuality=target.imageSmoothingQuality;
   target.imageSmoothingEnabled=true;
-  try{target.imageSmoothingQuality='low';}catch(_e){}
+  try{target.imageSmoothingQuality='high';}catch(_e){}
   townWorldStream.drawLayer(target,'lighting',view,Math.max(0,Math.min(1,Number(alpha)||0)));
   target.imageSmoothingEnabled=prevSmooth;
   try{target.imageSmoothingQuality=prevQuality||'low';}catch(_e){}
@@ -1868,7 +1870,7 @@ function drawVisibleTownChunks(){
   const fillX=Math.max(bounds.minX,view.x-2),fillY=Math.max(bounds.minY,view.y-2);
   const fillR=Math.min(bounds.maxX,view.x+view.w+2),fillB=Math.min(bounds.maxY,view.y+view.h+2);
   ctx.fillStyle='#829b5d';ctx.fillRect(fillX,fillY,Math.max(0,fillR-fillX),Math.max(0,fillB-fillY));
-  drawTownOverview(ctx);
+  drawTownOverview(ctx,view);
   if(townWorldStream.hasManifest()){
     townWorldStream.drawLayer(ctx,'terrain',view,1);
     if(currentTownNightAlpha>0)townWorldStream.drawLayer(ctx,'night',view,currentTownNightAlpha);
@@ -5730,7 +5732,7 @@ function drawMini(){
   const view=ATMWorldStreaming.miniView(townWorldBounds(),player),scale=220/view.w;
   mctx.save();mctx.beginPath();mctx.rect(0,0,220,148);mctx.clip();
   mctx.scale(scale,scale);mctx.translate(-view.x,-view.y);mctx.imageSmoothingEnabled=true;
-  drawTownOverview(mctx);
+  drawTownOverview(mctx,view);
   // Reuse already-decoded scenery; the minimap never requests distant chunks or sprites.
   for(const o of window.ATMWorldObjects?.all?.()||[]){const h=o.width*o.image_height/o.image_width;if(o.active===false||o.x+o.width/2<view.x||o.x-o.width/2>view.x+view.w||o.y<view.y||o.y-h>view.y+view.h)continue;const image=window.ATMWorldObjects?.loadedImage?.(o);if(image?.complete&&image.naturalWidth)mctx.drawImage(image,o.x-o.width/2,o.y-h,o.width,h);}
   mctx.restore();
