@@ -4,7 +4,7 @@
  const clock=()=>performance.now();
  let catchArt=null,catchArtRecovery=null;
  function setCatchArt(data){if(!data?.token_id)return;catchArt={token_id:data.token_id,name:data.name||'Caught NFT',image_url:data.image_url,image_candidates:data.image_candidates||[]};global.ATMNftDrops?.prepareArtwork?.(catchArt);game?.broadcast();}
- function recoverCatchArt(data){if(!data?.id||!data.token_id||catchArtRecovery===data.id)return;catchArtRecovery=data.id;api('fish-art&id='+encodeURIComponent(data.id)).then(art=>{if(reward?.id!==data.id&&state.castId!==data.id)return;setCatchArt({...data,...art});if(reward?.id===data.id)showReward({...reward,...art});}).catch(()=>{});}
+ function recoverCatchArt(data){if(!data?.id||!data.token_id||catchArtRecovery===data.id)return;catchArtRecovery=data.id;api('fish-art&id='+encodeURIComponent(data.id)).then(art=>{if(reward?.id!==data.id&&state.castId!==data.id)return;setCatchArt({...data,...art});if(reward?.id===data.id){const hidden=panel.hidden;showReward({...reward,...art});panel.hidden=hidden;}}).catch(()=>{});}
  function hasPole(){return game?.hasPole?game.hasPole():state.hasPole;}
  function atDock(p){return p.map==='town'&&p.x>=1440&&p.x<=1690&&p.y>=3650&&p.y<=4110;}
  function active(){return ['preparing','casting','waiting','bite','hooking','reeling','processing','caught'].includes(state.phase);}

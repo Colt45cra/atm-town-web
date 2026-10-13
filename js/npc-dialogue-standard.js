@@ -58,7 +58,7 @@
     body:has(#nftDropPanel:not([hidden])) [id$="WorldSpeech"],body:has(#atmFishingPanel:not([hidden])) [id$="WorldSpeech"]{display:none!important}`;
   document.head.appendChild(style);
   function drawMarker(ctx,npc){
-    if(!['fuzzy','luci','miracle','triskeleton'].includes(npc?.characterId))return;
+    if(!npc)return;
     const x=Number.isFinite(npc.drawX)?npc.drawX:npc.x,y=(Number.isFinite(npc.drawY)?npc.drawY:npc.y)-83;
     if(!Number.isFinite(x)||!Number.isFinite(y))return;
     ctx.save();ctx.fillStyle='#142c36';ctx.strokeStyle='#ffd166';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();ctx.stroke();
