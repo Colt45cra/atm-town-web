@@ -5770,6 +5770,7 @@ function loop(t){
   window.ATMLuci666BeckonUx?.updatePlayerPosition?.(player.x,player.y,currentMap);
   updateHordeNightfall(t);
   currentTownNightAlpha=Math.max(getTownNightAlpha(getSharedTownTimeMs()),hordeNightfallAlpha*HORDE_NIGHTFALL.nightMix);
+  if(ATM_FRAME_PROFILE&&new URLSearchParams(location.search).get('profileFocus')==='donation-box'){cam.x=1307.4-W/zoom/2;cam.y=1915.1-H/zoom/2;}
   ctx.clearRect(0,0,W,H);
   const snappedCamX=Math.round(cam.x*zoom*DPR)/(zoom*DPR);
   const snappedCamY=Math.round(cam.y*zoom*DPR)/(zoom*DPR);
