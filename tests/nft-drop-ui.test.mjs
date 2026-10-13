@@ -26,7 +26,7 @@ function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sig
  const body=new Element(),calls=[],store=new Map(),timers=[];
  const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')||String(url).includes('drop-box-art')?art:({drops:[],nfts:box})}),setTimeout(fn,delay){timers.push({fn,delay});return timers.length;},clearTimeout(){},setInterval(){},URL,Date,Math});
  vm.runInContext(fs.readFileSync(new URL('../js/nft-drops.js',import.meta.url),'utf8'),context);
- context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('donation-config'))return donationConfig;if(url.includes('donation-status'))return {status:'signing'};if(url.includes('donation-start'))return start(JSON.parse(options.body));if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
+ context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('drop-cancel')){const id=JSON.parse(options.body).id;rows.splice(rows.findIndex(r=>r.id===id),1);return {cancelled:true};}if(url.includes('donation-config'))return donationConfig;if(url.includes('donation-status'))return {status:'signing'};if(url.includes('donation-start'))return start(JSON.parse(options.body));if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
  const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store,timers};
 }
 test('creation immediately shows progress, prevents duplicate clicks, and gives an explicit signing link',async()=>{
@@ -44,6 +44,11 @@ test('rejected creation displays the actual error and retry control',async()=>{
 test('saved pending request resumes the same link without creating another offer',async()=>{
  const t=setup([{id:'saved',status:'pending',kind:'drop',token_id:'A'.repeat(64),deeplink:'https://xumm.app/sign/saved'}]);await t.api.open();t.list.children.find(n=>n.tag==='article').children.find(n=>n.tag==='button').onclick();
  assert.equal(t.list.children.find(n=>n.tag==='a').href,'https://xumm.app/sign/saved');assert.equal(t.calls.some(u=>u.includes('drop-start')),false);
+});
+test('Cancel clears only the selected failed entry and keeps the other NFT visible',async()=>{
+ const t=setup([{id:'failed',status:'failed',kind:'drop',token_id:'A'.repeat(64),can_cancel:true},{id:'other',status:'received',kind:'donation',token_id:'B'.repeat(64)}]);await t.api.open();
+ const cancel=t.list.children[0].children.find(n=>n.tag==='button'&&n.textContent==='Cancel');await cancel.onclick();
+ assert.equal(t.calls.filter(u=>u.includes('drop-cancel')).length,1);assert.equal(t.list.children.filter(n=>n.tag==='article').length,1);assert.match(t.note.textContent,/can now donate/);
 });
 
 test('carrying a draft tells the player to choose a spot instead of opening Xaman',async()=>{
