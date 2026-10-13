@@ -2903,6 +2903,15 @@ function addChatLine(name,message,meta={}){
   const log=document.getElementById('chatLog');if(!log)return;const line=document.createElement('div');line.className='chatLine';line.textContent=name+': '+message;log.appendChild(line);while(log.children.length>4)log.removeChild(log.firstChild);setTimeout(()=>line.remove(),5000);
 }
 function showBubble(id,name,message,x,y,map,meta={}){chatBubbles.push({id,name,message,x,y,map,expires:Date.now()+6500});addChatLine(name,message,{...meta,senderPlayerId:id});}
+async function prepareTownMapForEntry(){
+  await townWorldStream.ready;
+  await window.ATMPWA?.prepareWorld?.(townWorldStream.manifest);
+  townWorldStream.retryFailedAssets();
+  await Promise.all([townWorldStream.preloadVisualNeighborhood(player.x,player.y,W/zoom,H/zoom),townWorldStream.preloadPlayerNeighborhood(player.x,player.y),window.ATMWorldObjects?.refresh?.()]);
+  const nearby=(window.ATMWorldObjects?.all?.()||[]).filter(o=>Math.abs(o.x-player.x)<W/zoom/2+1000&&Math.abs(o.y-player.y)<H/zoom/2+1000);
+  await Promise.all(nearby.map(o=>window.ATMWorldObjects?.image?.(o)?.decode?.().catch(()=>{})));
+}
+
 async function connectMultiplayer(){
   const panel=document.getElementById('multiplayerPanel');
   const button=document.getElementById('joinOnline');
@@ -2938,6 +2947,7 @@ async function connectMultiplayer(){
   statusEl.textContent='Loading secure multiplayer connection...';
   statusEl.style.color='#9fc3cc';
   try{
+    await prepareTownMapForEntry();
     await loadSupabaseLibrary();
   }catch(err){
     statusEl.textContent=(err&&err.message)?err.message:'Multiplayer library could not be loaded.';
@@ -4323,7 +4333,7 @@ function selectCharacter(characterId,options={}){
 }
 document.querySelectorAll('.characterChoice').forEach(button=>button.addEventListener('click',()=>selectCharacter(button.dataset.character,{source:'user'})));
 selectCharacter(savedMp.character||'classic',{source:'local'});
-const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',()=>{playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user&&window.atmEntryMode!=='guest'){const committedCharacter=selectedCharacter;if(playerAccount)playerAccount={...playerAccount,display_name:playerName,selected_character:committedCharacter};getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:committedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
+const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',async()=>{try{await prepareTownMapForEntry();}catch(error){document.getElementById('loginStatus').textContent=error.message;return;}playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user&&window.atmEntryMode!=='guest'){const committedCharacter=selectedCharacter;if(playerAccount)playerAccount={...playerAccount,display_name:playerName,selected_character:committedCharacter};getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:committedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
 
 const keys={};
 function isTextEntryTarget(target){
