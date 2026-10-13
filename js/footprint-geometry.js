@@ -1,3 +1,4 @@
+import {validateBillboard} from './billboard-contract.js';
 // Footprints use world pixels relative to the object's bottom-center anchor.
 export function footprintPoints(object){
  const c=object.collision;if(c?.type==='polygon')return c.points;
@@ -37,9 +38,10 @@ export function footprintContains(object,x,y){
 export function validateFootprint(c){
  const base=validateShape(c);if(!base)return base;
  const masks={};for(const key of ['depth','stairs','action'])if(c.masks?.[key])masks[key]=validateShape(c.masks[key]);
- const result={...base};if(c.cutouts){if(!Array.isArray(c.cutouts)||c.cutouts.length>32)throw Error('Use up to 32 cutouts.');result.cutouts=c.cutouts.map(r=>{if(!Array.isArray(r)||r.length!==4||!r.every(Number.isFinite)||r.some(v=>Math.abs(v)>4096)||r[2]<=0||r[3]<=0)throw Error('Invalid cutout.');return [...r];});}if(Object.keys(masks).length)result.masks=masks;
+ const result={...base};if(c.billboard)result.billboard=validateBillboard(c.billboard);if(c.cutouts){if(!Array.isArray(c.cutouts)||c.cutouts.length>32)throw Error('Use up to 32 cutouts.');result.cutouts=c.cutouts.map(r=>{if(!Array.isArray(r)||r.length!==4||!r.every(Number.isFinite)||r.some(v=>Math.abs(v)>4096)||r[2]<=0||r[3]<=0)throw Error('Invalid cutout.');return [...r];});}if(Object.keys(masks).length)result.masks=masks;
  if(masks.depth||c.depthMode==='silhouette'){if(!Number.isFinite(c.depthLine)||Math.abs(c.depthLine)>2048)throw Error('Set a depth line within 2048 pixels.');result.depthLine=c.depthLine;}
  if(c.depthMode==='silhouette')result.depthMode='silhouette';
  if(masks.action){const a=c.action;if(!a||!['message','enter','vending','events'].includes(a.type))throw Error('Choose an action.');if(a.type==='enter'&&!['hq','gallery','arcade','lounge'].includes(a.destination))throw Error('Choose an interior.');result.action={type:a.type,destination:a.destination||'hq',text:String(a.text||'').slice(0,500)};}
  return result;
 }
+

@@ -4726,6 +4726,7 @@ function nearestHordeRevivePlayer(maxDistance=78){
 function nearestThing(){
   const fishingTarget=window.ATMFishing?.interaction?.();if(fishingTarget)return fishingTarget;
   const nftDropTarget=window.ATMNftDrops?.nearest?.();if(nftDropTarget)return nftDropTarget;
+  const billboardTarget=window.ATMBillboards?.interaction?.();if(billboardTarget)return billboardTarget;
   const objectAction=currentMap==='town'&&window.ATMWorldObjects?.interaction?.(player.x,player.y+22);if(objectAction)return objectAction;
   const tradeTarget=nearestTradeBeaconRemote();if(tradeTarget)return tradeTarget;
   const reviveTarget=nearestHordeRevivePlayer();if(reviveTarget)return reviveTarget;
@@ -5311,6 +5312,7 @@ function interact(){
   if(vending&&!vendingOpen){openVending();return;}
   if(dialogOpen)return;
   const t=nearestThing();
+  if(t&&t.type==='billboard'){window.ATMBillboards?.open?.(t);return;}
   if(t&&t.type==='world-action'){const a=t.action;if(a.type==='enter'){townReturnPoint={x:player.x,y:player.y};switchMap(a.destination);}else if(a.type==='vending')openVending();else if(a.type==='events')window.ATMWorldEvents?.openControlPanel?.({map:currentMap,x:player.x,y:player.y});else showDialog(t.name,a.text||t.name);return;}
   if(t&&t.type==='vending'){openVending();return;}
   if(t&&t.type==='prop-hunt-target'){window.ATMPropHunt?.tagTarget?.(t);return;}
@@ -7076,3 +7078,6 @@ window.ATMNftDrops?.init?.({
  refreshWallet:()=>lockerRefreshXrpl(true),
  nfts:async()=>{if(!authSession?.access_token)throw Error('Sign in and link Xaman first.');await lockerRefreshXrpl(true);return lockerState.nfts.filter(n=>n.transferable).map(n=>({token_id:lockerNftTokenId(n),name:lockerNftDisplayName(n),uri:n.URI||'',image_url:lockerNftMetadata(n)?.image_url||'',image_candidates:lockerNftMetadata(n)?.image_candidates||[]}));}
 });
+
+
+window.ATMInitBillboards=()=>window.ATMBillboards?.init?.({api:apiWithAuth,userId:()=>authSession?.user?.id||null,ready:()=>townEntryActive&&currentMap==='town'&&!dialogOpen&&!vendingOpen,pose:()=>({x:player.x,y:player.y+22,map:currentMap,airborne:jumpState.active||jetpackState.active}),block:value=>{dialogOpen=value;for(const key in keys)keys[key]=false;joy.x=joy.y=0;endJoy();}});

@@ -1,3 +1,4 @@
+import {mountBillboardAdmin} from './billboards.js?v=billboard-rentals-1';
 import {mountMapImporter} from './map-importer.js?v=map-import-1';
 import { mountObjectEditor } from './objects.js?v=object-overlay-6';
 import { mountAdminStats } from './stats.js?v=admin-stats-1';
@@ -152,3 +153,6 @@ const objectEditor=mountObjectEditor({host:$('objectEditor'),client,api,node,sta
 async function fishingApi(body){const {data}=await client.auth.getSession();if(!data.session)throw Error('Sign in required.');const r=await fetch('/api/xrpl-nft-trade?action=fish-admin',{method:body?'POST':'GET',cache:'no-store',headers:{Authorization:'Bearer '+data.session.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const result=await r.json();if(!r.ok)throw Error(result.error||'Fishing settings unavailable.');return result;}
 async function loadFishing(){try{const data=await fishingApi(),cfg=data.settings,host=$('fishingRows');host.replaceChildren();const {row,form}=formRow('Fishing catches');const chance=field(form,'Catch chance per cast (%)','catch_percent',cfg.catch_percent);chance.min='0';chance.max='100';chance.step='1';chance.required=true;const limit=field(form,'NFTs per day · whole town','daily_nft_limit',cfg.daily_nft_limit);limit.step='1';limit.max='10000';limit.required=true;field(form,'Enable NFT rewards','enabled',cfg.enabled,'checkbox');const save=node('button','Save fishing settings');save.className='save';form.append(save);row.append(node('p',`${data.nfts_today} NFTs awarded or reserved today. Resets at midnight UTC. A 50% chance means each cast has an independent 50% chance of a bite; reel in time to catch it. NFT rewards require donation-box stock and a remaining daily allowance. Zero disables NFT catches.`));form.addEventListener('submit',async e=>{e.preventDefault();save.disabled=true;try{await fishingApi({catch_percent:Number(chance.value),daily_nft_limit:Number(limit.value),enabled:form.elements.enabled.checked});await loadFishing();status('Fishing settings saved.');}catch(e){status(e.message);}finally{save.disabled=false;}});host.append(row);}catch(e){$('fishingRows').textContent=e.message;}}
 
+
+
+mountBillboardAdmin({host:$('objects'),api,status});
