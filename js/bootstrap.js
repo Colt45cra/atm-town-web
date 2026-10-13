@@ -228,7 +228,7 @@
       return;
     }
     const script = document.createElement('script');
-    script.src = '/js/npc-dialogue-standard.js?v=npc-markers-1';
+    script.src = '/js/npc-dialogue-standard.js?v=npc-markers-2';
     script.async = false;
     script.dataset.atmNpcDialogueStandard = '1';
     script.onload = () => { if (typeof onReady === 'function') onReady(); };
