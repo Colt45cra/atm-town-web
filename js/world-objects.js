@@ -1,5 +1,5 @@
 import {createRenderSpriteCache} from './object-render-sprite.js?v=donation-render-1';
-import {createWorldObjectIndex} from './world-object-index.js?v=spatial-object-work-1';
+import {createWorldObjectIndex} from './world-object-index.js?v=vertical-fence-1';
 import {footprintContains} from './footprint-geometry.js?v=town-reentry-1';import {splitObjectPixels} from './object-silhouette.js';
 (function(global){
  'use strict';const qaParams=new URLSearchParams(global.location?.search||'');const renderSprite=qaParams.get('performance')==='1'&&qaParams.get('spriteProfile')==='original'?((o,image)=>image):createRenderSpriteCache();let objects=[],lastRefresh=0,busy=false,lastMapVersion=null,lastSignature='',lastPrefetch=0;const images=new Map(),layers=new Map(),lastUsed=new Map();let visibleURLs=new Set(),lastPrune=0;let mapPieceCache=new WeakMap(),objectIndex=createWorldObjectIndex([]);
