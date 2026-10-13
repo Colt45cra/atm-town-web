@@ -5785,13 +5785,18 @@ function loop(t){
   // Horde Nightfall restricts visibility to the player bubble and authored
   // street lamps. The blackout is drawn first, then the street-light layer
   // restores only the intentionally lit zones with a synchronized grid flicker.
+  const airFinished=ATM_FRAME_PROFILE?performance.now():0;
   if(currentMap==='town'){
     drawHordeVisionDarkness(ctx,snappedCamX,snappedCamY);
     drawTownLightOverlay(ctx,getHordeStreetLightAlpha(getSharedTownTimeMs()));
   }
+  const lightingFinished=ATM_FRAME_PROFILE?performance.now():0;
   drawChatBubbles();
-  ctx.restore();updateTradeBeaconWorldOverlays(t);drawWorldAliveUi();drawMini();
-  if(ATM_FRAME_PROFILE){const finished=performance.now();atmFrameSamples.push({frame:elapsedSeconds*1000,update:updateFinished-frameStarted,background:backgroundFinished-updateFinished,depth:depthFinished-backgroundFinished,overlays:finished-depthFinished});if(finished-atmFrameReportAt>=4000){const report={map:currentMap,position:{x:Math.round(player.x),y:Math.round(player.y)},profile:new URLSearchParams(location.search).get('mapProfile')||'published',dpr:DPR,frames:atmFrameSamples.length};for(const key of ['frame','update','background','depth','overlays']){const values=atmFrameSamples.map(s=>s[key]).sort((a,b)=>a-b);report[key]={mean:+(values.reduce((a,b)=>a+b,0)/values.length).toFixed(2),p95:+values[Math.min(values.length-1,Math.floor(values.length*.95))].toFixed(2)};}console.info('ATM frame profile '+JSON.stringify(report));atmFrameSamples.length=0;atmFrameReportAt=finished;}}
+  const chatFinished=ATM_FRAME_PROFILE?performance.now():0;
+  ctx.restore();updateTradeBeaconWorldOverlays(t);drawWorldAliveUi();
+  const uiFinished=ATM_FRAME_PROFILE?performance.now():0;
+  drawMini();
+  if(ATM_FRAME_PROFILE){const finished=performance.now();atmFrameSamples.push({frame:elapsedSeconds*1000,update:updateFinished-frameStarted,background:backgroundFinished-updateFinished,depth:depthFinished-backgroundFinished,overlays:finished-depthFinished,air:airFinished-depthFinished,lighting:lightingFinished-airFinished,chat:chatFinished-lightingFinished,ui:uiFinished-chatFinished,minimap:finished-uiFinished});if(finished-atmFrameReportAt>=4000){const report={map:currentMap,position:{x:Math.round(player.x),y:Math.round(player.y)},profile:new URLSearchParams(location.search).get('mapProfile')||'published',dpr:DPR,frames:atmFrameSamples.length};for(const key of ['frame','update','background','depth','overlays','air','lighting','chat','ui','minimap']){const values=atmFrameSamples.map(s=>s[key]).sort((a,b)=>a-b);report[key]={mean:+(values.reduce((a,b)=>a+b,0)/values.length).toFixed(2),p95:+values[Math.min(values.length-1,Math.floor(values.length*.95))].toFixed(2)};}console.info('ATM frame profile '+JSON.stringify(report));atmFrameSamples.length=0;atmFrameReportAt=finished;}}
   requestAnimationFrame(loop);
 }
 syncTownWorldClock();
