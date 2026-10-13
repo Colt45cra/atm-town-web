@@ -73,6 +73,14 @@ export default async function handler(req,res){
   }
   const id=body.id||req.query?.id;if(!/^[0-9a-f-]{36}$/i.test(id||''))throw fail('Invalid fishing cast.',400);
   let row=check(await admin.from('town_fishing_casts').select('*').eq('id',id).eq('user_id',user.id).single());if(row.wallet_address!==wallet)throw fail('Use the wallet that caught this NFT.');
+  if(req.method==='GET'&&action==='fish-art'){
+   if(!row.token_id||!['reward_ready','claimed'].includes(row.status))throw fail('The NFT catch is still being prepared.');
+   const nft=await findOwnedNft(row.status==='claimed'?wallet:REWARDS_NFT_WALLET,row.token_id);
+   if(!nft)throw fail('The NFT catch artwork could not be verified.');
+   const art=await resolveMetadata(nft.URI,row.token_id,{refresh:true});
+   if(art.image_url)check(await admin.from('town_fishing_casts').update({image_url:art.image_url,name:art.name||row.name}).eq('id',row.id).eq('status',row.status));
+   return res.json({token_id:row.token_id,name:art.name||row.name,image_url:art.image_url||row.image_url,image_candidates:art.image_candidates||[]});
+  }
   if(req.method==='POST'&&action==='fish-reel'){
    if(row.status==='casting'){await requirePole(admin,user);const p=fishingPosition(body);if(Math.hypot(p.x-Number(row.x),p.y-Number(row.y))>9)throw fail('Stay at your casting spot to reel in.');row=check(await admin.rpc('reel_town_fishing_cast',{p_id:id,p_user:user.id}));}
    try{return res.json(view(await award(admin,row)));}catch(e){if(row.status==='reward_pending')return res.json({...view(row),message:'Preparing your NFT catch. Please wait.'});throw e;}

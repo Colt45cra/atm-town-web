@@ -202,6 +202,7 @@
   }
 
   function triggerBeckon(now){
+    if(global.ATMNpcDialogueStandard?.STANDARD.passiveBeckon===false)return;
     if(state.beckonUntil>now)return;
     const lines=['Psst… ever hear about one XRP for one Bitcoin?','Come sit. The old ledger has bear stories.','Hey traveler — want the soft version of XRPL history?','Get closer. I promise the lore is fuzzier than the charts.'];
     state.beckonLine=lines[Math.floor(Math.random()*lines.length)];state.beckonUntil=now+BECKON_MS;state.nextBeckonAt=now+BECKON_COOLDOWN_MS;

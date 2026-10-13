@@ -205,6 +205,7 @@
   }
 
   function triggerBeckon(now){
+    if(global.ATMNpcDialogueStandard?.STANDARD.passiveBeckon===false)return;
     if(state.beckonUntil>now)return;
     const lines=['Three spirals. One motion. Got a second?','Hey traveler — want to see what liquidity looks like with neon bones?','Come closer. The pools are warmer than the charts.','Art, tech, community. Pick an arm and step into the spiral.'];
     state.beckonLine=lines[Math.floor(Math.random()*lines.length)];state.beckonUntil=now+BECKON_MS;state.nextBeckonAt=now+BECKON_COOLDOWN_MS;

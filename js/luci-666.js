@@ -201,6 +201,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
   }
 
   function triggerBeckon(now){
+    if(global.ATMNpcDialogueStandard?.STANDARD.passiveBeckon===false)return;
     if(state.beckonUntil>now)return;
     const lines=['Hey, LightBringer… got a second?','Come here. I’ve got 6 $666 for visitors.','You there — want to know why everything is sixes?','Hold up, traveler. Let Luci bring you the light.'];
     state.beckonLine=lines[Math.floor(Math.random()*lines.length)];
