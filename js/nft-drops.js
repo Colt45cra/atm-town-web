@@ -1,7 +1,7 @@
 (function(global){
  'use strict';
  let game=null,panel=null,list=null,note=null,button=null,carry=null,visible=[],mine=[],lastRefresh=0,refreshing=false,poll=null,busy=false,pending=null,mode='mine',boxMode=false;
- const images=new Map(),storageKey='atm_nft_drop_pending_v1';
+ const images=new Map(),storageKey='atm_nft_drop_pending_v1';let artRecoveries=0;
  const artworkKey='atm_nft_box_art_v1';
  function rememberedArt(tokenId){
    try{const r=JSON.parse(localStorage.getItem(artworkKey)||'{}')[tokenId];return r&&Date.now()-r.at<30*86400000&&/^https:\/\//i.test(r.url)?r.url:'';}catch{return '';}
@@ -66,7 +66,8 @@
        if(!carry)carry=mine.find(r=>r.kind==='drop'&&r.status==='carried')||null;
        game.broadcast();
      }
-     const needed=new Set([...visible,...mine].map(r=>r.image_url).filter(Boolean));for(const url of images.keys())if(!needed.has(url))images.delete(url);
+     // Image entries are bounded by recent use, including remote carried NFTs.
+     for(const [key,entry] of images)if(Date.now()-entry.usedAt>120000){clearTimeout(entry.timer);images.delete(key);}
    }catch(e){if(force)status(e.message);}finally{refreshing=false;}
  }
  function startPoll(){
@@ -239,11 +240,48 @@
    return best;
  }
  function publicState(){return carry?{id:carry.id,token_id:carry.token_id,name:carry.name,image_url:carry.image_url}:null;}
+ function publishArt(row,url){
+   const changed=carry?.token_id===row.token_id&&carry.image_url!==url;
+   rememberArt(row.token_id,url);row.image_url=url;
+   for(const saved of [...visible,...mine])if(saved.token_id===row.token_id)saved.image_url=url;
+   if(changed){carry.image_url=url;game.broadcast();}
+ }
+ function loadWorldArt(entry,row){
+   if(entry.loading||entry.image?.naturalWidth)return;
+   const url=entry.urls.find(u=>!entry.tried.has(u));if(!url)return;
+   entry.tried.add(url);entry.loading=true;
+   const img=new Image();entry.image=img;img.referrerPolicy='no-referrer';img.decoding='async';
+   const failed=()=>{if(entry.image!==img||!entry.loading)return;clearTimeout(entry.timer);entry.loading=false;loadWorldArt(entry,row);};
+   img.onerror=failed;img.onload=()=>{if(entry.image!==img)return;if(!img.naturalWidth){failed();return;}clearTimeout(entry.timer);entry.loading=false;publishArt(row,url);};
+   img.src=url;entry.timer=setTimeout(failed,4500);
+ }
+ function recoverWorldArt(entry,row,carried){
+   if(entry.recovering||artRecoveries>=3||Date.now()-entry.recoveredAt<60000||!row.id)return;
+   // Keep metadata/ledger lookups out of the frame loop and cap concurrency.
+   entry.recovering=true;entry.recoveredAt=Date.now();artRecoveries++;
+   const action='drop-art&id='+encodeURIComponent(row.id)+'&refresh=1';
+   const request=carried?api(action):fetch('/api/xrpl-nft-trade?action='+action,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Artwork unavailable');return r.json();});
+   request.then(art=>{entry.urls=[...new Set([...entry.urls,...artworkCandidates({...row,...art})])];loadWorldArt(entry,row);})
+     .catch(()=>{}).finally(()=>{entry.recovering=false;artRecoveries--;});
+ }
+ function worldImage(row,carried){
+   const key=row.token_id||row.id;if(!key)return null;
+   let entry=images.get(key);
+   if(!entry){entry={urls:[],tried:new Set(),loading:false,recovering:false,recoveredAt:0,usedAt:Date.now()};images.set(key,entry);}
+   entry.usedAt=Date.now();entry.urls=[...new Set([...entry.urls,...artworkCandidates(row)])];
+   loadWorldArt(entry,row);
+   if(!entry.loading&&!entry.image?.naturalWidth){
+     // Retry exhausted URLs after a cooldown as gateways can recover.
+     if(entry.recoveredAt&&Date.now()-entry.recoveredAt>=60000)entry.tried.clear();
+     recoverWorldArt(entry,row,carried);
+   }
+   return entry.image;
+ }
  function draw(ctx,row,x=row.x,y=row.y,carried=false){
    if(!Number.isFinite(x)||!Number.isFinite(y))return;
    ctx.save();ctx.translate(x,y);ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(0,0,20,7,0,0,Math.PI*2);ctx.fill();
    ctx.fillStyle=carried?'#183e46':'#19352e';ctx.strokeStyle=carried?'#59dec6':'#ffd166';ctx.lineWidth=2;ctx.fillRect(-18,-40,36,36);ctx.strokeRect(-18,-40,36,36);
-   let img=images.get(row.image_url);if(row.image_url&&!img){try{const u=new URL(row.image_url);if(u.protocol==='https:'){img=new Image();img.src=u.href;images.set(row.image_url,img);}}catch{}}
+   const img=worldImage(row,carried);
    if(img?.complete&&img.naturalWidth)ctx.drawImage(img,-15,-37,30,30);else{ctx.fillStyle='#ffd166';ctx.font='bold 22px system-ui';ctx.textAlign='center';ctx.fillText('◈',0,-13);}
    if(!carried){ctx.fillStyle='#ffd166';ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText('FREE NFT',0,-47);}ctx.restore();
  }
