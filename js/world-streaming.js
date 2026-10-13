@@ -49,7 +49,7 @@
 
     async _loadManifest() {
       let response;
-      if((this.manifestUrl==='assets/world/manifest.json'||this.manifestUrl==='/assets/world/manifest.json')&&!(global.location&&new URLSearchParams(global.location.search).get('performance')==='1'&&new URLSearchParams(global.location.search).get('mapProfile')==='original')){try{response=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(10000)});if(!response.ok)response=null;}catch{response=null;}}
+      if((this.manifestUrl==='assets/world/manifest.json'||this.manifestUrl==='/assets/world/manifest.json')&&!(global.location&&new URLSearchParams(global.location.search).get('performance')==='1'&&new URLSearchParams(global.location.search).get('mapProfile')==='original')){try{response=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(10000)});if(!response.ok)response=null;}catch{response=null;}if(!response&&global.caches){try{response=await(await global.caches.open('atm-town-world-v2')).match('/__atm_world__/manifest.json');}catch{}}}
       response??=await fetch(this.manifestUrl,{cache:'no-cache'});
       if (!response.ok) throw new Error(`World manifest request failed (${response.status}): ${this.manifestUrl}`);
       const manifest = await response.json();
@@ -94,7 +94,7 @@
         const attempts=(entry?.attempts||0)+1;
         entry={image:null,status:'loading',attempts,retryAt:0};
         this.overviewCache.set(src,entry);
-        loadImage(src).then(image=>{entry.image=image;entry.status='ready';this.failedAssets.delete(src);}).catch(()=>{entry.status='failed';entry.retryAt=nowMs()+Math.min(60000,2000*4**Math.min(attempts-1,3));this.failedAssets.add(src);});
+        entry.promise=loadImage(src).then(image=>{entry.image=image;entry.status='ready';this.failedAssets.delete(src);}).catch(()=>{entry.status='failed';entry.retryAt=nowMs()+Math.min(60000,2000*4**Math.min(attempts-1,3));this.failedAssets.add(src);});
       }
       return entry.status==='ready'?entry.image:null;
     }
@@ -398,11 +398,21 @@
       return this.preloadMaskPoints([{ x, y }], ['collision', 'stairs', 'interaction'], radius);
     }
 
+    retryFailedAssets(){
+      for(const cache of [...this.visualCaches.values(),...this.maskCaches.values(),this.overviewCache])for(const [key,entry]of cache)if(entry.status==='failed')cache.delete(key);
+    }
+
+    async preloadVisualNeighborhood(x,y,width=1800,height=1400){
+      const keys=this._chunkKeysForRect({x:x-width/2,y:y-height/2,w:width,h:height},768);
+      for(const phase of ['day','night'])this.getOverviewImage(phase);
+      await Promise.all([...keys.flatMap(key=>['terrain','night','lighting'].map(layer=>this._ensureVisual(layer,key))),...this.overviewCache.values()].map(value=>value?.promise||value));
+    }
+
     updateView({ cameraX, cameraY, viewportWidth, viewportHeight, playerX, playerY, collisionPoints = [], includeNight = true }) {
       if (!this.manifest) return;
       const view = { x: cameraX, y: cameraY, w: viewportWidth, h: viewportHeight };
       this.lastView = view;
-      const margin = Number(this.manifest.streaming?.visualPreloadMargin) || 384;
+      const margin = Math.max(768,Number(this.manifest.streaming?.visualPreloadMargin)||0);
       const visualKeys = this._chunkKeysForRect(view, margin);
       const visualKeep = new Set(visualKeys);
       for (const key of visualKeys) {

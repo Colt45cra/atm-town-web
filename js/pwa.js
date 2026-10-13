@@ -144,14 +144,55 @@
     throw new Error('Use your browser’s Install ATM Town / Add to Home Screen option.');
   }
 
-  async function downloadWorld(){
+  let worldPreparation=null;
+  async function downloadWorld(manifest){
     const reg=await readyRegistration();
+    try{await reg.update?.();}catch{}
+    if(reg.installing){const installing=reg.installing;await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Game update is still installing. Please retry.')),30000);const check=()=>{if(installing.state==='activated'){clearTimeout(timer);resolve();}else if(installing.state==='redundant'){clearTimeout(timer);reject(Error('Game update interrupted. Please retry.'));}};installing.addEventListener('statechange',check);check();});}
     const worker=reg.active||navigator.serviceWorker.controller;
-    if(!worker)throw new Error('ATM Town offline cache is still starting. Try again in a moment.');
+    if(!worker)throw Error('ATM Town offline cache is still starting. Try again in a moment.');
     state.download={active:true,completed:0,total:0,status:'starting',error:''};emit();
-    try{await navigator.storage?.persist?.();}catch(_error){}
-    worker.postMessage({type:'ATM_PWA_DOWNLOAD_WORLD'});
-    return true;
+    try{await navigator.storage?.persist?.();}catch{}
+    return new Promise((resolve,reject)=>{
+      const channel=new MessageChannel();let timer;
+      const close=()=>{clearTimeout(timer);channel.port1.close();};
+      const watchdog=()=>{clearTimeout(timer);timer=setTimeout(()=>{close();reject(Error('Map download stopped responding. Retry to resume saved progress.'));},180000);};
+      channel.port1.onmessage=({data})=>{
+        watchdog();
+        if(data.type==='ATM_PWA_DOWNLOAD_PROGRESS'){state.download={active:true,completed:data.completed||0,total:data.total||0,status:data.phase||'world',error:''};emit();}
+        else if(data.type==='ATM_PWA_DOWNLOAD_COMPLETE'){state.download={active:false,completed:data.completed,total:data.total,status:'complete',error:''};emit();close();resolve(data);}
+        else if(data.type==='ATM_PWA_DOWNLOAD_ERROR'){state.download={...state.download,active:false,status:'error',error:cleanMessage(data.message)};emit();close();reject(Error(state.download.error));}
+      };
+      watchdog();worker.postMessage({type:'ATM_PWA_DOWNLOAD_WORLD',manifest},[channel.port2]);
+    });
+  }
+  async function prepareWorld(manifest){
+    if(!state.supported)return false;
+    if(worldPreparation)return worldPreparation;
+    worldPreparation=(async()=>{
+      const overlay=document.createElement('section');overlay.id='atmMapPreparation';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Updating map');
+      overlay.style.cssText='position:fixed;inset:0;z-index:40000;display:grid;place-items:center;background:#071923;color:#eaffff;font:16px system-ui;padding:24px;text-align:center';
+      const card=document.createElement('div');card.style.cssText='width:min(420px,100%)';
+      const title=document.createElement('h2');title.textContent='Updating ATM Town map…';
+      const text=document.createElement('p');text.setAttribute('aria-live','polite');
+      const progress=document.createElement('progress');progress.style.cssText='width:100%;height:20px';
+      const hint=document.createElement('p');hint.textContent='Saving the map on this device. Later visits reuse saved files.';
+      const controls=document.createElement('div');card.append(title,text,progress,hint,controls);overlay.appendChild(card);document.body.appendChild(overlay);
+      const paint=()=>{const d=state.download;progress.max=Math.max(1,d.total);progress.value=d.completed;text.textContent=d.total?`${d.completed} / ${d.total} map files ready`:'Checking the live map and buildings…';};
+      global.addEventListener('atm:pwa-state-changed',paint);
+      try{
+        while(true){
+          controls.replaceChildren();
+          try{await downloadWorld(manifest);return true;}
+          catch(error){
+            title.textContent='Map download paused';text.textContent=cleanMessage(error.message);hint.textContent='Downloaded files are saved. Retry to continue where you left off.';
+            const again=await new Promise(resolve=>{const retry=document.createElement('button');retry.textContent='Retry download';const back=document.createElement('button');back.textContent='Back';for(const b of [retry,back])b.style.cssText='margin:8px;padding:14px;border-radius:10px;background:#53e1cb;color:#062731;border:0;font-size:16px';retry.onclick=()=>resolve(true);back.onclick=()=>resolve(false);controls.append(retry,back);});
+            if(!again)throw error;title.textContent='Updating ATM Town map…';
+          }
+        }
+      }finally{global.removeEventListener('atm:pwa-state-changed',paint);overlay.remove();}
+    })();
+    try{return await worldPreparation;}catch(e){worldPreparation=null;throw e;}
   }
 
   async function storageEstimate(){
@@ -199,5 +240,5 @@
 
   global.visualViewport?.addEventListener('resize',()=>positionPingToast(document.getElementById('atmPlayerPingToast')));
   global.visualViewport?.addEventListener('scroll',()=>positionPingToast(document.getElementById('atmPlayerPingToast')));
-  global.ATMPWA={getState,install,enableNotifications,disableNotifications,syncSubscription,onAuthChanged,downloadWorld,storageEstimate,sendPing,receivePing};
+  global.ATMPWA={getState,install,enableNotifications,disableNotifications,syncSubscription,onAuthChanged,downloadWorld,prepareWorld,storageEstimate,sendPing,receivePing};
 })(window);
