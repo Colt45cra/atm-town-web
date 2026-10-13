@@ -23,11 +23,11 @@ class Element {
   scrollIntoView(){}
 }
 function setup(rows=[],start=async()=>({id:'drop',deeplink:'https://xumm.app/sign/request'}),box=[],art=null,nfts=[{name:'Ticket',token_id:'A'.repeat(64)}],donationConfig=null){
- const body=new Element(),calls=[],store=new Map(),timers=[];
- const context=vm.createContext({window:{},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')||String(url).includes('drop-box-art')?art:({drops:[],nfts:box})}),setTimeout(fn,delay){timers.push({fn,delay});return timers.length;},clearTimeout(){},setInterval(){},URL,Date,Math});
+ const body=new Element(),calls=[],store=new Map(),timers=[],imageLoads=[];
+ const context=vm.createContext({window:{},Image:class{constructor(){imageLoads.push(this);this.complete=false;this.naturalWidth=0;}},document:{body,head:new Element(),createElement:t=>new Element(t),addEventListener(){}},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},fetch:async url=>({ok:true,json:async()=>String(url).includes('drop-art')||String(url).includes('drop-box-art')?art:({drops:[],nfts:box})}),setTimeout(fn,delay){timers.push({fn,delay});return timers.length;},clearTimeout(){},setInterval(){},URL,Date,Math});
  vm.runInContext(fs.readFileSync(new URL('../js/nft-drops.js',import.meta.url),'utf8'),context);
- context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('drop-cancel')){const id=JSON.parse(options.body).id;rows.splice(rows.findIndex(r=>r.id===id),1);return {cancelled:true};}if(url.includes('donation-config'))return donationConfig;if(url.includes('donation-status'))return {status:'signing'};if(url.includes('donation-start'))return start(JSON.parse(options.body));if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
- const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store,timers};
+ context.window.ATMNftDrops.init({ready:()=>true,userId:()=> 'user',broadcast(){},nfts:async()=>nfts,api:async(url,options)=>{calls.push(url);if(url.includes('drop-art'))return art;if(url.includes('drop-cancel')){const id=JSON.parse(options.body).id;rows.splice(rows.findIndex(r=>r.id===id),1);return {cancelled:true};}if(url.includes('donation-config'))return donationConfig;if(url.includes('donation-status'))return {status:'signing'};if(url.includes('donation-start'))return start(JSON.parse(options.body));if(url.includes('xrpl-nft-metadata'))return art;if(url.includes('drop-start'))return start();if(url.includes('drop-status'))return {status:'pending'};return {drops:rows};}});
+ const panel=body.children.find(n=>n.id==='nftDropPanel');return {api:context.window.ATMNftDrops,panel,list:panel.querySelector('[data-list]'),note:panel.querySelector('[data-status]'),calls,store,timers,imageLoads};
 }
 test('creation immediately shows progress, prevents duplicate clicks, and gives an explicit signing link',async()=>{
  let release;const wait=new Promise(r=>release=r),t=setup([],()=>wait);await t.api.open();await t.panel.querySelector('[data-create]').onclick();
@@ -111,4 +111,27 @@ test('box thumbnail falls back from a broken image to another gateway without lo
  assert.equal(tile.querySelector('strong').textContent,'NFT');
  img.complete=true;img.naturalWidth=64;img.onload();
  assert.equal(img.hidden,false);
+});
+
+function canvas(){const draws=[];return {draws,save(){},restore(){},translate(){},beginPath(){},ellipse(){},fill(){},fillRect(){},strokeRect(){},fillText(){},drawImage(img){draws.push(img);}};}
+test('map art falls back from a failed image and reuses the loaded image across frames',()=>{
+ const t=setup(),ctx=canvas(),row={id:'map',token_id:'A'.repeat(64),x:10,y:20,image_url:'https://example.invalid/broken.png',image_candidates:['https://example.invalid/working.png']};
+ t.api.draw(ctx,row);assert.equal(t.imageLoads.length,1);t.imageLoads[0].onerror();assert.equal(t.imageLoads.length,2);
+ const loaded=t.imageLoads[1];loaded.complete=true;loaded.naturalWidth=200;loaded.onload();
+ for(let i=0;i<100;i++)t.api.draw(ctx,{...row});assert.equal(t.imageLoads.length,2);assert.equal(ctx.draws.at(-1),loaded);
+ assert.equal(JSON.parse(t.store.get('atm_nft_box_art_v1'))[row.token_id].url,'https://example.invalid/working.png');
+});
+test('carried artwork with no URL recovers once using the authenticated drop-art route',async()=>{
+ const t=setup([],undefined,[],{image_url:'https://example.invalid/carried.png'}),ctx=canvas(),row={id:'owned',token_id:'B'.repeat(64)};
+ for(let i=0;i<100;i++)t.api.draw(ctx,row,1,2,true);
+ await new Promise(r=>setImmediate(r));assert.equal(t.calls.filter(u=>u.includes('drop-art')).length,1);assert.equal(t.imageLoads[0].src,'https://example.invalid/carried.png');
+});
+test('map artwork metadata can recover without opening the claim dialog',async()=>{
+ const t=setup([],undefined,[],{image_url:'https://example.invalid/map.png'}),ctx=canvas();
+ t.api.draw(ctx,{id:'placed',token_id:'C'.repeat(64),x:10,y:20});await new Promise(r=>setImmediate(r));
+ assert.equal(t.imageLoads[0].src,'https://example.invalid/map.png');
+});
+test('world artwork timeout advances a stalled gateway only once',()=>{
+ const t=setup(),ctx=canvas(),row={id:'stalled',token_id:'D'.repeat(64),x:10,y:20,image_url:'https://example.invalid/slow.png',image_candidates:['https://example.invalid/fast.png']};
+ t.api.draw(ctx,row);const timeout=t.timers.at(-1);timeout.fn();assert.equal(t.imageLoads.length,2);timeout.fn();assert.equal(t.imageLoads.length,2);
 });

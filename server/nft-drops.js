@@ -264,13 +264,18 @@ export default async function handler(req,res) {
     if(req.method==='GET'&&action==='drop-art') {
       if(!/^[0-9a-f-]{36}$/i.test(req.query.id||''))throw fail('Invalid NFT drop.',400);
       const admin=adminClient();
-      const row=check(await admin.from('town_nft_drops').select('*').eq('id',req.query.id).eq('kind','drop').eq('status','placed').maybeSingle());
+      let row=check(await admin.from('town_nft_drops').select('*').eq('id',req.query.id).eq('kind','drop').eq('status','placed').maybeSingle());
+      if(!row){
+        // Carried drafts are private: only their creator can recover artwork.
+        const {user}=await requireUser(req);
+        row=check(await admin.from('town_nft_drops').select('*').eq('id',req.query.id).eq('user_id',user.id).eq('kind','drop').in('status',['carried','pending']).maybeSingle());
+      }
       if(!row)throw fail('This NFT drop is no longer available.',404);
-      if(row.image_url)return res.json({name:row.name,image_url:row.image_url});
-      const nft=await findOwnedNft(row.custody?REWARDS_NFT_WALLET:row.wallet_address,row.token_id);
-      const metadata=nft?await resolveMetadata(nft.URI,row.token_id):{};
-      if(metadata.image_url)check(await admin.from('town_nft_drops').update({image_url:metadata.image_url,name:metadata.name||row.name}).eq('id',row.id).eq('status','placed'));
-      return res.json({name:metadata.name||row.name,image_url:metadata.image_url||null,image_candidates:metadata.image_candidates||[]});
+      if(row.image_url&&req.query.refresh!=='1')return res.json({name:row.name,image_url:row.image_url});
+      const nft=await findOwnedNft(row.custody&&(row.status==='placed'||row.payload_inventory_id)?REWARDS_NFT_WALLET:row.wallet_address,row.token_id);
+      const metadata=nft?await resolveMetadata(nft.URI,row.token_id,{refresh:req.query.refresh==='1'}):{};
+      if(metadata.image_url)check(await admin.from('town_nft_drops').update({image_url:metadata.image_url,name:metadata.name||row.name}).eq('id',row.id).eq('status',row.status));
+      return res.json({name:metadata.name||row.name,image_url:metadata.image_url||row.image_url||null,image_candidates:metadata.image_candidates||[]});
     }
     if(req.method==='GET'&&action==='drop-box-art') {
       const tokenId=String(req.query?.token_id||'').toUpperCase();

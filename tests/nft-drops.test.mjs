@@ -228,3 +228,22 @@ test('retry resumes the same unsigned draft and donation replaces it rather than
  s=setup({row:{...base,status:'carried',payload_uuid:null,custody:true}});
  try{const result=await call('drop-donate',{token_id:token});assert.equal(result.code,201);assert.equal(result.output.status,'pending');assert.equal(s.tables.town_nft_drops[0].status,'unavailable');assert.equal(s.tables.town_nft_drops[1].kind,'donation');}finally{s.restore();}
 });
+
+test('carried draft artwork is recovered from its owner wallet and does not change drop state',async()=>{
+ const uri=Buffer.from('data:application/json,'+encodeURIComponent(JSON.stringify({name:'Carried art',image:'https://example.invalid/carry.png'}))).toString('hex');
+ const s=setup({row:{...base,status:'carried',custody:true,payload_uuid:null,image_url:null},uri});
+ try{
+  const r=await call('drop-art',null,base.id,{refresh:'1'});assert.equal(r.code,200);assert.equal(r.output.image_url,'https://example.invalid/carry.png');
+  const inventory=s.requests.find(r=>JSON.parse(r.options.body||'{}').method==='account_nfts');assert.equal(JSON.parse(inventory.options.body).params[0].account,donor);
+  assert.equal(s.tables.town_nft_drops[0].status,'carried');assert.equal(s.tables.town_nft_drops[0].payload_uuid,null);
+ }finally{s.restore();}
+});
+test('carried artwork recovery refuses another player’s private draft',async()=>{
+ const s=setup({row:{...base,status:'carried',user_id:'other',image_url:null}});
+ try{assert.equal((await call('drop-art',null,base.id,{refresh:'1'})).code,404);assert.equal(s.requests.some(r=>JSON.parse(r.options.body||'{}').method==='account_nfts'),false);}finally{s.restore();}
+});
+test('explicit world artwork refresh replaces a stale saved URL and returns alternate images',async()=>{
+ const uri=Buffer.from('data:application/json,'+encodeURIComponent(JSON.stringify({name:'Recovered map',image:'https://example.invalid/current.png',thumbnail:'https://example.invalid/backup.png'}))).toString('hex');
+ const s=setup({row:{...base,status:'placed',custody:true,offer_index:offer,image_url:'https://example.invalid/stale.png'},uri});
+ try{const r=await call('drop-art',null,base.id,{refresh:'1'});assert.equal(r.code,200);assert.equal(r.output.image_url,'https://example.invalid/current.png');assert.ok(r.output.image_candidates.includes('https://example.invalid/backup.png'));assert.equal(s.tables.town_nft_drops[0].offer_index,offer);assert.equal(s.tables.town_nft_drops[0].status,'placed');}finally{s.restore();}
+});
