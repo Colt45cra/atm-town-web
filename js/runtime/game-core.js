@@ -876,6 +876,19 @@ function drawFloorMap(C,x,y,w,h){
   C.drawImage(floorMapImg,r.sx,r.sy,r.sw,r.sh,x,y,w,h);
   return true;
 }
+// An overview belongs to its authored footprint, never to a resized image canvas.
+function drawTownOverview(C){
+  const bounds=townWorldBounds(),overview=townWorldStream.getOverview(),day=townWorldStream.getOverviewImage('day');
+  if(day)C.drawImage(day,bounds.minX,bounds.minY,bounds.width,bounds.height);
+  else drawFloorMap(C,TOWN_FALLBACK_BOUNDS.minX,TOWN_FALLBACK_BOUNDS.minY,TOWN_FALLBACK_BOUNDS.width,TOWN_FALLBACK_BOUNDS.height);
+  if(currentTownNightAlpha>0){
+    const night=overview?.night&&overview.night!==overview.day?townWorldStream.getOverviewImage('night'):null;
+    C.save();C.globalAlpha*=currentTownNightAlpha;
+    if(night)C.drawImage(night,bounds.minX,bounds.minY,bounds.width,bounds.height);
+    else{C.fillStyle='#07162a';const alpha=C.globalAlpha;C.globalAlpha*=.55;C.fillRect(bounds.minX,bounds.minY,bounds.width,bounds.height);C.globalAlpha=alpha;if(floorMapNightImg.complete&&floorMapNightImg.naturalWidth)C.drawImage(floorMapNightImg,0,0,3120,4320);}
+    C.restore();
+  }
+}
 const obstacleMask={layer:'collision',get ready(){return townWorldStream.isMaskReadyAt('collision',player.x,player.y);}};
 const stairMask={layer:'stairs',get ready(){return townWorldStream.isMaskReadyAt('stairs',player.x,player.y);}};
 const townInteractionReader=Object.freeze({
@@ -1845,28 +1858,13 @@ function drawVisibleTownChunks(){
   const prevQuality=ctx.imageSmoothingQuality;
   ctx.imageSmoothingEnabled=true;
   try{ctx.imageSmoothingQuality='high';}catch(_e){}
+  const fillX=Math.max(bounds.minX,view.x-2),fillY=Math.max(bounds.minY,view.y-2);
+  const fillR=Math.min(bounds.maxX,view.x+view.w+2),fillB=Math.min(bounds.maxY,view.y+view.h+2);
+  ctx.fillStyle='#829b5d';ctx.fillRect(fillX,fillY,Math.max(0,fillR-fillX),Math.max(0,fillB-fillY));
+  drawTownOverview(ctx);
   if(townWorldStream.hasManifest()){
-    // A lightweight overview stays underneath streamed chunks. It prevents a
-    // visible blank boundary while a newly requested chunk is decoding without
-    // keeping the original 3120x4320 terrain image in memory.
-    if(floorMapImg.complete&&floorMapImg.naturalWidth){
-      drawFloorMap(ctx,bounds.minX,bounds.minY,bounds.width,bounds.height);
-      if(currentTownNightAlpha>0&&floorMapNightImg.complete&&floorMapNightImg.naturalWidth){
-        const nr=getSourceRectForImage(floorMapNightImg,780,1080);
-        ctx.save();ctx.globalAlpha=currentTownNightAlpha;
-        ctx.drawImage(floorMapNightImg,nr.sx,nr.sy,nr.sw,nr.sh,bounds.minX,bounds.minY,bounds.width,bounds.height);
-        ctx.restore();
-      }
-    }else{
-      const fillX=Math.max(bounds.minX,view.x-2),fillY=Math.max(bounds.minY,view.y-2);
-      const fillR=Math.min(bounds.maxX,view.x+view.w+2),fillB=Math.min(bounds.maxY,view.y+view.h+2);
-      ctx.fillStyle='#cfc1ad';ctx.fillRect(fillX,fillY,Math.max(0,fillR-fillX),Math.max(0,fillB-fillY));
-    }
     townWorldStream.drawLayer(ctx,'terrain',view,1);
     if(currentTownNightAlpha>0)townWorldStream.drawLayer(ctx,'night',view,currentTownNightAlpha);
-  }else if(floorMapImg.complete&&floorMapImg.naturalWidth){
-    // Lightweight overview fallback is used only while manifest/chunks initialize.
-    drawFloorMap(ctx,bounds.minX,bounds.minY,bounds.width,bounds.height);
   }
   ctx.imageSmoothingEnabled=prevSmooth;
   try{ctx.imageSmoothingQuality=prevQuality||'low';}catch(_e){}
@@ -3677,10 +3675,9 @@ function updateTownBots(dt){
     }
   }
 }
-function drawTownBotMiniMarkers(dx,dy,dw,dh){
+function drawTownBotMiniMarkers(dx,dy,dw,dh,bounds=townWorldBounds()){
   ensureTownBotsReady();
   if(!townBotsReady)return;
-  const bounds=townWorldBounds();
   mctx.save();
   mctx.fillStyle='rgba(88,241,230,.88)';
   for(const bot of townBots){
@@ -5722,38 +5719,19 @@ function drawMini(){
     mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(px,py,4,0,Math.PI*2);mctx.fill();
     return;
   }
-  mctx.fillStyle='#08202b';
-  mctx.fillRect(0,0,220,148);
-  const bounds=townWorldBounds();
-  const mapRatio=bounds.width/bounds.height;
-  const boxRatio=220/148;
-  let dw,dh,dx,dy;
-  if(mapRatio<boxRatio){
-    dh=148; dw=dh*mapRatio; dx=(220-dw)/2; dy=0;
-  }else{
-    dw=220; dh=dw/mapRatio; dx=0; dy=(148-dh)/2;
-  }
-  if(floorMapImg.complete&&floorMapImg.naturalWidth){
-    const r=getFloorSourceRect();
-    mctx.imageSmoothingEnabled=true;
-    try{mctx.imageSmoothingQuality='high';}catch(_e){}
-    mctx.drawImage(floorMapImg,r.sx,r.sy,r.sw,r.sh,dx,dy,dw,dh);
-    if(currentTownNightAlpha>0&&floorMapNightImg.complete&&floorMapNightImg.naturalWidth){
-      const nr=getSourceRectForImage(floorMapNightImg,3120,4320);
-      mctx.save();
-      mctx.globalAlpha=currentTownNightAlpha;
-      mctx.drawImage(floorMapNightImg,nr.sx,nr.sy,nr.sw,nr.sh,dx,dy,dw,dh);
-      mctx.restore();
-    }
-    mctx.imageSmoothingEnabled=false;
-  }else{
-    mctx.fillStyle='#cfc1ad';mctx.fillRect(dx,dy,dw,dh);
-  }
-  mctx.strokeStyle='rgba(88,241,230,.55)';mctx.lineWidth=2;mctx.strokeRect(dx+1,dy+1,dw-2,dh-2);
-  const px=dx+((player.x-bounds.minX)/bounds.width)*dw;
-  const py=dy+((player.y-bounds.minY)/bounds.height)*dh;
-  drawTownBotMiniMarkers(dx,dy,dw,dh);
+  mctx.fillStyle='#08202b';mctx.fillRect(0,0,220,148);
+  const view=ATMWorldStreaming.miniView(townWorldBounds(),player),scale=220/view.w;
+  mctx.save();mctx.beginPath();mctx.rect(0,0,220,148);mctx.clip();
+  mctx.scale(scale,scale);mctx.translate(-view.x,-view.y);mctx.imageSmoothingEnabled=true;
+  drawTownOverview(mctx);
+  // Reuse already-decoded scenery; the minimap never requests distant chunks or sprites.
+  for(const o of window.ATMWorldObjects?.all?.()||[]){const h=o.width*o.image_height/o.image_width;if(o.active===false||o.x+o.width/2<view.x||o.x-o.width/2>view.x+view.w||o.y<view.y||o.y-h>view.y+view.h)continue;const image=window.ATMWorldObjects?.loadedImage?.(o);if(image?.complete&&image.naturalWidth)mctx.drawImage(image,o.x-o.width/2,o.y-h,o.width,h);}
+  mctx.restore();
+  const projection={minX:view.x,minY:view.y,width:view.w,height:view.h};
+  drawTownBotMiniMarkers(0,0,220,148,projection);
+  const px=(player.x-view.x)*scale,py=(player.y-view.y)*scale;
   mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(px,py,4,0,Math.PI*2);mctx.fill();
+
 }
 
 // Preserve elapsed game time on slow devices without enlarging collision steps.

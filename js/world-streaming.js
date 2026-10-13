@@ -42,6 +42,7 @@
       this.activeMaskLoads = 0;
       this.maxConcurrentMaskLoads = Math.max(1, Number(options.maxConcurrentMaskLoads) || 3);
       this.failedAssets = new Set();
+      this.overviewCache = new Map();
       this.lastView = null;
       this.ready = this._loadManifest();
     }
@@ -83,6 +84,19 @@
 
     getOverview() {
       return this.manifest?.overview || null;
+    }
+
+    getOverviewImage(phase='day') {
+      const metadata=this.getOverview(),src=metadata?.[phase];
+      if(typeof src!=='string'||!src)return null;
+      let entry=this.overviewCache.get(src);
+      if(!entry||(entry.status==='failed'&&nowMs()>=entry.retryAt)){
+        const attempts=(entry?.attempts||0)+1;
+        entry={image:null,status:'loading',attempts,retryAt:0};
+        this.overviewCache.set(src,entry);
+        loadImage(src).then(image=>{entry.image=image;entry.status='ready';this.failedAssets.delete(src);}).catch(()=>{entry.status='failed';entry.retryAt=nowMs()+Math.min(60000,2000*4**Math.min(attempts-1,3));this.failedAssets.add(src);});
+      }
+      return entry.status==='ready'?entry.image:null;
     }
 
     contains(x, y, padding = 0) {
@@ -161,17 +175,20 @@
       let entry = cache.get(key);
       if (entry) {
         entry.lastUsed = nowMs();
-        return entry.promise;
+        if(entry.status!=='failed'||nowMs()<(entry.retryAt||0))return entry.promise;
       }
+      const attempts=(entry?.attempts||0)+1;
       const src = this._assetPath(layerName, key);
-      entry = { image: null, status: 'loading', lastUsed: nowMs(), promise: null };
+      entry = { image: null, status: 'loading', lastUsed: nowMs(), promise: null,attempts,retryAt:0 };
       entry.promise = loadImage(src).then((image) => {
         entry.image = image;
         entry.status = 'ready';
         entry.lastUsed = nowMs();
+        this.failedAssets.delete(src);
         return entry;
       }).catch((error) => {
         entry.status = 'failed';
+        entry.retryAt=nowMs()+Math.min(60000,2000*4**Math.min(attempts-1,3));
         this.failedAssets.add(src);
         console.error(error);
         return null;
@@ -503,6 +520,12 @@
     return new StreamedWorld(manifestUrl, options);
   }
 
-  global.ATMWorldStreaming = Object.freeze({ create });
+  function miniView(bounds,player,width=220,height=148,worldWidth=3120){
+    const w=worldWidth,h=worldWidth*height/width;
+    const origin=(center,min,max,span)=>max-min<span?(min+max-span)/2:Math.max(min,Math.min(max-span,center-span/2));
+    return{x:origin(player.x,bounds.minX,bounds.maxX,w),y:origin(player.y,bounds.minY,bounds.maxY,h),w,h};
+  }
+  global.ATMWorldStreaming = Object.freeze({ create,miniView });
 })(window);
+
 
