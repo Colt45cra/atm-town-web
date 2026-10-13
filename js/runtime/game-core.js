@@ -2905,6 +2905,7 @@ function addChatLine(name,message,meta={}){
 function showBubble(id,name,message,x,y,map,meta={}){chatBubbles.push({id,name,message,x,y,map,expires:Date.now()+6500});addChatLine(name,message,{...meta,senderPlayerId:id});}
 async function prepareTownMapForEntry(){
   await townWorldStream.ready;
+  await townWorldStream.refreshLiveManifest();
   await window.ATMPWA?.prepareWorld?.(townWorldStream.manifest);
   townWorldStream.retryFailedAssets();
   await Promise.all([townWorldStream.preloadVisualNeighborhood(player.x,player.y,W/zoom,H/zoom),townWorldStream.preloadPlayerNeighborhood(player.x,player.y),window.ATMWorldObjects?.refresh?.()]);

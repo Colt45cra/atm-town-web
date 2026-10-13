@@ -59,7 +59,7 @@
   document.head.appendChild(style);
   function drawMarker(ctx,npc){
     if(!npc)return;
-    const x=Number.isFinite(npc.drawX)?npc.drawX:npc.x,y=(Number.isFinite(npc.drawY)?npc.drawY:npc.y)-83;
+    const x=Number.isFinite(npc.drawX)?npc.drawX:npc.x,y=(Number.isFinite(npc.drawY)?npc.drawY:npc.y)-116;
     if(!Number.isFinite(x)||!Number.isFinite(y))return;
     ctx.save();ctx.fillStyle='#142c36';ctx.strokeStyle='#ffd166';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();ctx.stroke();
     ctx.fillStyle='#ffd166';ctx.font='900 15px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',x,y+1);ctx.restore();

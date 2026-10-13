@@ -53,9 +53,14 @@
       response??=await fetch(this.manifestUrl,{cache:'no-cache'});
       if (!response.ok) throw new Error(`World manifest request failed (${response.status}): ${this.manifestUrl}`);
       const manifest = await response.json();
+      return this._applyManifest(manifest);
+    }
+
+    _applyManifest(manifest){
       if (!manifest || !Number.isFinite(manifest.chunkSize) || !manifest.bounds || !manifest.layers || !manifest.cells) {
         throw new Error('ATM Town world manifest is missing required chunk metadata.');
       }
+      this.layerChunkSets.clear();this.visualCaches.clear();this.maskCaches.clear();this.overviewCache.clear();this.maskLoadQueue=[];
       this.manifest = manifest;
       global.ATMActiveMapVersion=manifest.mapVersion||'original';
       this.chunkSize = manifest.chunkSize;
@@ -72,6 +77,21 @@
         cells: Object.keys(this.cells).length
       });
       return manifest;
+    }
+
+    async refreshLiveManifest(){
+      if(!['assets/world/manifest.json','/assets/world/manifest.json'].includes(this.manifestUrl))return this.manifest;
+      const params=new URLSearchParams(global.location?.search||'');
+      if(params.get('performance')==='1'&&params.get('mapProfile')==='original')return this.manifest;
+      let manifest;
+      try{const response=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!response.ok)throw Error('Live map unavailable');manifest=await response.json();}
+      catch(error){
+        try{const saved=await(await global.caches.open('atm-town-world-v2')).match('/__atm_world__/manifest.json');if(saved){const candidate=await saved.json();if(candidate.mapVersion)manifest=candidate;}}catch{}
+        if(!manifest?.mapVersion&&!this.manifest?.mapVersion)throw Error('Could not verify the expanded map. Please retry instead of entering the original map.');
+        if(this.manifest?.mapVersion)manifest=this.manifest;manifest??=this.manifest;
+      }
+      if(JSON.stringify(manifest)!==JSON.stringify(this.manifest))this._applyManifest(manifest);
+      return this.manifest;
     }
 
     hasManifest() {
