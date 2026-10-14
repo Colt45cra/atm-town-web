@@ -51,3 +51,4 @@ test('large landmark imports keep native image dimensions while scaling placemen
  const plan=validateMapPlan(v);assert.equal(plan.objects[0].width,8192);assert.equal(plan.objects[0].image_width,400);assert.equal(plan.objects[0].collision.width,8192);
  o.width=8193;assert.throws(()=>validateMapPlan(v),/dimensions/);o.width=8192;o.image_height=2049;assert.throws(()=>validateMapPlan(v),/dimensions/);
 });
+test('drivable vehicle metadata survives import and rejects unsupported models',()=>{const v=input();v.objects[0].collision.vehicle={model:'truck',facing:'north'};const p=validateMapPlan(v);assert.deepEqual(p.objects[0].collision.vehicle,{model:'truck',facing:'north'});v.objects[0].collision.vehicle.model='untrusted';assert.throws(()=>validateMapPlan(v),/supported vehicle/);});

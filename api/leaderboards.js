@@ -1,3 +1,4 @@
+import {handleVehicles,vehicleArt} from '../lib/vehicles.js';
 import { handleEconomy } from '../lib/town-economy.js';
 import { randomUUID } from 'node:crypto';
 import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
@@ -213,6 +214,8 @@ export default async function handler(req, res) {
   try {
     const economyAction = String(req.body?.action || req.query?.action || '');
     if(economyAction.startsWith('billboard-')){const {default:handler}=await import('../server/billboards.js');return await handler(req,res);}
+    if(economyAction==='vehicle-art'&&req.method==='GET'){const image=await vehicleArt(req.query);res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control','public,max-age=86400,s-maxage=86400');return res.send(Buffer.from(image));}
+    if(economyAction.startsWith('vehicle-')){res.setHeader('Cache-Control','no-store');return res.json(await handleVehicles(adminClient(),req));}
     if (/^(admin-|rewards-)/.test(economyAction)) return await handleEconomy(req, res);
     if (req.method === 'GET') return await getLeaderboard(req, res);
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ error: 'GET or POST required.' }); }
