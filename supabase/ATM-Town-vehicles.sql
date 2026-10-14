@@ -2,7 +2,7 @@ create table if not exists public.town_vehicle_state (
  vehicle_id uuid primary key,
  x double precision not null check (x between -65536 and 65536),
  y double precision not null check (y between -65536 and 65536),
- facing text not null check (facing in ('north','south','east','west')),
+ facing text not null check (facing in ('north','south','east','west','northeast','northwest','southeast','southwest')),
  driver_session uuid,
  lease_token uuid,
  lease_expires timestamptz,
@@ -15,7 +15,7 @@ create or replace function public.town_vehicle_drive(p_op text,p_vehicle uuid,p_
 returns jsonb language plpgsql security definer set search_path = pg_catalog, public as $$
 declare v public.town_vehicle_state; t timestamptz:=clock_timestamp(); elapsed double precision;
 begin
- if p_op not in ('claim','heartbeat','release') or p_session is null or p_vehicle is null or p_facing not in ('north','south','east','west') or p_x not between -65536 and 65536 or p_y not between -65536 and 65536 then raise exception 'Invalid vehicle request'; end if;
+ if p_op not in ('claim','heartbeat','release') or p_session is null or p_vehicle is null or p_facing not in ('north','south','east','west','northeast','northwest','southeast','southwest') or p_x not between -65536 and 65536 or p_y not between -65536 and 65536 then raise exception 'Invalid vehicle request'; end if;
  if p_op='claim' then
   insert into public.town_vehicle_state(vehicle_id,x,y,facing) values(p_vehicle,p_x,p_y,p_facing) on conflict do nothing;
  end if;

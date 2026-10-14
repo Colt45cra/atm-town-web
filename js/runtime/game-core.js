@@ -7113,6 +7113,6 @@ window.ATMInitVehicles=()=>window.ATMVehicles?.init?.({
  pose:()=>({x:player.x,y:player.y,map:currentMap}),objects:()=>window.ATMWorldObjects?.all?.()||[],remotes:()=>Array.from(remotePlayers,([id,p])=>({id,...p})),
  canEnter:()=>!jumpState.active&&!jetpackState.active&&!window.ATMFishing?.publicState?.()&&!window.ATMZombieOutbreak?.isActive?.()&&!window.ATMPropHunt?.isActive?.(),
  canDrive:()=>!window.ATMZombieOutbreak?.isLocalDowned?.()&&!window.ATMZombieOutbreak?.isActive?.(),
- blocked:(x,y)=>obstacleAtFootprint(x,y),bounds:()=>townWorldBounds(),place:(x,y,facing)=>{player.x=x;player.y=y;if(facing)player.dir=({north:'up',south:'down',east:'right',west:'left'})[facing];},
+ blocked:(x,y)=>obstacleAtFootprint(x,y),bounds:()=>townWorldBounds(),place:(x,y,facing)=>{player.x=x;player.y=y;if(facing)player.dir=({north:'up',south:'down',east:'right',west:'left',northeast:'up',northwest:'up',southeast:'down',southwest:'down'})[facing];},
  broadcast:()=>broadcastState(true),toast:message=>window.ATMWorldEvents?.toast?.(message,3000)
 });window.ATMInitVehicles();
