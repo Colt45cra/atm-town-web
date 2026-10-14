@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import vm from 'node:vm';
-import {VEHICLE_MODELS,vehicleStep,vehicleExit,vehicleDirection,validateVehicle} from '../js/vehicle-contract.js';
+import {VEHICLE_MODELS,vehicleStep,vehicleExit,vehicleDirection,validateVehicle,vehiclePlacementScale,vehicleFootprint} from '../js/vehicle-contract.js';
 import {publicVehicleState} from '../lib/vehicles.js';
 const bounds={minX:0,minY:0,maxX:1000,maxY:1000};
 test('driving uses directional sprites, normalized speed, and small swept collision steps',()=>{
@@ -16,8 +16,8 @@ test('public synchronization never includes lease tokens and expired drivers app
  const row={vehicle_id:'id',x:1,y:2,facing:'north',driver_session:'driver',lease_token:'secret',lease_expires:new Date(Date.now()-1).toISOString()};const p=publicVehicleState(row);assert.equal(p.driver_session,null);assert.equal(p.lease_token,undefined);
 });
 test('enter, movement, safe exit and parked position use shared API state without broadcasting the lock',async()=>{
- const object={id:'car',x:200,y:322,active:true,collision:{vehicle:{model:'buggy',facing:'south'}}},pose={x:190,y:300,map:'town'};let state={vehicle_id:'car',x:200,y:300,facing:'south',driver_session:null},broadcast=0;
- const context=vm.createContext({window:{},Image:class{complete=false;},document:{addEventListener(){}},Date,console,VEHICLE_MODELS,vehicleStep,vehicleExit,validateVehicle,fetch:async(url,options)=>{const action=new URL(url,'https://atmtown.fun').searchParams.get('action'),body=options?.body?JSON.parse(options.body):null;let data;
+ const object={id:'car',width:100,x:200,y:322,active:true,collision:{vehicle:{model:'buggy',facing:'south'}}},pose={x:190,y:300,map:'town'};let state={vehicle_id:'car',width:100,x:200,y:300,facing:'south',driver_session:null},broadcast=0;
+ const context=vm.createContext({window:{},Image:class{complete=false;},document:{addEventListener(){}},Date,console,VEHICLE_MODELS,vehicleStep,vehicleExit,vehiclePlacementScale,vehicleFootprint,validateVehicle,fetch:async(url,options)=>{const action=new URL(url,'https://atmtown.fun').searchParams.get('action'),body=options?.body?JSON.parse(options.body):null;let data;
  if(action==='vehicle-state')data={vehicles:[state]};else if(action==='vehicle-claim'){state={...state,driver_session:'me'};data={...state,lease_token:'secret'};}else if(action==='vehicle-release'){state={...state,x:body.x,y:body.y,facing:body.facing,driver_session:null};data=state;}else data=state;
  return{ok:true,json:async()=>data};}});
  vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\n/,''),context);
@@ -34,8 +34,17 @@ test('ordinary map objects are scanned once without exceptions or remote-player 
  assert.equal(filters,1);assert.equal(validations,0);assert.equal(remoteReads,0);
 });
 test('multiple footstep samples share one vehicle position calculation per frame',()=>{
- let clock=1000,remoteReads=0;const list=[{id:'car',active:true,x:200,y:300,collision:{vehicle:{model:'truck',facing:'south'}}}];
- const context=vm.createContext({window:{},document:{addEventListener(){}},Image:class{},Date:{now:()=>clock},VEHICLE_MODELS,vehicleStep,vehicleExit,validateVehicle,fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
+ let clock=1000,remoteReads=0;const list=[{id:'car',width:100,active:true,x:200,y:300,collision:{vehicle:{model:'truck',facing:'south'}}}];
+ const context=vm.createContext({window:{},document:{addEventListener(){}},Image:class{},Date:{now:()=>clock},VEHICLE_MODELS,vehicleStep,vehicleExit,vehiclePlacementScale,vehicleFootprint,validateVehicle,fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
  vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\n/,''),context);const r=context.window.ATMVehicles;r.init({objects:()=>list,remotes:()=>{remoteReads++;return[];},ready:()=>true,pose:()=>({map:'town'})});
  for(let sample=0;sample<1000;sample++)r.blocked(100,100);assert.equal(remoteReads,1);clock+=17;r.blocked(100,100);assert.equal(remoteReads,2);
+});
+test('vehicle artwork uses the saved editor width, bottom anchor and proportional scale when turning',()=>{
+ const object={id:'car',width:400,x:300,y:600,active:true,collision:{vehicle:{model:'truck',facing:'south'}}};
+ class Image{complete=true;naturalWidth=100;naturalHeight=200;set src(url){if(url.includes('facing=east')){this.naturalWidth=160;this.naturalHeight=100;}}}
+ const context=vm.createContext({window:{},document:{addEventListener(){}},Image,Date,VEHICLE_MODELS,vehicleStep,vehicleExit,validateVehicle,vehiclePlacementScale,vehicleFootprint,fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
+ vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\n/,''),context);const runtime=context.window.ATMVehicles;runtime.init({objects:()=>[object],remotes:()=>[],ready:()=>true,pose:()=>({map:'town'})});
+ const v=runtime.actors({x:0,y:0,w:1000,h:1000})[0].vehicle,draws=[],ctx={save(){},restore(){},beginPath(){},ellipse(){},fill(){},drawImage(...args){draws.push(args);}};
+ runtime.draw(ctx,v);assert.equal(draws[0][3],400);assert.equal(draws[0][4],800);assert.equal(draws[0][2]+draws[0][4],object.y);
+ v.facing='east';runtime.draw(ctx,v);assert.equal(draws[1][3],640);assert.equal(draws[1][4],400);assert.equal(vehicleFootprint('truck','south',v.scale).halfX,vehicleFootprint('truck','south',1).halfX*4);
 });
