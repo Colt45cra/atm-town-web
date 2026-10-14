@@ -1,7 +1,7 @@
 export const VEHICLE_MODELS=Object.freeze({
- truck:{name:'ATM Armored Truck',speed:210,width:130,length:76,acceleration:160,brake:420,coast:260,turnSlow:3.4,turnFast:1.35,grip:14},
- buggy:{name:'ATM Buggy',speed:300,width:115,length:60,acceleration:420,brake:650,coast:340,turnSlow:6,turnFast:2.5,grip:10},
- hover:{name:'ATM Hover Car',speed:350,width:120,length:64,acceleration:330,brake:550,coast:300,turnSlow:4.7,turnFast:1.8,grip:7}
+ truck:{name:'ATM Armored Truck',speed:315,width:130,length:76,acceleration:160,brake:420,coast:260,turnSlow:3.4,turnFast:1.35,grip:14},
+ buggy:{name:'ATM Buggy',speed:450,width:115,length:60,acceleration:420,brake:650,coast:340,turnSlow:6,turnFast:2.5,grip:10},
+ hover:{name:'ATM Hover Car',speed:525,width:120,length:64,acceleration:330,brake:550,coast:300,turnSlow:4.7,turnFast:1.8,grip:7}
 });
 export const VEHICLE_FACING=Object.freeze(['east','southeast','south','southwest','west','northwest','north','northeast']);
 const TAU=Math.PI*2;
@@ -14,9 +14,23 @@ export function vehicleDirection(dx,dy,prior='south'){
  if(old>=0&&Math.abs(wrap(angle-old*Math.PI/4))<Math.PI/8+.06)return prior;
  return VEHICLE_FACING[Math.round((angle+TAU)/ (Math.PI/4))%8];
 }
-export function validateVehicle(value){if(!value||!VEHICLE_MODELS[value.model]||!VEHICLE_FACING.includes(value.facing))throw Error('Choose a supported vehicle and facing.');if(value.art_version===5){if(!Number.isFinite(value.anchor_offset)||value.anchor_offset<0||value.anchor_offset>8192)throw Error('Invalid vehicle placement anchor.');return{model:value.model,facing:value.facing,art_version:5,anchor_offset:value.anchor_offset};}return{model:value.model,facing:value.facing};}
-export function vehicleStep(p,input,dt,model,isBlocked,bounds){
- const m=VEHICLE_MODELS[model],duration=Math.max(0,Math.min(.1,Number.isFinite(dt)?dt:0));
+export function validateVehicleTuning(value){
+ const speed=Number(value?.speed),suspension=Number(value?.suspension);
+ if(!Number.isInteger(speed)||speed<80||speed>1200)throw Error('Vehicle maximum speed must be 80–1200 world pixels per second.');
+ if(!Number.isFinite(suspension)||suspension<0||suspension>2)throw Error('Suspension strength must be between 0 and 2.');
+ return{speed,suspension:Math.round(suspension*100)/100};
+}
+export function validateVehicle(value){
+ if(!value||!VEHICLE_MODELS[value.model]||!VEHICLE_FACING.includes(value.facing))throw Error('Choose a supported vehicle and facing.');
+ const result={model:value.model,facing:value.facing};
+ if(value.art_version===5){if(!Number.isFinite(value.anchor_offset)||value.anchor_offset<0||value.anchor_offset>8192)throw Error('Invalid vehicle placement anchor.');result.art_version=5;result.anchor_offset=value.anchor_offset;}
+ if(value.speed!==undefined||value.suspension!==undefined)Object.assign(result,validateVehicleTuning({speed:value.speed??VEHICLE_MODELS[value.model].speed,suspension:value.suspension??1}));
+ return result;
+}
+export function vehicleStep(p,input,dt,model,isBlocked,bounds,tuning=null){
+ const base=VEHICLE_MODELS[model],maxSpeed=Number.isFinite(tuning?.speed)?Math.max(80,Math.min(1200,tuning.speed)):base.speed;
+ const ratio=maxSpeed/base.speed,m={...base,speed:maxSpeed,acceleration:base.acceleration*ratio,brake:base.brake*ratio,coast:base.coast*ratio};
+ const duration=Math.max(0,Math.min(.1,Number.isFinite(dt)?dt:0));
  const raw=Math.hypot(input.x,input.y),throttle=raw>.12?Math.min(1,raw):0;
  let heading=Number.isFinite(p.heading)?p.heading:Math.max(0,VEHICLE_FACING.indexOf(p.facing))*Math.PI/4;
  let speed=p.speed||0,vx=p.vx||0,vy=p.vy||0,x=p.x,y=p.y,facing=p.facing;
