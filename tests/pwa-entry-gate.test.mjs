@@ -14,3 +14,9 @@ test('map entry waits for worker completion, displays progress, and shares one d
  s.deliver({type:'ATM_PWA_DOWNLOAD_COMPLETE',completed:12,total:12});await task;assert.equal(complete,true);assert.equal(s.nodes.find(n=>n.id==='atmMapPreparation').removed,true);
 });
 test('browsers without service workers retain ordinary entry without creating a download gate',async()=>{const s=setup();s.context.state.supported=false;assert.equal(await s.context.prepareWorld({}),false);assert.equal(s.sent.length,0);});
+test('a saved map enters without mounting the download overlay',async()=>{
+ const s=setup(),task=s.context.prepareWorld({mapVersion:'saved'});await new Promise(r=>setImmediate(r));
+ s.deliver({type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'checking',completed:0,total:0});assert.equal(s.context.document.body.children.length,0);
+ s.deliver({type:'ATM_PWA_DOWNLOAD_COMPLETE',completed:0,total:0});await task;assert.equal(s.context.document.body.children.length,0);
+ const next=s.context.prepareWorld({mapVersion:'next'});await new Promise(r=>setImmediate(r));s.deliver({type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'world',completed:0,total:2});assert.equal(s.context.document.body.children.length,1);s.deliver({type:'ATM_PWA_DOWNLOAD_COMPLETE',completed:2,total:2});await next;
+});
