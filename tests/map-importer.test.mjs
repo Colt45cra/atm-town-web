@@ -46,3 +46,8 @@ test('published-map preparation skips all identical files and reuses them throug
  const noop=await handleMapAdmin(admin,user,'admin-map-init',body);assert.equal(noop.no_changes,true);assert.equal(admin.rows.town_map_versions.length,1);
  body.objects[0].name='Renamed';const changed=await handleMapAdmin(admin,user,'admin-map-init',body);assert.deepEqual(changed.upload_paths,[]);assert.equal(changed.summary.changed_objects,1);assert(admin.rows.town_map_versions[1].assets.every(f=>f.reuse));await handleMapAdmin(admin,user,'admin-map-validate',{id:changed.id});await handleMapAdmin(admin,user,'admin-map-publish',{id:changed.id,expected_revision:1});assert.equal(admin.rows.town_map_versions[1].objects[0].name,'Renamed');assert.equal(admin.rows.town_map_versions[1].objects[0].sprite_url,state.objects[0].sprite_url);assert.equal(admin.uploads.size,4);
 });
+test('large landmark imports keep native image dimensions while scaling placement and masks',()=>{
+ const v=input(),o=v.objects[0];Object.assign(o,{name:'Volcano',width:8192,solid:true,collision:{type:'raster',rects:[[-4096,-6000,8192,6000]],depthMode:'silhouette',depthLine:-6000}});
+ const plan=validateMapPlan(v);assert.equal(plan.objects[0].width,8192);assert.equal(plan.objects[0].image_width,400);assert.equal(plan.objects[0].collision.width,8192);
+ o.width=8193;assert.throws(()=>validateMapPlan(v),/dimensions/);o.width=8192;o.image_height=2049;assert.throws(()=>validateMapPlan(v),/dimensions/);
+});
