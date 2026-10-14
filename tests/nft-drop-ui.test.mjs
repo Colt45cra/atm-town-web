@@ -96,16 +96,27 @@ test('ATM Pay donations select at most eight NFTs and open one approval for the 
 test('box thumbnails recover missing image metadata without reopening the donation box',async()=>{
  const id='A'.repeat(64);
  const t=setup([],undefined,[{name:'XRPL NFT',token_id:id,image_url:null}],{name:'Recovered image',image_url:'https://example.invalid/ready.png',image_candidates:['https://example.invalid/backup.png']});
- await t.api.open(true);await new Promise(r=>setImmediate(r));
+ await t.api.open(true);
  const tile=t.list.children.find(n=>n.className==='nftDropGrid').children[0];
+ tile.querySelector('.nftDropThumb img').onerror();
+ await new Promise(r=>setImmediate(r));
  assert.equal(tile.querySelector('.nftDropThumb').children.find(n=>n.tag==='img').src,'https://example.invalid/ready.png');
  assert.equal(tile.querySelector('strong').textContent,'Recovered image');
 });
+test('donation box has a local image fallback even with no stored external URL',async()=>{
+ const id='A'.repeat(64),t=setup([],undefined,[{name:'Donation',token_id:id,image_url:null}],null);
+ await t.api.open(true);
+ const tile=t.list.children.find(n=>n.className==='nftDropGrid').children[0];
+ assert.match(tile.querySelector('.nftDropThumb img').src,/drop-box-image&token_id=/);
+});
+
 test('box thumbnail falls back from a broken image to another gateway without losing the NFT',async()=>{
  const id='A'.repeat(64);
  const t=setup([],undefined,[{name:'NFT',token_id:id,image_url:'https://example.invalid/fail.png',image_candidates:['https://example.invalid/recovered.png']}]);
  await t.api.open(true);
  const tile=t.list.children.find(n=>n.className==='nftDropGrid').children[0],img=tile.querySelector('.nftDropThumb img');
+ img.onerror();
+ assert.match(img.src,/drop-box-image&token_id=/);
  img.onerror();
  assert.equal(img.src,'https://example.invalid/recovered.png');
  assert.equal(tile.querySelector('strong').textContent,'NFT');

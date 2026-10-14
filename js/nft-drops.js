@@ -141,9 +141,15 @@
    for(const row of mine)list.append(rowCard(row));if(!mine.length)list.append(el('p','Choose Create drop, carry an NFT, then sign in Xaman when placing it.'));
    if(pending&&pending.user===user()&&pending.deeplink){const link=el('a','Resume in Xaman');link.href=pending.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.prepend(link);}
  }
- function thumbnail(nft,{eager=false,onUnavailable}={}){
+ function thumbnail(nft,{eager=false,onUnavailable,boxImage=false}={}){
    const holder=el('span');holder.className='nftDropThumb';holder.append(el('span','◈'));
    const sources=artworkCandidates(nft);
+   // Fall back through the same origin if a remote gateway is blocked on mobile.
+   // This route only serves images for NFTs verified in the donation box.
+   if(boxImage&&/^[a-f0-9]{64}$/i.test(nft.token_id||'')){
+     const proxy='/api/xrpl-nft-trade?action=drop-box-image&token_id='+encodeURIComponent(nft.token_id);
+     if(!sources.includes(proxy))sources.splice(sources.length?1:0,0,proxy);
+   }
    if(!sources.length)return holder;
    const img=el('img');img.alt=nft.name||'NFT';img.width=84;img.height=84;img.loading=eager?'eager':'lazy';img.decoding='async';img.referrerPolicy='no-referrer';
    let next=0,timer,settled=false,started=false;
@@ -188,7 +194,7 @@
            image_url:art.image_url||item.nft.image_url,image_candidates:[...new Set([...(art.image_candidates||[]),...(item.nft.image_candidates||[])])]});
          const next=artworkCandidates(item.nft);
          if(!next.length)throw Error('No accessible artwork source');
-         item.card.querySelector('.nftDropThumb').replaceWith(thumbnail(item.nft,{eager:true,onUnavailable:()=>{item.retry.hidden=false;}}));
+         item.card.querySelector('.nftDropThumb').replaceWith(thumbnail(item.nft,{eager:true,boxImage:true,onUnavailable:()=>{item.retry.hidden=false;}}));
          item.card.querySelector('strong').textContent=item.nft.name||'XRPL NFT';
          item.retry.hidden=true;
        }catch{item.retry.hidden=false;}
@@ -199,17 +205,12 @@
        const item={nft,card,automaticRetry:false,loading:false};
        const retry=el('button','Retry artwork');retry.type='button';retry.className='nftDropArtRetry';retry.hidden=true;item.retry=retry;
        retry.onclick=()=>recover(item,true);
-       card.append(thumbnail(nft,{eager:tiles.length<6,onUnavailable:()=>recover(item)}),el('strong',nft.name||'XRPL NFT'),retry);
+       card.append(thumbnail(nft,{eager:tiles.length<6,boxImage:true,onUnavailable:()=>recover(item)}),el('strong',nft.name||'XRPL NFT'),retry);
        grid.append(card);tiles.push(item);
      }
      list.append(grid);
-     // Show the donation inventory immediately, then recover missing metadata
-     // in the background with a small bounded concurrency on mobile.
-     const missing=tiles.filter(item=>!artworkCandidates(item.nft).length);
-     let cursor=0;
-     Promise.all(Array.from({length:Math.min(2,missing.length)},async()=>{
-       while(cursor<missing.length&&mode==='box')await recover(missing[cursor++]);
-     })).catch(()=>{});
+     // Keep the same-origin fallback alive while loading. Refresh metadata
+     // only after an actual image error, not while a healthy image is pending.
      if(!marker&&user()){try{const history=await api('donation-mine',{});for(const request of history.requests||[]){const card=el('article');card.className='nftDropCard';card.append(el('strong','Your donation · '+request.received+' / '+request.total+' received'));if(['signing','submitting','receiving'].includes(request.status)){const resume=el('button',request.status==='signing'?'Resume approval':'Check donation');resume.onclick=()=>run(async()=>signing(await api('donation-status',{id:request.id})));card.append(resume);}else card.append(el('small',request.status==='received'?'Donation complete':request.error||request.status));list.append(card);}}catch{}}
      if(data.marker){const more=el('button','Show more NFTs');more.onclick=()=>run(async()=>{more.hidden=true;try{await showBox(data.marker);}catch(e){more.hidden=false;throw e;}});list.append(more);}
    }catch(e){list.replaceChildren(el('p','Box contents unavailable.'));status(e.message);}
