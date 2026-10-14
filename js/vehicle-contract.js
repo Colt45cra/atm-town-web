@@ -14,7 +14,7 @@ export function vehicleDirection(dx,dy,prior='south'){
  if(old>=0&&Math.abs(wrap(angle-old*Math.PI/4))<Math.PI/8+.06)return prior;
  return VEHICLE_FACING[Math.round((angle+TAU)/ (Math.PI/4))%8];
 }
-export function validateVehicle(value){if(!value||!VEHICLE_MODELS[value.model]||!VEHICLE_FACING.includes(value.facing))throw Error('Choose a supported vehicle and facing.');return{model:value.model,facing:value.facing};}
+export function validateVehicle(value){if(!value||!VEHICLE_MODELS[value.model]||!VEHICLE_FACING.includes(value.facing))throw Error('Choose a supported vehicle and facing.');if(value.art_version===5){if(!Number.isFinite(value.anchor_offset)||value.anchor_offset<0||value.anchor_offset>8192)throw Error('Invalid vehicle placement anchor.');return{model:value.model,facing:value.facing,art_version:5,anchor_offset:value.anchor_offset};}return{model:value.model,facing:value.facing};}
 export function vehicleStep(p,input,dt,model,isBlocked,bounds){
  const m=VEHICLE_MODELS[model],duration=Math.max(0,Math.min(.1,Number.isFinite(dt)?dt:0));
  const raw=Math.hypot(input.x,input.y),throttle=raw>.12?Math.min(1,raw):0;

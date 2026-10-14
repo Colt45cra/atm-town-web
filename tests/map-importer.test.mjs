@@ -52,3 +52,9 @@ test('large landmark imports keep native image dimensions while scaling placemen
  o.width=8193;assert.throws(()=>validateMapPlan(v),/dimensions/);o.width=8192;o.image_height=2049;assert.throws(()=>validateMapPlan(v),/dimensions/);
 });
 test('drivable vehicle metadata survives import and rejects unsupported models',()=>{const v=input();v.objects[0].collision.vehicle={model:'truck',facing:'north'};const p=validateMapPlan(v);assert.deepEqual(p.objects[0].collision.vehicle,{model:'truck',facing:'north'});v.objects[0].collision.vehicle.model='untrusted';assert.throws(()=>validateMapPlan(v),/supported vehicle/);});
+test('matched vehicle preview anchors survive import validation and map merge',()=>{
+ const v=input();v.objects[0].collision.vehicle={model:'buggy',facing:'northeast',art_version:5,anchor_offset:42};
+ const plan=validateMapPlan(v);assert.equal(plan.objects[0].collision.vehicle.anchor_offset,42);assert.equal(plan.objects[0].collision.vehicle.art_version,5);
+ const merged=mergeSelectedMap(base,{...plan,id},p=>p);assert.equal(merged.objects[0].collision.vehicle.anchor_offset,42);
+ for(const offset of [-1,NaN,9000]){v.objects[0].collision.vehicle.anchor_offset=offset;assert.throws(()=>validateMapPlan(v),/placement anchor/);}
+});
