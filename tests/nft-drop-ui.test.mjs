@@ -96,8 +96,10 @@ test('ATM Pay donations select at most eight NFTs and open one approval for the 
 test('box thumbnails recover missing image metadata without reopening the donation box',async()=>{
  const id='A'.repeat(64);
  const t=setup([],undefined,[{name:'XRPL NFT',token_id:id,image_url:null}],{name:'Recovered image',image_url:'https://example.invalid/ready.png',image_candidates:['https://example.invalid/backup.png']});
- await t.api.open(true);await new Promise(r=>setImmediate(r));
+ await t.api.open(true);
  const tile=t.list.children.find(n=>n.className==='nftDropGrid').children[0];
+ tile.querySelector('.nftDropThumb img').onerror();
+ await new Promise(r=>setImmediate(r));
  assert.equal(tile.querySelector('.nftDropThumb').children.find(n=>n.tag==='img').src,'https://example.invalid/ready.png');
  assert.equal(tile.querySelector('strong').textContent,'Recovered image');
 });
