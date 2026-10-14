@@ -30,3 +30,10 @@ test('cached cross-origin expansion images are served locally without another ne
 test('incorrect uploaded checksums cannot mark a download complete',async()=>{
  const s=setup();s.manifest.layers.terrain.fileMeta['1_0'].sha256='0'.repeat(64);await assert.rejects(s.download(),/changed during download/);assert.equal(s.messages.some(m=>m.type==='ATM_PWA_DOWNLOAD_COMPLETE'),false);
 });
+test('legacy cache entries survive app build changes without rechecking unchanged map assets',async()=>{
+ const s=setup();await s.download();const cache=await s.caches.open('atm-town-world-v2'),key='/__atm_world__/download-index.json';
+ // Discover the persisted index key from this cache's contract.
+ const indexKey=(await cache.keys()).find(k=>k.url.includes('index'))?.url;assert.ok(indexKey);const index=await(await cache.match(indexKey)).json();
+ for(const value of Object.values(index.assets)){delete value.mapVersion;value.build='old-app-build';}index.build='old-app-build';await cache.put(indexKey,Response.json(index));
+ const before=s.requests.length;s.messages.length=0;await s.download();assert.equal(s.requests.slice(before).filter(u=>!u.includes('/api/')).length,0);assert.equal(s.messages.some(m=>m.phase==='world'),false);assert.equal(s.messages.at(-1).total,0);
+});

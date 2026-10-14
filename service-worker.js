@@ -8,7 +8,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v283-matched-camera-5';
+const BUILD_CACHE = 'atm-town-shell-v284-fishing-cache-editor-6';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = 'atm-town-world-v2';
 const WORLD_SNAPSHOT='/__atm_world__/manifest.json';
@@ -177,7 +177,7 @@ async function postToClient(client,payload){try{client?.postMessage?.(payload);}
 async function readSaved(cache,key,fallback=null){try{return await(await cache.match(key))?.json()||fallback;}catch{return fallback;}}
 async function downloadWorld(client,suppliedManifest){
   const cache=await caches.open(WORLD_CACHE),oldAssets=await caches.open(ASSET_CACHE);
-  await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'manifest',completed:0,total:0});
+  await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'checking',completed:0,total:0});
   let manifest=suppliedManifest;
   if(!manifest){const r=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('The live map could not be checked. Retry when connected.');manifest=await r.json();}
   if(!manifest?.layers||!manifest.cells||!manifest.bounds)throw Error('The live map is incomplete. Please retry.');
@@ -187,32 +187,35 @@ async function downloadWorld(client,suppliedManifest){
   catch(e){const saved=await readSaved(cache,objectKey);if(!saved)throw Error('The map buildings could not be checked. Retry when connected.');objects=saved.objects;}
   if(!Array.isArray(objects))throw Error('Map buildings are incomplete. Please retry.');
   const files=worldAssets(manifest,objects),index=await readSaved(cache,WORLD_INDEX,{assets:{}});index.assets??={};
-  let completed=0,cursor=0,stopped=false;const total=files.length;
+  const snapshot=await readSaved(cache,WORLD_SNAPSHOT),pending=[];
+  for(const file of files){
+    let existing=await cache.match(file.url),known=index.assets[file.url];
+    if(!existing&&!file.hash){existing=await oldAssets.match(file.url);if(existing)await cache.put(file.url,existing.clone());}
+    const unchanged=existing&&(file.hash?known?.hash===file.hash:known?.mapVersion===version||snapshot&&(snapshot.mapVersion||'original')===version);
+    if(unchanged)index.assets[file.url]={hash:file.hash,mapVersion:version};
+    else pending.push({...file,etag:existing?.headers.get('etag')});
+  }
+  let completed=0,cursor=0,stopped=false;const total=pending.length;
   const saveIndex=()=>cache.put(WORLD_INDEX,new Response(JSON.stringify(index),{headers:{'Content-Type':'application/json'}}));
-  await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'world',completed,total});
+  if(total)await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'world',completed,total});
   const results=await Promise.allSettled(Array.from({length:Math.min(4,total)},async()=>{
     while(cursor<total&&!stopped){
-      const file=files[cursor++];
+      const file=pending[cursor++];
       try{
-        let existing=await cache.match(file.url),known=index.assets[file.url];
-        if(!existing&&!file.hash){existing=await oldAssets.match(file.url);if(existing)await cache.put(file.url,existing.clone());}
-        const unchanged=existing&&(file.hash?known?.hash===file.hash:known?.build===BUILD_CACHE);
-        if(!unchanged){
-          const headers={};if(existing&&!file.hash&&existing.headers.get('etag'))headers['If-None-Match']=existing.headers.get('etag');
+        const headers={};if(!file.hash&&file.etag)headers['If-None-Match']=file.etag;
           const response=await fetch(file.url,{cache:'no-cache',credentials:new URL(file.url).origin===self.location.origin?'same-origin':'omit',headers,signal:AbortSignal.timeout(120000)});
           if(response.status!==304){
             if(!response.ok||response.type==='opaque')throw Error('Could not save a map asset ('+response.status+').');
             if(file.hash){const bytes=await response.clone().arrayBuffer(),digest=await crypto.subtle.digest('SHA-256',bytes);const hash=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');if(hash!==file.hash.toLowerCase())throw Error('A map asset changed during download. Retry to get the current map.');}
             await cache.put(file.url,response);
-          }else if(!existing)throw Error('The map asset is not saved yet.');
-        }
-        index.assets[file.url]={hash:file.hash,build:BUILD_CACHE};completed++;
+          }else if(!await cache.match(file.url))throw Error('The map asset is not saved yet.');
+        index.assets[file.url]={hash:file.hash,mapVersion:version};completed++;
         if(completed%5===0||completed===total){await saveIndex();await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'world',completed,total});}
       }catch(error){stopped=true;throw error;}
     }
   }));
   await saveIndex();const failure=results.find(r=>r.status==='rejected');if(failure)throw failure.reason;
-  index.build=BUILD_CACHE;await saveIndex();
+  index.mapVersion=version;await saveIndex();
   // Publish a complete snapshot only after all of its assets are stored.
   await cache.put(objectKey,new Response(JSON.stringify({objects}),{headers:{'Content-Type':'application/json'}}));
   await cache.put(WORLD_SNAPSHOT,new Response(JSON.stringify(manifest),{headers:{'Content-Type':'application/json'}}));

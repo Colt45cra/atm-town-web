@@ -54,3 +54,5 @@ export function vehicleExit(p,model,isBlocked,bounds){const m=VEHICLE_MODELS[mod
 export function vehicleSpriteWidth(facing){return ['north','south'].includes(facing)?100:['east','west'].includes(facing)?160:145;}
 export function vehiclePlacementScale(object){return object.width/vehicleSpriteWidth(object.collision?.vehicle?.facing);}
 export function vehicleFootprint(model,facing,scale=1){const m=VEHICLE_MODELS[model],vertical=['north','south'].includes(facing),diagonal=!vertical&&!['east','west'].includes(facing);if(diagonal){const extent=(m.width+m.length)*Math.SQRT1_2;return{halfX:extent*.35*scale,halfY:extent*.28*scale};}return{halfX:(vertical?m.length:m.width)*.35*scale,halfY:(vertical?m.width:m.length)*.28*scale};}
+
+export function vehiclePlacementPose(object){const offset=object.collision?.vehicle?.anchor_offset;return{x:object.x,y:object.y-22-(Number.isFinite(offset)?offset:0)};}

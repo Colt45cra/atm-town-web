@@ -177,22 +177,22 @@
       const text=document.createElement('p');text.setAttribute('aria-live','polite');
       const progress=document.createElement('progress');progress.style.cssText='width:100%;height:20px';
       const hint=document.createElement('p');hint.textContent='Saving the map on this device. Later visits reuse saved files.';
-      const controls=document.createElement('div');card.append(title,text,progress,hint,controls);overlay.appendChild(card);document.body.appendChild(overlay);
-      const paint=()=>{const d=state.download;progress.max=Math.max(1,d.total);progress.value=d.completed;text.textContent=d.total?`${d.completed} / ${d.total} map files ready`:'Checking the live map and buildings…';};
+      const controls=document.createElement('div');card.append(title,text,progress,hint,controls);overlay.appendChild(card);
+      const paint=()=>{const d=state.download;if(d.status==='world'&&d.total>0&&!overlay.isConnected)document.body.appendChild(overlay);progress.max=Math.max(1,d.total);progress.value=d.completed;text.textContent=d.total?`${d.completed} / ${d.total} map files ready`:'Checking the live map and buildings…';};
       global.addEventListener('atm:pwa-state-changed',paint);
       try{
         while(true){
           controls.replaceChildren();
           try{await downloadWorld(manifest);return true;}
           catch(error){
-            title.textContent='Map download paused';text.textContent=cleanMessage(error.message);hint.textContent='Downloaded files are saved. Retry to continue where you left off.';
+            if(!overlay.isConnected)document.body.appendChild(overlay);title.textContent='Map download paused';text.textContent=cleanMessage(error.message);hint.textContent='Downloaded files are saved. Retry to continue where you left off.';
             const again=await new Promise(resolve=>{const retry=document.createElement('button');retry.textContent='Retry download';const back=document.createElement('button');back.textContent='Back';for(const b of [retry,back])b.style.cssText='margin:8px;padding:14px;border-radius:10px;background:#53e1cb;color:#062731;border:0;font-size:16px';retry.onclick=()=>resolve(true);back.onclick=()=>resolve(false);controls.append(retry,back);});
             if(!again)throw error;title.textContent='Updating ATM Town map…';
           }
         }
       }finally{global.removeEventListener('atm:pwa-state-changed',paint);overlay.remove();}
     })();
-    try{return await worldPreparation;}catch(e){worldPreparation=null;throw e;}
+    try{return await worldPreparation;}finally{worldPreparation=null;}
   }
 
   async function storageEstimate(){
