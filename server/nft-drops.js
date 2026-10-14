@@ -6,6 +6,7 @@ import { setCors, requireUser, adminClient, sendError } from '../lib/auth.js';
 import { NFT_ID, OFFER_ID, XRPL_ADDRESS, findOwnedNft, rpc, createXamanTransaction, cancelXamanTransaction } from '../lib/xrpl-nft-trading.js';
 import { fetchXamanPayload, XRPL_TX_HASH } from '../lib/xaman-vending.js';
 import { resolveMetadata } from '../api/xrpl-nft-metadata.js';
+import { fetchDonationArtwork } from '../lib/nft-donation-artwork.js';
 import { REWARDS_NFT_WALLET, DONATION_BOX_ID, freeOfferTransaction, matchesFreeOffer, validFreeOffer, offerIndex, placement, fail } from '../lib/nft-drops.js';
 
 const pool = body => payloadIntegrationRequest('/api/integrations/v1/nft-pool',body,{timeoutMs:45000});
@@ -276,6 +277,26 @@ export default async function handler(req,res) {
       const metadata=nft?await resolveMetadata(nft.URI,row.token_id,{refresh:req.query.refresh==='1'}):{};
       if(metadata.image_url)check(await admin.from('town_nft_drops').update({image_url:metadata.image_url,name:metadata.name||row.name}).eq('id',row.id).eq('status',row.status));
       return res.json({name:metadata.name||row.name,image_url:metadata.image_url||row.image_url||null,image_candidates:metadata.image_candidates||[]});
+    }
+    if(req.method==='GET'&&action==='drop-box-image') {
+      const tokenId=String(req.query?.token_id||'').toUpperCase();
+      if(!/^[A-F0-9]{64}$/.test(tokenId))throw fail('Invalid NFT token.',400);
+      // Restrict shared artwork recovery to NFTs actually in the donation pool.
+      const inventory=await pool({action:'box'});
+      if(!(inventory.tokens||[]).some(n=>n.token_id===tokenId))throw fail('NFT is not in the donation box.',404);
+      const nft=await findOwnedNft(REWARDS_NFT_WALLET,tokenId);
+      if(!nft)throw fail('NFT is no longer in the rewards wallet.',404);
+      const metadata=await resolveMetadata(nft.URI,tokenId);
+      const stored=check(await adminClient().from('town_nft_drops')
+        .select('image_url').eq('token_id',tokenId).eq('kind','donation').eq('status','received')
+        .order('created_at',{ascending:false}).limit(1));
+      const sources=[...(metadata.image_candidates||[]),metadata.image_url,stored?.[0]?.image_url,metadata.uri];
+      // Only named public IPFS/Arweave gateways, bounded bytes, non-HTML types.
+      const image=await fetchDonationArtwork(sources);
+      res.setHeader('Content-Type',image.contentType);
+      res.setHeader('X-Content-Type-Options','nosniff');
+      res.setHeader('Cache-Control','public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800');
+      return res.status(200).end(image.body);
     }
     if(req.method==='GET'&&action==='drop-box-art') {
       const tokenId=String(req.query?.token_id||'').toUpperCase();
