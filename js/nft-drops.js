@@ -209,13 +209,8 @@
        grid.append(card);tiles.push(item);
      }
      list.append(grid);
-     // Show the donation inventory immediately, then recover missing metadata
-     // in the background with a small bounded concurrency on mobile.
-     const missing=tiles.filter(item=>!artworkCandidates(item.nft).length);
-     let cursor=0;
-     Promise.all(Array.from({length:Math.min(2,missing.length)},async()=>{
-       while(cursor<missing.length&&mode==='box')await recover(missing[cursor++]);
-     })).catch(()=>{});
+     // Keep the same-origin fallback alive while loading. Refresh metadata
+     // only after an actual image error, not while a healthy image is pending.
      if(!marker&&user()){try{const history=await api('donation-mine',{});for(const request of history.requests||[]){const card=el('article');card.className='nftDropCard';card.append(el('strong','Your donation · '+request.received+' / '+request.total+' received'));if(['signing','submitting','receiving'].includes(request.status)){const resume=el('button',request.status==='signing'?'Resume approval':'Check donation');resume.onclick=()=>run(async()=>signing(await api('donation-status',{id:request.id})));card.append(resume);}else card.append(el('small',request.status==='received'?'Donation complete':request.error||request.status));list.append(card);}}catch{}}
      if(data.marker){const more=el('button','Show more NFTs');more.onclick=()=>run(async()=>{more.hidden=true;try{await showBox(data.marker);}catch(e){more.hidden=false;throw e;}});list.append(more);}
    }catch(e){list.replaceChildren(el('p','Box contents unavailable.'));status(e.message);}
