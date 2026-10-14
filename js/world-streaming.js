@@ -341,6 +341,31 @@
       };
     }
 
+    // Read one pixel from already-decoded map art; never load or decode textures
+    // while sampling a moving vehicle. Dark pavement is smooth, grass and sand rough.
+    surfaceRoughnessAt(x,y){
+      if(!this.manifest||!this.bounds)return 0.25;
+      const key=this.cellKeyAt(x,y),cell=this.cells[key],entry=this.visualCaches.get('terrain')?.get(key);
+      if(!cell||entry?.status!=='ready'||!entry.image)return 0.25;
+      const sx=Math.floor((x-cell.x)*entry.image.naturalWidth/cell.width);
+      const sy=Math.floor((y-cell.y)*entry.image.naturalHeight/cell.height);
+      if(sx<0||sy<0||sx>=entry.image.naturalWidth||sy>=entry.image.naturalHeight)return 0.25;
+      try{
+        if(!this._surfaceSampleCanvas){
+          this._surfaceSampleCanvas=document.createElement('canvas');
+          this._surfaceSampleCanvas.width=this._surfaceSampleCanvas.height=1;
+          this._surfaceSampleContext=this._surfaceSampleCanvas.getContext('2d',{willReadFrequently:true});
+        }
+        const ctx=this._surfaceSampleContext;if(!ctx)return 0.25;
+        ctx.clearRect(0,0,1,1);ctx.drawImage(entry.image,sx,sy,1,1,0,0,1,1);
+        const [r,g,b,a]=ctx.getImageData(0,0,1,1).data;
+        if(a<80)return 0.25;
+        const green=g>r*1.10&&g>b*1.10,earth=r>g*1.06&&g>b*1.10;
+        const pavement=Math.max(r,g,b)<116&&Math.max(r,g,b)-Math.min(r,g,b)<48;
+        return green||earth?1:pavement?0.06:0.4;
+      }catch{return 0.25;}
+    }
+
     collisionAt(x, y) {
       if (!this.manifest) return null;
       const point = this._legacySamplePoint(x, y);
