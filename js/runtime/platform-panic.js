@@ -22,7 +22,7 @@
     open:false,running:false,last:0,elapsed:0,viewW:BASE_VIEW_W,cameraX:0,cameraY:0,
     astronaut:false,bestHeight:0,bestCoins:0,lavaY:START_LAVA_Y,lavaSpeed:18,
     jetpackUnlocked:false,jetpackActive:false,jetpackNotice:0,
-    generatedTop:START_Y,seed:1,platformSerial:0
+    generatedTop:START_Y,seed:1,platformSerial:0,attributes:{speed:1,jump:1,gravity:1,jumpImpulse:1}
   };
   const runner={x:110,y:START_Y,vx:0,vy:0,onGround:true,face:1,coins:0,jetpackFuel:0};
   let platforms=[];
@@ -98,14 +98,14 @@
   }
 
   function resetRun(){
-    state.elapsed=0;state.astronaut=isAstronaut();state.cameraX=0;state.cameraY=0;
+    state.elapsed=0;state.astronaut=isAstronaut();state.attributes=window.atmArcadeAttributes?.()||{speed:1,jump:1,gravity:1,jumpImpulse:1};state.cameraX=0;state.cameraY=0;
     state.lavaY=START_LAVA_Y;state.lavaSpeed=18;state.seed=(Date.now()>>>0)||1;
     state.jetpackUnlocked=false;state.jetpackActive=false;state.jetpackNotice=0;
     Object.assign(runner,{x:110,y:START_Y,vx:0,vy:0,onGround:true,face:1,coins:0,jetpackFuel:0});
     buildStartingTower();
     ui.time.textContent='0:00';ui.coins.textContent='0';ui.height.textContent='0m';
     ui.ability.classList.remove('jetpack');
-    ui.ability.textContent=state.astronaut?'ASTRONAUT LOW GRAVITY · JETPACK AT 440m':'STANDARD PHYSICS · JETPACK AT 440m';
+    ui.ability.textContent=(state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS')+' · '+(window.ATMAttributeEffects?.arcadeLabel?.(state.attributes)||'STANDARD STATS')+' · JETPACK AT 440m';
     const tapHint=panel.querySelector('.platformPanicTapHint');if(tapHint)tapHint.textContent='TAP PLAY AREA TO JUMP';
   }
 
@@ -119,7 +119,7 @@
   function finish(reason='Lava caught you'){
     state.running=false;
     const height=Math.max(0,Math.floor((START_Y-runner.y)/10));
-    window.atmLeaderboardSubmit?.('platform-panic',{score_value:height,secondary_value:runner.coins,details:{coins:runner.coins,elapsed_ms:Math.round(state.elapsed*1000)}});
+    window.atmLeaderboardSubmit?.('platform-panic',{score_value:height,secondary_value:runner.coins,details:{coins:runner.coins,elapsed_ms:Math.round(state.elapsed*1000),attributes:state.attributes}});
     try{
       state.bestHeight=Math.max(Number(localStorage.getItem('atm_platform_panic_best_height_v2')||0),height);
       state.bestCoins=Math.max(Number(localStorage.getItem('atm_platform_panic_best_coins_v2')||0),runner.coins);
@@ -154,13 +154,13 @@
 
   function setControl(name,value){if(name==='jump'&&value&&!input.jump)input.jumpPressed=true;input[name]=value;}
   function updateMoving(){for(const p of moving)p.x=p.baseX+Math.sin(state.elapsed*p.speed+p.phase)*p.range;}
-  function jumpIfNeeded(){if(!input.jumpPressed)return;input.jumpPressed=false;if(runner.onGround){runner.onGround=false;runner.vy=-(state.astronaut?720:625);}}
+  function jumpIfNeeded(){if(!input.jumpPressed)return;input.jumpPressed=false;if(runner.onGround){runner.onGround=false;runner.vy=-(state.astronaut?720:625)*state.attributes.jumpImpulse;}}
 
   function currentHeight(){return Math.max(0,Math.floor((START_Y-runner.y)/10));}
   function unlockJetpackIfNeeded(height=currentHeight()){
     if(state.jetpackUnlocked||height<JETPACK_UNLOCK_HEIGHT)return;
     state.jetpackUnlocked=true;state.jetpackNotice=3.2;runner.jetpackFuel=JETPACK_FUEL_MAX;
-    ui.ability.classList.add('jetpack');ui.ability.textContent='🚀 JETPACK 100% · HOLD JUMP';
+    ui.ability.classList.add('jetpack');ui.ability.textContent='🚀 JETPACK 100% · HOLD JUMP · '+(window.ATMAttributeEffects?.arcadeLabel?.(state.attributes)||'STANDARD STATS');
     const tapHint=panel.querySelector('.platformPanicTapHint');if(tapHint)tapHint.textContent='HOLD PLAY AREA TO JETPACK';
   }
   function updateJetpack(dt){
@@ -170,15 +170,15 @@
     if(!runner.onGround&&input.jump&&runner.jetpackFuel>0){
       state.jetpackActive=true;
       runner.jetpackFuel=Math.max(0,runner.jetpackFuel-dt);
-      runner.vy-=JETPACK_THRUST*dt;
-      runner.vy=Math.max(-JETPACK_MAX_RISE_SPEED,runner.vy);
+      runner.vy-=JETPACK_THRUST*dt*Math.sqrt(state.attributes.jump);
+      runner.vy=Math.max(-JETPACK_MAX_RISE_SPEED*Math.sqrt(state.attributes.jump),runner.vy);
     }
     const fuel=Math.round((runner.jetpackFuel/JETPACK_FUEL_MAX)*100);
-    ui.ability.textContent=`🚀 JETPACK ${fuel}% · HOLD JUMP`;
+    ui.ability.textContent=`🚀 JETPACK ${fuel}% · HOLD JUMP · ${window.ATMAttributeEffects?.arcadeLabel?.(state.attributes)||'STANDARD STATS'}`;
   }
 
   function moveHorizontal(dt){
-    const accel=runner.onGround?1850:state.astronaut?780:1050,maxSpeed=state.astronaut?300:335,friction=runner.onGround?1900:state.astronaut?180:260;
+    const speed=state.attributes.speed,accel=(runner.onGround?1850:state.astronaut?780:1050)*speed,maxSpeed=(state.astronaut?300:335)*speed,friction=(runner.onGround?1900:state.astronaut?180:260)*Math.sqrt(speed);
     const keyDir=(input.right?1:0)-(input.left?1:0);const dir=Math.abs(input.axisX)>.04?input.axisX:keyDir;
     if(Math.abs(dir)>.04){runner.vx+=dir*accel*dt;runner.face=dir<0?-1:1;}else{const dec=Math.min(Math.abs(runner.vx),friction*dt);runner.vx-=Math.sign(runner.vx)*dec;}
     runner.vx=Math.max(-maxSpeed,Math.min(maxSpeed,runner.vx));runner.x=Math.max(PLAYER_W/2,Math.min(WORLD_W-PLAYER_W/2,runner.x+runner.vx*dt));
@@ -186,9 +186,9 @@
 
   function moveVertical(dt){
     const prevY=runner.y;
-    runner.vy+=(state.astronaut?470:1550)*dt;
+    runner.vy+=(state.astronaut?470:1550)*state.attributes.gravity*dt;
     updateJetpack(dt);
-    runner.vy=Math.min(runner.vy,state.astronaut?520:900);
+    runner.vy=Math.min(runner.vy,(state.astronaut?520:900)*Math.sqrt(state.attributes.gravity));
     let ny=runner.y+runner.vy*dt;runner.onGround=false;
     if(runner.vy>=0){
       let landing=null;
