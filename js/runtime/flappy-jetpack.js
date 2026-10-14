@@ -12,7 +12,7 @@
     start:document.getElementById('flappyJetpackStart'),close:document.getElementById('flappyJetpackClose')
   };
   const VIEW_H=540,MIN_VIEW_W=360,MAX_VIEW_W=960,PIPE_W=82;
-  const state={open:false,running:false,over:false,last:0,time:0,viewW:960,score:0,coins:0,best:0,speed:185,flame:0,astronaut:false};
+  const state={open:false,running:false,over:false,last:0,time:0,viewW:960,score:0,coins:0,best:0,speed:185,flame:0,astronaut:false,attributes:{speed:1,jump:1,gravity:1,jumpImpulse:1}};
   const flyer={x:240,y:270,vy:0,rotation:0};
   let pipes=[];
 
@@ -35,15 +35,15 @@
   }
   function makePipe(x){const gap=randomGap();return{x,gapY:gap.gapY,gapH:gap.gapH,passed:false,coinTaken:false,coinOffset:(Math.random()-.5)*Math.min(70,gap.gapH*.4)};}
   function reset(){
-    resize();state.running=false;state.over=false;state.time=0;state.score=0;state.coins=0;state.speed=185;state.flame=0;state.astronaut=isAstronaut();
+    resize();state.running=false;state.over=false;state.time=0;state.score=0;state.coins=0;state.speed=185;state.flame=0;state.astronaut=isAstronaut();state.attributes=window.atmArcadeAttributes?.()||{speed:1,jump:1,gravity:1,jumpImpulse:1};
     flyer.x=state.viewW*.28;flyer.y=VIEW_H*.48;flyer.vy=0;flyer.rotation=0;
     pipes=[];let x=state.viewW+180;for(let i=0;i<4;i++){pipes.push(makePipe(x));x+=330;}
-    ui.score.textContent='0';ui.coins.textContent='0';ui.mode.textContent=state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD FLIGHT';loadBest();
+    ui.score.textContent='0';ui.coins.textContent='0';ui.mode.textContent=(state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD FLIGHT')+' · '+(window.ATMAttributeEffects?.arcadeLabel?.(state.attributes)||'STANDARD STATS');loadBest();
   }
   function setMessage(title,detail,button){ui.message.querySelector('h3').textContent=title;ui.detail.textContent=detail;ui.start.textContent=button;ui.message.classList.remove('hidden');}
   function showIntro(){reset();setMessage('Flappy Jetpack','Tap anywhere in the play area. Desktop players can also use Space or the up arrow.','START FLIGHT');}
   function start(){window.atmRewardsStart?.('flappy-jetpack');reset();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('flappy-jetpack',{mode:state.astronaut?'astronaut':'standard'});flap();requestAnimationFrame(loop);}
-  function end(reason){if(!state.running)return;state.running=false;state.over=true;saveBest();window.atmLeaderboardSubmit?.('flappy-jetpack',{score_value:state.score,secondary_value:state.coins,details:{coins:state.coins,duration_ms:Math.round(state.time*1000)}});setMessage('FLIGHT OVER',`${reason} · Score ${state.score} · Coins ${state.coins} · Best ${state.best}`,'FLY AGAIN');}
+  function end(reason){if(!state.running)return;state.running=false;state.over=true;saveBest();window.atmLeaderboardSubmit?.('flappy-jetpack',{score_value:state.score,secondary_value:state.coins,details:{coins:state.coins,duration_ms:Math.round(state.time*1000),attributes:state.attributes}});setMessage('FLIGHT OVER',`${reason} · Score ${state.score} · Coins ${state.coins} · Best ${state.best}`,'FLY AGAIN');}
   function open(){
     if(state.open)return;state.open=true;dialogOpen=true;joy.x=joy.y=0;knob.style.transform='translate(0,0)';
     if(jumpState?.active)jumpState.active=false;if(jetpackState?.active)endJetpack();
@@ -52,12 +52,12 @@
   function close(){window.atmRewardsExit?.('flappy-jetpack');window.atmVoiceExitGameZone?.('flappy-jetpack');state.open=false;state.running=false;dialogOpen=false;document.body.classList.remove('flappy-jetpack-open');panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
   window.openATMFlappyJetpack=open;
 
-  function flap(){if(!state.running)return;flyer.vy=state.astronaut?-315:-385;state.flame=.22;}
+  function flap(){if(!state.running)return;flyer.vy=(state.astronaut?-315:-385)*state.attributes.jumpImpulse;state.flame=.22;}
   function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
   function update(dt){
     state.time+=dt;state.flame=Math.max(0,state.flame-dt);
     state.speed=185+Math.min(170,state.score*5+state.time*1.2);
-    const gravity=state.astronaut?610:900,maxFall=state.astronaut?410:570;
+    const gravity=(state.astronaut?610:900)*state.attributes.gravity,maxFall=(state.astronaut?410:570)*Math.sqrt(state.attributes.gravity);
     flyer.vy=Math.min(maxFall,flyer.vy+gravity*dt);flyer.y+=flyer.vy*dt;
     // Keep Flappy Jetpack readable: velocity influences a small lean, but the
     // body angle eases toward it instead of snapping after every thrust tap.
