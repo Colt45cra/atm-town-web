@@ -1,4 +1,5 @@
-import {VEHICLE_MODELS,VEHICLE_FACING,vehicleSpriteWidth,validateVehicle,vehicleStep,vehicleExit,vehiclePlacementScale,vehicleFootprint} from './vehicle-contract.js?v=assisted-driving-3';
+import {VEHICLE_MODELS,VEHICLE_FACING,vehicleSpriteWidth,validateVehicle,vehicleStep,vehicleExit,vehiclePlacementScale,vehicleFootprint} from './vehicle-contract.js?v=frame-sizing-4';
+import {vehicleFrame} from './vehicle-artwork.js?v=frame-sizing-4';
 const states=new Map(),images=new Map();let game=null,active=null,busy=false,lastPoll=0,polling=false,lastHeartbeat=0,heartbeatBusy=false,lastLeaseAck=0;
 let objectSource=null,vehicleObjects=[],poseStamp=-1,poseCache=[];const specs=new WeakMap();
 const invalidatePoses=()=>{poseStamp=-1;};
@@ -21,6 +22,6 @@ async function heartbeat(){if(!active||heartbeatBusy||busy||Date.now()-lastHeart
 function publicState(){return active?{vehicle_id:active.vehicle_id,model:active.model,facing:active.facing}:null;}
 function blocked(x,y){return poses().some(v=>{if(v.vehicle_id===active?.vehicle_id)return false;const b=vehicleFootprint(v.model,v.facing,v.scale);return Math.abs(x-v.x)<b.halfX&&Math.abs(y-(v.y+22))<b.halfY;});}
 function actors(view){return poses().filter(v=>{const extent=200*Math.max(1,v.scale||1);return v.x>view.x-extent&&v.x<view.x+view.w+extent&&v.y>view.y-extent&&v.y<view.y+view.h+extent;}).map(v=>({type:'vehicle',vehicle:v,depth:v.y+22}));}
-function draw(ctx,v){const im=image(v.model,v.facing);if(!im.complete||!im.naturalWidth)return;const width=vehicleSpriteWidth(v.facing)*(v.scale||1),height=width*im.naturalHeight/im.naturalWidth;ctx.save();ctx.fillStyle='rgba(0,0,0,.23)';ctx.beginPath();ctx.ellipse(v.x,v.y+18,width*.35,12*(v.scale||1),0,0,Math.PI*2);ctx.fill();ctx.drawImage(im,v.x-width/2,v.y+22-height,width,height);ctx.restore();}
+function draw(ctx,v){const im=image(v.model,v.facing);if(!im.complete||!im.naturalWidth)return;const frame=vehicleFrame(v.model,v.facing,v.object?.collision?.vehicle?.facing||'south');if(!frame)return;const width=frame.width*(v.scale||1),height=frame.height*(v.scale||1);ctx.save();ctx.fillStyle='rgba(0,0,0,.23)';ctx.beginPath();ctx.ellipse(v.x,v.y+18,width*.35,12*(v.scale||1),0,0,Math.PI*2);ctx.fill();ctx.drawImage(im,frame.x,frame.y,frame.w,frame.h,v.x-width/2,v.y+22-height,width,height);ctx.restore();}
 window.ATMVehicles={init,nearest,interact,update,actors,draw,blocked,publicState,isDriving:()=>!!active};window.ATMInitVehicles?.();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&active)leave(true);});

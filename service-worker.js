@@ -8,7 +8,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v281-assisted-driving-3';
+const BUILD_CACHE = 'atm-town-shell-v282-frame-sizing-4';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = 'atm-town-world-v2';
 const WORLD_SNAPSHOT='/__atm_world__/manifest.json';
@@ -30,7 +30,7 @@ const SHELL = [
   '/js/fishing.js',
   '/js/nft-drops.js',
   '/js/world-objects.js',
-  '/js/vehicles.js','/js/vehicle-contract.js','/js/fence-collision.js',
+  '/js/vehicles.js','/js/vehicle-artwork.js','/js/vehicle-contract.js','/js/fence-collision.js',
   '/js/world-object-index.js',
   '/js/object-render-sprite.js',
   '/js/footprint-geometry.js',
