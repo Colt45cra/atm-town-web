@@ -16,7 +16,7 @@
   const jumpZone=document.getElementById('skyRunJumpZone');
   const WORLD_W=4320,WORLD_H=620,BASE_VIEW_W=960,VIEW_H=540,PLAYER_W=32,PLAYER_H=52;
   const input={left:false,right:false,axisX:0,jump:false,jumpPressed:false};
-  const state={open:false,running:false,finished:false,last:0,time:0,cameraX:0,viewW:BASE_VIEW_W,best:null,astronaut:false};
+  const state={open:false,running:false,finished:false,last:0,time:0,cameraX:0,viewW:BASE_VIEW_W,best:null,astronaut:false,attributes:{speed:1,jump:1,gravity:1,jumpImpulse:1}};
   const runner={x:110,y:500,vx:0,vy:0,onGround:false,face:1,checkpointX:110,checkpointY:500,checkpointIndex:0,cash:0,bounceReady:false,jetpack:0,jetpackActive:false,invuln:0};
 
   const basePlatforms=[
@@ -54,16 +54,16 @@
   function saveBest(){try{const old=Number(localStorage.getItem('atm_sky_run_best_v1')||0);if(!old||state.time<old)localStorage.setItem('atm_sky_run_best_v1',String(state.time));state.best=Number(localStorage.getItem('atm_sky_run_best_v1')||0)||null;}catch(_e){state.best=null;}}
   function resetPickups(){for(const p of pickups)p.collected=false;}
   function resetRun(){
-    state.running=false;state.finished=false;state.time=0;state.cameraX=0;state.astronaut=isAstronaut();
+    state.running=false;state.finished=false;state.time=0;state.cameraX=0;state.astronaut=isAstronaut();state.attributes=window.atmArcadeAttributes?.()||{speed:1,jump:1,gravity:1,jumpImpulse:1};
     Object.assign(runner,{x:110,y:500,vx:0,vy:0,onGround:true,face:1,checkpointX:110,checkpointY:500,checkpointIndex:0,cash:0,bounceReady:false,jetpack:0,jetpackActive:false,invuln:0});
     resetPickups();
     ui.time.textContent='0:00.00';ui.cash.textContent='0/17';ui.checkpoint.textContent='START';
-    ui.ability.textContent=state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS';
+    ui.ability.textContent=(state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS')+' · '+(window.ATMAttributeEffects?.arcadeLabel?.(state.attributes)||'STANDARD STATS');
   }
   function startRun(){window.atmRewardsStart?.('sky-run');resetRun();state.running=true;state.last=performance.now();ui.message.classList.add('hidden');window.atmLeaderboardStart?.('sky-run',{mode:'time-trial'});requestAnimationFrame(loop);}
   function showIntro(){resetRun();ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='Rooftop Vault Run';ui.messageDetail.textContent='Desktop: A/D or arrows to move, Space to jump. Mobile: drag the joystick and tap the play area to jump.';ui.start.textContent='START RUN';}
   function showFinish(){
-    state.running=false;state.finished=true;saveBest();window.atmLeaderboardSubmit?.('sky-run',{score_value:Math.round(state.time*1000),secondary_value:runner.cash,details:{cash:runner.cash}});ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='VAULT REACHED!';
+    state.running=false;state.finished=true;saveBest();window.atmLeaderboardSubmit?.('sky-run',{score_value:Math.round(state.time*1000),secondary_value:runner.cash,details:{cash:runner.cash,attributes:state.attributes}});ui.message.classList.remove('hidden');ui.message.querySelector('h3').textContent='VAULT REACHED!';
     ui.messageDetail.textContent=`Time ${fmtTime(state.time)} · Cash ${runner.cash}/17${state.best?` · Best ${fmtTime(state.best)}`:''}`;ui.start.textContent='RUN AGAIN';
   }
   function openSkyRun(){
@@ -99,7 +99,7 @@
   function allPlatforms(){return basePlatforms.concat(movingPlatforms);}
 
   function moveHorizontal(dt){
-    const accel=runner.onGround?1850:state.astronaut?780:1050,maxSpeed=state.astronaut?300:335,friction=runner.onGround?1900:state.astronaut?180:260;
+    const speed=state.attributes.speed,accel=(runner.onGround?1850:state.astronaut?780:1050)*speed,maxSpeed=(state.astronaut?300:335)*speed,friction=(runner.onGround?1900:state.astronaut?180:260)*Math.sqrt(speed);
     const keyDir=(input.right?1:0)-(input.left?1:0);let dir=Math.abs(input.axisX)>.04?input.axisX:keyDir;if(Math.abs(dir)>.04){runner.vx+=dir*accel*dt;runner.face=dir<0?-1:1;}else{const dec=Math.min(Math.abs(runner.vx),friction*dt);runner.vx-=Math.sign(runner.vx)*dec;}
     runner.vx=Math.max(-maxSpeed,Math.min(maxSpeed,runner.vx));
     let nx=runner.x+runner.vx*dt;let r=playerRect(nx,runner.y);
@@ -111,16 +111,16 @@
     if(!input.jumpPressed)return;input.jumpPressed=false;
     if(runner.onGround){
       const bounce=runner.bounceReady?1.55:1;runner.bounceReady=false;runner.onGround=false;
-      runner.vy=-(state.astronaut?720:625)*bounce;
+      runner.vy=-(state.astronaut?720:625)*bounce*state.attributes.jumpImpulse;
     }
   }
 
   function moveVertical(dt){
     const prevY=runner.y;
     runner.jetpackActive=false;
-    if(runner.jetpack>0&&input.jump&&!runner.onGround){runner.jetpackActive=true;runner.vy-=1050*dt;runner.vy=Math.max(runner.vy,-520);runner.jetpack=Math.max(0,runner.jetpack-dt);}
+    if(runner.jetpack>0&&input.jump&&!runner.onGround){runner.jetpackActive=true;runner.vy-=1050*dt*Math.sqrt(state.attributes.jump);runner.vy=Math.max(runner.vy,-520*Math.sqrt(state.attributes.jump));runner.jetpack=Math.max(0,runner.jetpack-dt);}
     else if(runner.jetpack>0)runner.jetpack=Math.max(0,runner.jetpack-dt*.25);
-    const gravity=state.astronaut?470:1550;runner.vy+=gravity*dt;runner.vy=Math.min(runner.vy,state.astronaut?520:900);
+    const gravity=(state.astronaut?470:1550)*state.attributes.gravity;runner.vy+=gravity*dt;runner.vy=Math.min(runner.vy,(state.astronaut?520:900)*Math.sqrt(state.attributes.gravity));
     let ny=runner.y+runner.vy*dt;runner.onGround=false;
     if(runner.vy>=0){
       let landing=null;
@@ -155,7 +155,7 @@
     const viewW=state.viewW||BASE_VIEW_W;const target=Math.max(0,Math.min(WORLD_W-viewW,runner.x-viewW*.34));state.cameraX+=(target-state.cameraX)*Math.min(1,dt*6);
     ui.time.textContent=fmtTime(state.time);ui.cash.textContent=`${runner.cash}/17`;
     const extras=[];if(runner.bounceReady)extras.push('BOUNCE READY');if(runner.jetpack>0)extras.push(`JETPACK ${runner.jetpack.toFixed(1)}s`);
-    ui.ability.textContent=(state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS')+(extras.length?' · '+extras.join(' · '):'');
+    ui.ability.textContent=(state.astronaut?'ASTRONAUT LOW GRAVITY':'STANDARD PHYSICS')+' · '+(window.ATMAttributeEffects?.arcadeLabel?.(state.attributes)||'STANDARD STATS')+(extras.length?' · '+extras.join(' · '):'');
     window.atmPublishArcadeGameState?.('sky-run',{x:runner.x,y:runner.y,face:runner.face,onGround:runner.onGround,vx:runner.vx,time:state.time,jetpack:runner.jetpackActive});
   }
 
