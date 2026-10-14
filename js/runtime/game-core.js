@@ -1191,6 +1191,7 @@ function landAtFootprint(px,py){
   return samples.every(([ox,oy])=>landAtPoint(px+ox,py+oy));
 }
 function obstacleAtPoint(px,py){
+  if(currentMap==='town'&&window.ATMVehicles?.blocked?.(px,py))return true;
   if(currentMap==='town'&&window.ATMWorldObjects?.blocked?.(px,py))return true;
   const value=townWorldStream.collisionAt(px,py);
   // Missing/pending collision data is treated as blocked so the player can never
@@ -3101,7 +3102,7 @@ function trackTownVisit(){
 function broadcastState(force=false){
   trackTownVisit();
   if(!onlineMode||!realtimeChannel)return;const now=Date.now();if(!force&&now-lastBroadcast<100)return;lastBroadcast=now;
-  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,...townPresenceIdentity(),fishing:window.ATMFishing?.publicState?.()||null,nftDrop:window.ATMNftDrops?.publicState?.()||null,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
+  realtimeChannel.send({type:'broadcast',event:'player_state',payload:{id:playerId,...townPresenceIdentity(),fishing:window.ATMFishing?.publicState?.()||null,nftDrop:window.ATMNftDrops?.publicState?.()||null,vehicle:window.ATMVehicles?.publicState?.()||null,name:playerName,x:player.x,y:player.y,dir:player.dir,frame:player.frame,jump:jumpLift(),jetpack:jetpackState.thrusting,jetpackActive:jetpackState.active,jetpackEquipped:canUseJetpack(),map:currentMap,voiceZone:currentBroadcastVoiceZoneId(),activity:currentPlayerActivity,character:selectedCharacter,loadout:{body:(window.atmActiveLoadout||{}).body||null,chest:(window.atmActiveLoadout||{}).chest||null,face:(window.atmActiveLoadout||{}).face||null,head:(window.atmActiveLoadout||{}).head||null,back:(window.atmActiveLoadout||{}).back||null,katana:(window.atmActiveLoadout||{}).katana||null,hands:(window.atmActiveLoadout||{}).hands||null,feet:(window.atmActiveLoadout||{}).feet||null,aura:(window.atmActiveLoadout||{}).aura||null},powers:{invisibility:powerUps.invisibility>0,juggernaut:powerUps.juggernaut>0,fire:powerUps.fire>0},zombieCombat:window.ATMZombieOutbreak?.getBroadcastState?.()||null,propHunt:window.ATMPropHunt?.getBroadcastState?.()||null,tradeBeacon:tradeBeaconBroadcastPayload(),atmPay:window.ATMPay?.getPublicIdentity?.()||null}});
 }
 window.addEventListener('atm:world-event-triggered',(event)=>{
   if(!onlineMode||!realtimeChannel)return;
@@ -3379,6 +3380,7 @@ function activateJetpack(pointerId=null){
   return true;
 }
 function beginJetpackThrust(pointerId=null){
+  if(window.ATMVehicles?.isDriving?.())return false;
   if(currentMap!=='town'||dialogOpen||!canUseJetpack())return false;
   if(jumpState.active)return activateJetpack(pointerId);
   if(!jetpackState.active)return false;
@@ -3401,6 +3403,7 @@ function releaseJetpackThrust(pointerId=null){
   broadcastState(true);
 }
 function startJump(){
+  if(window.ATMVehicles?.isDriving?.())return false;
   if(dialogOpen||window.ATMZombieOutbreak?.isLocalDowned?.()===true)return;
   if(jetpackState.active){beginJetpackThrust(null);return;}
   if(jumpState.active){if(canUseJetpack())activateJetpack(null);return;}
@@ -4174,10 +4177,11 @@ function drawDepthScene(t){
     ensureTownBotsReady();
     updateTownForegroundStreaming();
     items.push(...(window.ATMNftDrops?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},Array.from(remotePlayers.values()))||[]));
+    items.push(...(window.ATMVehicles?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom})||[]));
     items.push(...(window.ATMWorldObjects?.actors?.({x:cam.x,y:cam.y,w:W/zoom,h:H/zoom},townForegroundPieces)||[]));
     for(const piece of townForegroundPieces) if(townForegroundNearView(piece,160)) items.push({depth:piece.depth,type:'townpiece',piece});
     for(const [id,p] of remotePlayers){
-      if(p.map!==currentMap)continue;
+      if(p.map!==currentMap||p.vehicle)continue;
       items.push({depth:p.drawY+20,type:'remote',id:String(id),p});
     }
     for(const bot of townBots){
@@ -4215,6 +4219,7 @@ function drawDepthScene(t){
         }
       }else if(item.type==='nftdrop'){
         window.ATMNftDrops?.draw?.(ctx,item.row,item.row.x,item.row.y,item.carried);
+      }else if(item.type==='vehicle'){window.ATMVehicles?.draw?.(ctx,item.vehicle);
       }else if(item.type==='worldobject'){
         window.ATMWorldObjects?.draw?.(ctx,item.object);
       }else if(item.type==='remote'){
@@ -4236,6 +4241,7 @@ function drawDepthScene(t){
       }else if(item.type==='zombie'){
         window.ATMZombieOutbreak?.drawActor?.(ctx,item.actor);
       }else if(item.type==='local'){
+        if(window.ATMVehicles?.isDriving?.())continue;
         const onStairs=playerOnStairs();
         const amount=onStairs?0.75:2.0;
         const bob=player.moving?Math.abs(Math.sin(player.animTimer*1.2))*amount:0;
@@ -4744,6 +4750,7 @@ function nearestHordeRevivePlayer(maxDistance=78){
   for(const [id,p] of remotePlayers){if(p?.map!=='town'||now-Number(p.lastSeen||0)>3500||!p?.zombieCombat?.downed)continue;const x=Number(p.drawX??p.x),y=Number(p.drawY??p.y);if(!Number.isFinite(x)||!Number.isFinite(y))continue;const d=Math.hypot(player.x-x,player.y-y);if(d<bestDistance){bestDistance=d;best={id:'horde-revive:'+id,type:'horde-revive',name:'REVIVE '+String(p.name||'PLAYER').toUpperCase(),text:'Bring this player back into The Horde.',remoteId:String(id),x,y,radius:maxDistance};}}return best;
 }
 function nearestThing(){
+  const vehicleTarget=window.ATMVehicles?.nearest?.();if(vehicleTarget)return vehicleTarget;
   const fishingTarget=window.ATMFishing?.interaction?.();if(fishingTarget)return fishingTarget;
   const nftDropTarget=window.ATMNftDrops?.nearest?.();if(nftDropTarget)return nftDropTarget;
   const billboardTarget=window.ATMBillboards?.interaction?.();if(billboardTarget)return billboardTarget;
@@ -5216,7 +5223,7 @@ function openDirectory(mapName='town'){
 function closeDirectory(){
   if(!directoryOpen)return;directoryOpen=false;dialogOpen=false;document.body.classList.remove('directory-open');directoryPanel.classList.remove('open');directoryPanel.setAttribute('aria-hidden','true');
 }
-function interactionHint(thing){let hint='';if(thing?.type==='fishing')hint='Tap '+thing.label+' to '+(thing.label==='CAST'?'cast your line':'reel in');else if(thing?.type==='player-nft-beacon')hint='';else if(thing?.type==='horde-revive')hint='Tap ACTION to revive '+String(thing.name||'player').replace(/^REVIVE /,'');else if(thing?.type==='prop-hunt-target')hint='Tap ACTION to tag this hidden prop';else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack','neon-racer'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
+function interactionHint(thing){let hint='';if(thing?.type==='vehicle')hint='Tap ACTION to '+(thing.label==='EXIT'?'exit your vehicle':'drive '+thing.name);else if(thing?.type==='fishing')hint='Tap '+thing.label+' to '+(thing.label==='CAST'?'cast your line':'reel in');else if(thing?.type==='player-nft-beacon')hint='';else if(thing?.type==='horde-revive')hint='Tap ACTION to revive '+String(thing.name||'player').replace(/^REVIVE /,'');else if(thing?.type==='prop-hunt-target')hint='Tap ACTION to tag this hidden prop';else if(currentMap==='arcade'&&thing&&['sky-run','platform-panic','ring-rumble','flappy-jetpack','neon-racer'].includes(thing.type))hint='Tap PLAY to launch '+thing.name;else if(currentMap==='lounge'&&thing?.id==='loungeDarts')hint='Tap ACTION to play ATM DARTS 301';else if(currentMap==='hq'&&thing?.id==='hqCommandCore')hint='Tap ACTION to open the World Event Control';else if(currentMap==='town'&&thing?.id==='townInfoHub')hint='Tap MAP to open the ATM Town directory';else hint=ATM_INTERACTIONS.hintFor(thing,currentMap);if(gamepadPromptActive())return String(hint||'').replace(/^Tap VIEW NFT/i,'Press X').replace(/^Tap PLAY/i,'Press X').replace(/^Tap ACTION/i,'Press X').replace(/^Tap ENTER/i,'Press X').replace(/^Tap MAP/i,'Press Y');return hint;}
 function showDialog(title,text){dialogOpen=true;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=text;document.getElementById('dialog').style.display='block';}
 function switchMap(map,sourceBuilding=null){
   const destination=ATM_MAPS.runtime(map,townZoom);
@@ -5322,6 +5329,7 @@ setInterval(saveAccountLocation,5000);
 window.addEventListener('pagehide',saveAccountLocation);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAccountLocation();});
 function interact(){
+  if(!dialogOpen&&window.ATMVehicles?.nearest?.()){window.ATMVehicles.interact();return;}
   if(window.ATMZombieOutbreak?.isLocalDowned?.()===true){window.ATMWorldEvents?.toast?.('💀 YOU ARE DOWN · WAIT FOR A REVIVE',1400);return;}
   if(window.ATMFishing?.interaction?.()&&!dialogOpen){window.ATMFishing.interact();return;}
   const nftTarget=window.ATMNftDrops?.nearest?.();if(nftTarget&&!dialogOpen){if(nftTarget.type==='nft-donation-box')window.ATMNftDrops.open(true);else window.ATMNftDrops.claim(nftTarget);return;}
@@ -5508,7 +5516,9 @@ function update(dt){
   let moved=false;
   let onStairs=false;
   const beforeX=player.x,beforeY=player.y;
-  if(jetpackState.active){
+  if(window.ATMVehicles?.update?.(dt,{x:dx,y:dy})){
+    moved=Math.hypot(player.x-beforeX,player.y-beforeY)>.05;
+  }else if(jetpackState.active){
     const activeSize=ATM_MAPS.pixelSize(currentMap);
     const mapW=activeSize.w;
     const mapH=activeSize.h;
@@ -5591,7 +5601,7 @@ function update(dt){
   if(zombieMotion?.bodyDir)player.dir=zombieMotion.bodyDir;
   const travelDist=Math.hypot(player.x-beforeX,player.y-beforeY);
   const airborne=jumpState.active||jetpackState.active;
-  if(currentMap==='town'&&!airborne&&travelDist>0.05){
+  if(currentMap==='town'&&!airborne&&!window.ATMVehicles?.isDriving?.()&&travelDist>0.05){
     worldAliveState.playerStepCarry+=travelDist;
     while(worldAliveState.playerStepCarry>=28){
       spawnFootstepEffect(player.x,player.y,player.dir,'rgba(188,243,255,.30)',.92);
@@ -5669,7 +5679,8 @@ function update(dt){
   hintEl.style.opacity=(nearThing&&hintText)?1:0;
   const registeredEntrance=nearThing&&currentMap==='town'&&ATM_MAPS.fromEntrance(nearThing.id);
   let actionLabel='ACTION';
-  if(nearThing?.type==='fishing')actionLabel=nearThing.label;
+  if(nearThing?.type==='vehicle')actionLabel=nearThing.label;
+  else if(nearThing?.type==='fishing')actionLabel=nearThing.label;
   else if(nearThing?.type==='player-nft-beacon')actionLabel='VIEW NFT';
   else if(nearThing?.type==='horde-revive')actionLabel='REVIVE';
   else if(nearThing?.type==='prop-hunt-target')actionLabel='TAG';
@@ -7096,3 +7107,12 @@ window.ATMNftDrops?.init?.({
 
 
 window.ATMInitBillboards=()=>window.ATMBillboards?.init?.({canvas:()=>canvas,screenPoint:(x,y)=>{const r=canvas.getBoundingClientRect();return{x:cam.x+(x-r.left)*W/r.width/zoom,y:cam.y+(y-r.top)*H/r.height/zoom};},api:apiWithAuth,userId:()=>authSession?.user?.id||null,ready:()=>townEntryActive&&currentMap==='town'&&!dialogOpen&&!vendingOpen,pose:()=>({x:player.x,y:player.y+22,map:currentMap,airborne:jumpState.active||jetpackState.active}),block:value=>{dialogOpen=value;for(const key in keys)keys[key]=false;joy.x=joy.y=0;endJoy();}});
+
+window.ATMInitVehicles=()=>window.ATMVehicles?.init?.({
+ ready:()=>townEntryActive&&!dialogOpen&&!vendingOpen,session:()=>playerId,
+ pose:()=>({x:player.x,y:player.y,map:currentMap}),objects:()=>window.ATMWorldObjects?.all?.()||[],remotes:()=>Array.from(remotePlayers,([id,p])=>({id,...p})),
+ canEnter:()=>!jumpState.active&&!jetpackState.active&&!window.ATMFishing?.publicState?.()&&!window.ATMZombieOutbreak?.isActive?.()&&!window.ATMPropHunt?.isActive?.(),
+ canDrive:()=>!window.ATMZombieOutbreak?.isLocalDowned?.()&&!window.ATMZombieOutbreak?.isActive?.(),
+ blocked:(x,y)=>obstacleAtFootprint(x,y),bounds:()=>townWorldBounds(),place:(x,y,facing)=>{player.x=x;player.y=y;if(facing)player.dir=({north:'up',south:'down',east:'right',west:'left'})[facing];},
+ broadcast:()=>broadcastState(true),toast:message=>window.ATMWorldEvents?.toast?.(message,3000)
+});window.ATMInitVehicles();
