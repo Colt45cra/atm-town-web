@@ -353,6 +353,9 @@ function equippedAttributeEffects(){
   for(const id of Object.values(window.atmActiveLoadout||{})){if(seen.has(id))continue;seen.add(id);const item=ATM_ITEM_CATALOG.find(entry=>entry.id===id&&entry.type==='equipment');if(!item||!lockerItemCompatibleWithCharacter(item)||!lockerOwnershipInfo(item).owned)continue;effects.push(attributeEffectOverrides.get(id)||{speed:id==='shoes:lightning-force-ones'?1.6:1,gravity:1,jump:1});}
   return window.ATMAttributeEffects.combine(effects);
 }
+// Arcade games read this only at the start of a round. It uses the same
+// equipped, compatible and owned NFT attributes as the main town world.
+window.atmArcadeAttributes=()=>window.ATMAttributeEffects.arcadeProfile(equippedAttributeEffects());
 function equippedLayerCompatible(itemId,characterId){const item=ATM_ITEM_CATALOG.find(entry=>entry.id===itemId);return !!item&&lockerItemCompatibleWithCharacter(item,characterId);}
 function playerMovementSpeedMultiplier(){
   return Math.max(equippedAttributeEffects().speed,powerUps.speed>0?1.5:1);
