@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import vm from 'node:vm';
-import {VEHICLE_MODELS,VEHICLE_FACING,vehicleSpriteWidth,vehicleStep,vehicleExit,vehicleDirection,validateVehicle,vehiclePlacementScale,vehiclePlacementPose,vehicleFootprint} from '../js/vehicle-contract.js';
+import {VEHICLE_MODELS,VEHICLE_FACING,vehicleSpriteWidth,vehicleStep,vehicleExit,vehicleDirection,validateVehicle,vehiclePlacementScale,vehiclePlacementPose,vehicleFootprint,validateVehicleTuning} from '../js/vehicle-contract.js';
 import {VEHICLE_ARTWORK,VEHICLE_PLACEMENT_REFERENCE,vehicleFrame} from '../js/vehicle-artwork.js';
 import {publicVehicleState,vehicleArt} from '../lib/vehicles.js';
 const bounds={minX:0,minY:0,maxX:1000,maxY:1000};
@@ -83,4 +83,33 @@ test('new editor previews and in-world vehicle anchors align at the saved placem
   const centerY=500,object={x:300,y:centerY+height/2,width,collision:{vehicle:{model,facing,art_version:5,anchor_offset:height*(.5-.1*ratio)}}};
   const pose=vehiclePlacementPose(object),scale=vehiclePlacementScale(object);assert.ok(Math.abs((pose.y+22-f.anchorY*scale)-(centerY-f.height*scale/2))<1e-9);
  }
+});
+
+test('per-vehicle top-speed override changes acceleration, without changing model defaults',()=>{
+ const start={x:0,y:0,facing:'east'};let regular=start,tuned=start;
+ for(let i=0;i<120;i++){
+  regular=vehicleStep(regular,{x:1,y:0},1/60,'buggy',()=>false,openBounds);
+  tuned=vehicleStep(tuned,{x:1,y:0},1/60,'buggy',()=>false,openBounds,{speed:900,suspension:1.5});
+ }
+ assert.ok(tuned.x>regular.x*1.6);assert.ok(tuned.speed>regular.speed*1.6);
+ assert.equal(regular.speed,VEHICLE_MODELS.buggy.speed);
+ assert.equal(tuned.speed,900);
+ assert.deepEqual(validateVehicleTuning({speed:700,suspension:1.25}),{speed:700,suspension:1.25});
+ assert.equal(validateVehicle({model:'truck',facing:'east',speed:800,suspension:0}).speed,800);
+ assert.throws(()=>validateVehicleTuning({speed:5000,suspension:1}),/speed/);
+ assert.throws(()=>validateVehicleTuning({speed:500,suspension:4}),/Suspension/);
+});
+test('rough terrain suspension draws a subtle tilt without stretching sprites or moving hitboxes',()=>{
+ let clock=1000,rotations=[],draws=[];
+ class Image{complete=true;naturalWidth=512;naturalHeight=512;}
+ const context=vm.createContext({window:{},document:{addEventListener(){}},Image,Date:{now:()=>clock},VEHICLE_MODELS,VEHICLE_FACING,vehicleFrame,vehicleSpriteWidth,vehicleStep,vehicleExit,validateVehicle,vehiclePlacementScale,vehiclePlacementPose,vehicleFootprint,fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
+ vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\\n/gm,''),context);
+ const runtime=context.window.ATMVehicles;
+ runtime.init({ready:()=>false,objects:()=>[],roughness:()=>1});
+ const v={vehicle_id:'car',model:'buggy',x:200,y:300,speed:550,scale:1,facing:'east',object:{collision:{vehicle:{model:'buggy',facing:'east',suspension:2}}}};
+ const ctx={save(){},restore(){},beginPath(){},ellipse(){},fill(){},translate(){},rotate(angle){rotations.push(angle);},drawImage(...args){draws.push(args);}};
+ runtime.draw(ctx,v);clock+=16;v.x+=10;runtime.draw(ctx,v);
+ assert.equal(draws.length,2);assert.ok(Math.abs(rotations[1])>0);
+ assert.equal(draws[0][7],draws[1][7]);assert.equal(draws[0][8],draws[1][8]);
+ assert.equal(vehicleFootprint('buggy','east',1).halfX,vehicleFootprint('buggy','east',1).halfX);
 });
