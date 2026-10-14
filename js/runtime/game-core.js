@@ -7114,5 +7114,6 @@ window.ATMInitVehicles=()=>window.ATMVehicles?.init?.({
  canEnter:()=>!jumpState.active&&!jetpackState.active&&!window.ATMFishing?.publicState?.()&&!window.ATMZombieOutbreak?.isActive?.()&&!window.ATMPropHunt?.isActive?.(),
  canDrive:()=>!window.ATMZombieOutbreak?.isLocalDowned?.()&&!window.ATMZombieOutbreak?.isActive?.(),
  blocked:(x,y)=>obstacleAtFootprint(x,y),bounds:()=>townWorldBounds(),place:(x,y,facing)=>{player.x=x;player.y=y;if(facing)player.dir=({north:'up',south:'down',east:'right',west:'left',northeast:'up',northwest:'up',southeast:'down',southwest:'down'})[facing];},
+ roughness:(x,y)=>townWorldStream.surfaceRoughnessAt(x,y),
  broadcast:()=>broadcastState(true),toast:message=>window.ATMWorldEvents?.toast?.(message,3000)
 });window.ATMInitVehicles();
