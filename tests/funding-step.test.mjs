@@ -29,3 +29,18 @@ test('Luci funding with wallet XRP skips extra XRP deposit in the instructions',
  const separatelyFunded=fundingStep({...cycle,fundingStage:'payout',xrpReceived:'0.01'},'666');
  assert.doesNotMatch(separatelyFunded.message,/no additional XRP deposit is required/i);
 });
+
+import {mountFundingCheck} from '../admin/topup-flow.js';
+test('restored pending funding can be checked without creating another payment',async()=>{
+ const host=node('div'),calls=[];let refreshed=0,message='';
+ const check=mountFundingCheck({host,slug:()=> 'luci',node,status:text=>message=text,onChecked:async()=>refreshed++,api:async(action,body)=>{calls.push({action,body});return {cycle:{status:'active',fundingStage:'ready'}};}});
+ assert.equal(check.textContent,'Check funding status');
+ await check.events.click();
+ assert.deepEqual(calls,[{action:'admin-wallet-topup-status',body:{slug:'luci'}}]);
+ assert.equal(refreshed,1);assert.match(message,/Top-up confirmed/);assert.equal(check.disabled,false);
+});
+test('restored check remains usable after a temporary ledger error',async()=>{
+ const host=node('div');let message='';
+ const check=mountFundingCheck({host,slug:'luci',node,status:text=>message=text,onChecked:async()=>{},api:async()=>{throw Error('Ledger busy');}});
+ await check.events.click();assert.match(message,/Ledger busy/);assert.equal(check.disabled,false);assert.equal(host.children[0],check);
+});

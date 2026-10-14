@@ -39,3 +39,19 @@ export async function cancelFundingDraft({slug,cycleId,button,host,api,onCancell
  try{const result=await api('admin-wallet-topup-cancel',{slug,cycle_id:cycleId});if(result.cancelled!==true)throw new Error('Top-up cancellation was not confirmed.');host.replaceChildren();await onCancelled();status(result.message||'Top-up cancelled. Enter a new amount.');return true;}
  catch(error){status(error.message);return false;}finally{button.disabled=false;}
 }
+
+export function mountFundingCheck({host,slug,api,node,status,onChecked}) {
+ const button=node('button','Check funding status');button.type='button';
+ button.addEventListener('click',async()=>{
+  if(button.disabled)return;
+  button.disabled=true;
+  try{
+   const result=await api('admin-wallet-topup-status',{slug:typeof slug==='function'?slug():slug});
+   const confirmed=result.cycle?.status==='active'||result.cycle?.fundingStage==='ready';
+   await onChecked(result);
+   status(confirmed?'Top-up confirmed. The reward budget is now active.':'Funding status refreshed.');
+  }catch(error){status(`Funding confirmation: ${error.message}`);}
+  finally{button.disabled=false;}
+ });
+ host.append(button);return button;
+}

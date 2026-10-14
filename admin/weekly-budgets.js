@@ -1,3 +1,4 @@
+import { mountFundingCheck } from './topup-flow.js?v=restore-check-2';
 
 // Normalize decimal and scientific-notation values without floating-point rounding.
 // A malformed value must never take down the admin wallet or budget panels.
@@ -96,6 +97,7 @@ export function renderWeeklyBudgets({host,wallets,node,programName,tokenName,bal
   requestButton.type='submit';fundingForm.append(requestButton);
   if(pending)fundingForm.append(node('p','A funding request is already pending. Continue it or cancel it before requesting a different amount.'));
   const requestHost=node('div');requestHost.className='funded-request-status';
+  if(pending)mountFundingCheck({host:requestHost,slug:wallet.slug,api,node,status,onChecked:onSaved});
   if(pending&&wallet.cycle?.kind!=='initial'&&cancelTopup){
    const cancel=node('button','Cancel pending request');cancel.type='button';cancel.className='cancel-topup';
    cancel.addEventListener('click',async()=>{await cancelTopup(wallet.slug,wallet.cycle.id,cancel,requestHost);});
