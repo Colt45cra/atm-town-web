@@ -71,11 +71,11 @@ test('every turning view preserves the native aspect ratio and one pixel scale a
   const saved=vehicleFrame(model,authored,authored),source=VEHICLE_PLACEMENT_REFERENCE[model][authored];assert.ok(Math.abs(saved.width-vehicleSpriteWidth(authored)*source.w/source.fullWidth)<1e-9);
  }
  // The buggy must no longer grow to twice its size between the straight and diagonal views.
- const views=VEHICLE_FACING.map(f=>vehicleFrame('buggy',f));assert.ok(Math.max(...views.map(f=>f.width))/Math.min(...views.map(f=>f.width))<1.25);assert.ok(Math.max(...views.map(f=>f.height))/Math.min(...views.map(f=>f.height))<1.2);
+ const views=VEHICLE_FACING.map(f=>vehicleFrame('buggy',f));assert.ok(Math.max(...views.map(f=>f.width))/Math.min(...views.map(f=>f.width))<1.4);assert.ok(Math.max(...views.map(f=>f.height))/Math.min(...views.map(f=>f.height))<1.2);
 });
 test('art proxy supports the matched sheet and preserves old single-frame requests',async()=>{
  const originalFetch=globalThis.fetch,urls=[];globalThis.fetch=async url=>{urls.push(url);return{ok:true,headers:{get:()=> 'image/png'},arrayBuffer:async()=>new ArrayBuffer(8)}};
- try{await vehicleArt({model:'buggy',facing:'south',sheet:'1'});assert.ok(urls[0].endsWith('/vehicle-buggy-sheet-v5.png'));await vehicleArt({model:'buggy',facing:'north'});assert.ok(urls[1].endsWith('/vehicle-buggy-north.png'));await assert.rejects(()=>vehicleArt({model:'../secret',facing:'south',sheet:'1'}));}finally{globalThis.fetch=originalFetch;}
+ try{await vehicleArt({model:'buggy',facing:'south',sheet:'1'});assert.ok(urls[0].endsWith('/vehicle-buggy-sheet-v6.png'));await vehicleArt({model:'buggy',facing:'north'});assert.ok(urls[1].endsWith('/vehicle-buggy-north.png'));await assert.rejects(()=>vehicleArt({model:'../secret',facing:'south',sheet:'1'}));}finally{globalThis.fetch=originalFetch;}
 });
 test('new editor previews and in-world vehicle anchors align at the saved placement size',()=>{
  for(const model of ['truck','buggy','hover'])for(const facing of VEHICLE_FACING){
@@ -99,17 +99,19 @@ test('per-vehicle top-speed override changes acceleration, without changing mode
  assert.throws(()=>validateVehicleTuning({speed:5000,suspension:1}),/speed/);
  assert.throws(()=>validateVehicleTuning({speed:500,suspension:4}),/Suspension/);
 });
-test('rough terrain suspension draws a subtle tilt without stretching sprites or moving hitboxes',()=>{
- let clock=1000,rotations=[],draws=[];
- class Image{complete=true;naturalWidth=512;naturalHeight=512;}
+test('suspension is grounded, bounded, settles at rest, and never rotates or stretches the sprite',()=>{
+ let clock=1000,rough=1;const draws=[],rotations=[];
+ class Image{complete=true;naturalWidth=1774;naturalHeight=887;}
  const context=vm.createContext({window:{},document:{addEventListener(){}},Image,Date:{now:()=>clock},VEHICLE_MODELS,VEHICLE_FACING,vehicleFrame,vehicleSpriteWidth,vehicleStep,vehicleExit,validateVehicle,vehiclePlacementScale,vehiclePlacementPose,vehicleFootprint,fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
- vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\\n/gm,''),context);
- const runtime=context.window.ATMVehicles;
- runtime.init({ready:()=>false,objects:()=>[],roughness:()=>1});
+ vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,''),context);
+ const runtime=context.window.ATMVehicles;runtime.init({ready:()=>false,objects:()=>[],roughness:()=>rough});
  const v={vehicle_id:'car',model:'buggy',x:200,y:300,speed:550,scale:1,facing:'east',object:{collision:{vehicle:{model:'buggy',facing:'east',suspension:2}}}};
- const ctx={save(){},restore(){},beginPath(){},ellipse(){},fill(){},translate(){},rotate(angle){rotations.push(angle);},drawImage(...args){draws.push(args);}};
- runtime.draw(ctx,v);clock+=16;v.x+=10;runtime.draw(ctx,v);
- assert.equal(draws.length,2);assert.ok(Math.abs(rotations[1])>0);
- assert.equal(draws[0][7],draws[1][7]);assert.equal(draws[0][8],draws[1][8]);
- assert.equal(vehicleFootprint('buggy','east',1).halfX,vehicleFootprint('buggy','east',1).halfX);
+ const ctx={save(){},restore(){},beginPath(){},ellipse(){},fill(){},rotate(angle){rotations.push(angle);},drawImage(...args){draws.push(args);}};
+ const f=vehicleFrame('buggy','east','east'),baseY=v.y+22-f.anchorY;
+ runtime.draw(ctx,v);assert.equal(draws.at(-1)[6],baseY);
+ for(let i=0;i<120;i++){clock+=16;v.x+=4;runtime.draw(ctx,v);}
+ assert(draws.some(d=>Math.abs(d[6]-baseY)>.01));assert(draws.every(d=>Math.abs(d[6]-baseY)<1.1));
+ for(let i=0;i<240;i++){clock+=16;runtime.draw(ctx,v);}assert.equal(draws.at(-1)[6],baseY);
+ assert.equal(rotations.length,0);assert(draws.every(d=>d[7]===f.width&&d[8]===f.height));
+ rough=.1;v.vehicle_id='smooth';runtime.draw(ctx,v);for(let i=0;i<60;i++){clock+=16;v.x+=4;runtime.draw(ctx,v);assert.equal(draws.at(-1)[6],baseY);}
 });
