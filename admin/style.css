@@ -57,3 +57,15 @@ nav.admin-nav button[aria-pressed=true]{background:#183944;border:1px solid #65d
 .weekly-budget[data-funded-level="reached"] .funded-budget progress{accent-color:#ff8c91}
 .weekly-budget[data-funded-level="critical"] .funded-budget>strong,
 .weekly-budget[data-funded-level="reached"] .funded-budget>strong{color:#ff8c91}
+
+/* Per-asset vehicle driving tuning */
+.vehicle-tuning-card{margin:14px 0;padding:16px;border:1px solid rgba(109,204,212,.32);border-radius:14px;background:rgba(12,27,37,.65)}
+.vehicle-tuning-card h3{margin:0 0 4px}
+.vehicle-tuning-card p{margin:3px 0 13px;opacity:.82;font-size:.9rem}
+.vehicle-tuning-form{display:grid;gap:13px}
+.vehicle-tuning-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.vehicle-tuning-controls strong{min-width:175px;font-size:.92rem}
+.vehicle-tuning-controls input[type="range"]{flex:1 1 165px;min-width:120px;accent-color:#63ecdd}
+.vehicle-tuning-controls input[type="number"]{width:95px;max-width:100%;padding:7px}
+.vehicle-tuning-controls output{min-width:64px;font-size:.92rem;font-weight:700}
+@media(max-width:540px){.vehicle-tuning-controls strong{flex-basis:100%}.vehicle-tuning-card{padding:12px}}
