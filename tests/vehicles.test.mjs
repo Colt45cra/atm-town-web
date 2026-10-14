@@ -25,3 +25,17 @@ test('enter, movement, safe exit and parked position use shared API state withou
  await new Promise(r=>setImmediate(r));assert.equal(runtime.nearest().label,'DRIVE');await runtime.interact();assert.equal(runtime.isDriving(),true);assert.equal(runtime.publicState().lease_token,undefined);
  runtime.update(.1,{x:1,y:0});assert.ok(pose.x>200);await runtime.interact();assert.equal(runtime.isDriving(),false);assert.ok(state.x>200);assert.ok(pose.x>state.x);assert.equal(runtime.actors({x:0,y:0,w:1000,h:1000}).length,1);assert.equal(broadcast,2);
 });
+test('ordinary map objects are scanned once without exceptions or remote-player allocations during collision checks',()=>{
+ let clock=1000,filters=0,validations=0,remoteReads=0;const list=new Proxy(Array.from({length:757},(_,id)=>({id,active:true,collision:{type:'rectangle'}})),{get(target,key){if(key==='filter')filters++;return Reflect.get(target,key);}});
+ const context=vm.createContext({window:{},document:{addEventListener(){}},Image:class{},Date:{now:()=>clock},VEHICLE_MODELS,vehicleStep,vehicleExit,validateVehicle:value=>{validations++;return validateVehicle(value);},fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
+ vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\n/,''),context);const r=context.window.ATMVehicles;
+ r.init({objects:()=>list,remotes:()=>{remoteReads++;return[];},ready:()=>true,pose:()=>({map:'town',x:100,y:100}),canEnter:()=>true});
+ for(let frame=0;frame<120;frame++){clock+=17;for(let sample=0;sample<60;sample++)assert.equal(r.blocked(100,100),false);r.actors({x:0,y:0,w:1000,h:1000});r.nearest();}
+ assert.equal(filters,1);assert.equal(validations,0);assert.equal(remoteReads,0);
+});
+test('multiple footstep samples share one vehicle position calculation per frame',()=>{
+ let clock=1000,remoteReads=0;const list=[{id:'car',active:true,x:200,y:300,collision:{vehicle:{model:'truck',facing:'south'}}}];
+ const context=vm.createContext({window:{},document:{addEventListener(){}},Image:class{},Date:{now:()=>clock},VEHICLE_MODELS,vehicleStep,vehicleExit,validateVehicle,fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
+ vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\n/,''),context);const r=context.window.ATMVehicles;r.init({objects:()=>list,remotes:()=>{remoteReads++;return[];},ready:()=>true,pose:()=>({map:'town'})});
+ for(let sample=0;sample<1000;sample++)r.blocked(100,100);assert.equal(remoteReads,1);clock+=17;r.blocked(100,100);assert.equal(remoteReads,2);
+});
