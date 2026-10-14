@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import vm from 'node:vm';
 import {VEHICLE_MODELS,VEHICLE_FACING,vehicleSpriteWidth,vehicleStep,vehicleExit,vehicleDirection,validateVehicle,vehiclePlacementScale,vehicleFootprint} from '../js/vehicle-contract.js';
-import {VEHICLE_ARTWORK,vehicleFrame} from '../js/vehicle-artwork.js';
-import {publicVehicleState} from '../lib/vehicles.js';
+import {VEHICLE_ARTWORK,VEHICLE_PLACEMENT_REFERENCE,vehicleFrame} from '../js/vehicle-artwork.js';
+import {publicVehicleState,vehicleArt} from '../lib/vehicles.js';
 const bounds={minX:0,minY:0,maxX:1000,maxY:1000};
 test('driving uses directional sprites, normalized speed, and small swept collision steps',()=>{
  assert.equal(vehicleDirection(0,-1),'north');assert.equal(vehicleDirection(-1,0),'west');
@@ -60,15 +60,20 @@ test('vehicle artwork uses the saved editor width, bottom anchor and proportiona
  const context=vm.createContext({window:{},document:{addEventListener(){}},Image,Date,VEHICLE_MODELS,VEHICLE_FACING,vehicleFrame,vehicleSpriteWidth,vehicleStep,vehicleExit,validateVehicle,vehiclePlacementScale,vehicleFootprint,fetch:async()=>({ok:true,json:async()=>({vehicles:[]})})});
  vm.runInContext(readFileSync(new URL('../js/vehicles.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,''),context);const runtime=context.window.ATMVehicles;runtime.init({objects:()=>[object],remotes:()=>[],ready:()=>true,pose:()=>({map:'town'})});
  const v=runtime.actors({x:0,y:0,w:1000,h:1000})[0].vehicle,draws=[],ctx={save(){},restore(){},beginPath(){},ellipse(){},fill(){},drawImage(...args){draws.push(args);}};
- runtime.draw(ctx,v);const original=VEHICLE_ARTWORK.truck.south;assert.equal(draws[0][7],object.width*original.w/original.fullWidth);assert.equal(draws[0][6]+draws[0][8],object.y);
+ runtime.draw(ctx,v);const original=VEHICLE_PLACEMENT_REFERENCE.truck.south;assert.equal(draws[0][7],object.width*original.w/original.fullWidth);assert.equal(draws[0][6]+vehicleFrame('truck','south','south').anchorY*4,object.y);
  v.facing='east';runtime.draw(ctx,v);const side=vehicleFrame('truck','east','south');assert.equal(draws[1][7],side.width*4);assert.equal(draws[1][8],side.height*4);assert.equal(vehicleFootprint('truck','south',v.scale).halfX,vehicleFootprint('truck','south',1).halfX*4);
 });
 
-test('all turning frames share body dimensions and a consistent height, excluding canvas padding',()=>{
+test('every turning view preserves the native aspect ratio and one pixel scale across the atlas',()=>{
  for(const model of ['truck','buggy','hover'])for(const authored of VEHICLE_FACING){
-  const front=vehicleFrame(model,'south',authored),back=vehicleFrame(model,'north',authored),left=vehicleFrame(model,'west',authored),right=vehicleFrame(model,'east',authored);
-  assert.ok(Math.abs(front.width-back.width)<1e-9);assert.ok(Math.abs(left.width-right.width)<1e-9);assert.equal(front.height,back.height);
-  for(const facing of VEHICLE_FACING){const f=vehicleFrame(model,facing,authored);assert.ok(f.height<=front.height+1e-9);assert.ok(f.height>=front.height*.85-1e-9);assert.ok(f.x+f.w<=f.fullWidth);assert.ok(f.y+f.h<=f.fullHeight);}
-  const saved=vehicleFrame(model,authored,authored),source=VEHICLE_ARTWORK[model][authored];assert.ok(Math.abs(saved.width-vehicleSpriteWidth(authored)*source.w/source.fullWidth)<1e-9);
+  const first=vehicleFrame(model,'south',authored),pixelScale=first.width/first.w;
+  for(const facing of VEHICLE_FACING){const f=vehicleFrame(model,facing,authored);assert.ok(Math.abs(f.width/f.w-pixelScale)<1e-9);assert.ok(Math.abs(f.height/f.h-pixelScale)<1e-9);assert.ok(f.x+f.w<=f.fullWidth);assert.ok(f.y+f.h<=f.fullHeight);assert.ok(Math.abs(f.anchorX/f.width-.5)<1e-9);assert.ok(Math.abs(f.anchorY/f.height-.6)<1e-9);}
+  const saved=vehicleFrame(model,authored,authored),source=VEHICLE_PLACEMENT_REFERENCE[model][authored];assert.ok(Math.abs(saved.width-vehicleSpriteWidth(authored)*source.w/source.fullWidth)<1e-9);
  }
+ // The buggy must no longer grow to twice its size between the straight and diagonal views.
+ const views=VEHICLE_FACING.map(f=>vehicleFrame('buggy',f));assert.ok(Math.max(...views.map(f=>f.width))/Math.min(...views.map(f=>f.width))<1.25);assert.ok(Math.max(...views.map(f=>f.height))/Math.min(...views.map(f=>f.height))<1.2);
+});
+test('art proxy supports the matched sheet and preserves old single-frame requests',async()=>{
+ const originalFetch=globalThis.fetch,urls=[];globalThis.fetch=async url=>{urls.push(url);return{ok:true,headers:{get:()=> 'image/png'},arrayBuffer:async()=>new ArrayBuffer(8)}};
+ try{await vehicleArt({model:'buggy',facing:'south',sheet:'1'});assert.ok(urls[0].endsWith('/vehicle-buggy-sheet-v5.png'));await vehicleArt({model:'buggy',facing:'north'});assert.ok(urls[1].endsWith('/vehicle-buggy-north.png'));await assert.rejects(()=>vehicleArt({model:'../secret',facing:'south',sheet:'1'}));}finally{globalThis.fetch=originalFetch;}
 });

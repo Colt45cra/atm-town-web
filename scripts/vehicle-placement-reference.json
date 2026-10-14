@@ -1,0 +1,200 @@
+{
+  "truck": {
+    "east": {
+      "x": 84,
+      "y": 189,
+      "w": 1400,
+      "h": 713,
+      "fullWidth": 1536,
+      "fullHeight": 1024
+    },
+    "southeast": {
+      "x": 41,
+      "y": 41,
+      "w": 1122,
+      "h": 1189,
+      "fullWidth": 1199,
+      "fullHeight": 1312
+    },
+    "south": {
+      "x": 207,
+      "y": 62,
+      "w": 785,
+      "h": 1159,
+      "fullWidth": 1199,
+      "fullHeight": 1312
+    },
+    "southwest": {
+      "x": 47,
+      "y": 53,
+      "w": 1115,
+      "h": 1210,
+      "fullWidth": 1199,
+      "fullHeight": 1312
+    },
+    "west": {
+      "x": 90,
+      "y": 170,
+      "w": 1386,
+      "h": 730,
+      "fullWidth": 1536,
+      "fullHeight": 1024
+    },
+    "northwest": {
+      "x": 70,
+      "y": 67,
+      "w": 1080,
+      "h": 1128,
+      "fullWidth": 1199,
+      "fullHeight": 1312
+    },
+    "north": {
+      "x": 206,
+      "y": 44,
+      "w": 789,
+      "h": 1191,
+      "fullWidth": 1199,
+      "fullHeight": 1312
+    },
+    "northeast": {
+      "x": 45,
+      "y": 52,
+      "w": 1134,
+      "h": 1152,
+      "fullWidth": 1199,
+      "fullHeight": 1312
+    }
+  },
+  "buggy": {
+    "east": {
+      "x": 166,
+      "y": 76,
+      "w": 1260,
+      "h": 898,
+      "fullWidth": 1536,
+      "fullHeight": 1024
+    },
+    "southeast": {
+      "x": 94,
+      "y": 55,
+      "w": 1097,
+      "h": 1145,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "south": {
+      "x": 190,
+      "y": 62,
+      "w": 874,
+      "h": 1119,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "southwest": {
+      "x": 76,
+      "y": 65,
+      "w": 1117,
+      "h": 1148,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "west": {
+      "x": 133,
+      "y": 77,
+      "w": 1271,
+      "h": 899,
+      "fullWidth": 1536,
+      "fullHeight": 1024
+    },
+    "northwest": {
+      "x": 99,
+      "y": 158,
+      "w": 1111,
+      "h": 1001,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "north": {
+      "x": 219,
+      "y": 159,
+      "w": 817,
+      "h": 979,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "northeast": {
+      "x": 66,
+      "y": 110,
+      "w": 1139,
+      "h": 1072,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    }
+  },
+  "hover": {
+    "east": {
+      "x": 88,
+      "y": 186,
+      "w": 1442,
+      "h": 660,
+      "fullWidth": 1619,
+      "fullHeight": 971
+    },
+    "southeast": {
+      "x": 41,
+      "y": 176,
+      "w": 1197,
+      "h": 892,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "south": {
+      "x": 95,
+      "y": 207,
+      "w": 1064,
+      "h": 841,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "southwest": {
+      "x": 55,
+      "y": 237,
+      "w": 1145,
+      "h": 812,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "west": {
+      "x": 76,
+      "y": 245,
+      "w": 1392,
+      "h": 575,
+      "fullWidth": 1536,
+      "fullHeight": 1024
+    },
+    "northwest": {
+      "x": 35,
+      "y": 195,
+      "w": 1195,
+      "h": 868,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "north": {
+      "x": 112,
+      "y": 226,
+      "w": 1030,
+      "h": 804,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    },
+    "northeast": {
+      "x": 28,
+      "y": 246,
+      "w": 1218,
+      "h": 811,
+      "fullWidth": 1254,
+      "fullHeight": 1254
+    }
+  }
+}
