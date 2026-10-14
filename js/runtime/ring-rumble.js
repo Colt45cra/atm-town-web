@@ -27,7 +27,7 @@
   let broadcastAt=0;
   let roundCounter=0;
 
-  const state={open:false,running:false,finished:false,last:0,elapsed:0,startAt:0,roundId:'',hostId:'',safeRadius:MAX_RADIUS,ringIndex:0,winner:'',online:false,host:false,lastAliveCheck:0};
+  const state={open:false,running:false,finished:false,last:0,elapsed:0,startAt:0,roundId:'',hostId:'',safeRadius:MAX_RADIUS,ringIndex:0,winner:'',online:false,host:false,lastAliveCheck:0,attributes:{speed:1,jump:1,gravity:1,jumpImpulse:1}};
   const me={id:'',name:'',x:0,y:0,vx:0,vy:0,alive:true,face:'down',frame:1,animTime:0,fallAt:0,character:'classic',loadout:{}};
   let ringSessionPlayerId='';
 
@@ -128,7 +128,7 @@
 
   function applyRound(payload){
     if(state.roundId===payload.roundId&&state.running)return;
-    currentIdentity();lastRoundPayload=payload;state.roundId=payload.roundId;state.startAt=payload.startAt;state.hostId=payload.hostId;state.host=!state.online||payload.hostId===me.id;state.elapsed=0;state.running=true;state.finished=false;state.winner='';state.safeRadius=MAX_RADIUS;state.ringIndex=0;state.lastAliveCheck=0;state.last=performance.now();
+    currentIdentity();state.attributes=window.atmArcadeAttributes?.()||{speed:1,jump:1,gravity:1,jumpImpulse:1};lastRoundPayload=payload;state.roundId=payload.roundId;state.startAt=payload.startAt;state.hostId=payload.hostId;state.host=!state.online||payload.hostId===me.id;state.elapsed=0;state.running=true;state.finished=false;state.winner='';state.safeRadius=MAX_RADIUS;state.ringIndex=0;state.lastAliveCheck=0;state.last=performance.now();
     remote.clear();bots.clear();collisionCooldown.clear();effects.length=0;
     const participants=Array.isArray(payload.participants)?payload.participants:[];
     const mineIndex=Math.max(0,participants.findIndex(p=>p.id===me.id));const spawn=spawnFor(me.id,mineIndex,participants.length);
@@ -187,7 +187,10 @@
   function moveEntity(entity,axisX,axisY,dt,isBot=false){
     if(!entity.alive)return;
     let mag=Math.hypot(axisX,axisY);if(mag>1){axisX/=mag;axisY/=mag;mag=1;}
-    const accel=isBot?720:760,maxSpeed=isBot?184:198;
+    // This arena has no jump action; equipped shoes affect movement only.
+    // Cap the advantage to keep Ring Rumble competitive against normal players.
+    const speedBonus=isBot?1:Math.min(1.45,state.attributes.speed);
+    const accel=(isBot?720:760)*speedBonus,maxSpeed=(isBot?184:198)*speedBonus;
     entity.vx+=axisX*accel*dt;entity.vy+=axisY*accel*dt;
     const speed=Math.hypot(entity.vx,entity.vy);if(speed>maxSpeed){entity.vx=entity.vx/speed*maxSpeed;entity.vy=entity.vy/speed*maxSpeed;}
     const drag=Math.exp(-(mag>.04?2.45:5.4)*dt);entity.vx*=drag;entity.vy*=drag;
@@ -321,7 +324,7 @@
   function finishRound(winnerId,winnerName,fromNetwork){
     if(state.finished)return;state.running=false;state.finished=true;state.winner=winnerName||'No one';
     const localWin=winnerId===me.id;setMessage(localWin?'YOU WIN!':`${state.winner} WINS`,localWin?'You survived the collapsing arena.':`Last player standing: ${state.winner}.`,'PLAY AGAIN');
-    if(localWin&&state.online)window.atmLeaderboardSubmit?.('ring-rumble',{score_value:1,secondary_value:0,details:{online:true,round_id:state.roundId,duration_ms:Math.round(state.elapsed*1000)}});
+    if(localWin&&state.online)window.atmLeaderboardSubmit?.('ring-rumble',{score_value:1,secondary_value:0,details:{online:true,round_id:state.roundId,duration_ms:Math.round(state.elapsed*1000),attributes:state.attributes}});
     if(!fromNetwork)broadcastState(true);
   }
 
