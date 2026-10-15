@@ -13,7 +13,19 @@
   const ART_CACHE='atm-nft-art-v1';
   const ART_CACHE_LIMIT=220;
   const BEACON_IMAGE_TIMEOUT_MS=2600;
-  const GATEWAY_PRIORITY=['w3s.link','nftstorage.link','dweb.link','gateway.pinata.cloud','ipfs.io'];
+  // Older cached NFT metadata still points at IPFS Foundation gateways that
+  // began refusing conventional image hotlinks in 2026.
+  const GATEWAY_PRIORITY=['gateway.pinata.cloud','ipfs.filebase.io','gateway.lighthouse.storage',
+    'ipfs.eth.aragon.network','ipfs.kaleido.art','ipfs.1-2.dev',
+    'w3s.link','nftstorage.link','ipfs.io','dweb.link'];
+  const IPFS_GATEWAY_BASES=GATEWAY_PRIORITY.map(host=>'https://'+host+'/ipfs/');
+  function legacyIpfsPath(value){
+    const raw=String(value||'').trim();
+    if(/^ipfs:\/\//i.test(raw))return raw.replace(/^ipfs:\/\/(?:ipfs\/)?/i,'').replace(/^\/+/, '');
+    try{const url=new URL(raw);const match=url.pathname.match(/^\/ipfs\/(.+)$/i);return match?match[1]:'';}catch{return '';}
+  }
+  function isCidPath(path){return /^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{20,})(?:\/|$)/i.test(path);}
+
   const memoryArtUrls=new Map();
   const artFetches=new Map();
 
@@ -27,12 +39,17 @@
     try{global.localStorage.setItem(CACHE_KEY,JSON.stringify(cache));return true;}catch(_error){return false;}
   }
   function prioritizedCandidates(values){
-    const list=[...new Set((Array.isArray(values)?values:[values]).map(v=>String(v||'').trim()).filter(Boolean))];
-    return list.sort((a,b)=>{
-      let ah=GATEWAY_PRIORITY.length,bh=GATEWAY_PRIORITY.length;
-      try{ah=GATEWAY_PRIORITY.indexOf(new URL(a,location.origin).hostname.toLowerCase());if(ah<0)ah=GATEWAY_PRIORITY.length;}catch(_e){}
-      try{bh=GATEWAY_PRIORITY.indexOf(new URL(b,location.origin).hostname.toLowerCase());if(bh<0)bh=GATEWAY_PRIORITY.length;}catch(_e){}
-      return ah-bh;
+    const originals=[...new Set((Array.isArray(values)?values:[values]).map(v=>String(v||'').trim()).filter(Boolean))];
+    const expanded=[];
+    for(const value of originals){
+      const path=legacyIpfsPath(value);
+      if(path&&isCidPath(path)){
+        for(const gateway of IPFS_GATEWAY_BASES)expanded.push(gateway+path);
+      } else expanded.push(value);
+    }
+    return [...new Set(expanded)].sort((a,b)=>{
+      const rank=value=>{try{const host=new URL(value,location.origin).hostname.toLowerCase();const n=GATEWAY_PRIORITY.indexOf(host);return n>=0?n:GATEWAY_PRIORITY.length;}catch{return GATEWAY_PRIORITY.length;}};
+      return rank(a)-rank(b);
     });
   }
   function normalizeMeta(meta){
@@ -284,11 +301,18 @@
     try{return await task;}finally{if(proxyArtTasks.get(key)===task)proxyArtTasks.delete(key);}
   }
 
+  function updateArtworkCounter(){
+    const grid=document.getElementById('lockerNftGrid'),node=document.getElementById('lockerNftMetadataStatus');
+    if(!grid||!node)return;
+    const count=grid.querySelectorAll('.lockerNftArt[data-artwork-state="loaded"]').length;
+    node.textContent=node.textContent.replace(/\s*·\s*\d+ artwork displayed/g,'')+' · '+count+' artwork displayed';
+  }
+
   lockerNftImageNode=function lockerNftImageNodeResilient(nft,detail=false){
     const host=document.createElement('div');host.className=detail?'lockerNftDetailArt':'lockerNftArt';
     const meta=lockerNftMetadata(nft),tokenId=lockerNftTokenId(nft);
     const candidates=prioritizedCandidates([meta?.image_url,...(Array.isArray(meta?.image_candidates)?meta.image_candidates:[])]);
-    const fallback=document.createElement('div');fallback.className='lockerNftFallback';fallback.textContent='◈';host.appendChild(fallback);
+    const fallback=document.createElement('div');fallback.className='lockerNftFallback';fallback.textContent='◈';fallback.title='Waiting for artwork from the NFT media host';host.appendChild(fallback);
     if(!candidates.length)return host;
     let settled=false,started=false,attempt=0,attemptTimer=0,index=0,observer=null;
     const clearAttempt=()=>{if(attemptTimer){clearTimeout(attemptTimer);attemptTimer=0;}};
@@ -300,7 +324,7 @@
       img.addEventListener('load',()=>{
         if(settled||sequence!==attempt)return;
         settled=true;clearAttempt();fallback.remove();host.insertBefore(img,host.firstChild);
-        host.dataset.artworkState='loaded';
+        host.dataset.artworkState='loaded';updateArtworkCounter();
         // Success should not depend on cross-origin CORS permission.
         if(!src.startsWith('blob:')&&!src.startsWith('data:'))fetchAndCacheArt(tokenId,[src]).catch(()=>{});
       },{once:true});
@@ -312,7 +336,7 @@
       // This timeout applies only after the card enters the viewport.
       attemptTimer=setTimeout(()=>{if(!settled&&sequence===attempt){attempt++;nextRemote();}},3100);
     };
-    const finish=()=>{clearAttempt();host.dataset.artworkState='unavailable';};
+    const finish=()=>{clearAttempt();host.dataset.artworkState='unavailable';fallback.title='Artwork unavailable from the NFT media hosts. The NFT is still in your wallet.';updateArtworkCounter();};
     const tryProxy=async()=>{
       const url=await proxiedArtUrl(nft,candidates);
       if(settled)return;

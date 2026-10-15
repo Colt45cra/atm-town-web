@@ -9,12 +9,20 @@ const MAX_DATA_IMAGE_LENGTH = 600_000;
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 45 * 1000;
 const METADATA_FETCH_TIMEOUT_MS = 6000;
+// ipfs.io/dweb.link converted to browser peer-to-peer gateways in 2026 and
+// now throttle backend and image hotlink requests. Prefer independently
+// operated retrieval gateways; retain the retired URLs only as last resorts.
 const IPFS_GATEWAYS = Object.freeze([
-  'https://ipfs.io/ipfs/',
-  'https://dweb.link/ipfs/',
-  'https://nftstorage.link/ipfs/',
+  'https://gateway.pinata.cloud/ipfs/',
+  'https://ipfs.filebase.io/ipfs/',
+  'https://gateway.lighthouse.storage/ipfs/',
+  'https://ipfs.eth.aragon.network/ipfs/',
+  'https://ipfs.kaleido.art/ipfs/',
+  'https://ipfs.1-2.dev/ipfs/',
   'https://w3s.link/ipfs/',
-  'https://gateway.pinata.cloud/ipfs/'
+  'https://nftstorage.link/ipfs/',
+  'https://ipfs.io/ipfs/',
+  'https://dweb.link/ipfs/'
 ]);
 const metadataCache = globalThis.__atmNftMetadataCache || new Map();
 globalThis.__atmNftMetadataCache = metadataCache;
@@ -119,13 +127,13 @@ async function assertPublicHttpUrl(value) {
   return url;
 }
 
-export async function fetchPublic(value, redirects = 0) {
+export async function fetchPublic(value, redirects = 0, forImage = false) {
   if (redirects > 4) throw new Error('NFT metadata redirected too many times.');
   const url = await assertPublicHttpUrl(value);
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      Accept: 'application/json, image/*;q=0.8, text/plain;q=0.5, */*;q=0.1',
+      Accept: forImage ? 'image/avif,image/webp,image/png,image/jpeg,image/gif,*/*;q=0.5' : 'application/json, image/*;q=0.8, text/plain;q=0.5, */*;q=0.1',
       'User-Agent': 'ATM-Town-NFT-Metadata/1.0'
     },
     redirect: 'manual',
@@ -136,7 +144,7 @@ export async function fetchPublic(value, redirects = 0) {
   if ([301, 302, 303, 307, 308].includes(response.status)) {
     const location = response.headers.get('location');
     if (!location) throw new Error('NFT metadata redirect was missing a destination.');
-    return fetchPublic(new URL(location, url).toString(), redirects + 1);
+    return fetchPublic(new URL(location, url).toString(), redirects + 1, forImage);
   }
   if (!response.ok) throw new Error(`NFT metadata returned HTTP ${response.status}.`);
   return { response, url: url.toString() };
@@ -261,11 +269,11 @@ async function resolveMetadataOnce(uriHex, tokenId, {refresh=false}={}) {
 function metadataUriValue(value) {
   if (typeof value === 'string') return value;
   if (!value || typeof value !== 'object') return '';
-  return value.uri || value.url || value.src || value.href || value.description || value.content || '';
+  return value.uri || value.url || value.src || value.href || value.image || value.image_url || value.content || '';
 }
 
 function firstMediaUri(source) {
-  const pools = [source?.files, source?.media, source?.assets, source?.properties?.files];
+  const pools = [source?.files, source?.media, source?.assets, source?.properties?.files,source?.properties?.media,source?.media?.files,source?.content?.files];
   for (const pool of pools) {
     if (!Array.isArray(pool)) continue;
     for (const entry of pool) {
@@ -284,10 +292,21 @@ function metadataFromJson(json, decodedUri, metadataUrl) {
   // the first unreachable image. The display client will try them in order.
   const imageValues = [
     source.image, source.image_url, source.imageUrl, source.image_uri,
-    source.thumbnail, source.thumbnail_url, source.preview,
-    source.properties?.image, source.properties?.thumbnail, firstMediaUri(source)
+    source.Image, source.imageURI, source.imageUri, source.image_link,
+    source.thumbnail, source.thumbnail_url, source.thumbnailUrl, source.preview,
+    source.properties?.image, source.properties?.image_url, source.properties?.imageUrl,
+    source.properties?.thumbnail, source.properties?.media,
+    source.metadata?.image, source.metadata?.image_url, source.asset?.image,
+    source.content?.image, source.media?.image, source.media?.thumbnail,
+    firstMediaUri(source)
   ].map(metadataUriValue).filter(Boolean);
-  const imageCandidates = uniqueStrings(imageValues.flatMap(uri => contentUriCandidates(uri, metadataUrl))).slice(0, 35);
+  // Mix original art, previews and alternate gateway paths early. Otherwise
+  // dozens of dead gateway variants for a broken primary image can hide a
+  // perfectly working thumbnail beyond the server's fetch-candidate cap.
+  const pools = imageValues.map(uri=>contentUriCandidates(uri, metadataUrl)).filter(a=>a.length);
+  const ordered=[];
+  for(let i=0;i<12;i++)for(const pool of pools)if(pool[i])ordered.push(pool[i]);
+  const imageCandidates = uniqueStrings(ordered).slice(0, 40);
   return {
     status: 'resolved',
     uri: decodedUri,
@@ -319,8 +338,8 @@ function metadataFromJson(json, decodedUri, metadataUrl) {
   };
 }
 
-const MAX_IMAGE_BYTES = 3_000_000;
-const MAX_CANDIDATES = 4;
+const MAX_IMAGE_BYTES = 8_000_000;
+const MAX_CANDIDATES = 12;
 const MAX_REQUESTS_PER_MINUTE = 100;
 const requests = globalThis.__atmLockerArtLimits || new Map();
 globalThis.__atmLockerArtLimits = requests;
@@ -338,7 +357,8 @@ function limitUser(userId) {
 async function readVerifiedImage(response) {
   if (Number(response.headers.get('content-length') || 0) > MAX_IMAGE_BYTES) throw Error('Artwork exceeds size limit.');
   const type = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-  if (type && !['image/png','image/jpeg','image/gif','image/webp','image/avif','application/octet-stream','binary/octet-stream'].includes(type)) throw Error('Artwork is not a supported image.');
+  // Some IPFS gateways report PNG/WebP bytes as text/plain or octet-stream.
+  // Trust checked file signatures instead of unreliable gateway MIME headers.
   const reader = response.body?.getReader?.();
   if (!reader) throw Error('Artwork response has no readable body.');
   const parts = [];
@@ -374,16 +394,29 @@ async function handleNftArtwork(req, res) {
     const meta = await resolveMetadata(uri, id);
     const urls = [...new Set([meta.image_url, ...(Array.isArray(meta.image_candidates) ? meta.image_candidates : [])]
       .filter(value => typeof value === 'string' && /^https?:\/\//i.test(value)))].slice(0, MAX_CANDIDATES);
-    if (!urls.length) throw Object.assign(new Error('This NFT metadata does not contain supported artwork.'), { status: 404 });
-    // Competing healthy mirrors win; 404s, blocked hotlinks, HTML error pages,
-    // corrupt images, and slow hosts cannot poison the result.
+    if (!urls.length) {
+      console.warn('NFT metadata lacks image URL', {status:meta.status,metadataHost:(()=>{try{return new URL(meta.metadata_url).hostname;}catch{return 'unknown';}})()});
+      throw Object.assign(new Error('This NFT metadata does not contain supported artwork.'), { status: 404 });
+    }
+    // Race independent gateways instead of waiting behind retired IPFS
+    // providers. Guard redirects and verify image bytes before serving.
+    const failures=[];
     let art;
     try {
       art = await Promise.any(urls.map(async url => {
-        const { response } = await fetchPublic(url); // DNS, protocol and redirect guard
-        return readVerifiedImage(response);
+        try {
+          const { response } = await fetchPublic(url, 0, true);
+          return await readVerifiedImage(response);
+        } catch(error) {
+          let host='unknown';
+          try{host=new URL(url).hostname;}catch{}
+          failures.push(host+':'+String(error?.message||'failed').slice(0,85));
+          throw error;
+        }
       }));
     } catch {
+      // Hostnames and HTTP errors only; never log wallet tokens or full URLs.
+      console.warn('NFT artwork gateway failures', failures.slice(0,12));
       throw Object.assign(new Error('Artwork hosts could not deliver a usable image.'), { status: 502 });
     }
     res.setHeader('Content-Type', art.type);
