@@ -118,7 +118,7 @@ async function assertPublicHttpUrl(value) {
   return url;
 }
 
-async function fetchPublic(value, redirects = 0) {
+export async function fetchPublic(value, redirects = 0) {
   if (redirects > 4) throw new Error('NFT metadata redirected too many times.');
   const url = await assertPublicHttpUrl(value);
   const response = await fetch(url, {
