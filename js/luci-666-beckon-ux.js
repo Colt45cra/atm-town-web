@@ -231,7 +231,7 @@ body.luci-666-open #hint,body.luci-666-open #hudSocialRail,body.luci-666-open #c
       }
       const status=hiddenStatus();
       if(looksLikeMissingWallet(status)){
-        giftState.mode='no-wallet';speechText('Thanks for coming to speak with me. I don’t see a linked Mainnet wallet yet. Once you get one connected, come back and see me — I’ll keep your sixes waiting.');clearActions();return;
+        giftState.mode='no-wallet';speechText('Thanks for coming to speak with me. I don’t see a linked Mainnet wallet yet. Once you get one connected, come back and see me — I’ll keep your sixes waiting.');clearActions();addAction('LINK WALLET',()=>window.ATMAccountSettings?.open('Link Xaman to receive Luci’s reward.'));return;
       }
       giftState.mode='needs-trustline';
       speechText('Thanks for coming to speak with me. I see you don’t have the $666 trustline yet. Set it up here, approve it in Xaman, and I’ll have your gift ready when XRPL confirms it.');

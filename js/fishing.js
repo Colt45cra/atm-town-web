@@ -29,6 +29,7 @@
  }
  function scheduleReward(id){clearTimeout(rewardTimer);rewardTimer=setTimeout(async()=>{try{if(reward?.id!==id)return;const r=await api('fish-status&id='+encodeURIComponent(id));if(reward?.id!==id)return;showReward(r,false);if(['reward_pending','pending','preparing','returning'].includes(r.status))scheduleReward(id);}catch(e){if(reward?.id!==id)return;if(copy)copy.textContent=e.message;scheduleReward(id);}},3000);}
  async function cast(now=clock()){
+  if(global.ATMAccountSettings&&!global.ATMAccountSettings.requireWallet('Link Xaman to fish for NFTs.'))return;
   if(!game||!game.ready()||!hasPole()||!atDock(game.pose())||game.pose().airborne||active()||reward)return false;
   const p=game.pose();state.reelResult=null;catchArt=null;catchArtRecovery=null;state.origin={x:p.x,y:p.y};state.target={x:p.x-205,y:p.y+45};phase('preparing',now);
   try{const r=await api('fish-cast',p);if(state.phase!=='preparing')return false;state.castId=r.id;state.hasBite=r.has_bite;state.biteAt=clock()+r.bite_delay_ms;game.face('left');phase('casting');panel.hidden=true;return true;}

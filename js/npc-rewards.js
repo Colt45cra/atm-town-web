@@ -35,7 +35,7 @@
   const message=document.createElement('small');message.setAttribute('role','status');host.append(button,message);speech.append(host);
   profile.host=host;profile.button=button;profile.message=message;
   button.addEventListener('click',async event=>{
-   event.stopPropagation();if(profile.loading)return;button.disabled=true;message.textContent='Checking your reward…';
+   event.stopPropagation();if(global.ATMAccountSettings&&!global.ATMAccountSettings.requireWallet('Link Xaman to receive NPC rewards.'))return;if(profile.loading)return;button.disabled=true;message.textContent='Checking your reward…';
    try{
     if(!profile.result){await refresh(profile);return;}
     const trust=await global.atmApiWithAuth(`/api/xaman-vending-start?commerce=npc-token-trustline&npc_id=${profile.id}`,{method:'GET'});

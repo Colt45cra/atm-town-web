@@ -113,8 +113,9 @@
    return card;
  }
  async function selectNfts(donate=false){
+   if(global.ATMAccountSettings&&!global.ATMAccountSettings.requireWallet('Link Xaman to donate or place NFTs.'))return;
    if(busy)return;
-   if(!user()){list.replaceChildren();status('Sign in and link Xaman to create or claim NFT drops.');return;}
+   if(!user()){global.ATMAccountSettings?.open('Sign in and link Xaman to create or claim NFT drops.');list.replaceChildren();status('Sign in and link Xaman to create or claim NFT drops.');return;}
    mode=donate?'donate':'create';list.replaceChildren(el('p','Loading NFTs from your linked wallet…'));
    status(donate?'Donate to the existing game rewards wallet. The NFT enters the pool only after acceptance.':'Choose an NFT to carry. Walk to your spot, tap Place NFT here, then sign in Xaman. Signing transfers the NFT into the game’s holding wallet. It becomes available at your spot after receipt is confirmed.');
    try{
@@ -137,7 +138,7 @@
  }
  function render(){
    if(!panel||panel.hidden||mode!=='mine')return;list.replaceChildren();
-   if(!user()){status('Sign in and link Xaman to create or claim NFT drops.');return;}
+   if(!user()){global.ATMAccountSettings?.open('Sign in and link Xaman to create or claim NFT drops.');status('Sign in and link Xaman to create or claim NFT drops.');return;}
    for(const row of mine)list.append(rowCard(row));if(!mine.length)list.append(el('p','Choose Create drop, carry an NFT, then sign in Xaman when placing it.'));
    if(pending&&pending.user===user()&&pending.deeplink){const link=el('a','Resume in Xaman');link.href=pending.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.prepend(link);}
  }
@@ -221,6 +222,7 @@
    if(pending&&pending.user===user())startPoll();panel.querySelector('[data-close]').focus();
  }
  async function claim(row){
+   if(global.ATMAccountSettings&&!global.ATMAccountSettings.requireWallet('Link Xaman to claim this NFT.'))return;
    panel.hidden=false;boxMode=false;mode='claim';panel.setAttribute('data-discovery','true');panel.querySelector('h2').textContent='You just found an NFT!';list.replaceChildren();status('');
    const preview=thumbnail(row);list.append(preview);
    if(!row.image_url){

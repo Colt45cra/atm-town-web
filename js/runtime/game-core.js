@@ -2598,6 +2598,7 @@ function readPendingXamanLink(){
 function savePendingXamanLink(value){try{localStorage.setItem(ATM_XAMAN_PENDING_KEY,JSON.stringify(value));}catch(_error){}}
 function clearPendingXamanLink(){try{localStorage.removeItem(ATM_XAMAN_PENDING_KEY);}catch(_error){}}
 function setXamanLinkBar(message,state='waiting'){
+  window.ATMAccountSettings?.status(message);
   const bar=document.getElementById('xamanLinkBar');const text=document.getElementById('xamanLinkBarText');
   if(!bar||!text)return;
   if(!message){bar.hidden=true;bar.className='xamanLinkBar';text.textContent='';return;}
@@ -2626,6 +2627,7 @@ async function getSupabaseClient(){
   return supabaseClient;
 }
 function setIdentityStatus(message,tone='normal'){
+  window.ATMAccountSettings?.status(message);
   const el=document.getElementById('identityStatus');
   if(el){el.textContent=message||'';el.classList.toggle('dangerText',tone==='error');if(tone==='ok')el.style.color='#7cf7bd';else if(tone!=='error')el.style.color='#9fc3cc';}
   for(const id of ['welcomeStatus','signupStatus','loginIdentityStatus']){const mirror=document.getElementById(id);if(!mirror)continue;mirror.textContent=message||'';mirror.classList.toggle('danger',tone==='error');mirror.classList.toggle('ok',tone==='ok');}
@@ -2637,6 +2639,7 @@ function updateEntryProgress(activeStep=1,completed=[]){
   });
 }
 function renderIdentity(){
+  window.ATMAccountSettings?.refresh();
   const loading=document.getElementById('identityLoading'),guest=document.getElementById('identityGuest'),signed=document.getElementById('identitySignedIn'),badge=document.getElementById('identityBadge');
   if(loading)loading.style.display='none';
   const isSigned=!!authSession?.user;
@@ -2789,17 +2792,18 @@ async function registerPasskey(){
   finally{btn.disabled=false;btn.innerHTML='<span class="identityBtnIcon">⌁</span>ADD PASSKEY';}
 }
 async function apiWithAuth(url,options={}){
-  const token=authSession?.access_token;if(!token)throw new Error('Sign in first.');
+  const token=authSession?.access_token;if(!token){if(townEntryActive&&options.method&&options.method!=='GET')window.ATMAccountSettings?.open('Sign in to use this feature.');throw new Error('Sign in first.');}
   const response=await fetch(url,{...options,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(options.headers||{})}});
-  const data=await response.json().catch(()=>({})); if(!response.ok)throw new Error(data.error||'Request failed.'); return data;
+  const data=await response.json().catch(()=>({})); if(!response.ok){const message=data.error||'Request failed.';if(townEntryActive&&options.method&&options.method!=='GET'&&/link.{0,40}(wallet|xaman)|wallet.{0,30}(link|verif)|no linked/i.test(message))window.ATMAccountSettings?.open(message);throw new Error(message);} return data;
 }
 // Narrow bridge for the isolated v234 embedded-wallet module. It receives only
 // the authenticated API helper/client accessor; wallet secrets never cross it.
 window.atmApiWithAuth=apiWithAuth;
 window.atmGetSupabaseClient=getSupabaseClient;
-async function linkXamanWallet(){
+async function linkXamanWallet({inGame=false}={}){
   if(!authSession?.user){setIdentityStatus('Sign in by email or passkey before linking Xaman.','error');return;}
   const btn=document.getElementById('linkWalletBtn');btn.disabled=true;btn.textContent='Opening Xaman…';
+  const walletWindow=inGame?window.open('about:blank','_blank'):null;
   setXamanLinkBar('Creating a secure wallet verification request…','waiting');
   try{
     const data=await apiWithAuth('/api/xaman-link?action=start',{method:'POST',body:'{}'});
@@ -2809,9 +2813,9 @@ async function linkXamanWallet(){
     setXamanLinkBar('Opening Xaman. Sign the request, then return to ATM Town.','waiting');
     // Same-tab navigation prevents Android from leaving the player on a separate
     // Xaman web request tab. Xaman's return URL brings this tab back to ATM Town.
-    window.location.assign(data.deeplink);
+    if(inGame){if(walletWindow){walletWindow.opener=null;walletWindow.location.replace(data.deeplink);}window.ATMAccountSettings?.requestReady(data.deeplink);pollWalletLink(data.payload_uuid);}else window.location.assign(data.deeplink);
   }catch(error){
-    setXamanLinkBar(error.message||'Could not start Xaman linking.','error');
+    walletWindow?.close();setXamanLinkBar(error.message||'Could not start Xaman linking.','error');
     btn.disabled=false;btn.textContent='Connect Xaman';
   }
 }
@@ -5022,8 +5026,8 @@ function pollMagnetPayment(payloadUuid){
 }
 async function startMagnetPayment(){
   if(magnetCartQty<1)return;
-  if(!authSession?.user){setMagnetCheckoutStatus('Sign in before paying.','error');return;}
-  if(!playerAccount?.wallet_address){setMagnetCheckoutStatus('Link and verify Xaman from your account screen first.','error');return;}
+  if(!authSession?.user){window.ATMAccountSettings?.open('Sign in to pay with Xaman.');setMagnetCheckoutStatus('Sign in before paying.','error');return;}
+  if(!playerAccount?.wallet_address){window.ATMAccountSettings?.open('Link Xaman to make this purchase.');setMagnetCheckoutStatus('Link and verify Xaman from your account screen first.','error');return;}
   const pay=document.getElementById('magnetPayButton');if(pay){pay.disabled=true;pay.textContent='CREATING PAYMENT…';}
   setMagnetCheckoutStatus('Creating a secure Xaman payment request…','waiting');
   try{
@@ -6366,7 +6370,7 @@ function pollNftTradePayload(payloadUuid){
   };check();
 }
 async function startNftBuyOffer(target,amountXrp){
-  const beacon=target?.beacon;if(!beacon)return;if(!authSession?.user){tradeOfferSetStatus('Sign in to make an NFT offer.','error');return;}if(!lockerWalletAddress()){tradeOfferSetStatus('Link and verify Xaman before making an offer.','error');return;}
+  const beacon=target?.beacon;if(!beacon)return;if(!authSession?.user){window.ATMAccountSettings?.open('Sign in to make an NFT offer.');tradeOfferSetStatus('Sign in to make an NFT offer.','error');return;}if(!lockerWalletAddress()){window.ATMAccountSettings?.open('Link a wallet to make an NFT offer.');tradeOfferSetStatus('Link and verify Xaman before making an offer.','error');return;}
   const amount=String(amountXrp||'').trim();if(!/^\d+(?:\.\d{1,6})?$/.test(amount)||Number(amount)<=0){tradeOfferSetStatus('Enter a valid XRP offer greater than zero.','error');return;}
   const submit=document.getElementById('tradeOfferSubmit');if(submit)submit.disabled=true;tradeOfferSetStatus('Creating XRPL buy offer…');
   try{const data=await apiWithAuth('/api/xrpl-nft-trade?action=start',{method:'POST',body:JSON.stringify({token_id:beacon.tokenId,seller_wallet:beacon.wallet,amount_xrp:amount})});savePendingNftTrade({payload_uuid:data.payload_uuid,action:'create_buy_offer',token_id:data.token_id,seller_wallet:data.seller_wallet,amount_xrp:data.amount_xrp,created_at:Date.now()});tradeOfferSetStatus('Opening Xaman. Review the NFT and XRP amount, sign, then return to this browser tab.');pollNftTradePayload(data.payload_uuid);window.location.assign(data.deeplink);}catch(error){tradeOfferSetStatus(error.message||'Could not create NFT offer.','error');if(submit)submit.disabled=false;}
@@ -7006,7 +7010,7 @@ function attributeStorePollPayment(payloadUuid){
 async function attributeStoreStartCheckout(){
   if(attributeStoreState.paymentCategory==='cash'){attributeStoreSetStatus('Cash / card checkout is the next payment rail and is not live yet. Crypto checkout is available first.','error');return;}
   const pricing=attributeStoreCartPricing();if(!pricing.items.length)return;if(!pricing.allPriced){attributeStoreSetStatus('One or more items do not have a price for '+attributeStoreState.cryptoAsset.toUpperCase()+'.','error');return;}
-  if(!authSession?.access_token){attributeStoreSetStatus('Sign in before purchasing attributes.','error');return;}if(!playerAccount?.wallet_address){attributeStoreSetStatus('Link and verify Xaman before making an XRPL purchase.','error');return;}
+  if(!authSession?.access_token){window.ATMAccountSettings?.open('Sign in to purchase attributes.');attributeStoreSetStatus('Sign in before purchasing attributes.','error');return;}if(!playerAccount?.wallet_address){window.ATMAccountSettings?.open('Link Xaman to purchase attributes.');attributeStoreSetStatus('Link and verify Xaman before making an XRPL purchase.','error');return;}
   const button=document.getElementById('attributeStoreCheckoutButton');if(button){button.disabled=true;button.textContent='CREATING XAMAN PAYMENT…';}
   try{const data=await apiWithAuth('/api/xaman-vending-start?commerce=attribute-store',{method:'POST',body:JSON.stringify({item_ids:pricing.items.map(item=>item.id),asset_id:attributeStoreState.cryptoAsset})});attributeStoreSavePending({payload_uuid:data.payload_uuid,purchase_id:data.purchase_id,created_at:Date.now()});attributeStoreSetStatus(`Opening Xaman for ${data.total} ${data.asset_label}. Return to ATM Town after signing.`);attributeStorePollPayment(data.payload_uuid);window.location.assign(data.deeplink);}
   catch(error){attributeStoreSetStatus(error.message||'Could not start Attribute Store checkout.','error');attributeStoreRenderCart();}
