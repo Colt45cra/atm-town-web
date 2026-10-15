@@ -7,7 +7,7 @@ class Element{
 function setup(provider='atm_pay'){
  const body=new Element('body'),calls=[],opened=[],local=new Map(),events={};let interval;
  const nft={tokenId:'A'.repeat(64),name:'Selected NFT'};
- const context=vm.createContext({document:{body,createElement:t=>new Element(t)},authSession:{user:{id:'user'}},navigator:{userAgent:'Desktop'},window:{ATMMainnetWallet:{provider:()=>provider,refresh:async()=>{},open(){}},open:u=>opened.push(u),addEventListener:(e,f)=>events[e]=f},Date,Math,localStorage:{getItem:k=>local.get(k),setItem:(k,v)=>local.set(k,v),removeItem:k=>local.delete(k)},setInterval:f=>{interval=f;return 1;},clearInterval(){},lockerWalletAddress:()=> 'own-wallet',lockerNftTokenId:n=>n.tokenId,lockerNftDisplayName:n=>n.name,tradeBeaconSet:async()=>{},lockerRefreshXrpl:async()=>{},showXrplPaymentToast(){},apiWithAuth:async(url,opts)=>{const b=JSON.parse(opts.body);calls.push({url,body:b});return url.endsWith('-list')?{offers:[{offer_index:'B'.repeat(64),amount_xrp:25}]}:{id:'request',deeplink:'https://atm-pay-two.vercel.app/town#kind=market'};}});
+ const context=vm.createContext({document:{body,createElement:t=>new Element(t)},authSession:{user:{id:'user'}},navigator:{userAgent:'Desktop'},window:{ATMMainnetWallet:{connections:()=>({xaman:'xaman-wallet',atm_pay:'own-wallet'}),provider:()=>provider,refresh:async()=>{},open(){}},open:u=>opened.push(u),addEventListener:(e,f)=>events[e]=f},Date,Math,localStorage:{getItem:k=>local.get(k),setItem:(k,v)=>local.set(k,v),removeItem:k=>local.delete(k)},setInterval:f=>{interval=f;return 1;},clearInterval(){},lockerWalletAddress:()=> 'own-wallet',lockerNftTokenId:n=>n.tokenId,lockerNftDisplayName:n=>n.name,tradeBeaconSet:async()=>{},lockerRefreshXrpl:async()=>{},showXrplPaymentToast(){},apiWithAuth:async(url,opts)=>{const b=JSON.parse(opts.body);calls.push({url,body:b});return url.endsWith('-list')?{offers:[{offer_index:'B'.repeat(64),amount_xrp:25}]}:{id:'request',deeplink:'https://atm-pay-two.vercel.app/town#kind=market'};}});
  vm.runInContext(fs.readFileSync(new URL('../js/atm-pay-nft-market.js',import.meta.url),'utf8'),context);
  return {api:context.window.ATMNftMarket,modal:body.children[0],calls,opened,nft};
 }
@@ -22,6 +22,14 @@ test('beacon purchases use its listed offer and never expose seller cancellation
  assert.equal(t.calls[0].body.owner_wallet,'their-wallet');assert.equal(t.modal.textContent.includes('CANCEL LISTING'),false);
  const row=t.modal.children.find(c=>c.textContent.includes('BUY ·'));await row.children[0].onclick();assert.equal(t.calls[1].body.operation,'accept_sell');assert.equal(t.calls[1].body.offer_index,'B'.repeat(64));
 });
-test('Xaman selection prompts ATM Pay connection without creating a sale request',async()=>{
- const t=setup('xaman');await t.api.sell(t.nft);assert.equal(t.calls.length,0);assert.equal(t.opened.length,0);assert.ok(t.modal.textContent.includes('Select your connected ATM Pay'));
+test('purchase wallet choice is sent per request without changing the global locker provider',async()=>{
+ const t=setup('atm_pay');await t.api.buy({tokenId:t.nft.tokenId,name:'Their NFT',wallet:'their-wallet'});
+ await t.modal.children.find(c=>c.tag==='button'&&c.textContent.startsWith('Xaman ·')).onclick();
+ const row=t.modal.children.find(c=>c.textContent.includes('BUY ·'));await row.children[0].onclick();
+ assert.equal(t.calls.at(-1).body.provider,'xaman');assert.equal(t.calls.at(-1).body.operation,'accept_sell');assert.equal(t.calls.at(-1).body.token_id,t.nft.tokenId);
+ assert.match(t.modal.textContent,/Open Xaman to review/);
+});
+test('Xaman and ATM Pay choices are both shown while links remain connected',async()=>{
+ const t=setup();await t.api.buy({tokenId:t.nft.tokenId,name:'Their NFT',wallet:'their-wallet'});
+ assert.match(t.modal.textContent,/Xaman · xaman-wallet/);assert.match(t.modal.textContent,/ATM Pay · own-wallet/);assert.equal(t.opened.length,0);
 });

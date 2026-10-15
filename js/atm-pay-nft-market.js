@@ -18,25 +18,33 @@
   }catch(e){if(modal.open)modal.appendChild(node('p',e.message));}
  }
  async function start(operation,offer,amount){
-  const r=await api('start',{operation,token_id:view.token,token_name:view.name,offer_index:offer?.offer_index,amount_xrp:amount});
+  const provider=view.provider, walletName=provider==='xaman'?'Xaman':'ATM Pay';
+  const r=await api('start',{provider,operation,token_id:view.token,token_name:view.name,offer_index:offer?.offer_index,amount_xrp:amount});
   localStorage.setItem(pendingKey(),r.id);clearInterval(timer);timer=setInterval(poll,3000);
-  const link=node('a','Open ATM Pay to review and approve');link.href=r.deeplink;link.target='_blank';link.rel='noopener noreferrer';modal.appendChild(link);
-  modal.appendChild(node('p','Approve with your passkey, then return to this Town tab.'));
+  const link=node('a','Open '+walletName+' to review and approve');link.href=r.deeplink;link.target='_blank';link.rel='noopener noreferrer';modal.appendChild(link);
+  modal.appendChild(node('p','Review and approve in '+walletName+', then return to this Town tab.'));
   if(/Android|iPhone|iPad/i.test(navigator.userAgent))window.location.assign(r.deeplink);else window.open(r.deeplink,'_blank','noopener');
  }
  async function render(){
   const current=view;modal.textContent='';modal.append(node('h2',current.own?'Sell your NFT':'Buy this NFT'),node('p',current.name));
   modal.appendChild(button('Close',()=>modal.close()));
-  if(window.ATMMainnetWallet?.provider()!=='atm_pay'){
-   modal.append(node('p','Select your connected ATM Pay mainnet wallet to list, buy, or cancel an NFT sale.'));
-   modal.appendChild(button('ATM PAY MAINNET',()=>{modal.close();window.ATMMainnetWallet?.open();}));return;
+  const connections=window.ATMMainnetWallet?.connections?.()||{atm_pay:window.ATMMainnetWallet?.provider()==='atm_pay'?'linked':null};
+  modal.appendChild(node('h3',current.own?'Wallet that owns this NFT':'Choose payment wallet'));
+  for(const provider of ['xaman','atm_pay']){
+   const name=provider==='xaman'?'Xaman':'ATM Pay',address=connections[provider];
+   const choice=button((current.provider===provider?'✓ ':'')+name+(address?' · '+address:' · Not linked'),async()=>{
+    if(!address){window.ATMMainnetWallet?.open();return;}
+    if(current.own&&address!==current.owner){modal.appendChild(node('p','This NFT belongs to the other wallet. Open that wallet’s locker to sell one of its NFTs.'));return;}
+    current.provider=provider;await render();
+   });choice.setAttribute('aria-pressed',String(current.provider===provider));modal.appendChild(choice);
   }
+  if(!connections[current.provider]){modal.appendChild(node('p','Connect the selected wallet to continue. Both wallet links stay saved.'));return;}
   if(current.own){
    const input=document.createElement('input');input.type='number';input.inputMode='decimal';input.min='0.000001';input.step='0.000001';input.placeholder='Price in XRP';input.style.cssText='font-size:18px;padding:12px;width:85%';const label=node('label','Sale price (XRP)');label.appendChild(input);modal.appendChild(label);
-   modal.appendChild(button('LIST WITH ATM PAY',()=>start('sell',null,input.value)));
+   modal.appendChild(button('LIST WITH '+(current.provider==='xaman'?'XAMAN':'ATM PAY'),()=>start('sell',null,input.value)));
    modal.append(node('p','Public listing · seven days. Your NFT stays in your wallet until purchased. Other XRPL marketplaces can also accept it. Issuer royalties may reduce your proceeds.'));
   }
-  const r=await api('list',{token_id:current.token,owner_wallet:current.owner});if(current!==view||!modal.open)return;
+  const r=await api('list',{token_id:current.token,owner_wallet:current.owner,provider:current.provider});if(current!==view||!modal.open)return;
   modal.appendChild(node('h3',current.own?'Your active listings':'Active XRP listings'));
   if(!r.offers.length)modal.appendChild(node('p','No active XRP listings.'));
   for(const offer of r.offers){const row=node('div',`${offer.amount_xrp} XRP${offer.expiration&&offer.expiration<=Math.floor(Date.now()/1000)-946684800?' · expired':''}`);row.appendChild(button(current.own?'CANCEL LISTING':`BUY · ${offer.amount_xrp} XRP`,()=>start(current.own?'cancel_sell':'accept_sell',offer)));modal.appendChild(row);}
@@ -45,7 +53,7 @@
  async function open(nft,owner,own=false){
   if(!authSession?.user){showXrplPaymentToast('Sign in to use NFT sales.','error',7000);return;}
   await window.ATMMainnetWallet?.refresh();
-  view={nft:own?nft:null,token:own?lockerNftTokenId(nft):nft.tokenId,name:own?lockerNftDisplayName(nft):nft.name,owner,own};
+  view={provider:window.ATMMainnetWallet?.provider()||'xaman',nft:own?nft:null,token:own?lockerNftTokenId(nft):nft.tokenId,name:own?lockerNftDisplayName(nft):nft.name,owner,own};
   if(!modal.open)modal.showModal();try{await render();}catch(e){modal.appendChild(node('p',e.message));}
  }
  window.ATMNftMarket={sell:nft=>open(nft,lockerWalletAddress(),true),buy:beacon=>open(beacon,beacon.wallet),acceptBuy:async(nft,offer)=>{await open(nft,lockerWalletAddress(),true);if(window.ATMMainnetWallet?.provider()==='atm_pay')await start('accept_buy',offer);}};

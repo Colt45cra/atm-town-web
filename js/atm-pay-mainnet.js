@@ -16,20 +16,20 @@
     if(old&&old!==data.wallet?.wallet_address)tradeBeaconClear('NFT wallet changed. Choose a beacon from this wallet.');
     return data;
   }
-  async function changed(){await refresh();lockerState.status='idle';lockerState.nfts=[];lockerState.selectedNftId=null;await lockerRefreshXrpl(true);render();}
+  async function changed(){await refresh();window.ATMAccountSettings?.refresh();window.dispatchEvent(new CustomEvent('atm-wallet-links-changed'));lockerState.status='idle';lockerState.nfts=[];lockerState.selectedNftId=null;await lockerRefreshXrpl(true);render();}
   async function inspect(){
     const pending=localStorage.getItem(key());if(!pending)return;
     try{
       const r=await api('inspect',{id:pending});
       if(r.status==='proved'){
         if(!opened)await show();render();body.append(text('h3','Confirm your ATM Pay wallet'),text('p',r.wallet_address));
-        body.appendChild(button('Use this wallet for NFTs',async()=>{await api('confirm',{id:pending});localStorage.removeItem(key());clearInterval(timer);await changed();}));
+        body.appendChild(button('Finish linking ATM Pay',async()=>{await api('confirm',{id:pending});localStorage.removeItem(key());clearInterval(timer);await changed();}));
         if(timer)clearInterval(timer);timer=null;
       }else if(r.status==='linked'){localStorage.removeItem(key());clearInterval(timer);timer=null;await changed();}
     }catch(e){if(opened)body.appendChild(text('p',e.message));clearInterval(timer);timer=null;}
   }
   function render(){
-    body.textContent='';body.append(text('h2','ATM Pay · Mainnet'),text('p','Choose the wallet used by your NFT locker and trade beacon. Your Xaman link and testnet wallet stay available.'));
+    body.textContent='';body.append(text('h2','ATM Pay · Mainnet'),text('p','Keep Xaman and ATM Pay connected together. Choose which wallet pays when buying an NFT. Your locker wallet controls which NFTs you browse.'));
     if(state?.link){body.append(text('p','ATM Pay: '+state.link.wallet_address),text('p',state.link.active?'Active NFT wallet':'Connected'));
       if(!state.link.active)body.appendChild(button('Use ATM Pay for NFTs',async()=>{await api('select',{provider:'atm_pay'});await changed();}));
       if(state.link.active&&playerAccount?.wallet_address)body.appendChild(button('Use Xaman for NFTs',async()=>{await api('select',{provider:'xaman'});await changed();}));
@@ -40,13 +40,13 @@
       clearInterval(timer);timer=setInterval(inspect,3000);
       if(/Android|iPhone|iPad/i.test(navigator.userAgent))window.location.assign(r.deeplink);else window.open(r.deeplink,'_blank','noopener');
     }));
-    body.append(text('p','NFT exchanges, sales, purchases, and sale cancellation use your selected mainnet ATM Pay wallet. Free drops and creating XRP buy offers use Xaman.'),button('Check connection',inspect),button('Close',()=>{dialog.close();opened=false;}));
+    body.append(text('p','NFT purchases let you choose Xaman or ATM Pay. Sales use the wallet that owns the NFT. Attribute-store checkout, free drops, and creating XRP buy offers currently use Xaman.'),button('Check connection',inspect),button('Close',()=>{dialog.close();opened=false;}));
   }
   async function show(){opened=true;if(!dialog.open)dialog.showModal();render();try{await refresh();render();}catch(e){body.appendChild(text('p',e.message));}}
   dialog.addEventListener('close',()=>{opened=false;});
   document.getElementById('atmPayMainnetBtn')?.addEventListener('click',show);
   const lockerHost=document.getElementById('lockerNftSort')?.parentElement;
   if(lockerHost){const b=button('ATM PAY MAINNET',show);b.className='flowSecondary cyan';b.style.gridColumn='1 / -1';lockerHost.appendChild(b);}
-  window.ATMMainnetWallet={refresh,address:fallback=>userId===authSession?.user?.id&&state?.wallet?String(state.wallet.wallet_address||''):fallback,provider:()=>userId===authSession?.user?.id?state?.wallet?.provider:'xaman',open:show};
+  window.ATMMainnetWallet={refresh,connections:()=>userId===authSession?.user?.id?{xaman:playerAccount?.wallet_address||null,atm_pay:state?.link?.verified_at?state.link.wallet_address:null}:{},address:fallback=>userId===authSession?.user?.id&&state?.wallet?String(state.wallet.wallet_address||''):fallback,provider:()=>userId===authSession?.user?.id?state?.wallet?.provider:'xaman',open:show};
   window.addEventListener('focus',()=>{if(authSession?.user){refresh().then(inspect).catch(()=>{});}});
 })();
