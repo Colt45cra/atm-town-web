@@ -1,3 +1,4 @@
+import {requireTownHuman} from '../lib/human-verification.js';
 import { luciEligibility } from '../lib/npc-security.js';
 import { loadAttributeDefinitions, publicAttributeDefinitions, adminAttributeAccess } from '../lib/attribute-catalog.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -272,6 +273,7 @@ async function handleLuci666RewardStatus(req, res) {
 }
 
 async function handleLuci666RewardClaim(req, res) {
+  await requireTownHuman(req);
   const { user, wallet, walletSource, walletLabel, security } = await resolveLuciRewardWallet(req);
 
   if(!security.eligible)throw Object.assign(new Error(security.reason),{status:403});

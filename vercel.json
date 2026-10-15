@@ -31,7 +31,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' https://xnyjurertwohlqczaeux.supabase.co wss://xnyjurertwohlqczaeux.supabase.co https://*.livekit.cloud wss://*.livekit.cloud; frame-src https://www.youtube-nocookie.com https://payload-omega-gules.vercel.app; worker-src 'self' blob:; child-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' https://xnyjurertwohlqczaeux.supabase.co wss://xnyjurertwohlqczaeux.supabase.co https://*.livekit.cloud wss://*.livekit.cloud; frame-src 'self' https://www.youtube-nocookie.com https://payload-omega-gules.vercel.app; worker-src 'self' blob:; child-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
         },
         {
           "key": "Referrer-Policy",
@@ -62,6 +62,19 @@
           "value": "none"
         }
       ]
+    },
+    {
+      "source": "/149e9513-01fa-4fb0-aad4-566afd725d1b/2d206a39-8ed7-437e-a3be-862e0f06eea3/:path*",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; frame-ancestors 'self'"
+        }
+      ]
     }
   ],
   "$schema": "https://openapi.vercel.sh/vercel.json",
@@ -77,6 +90,16 @@
     {
       "path": "/api/leaderboards?action=rewards-cron",
       "schedule": "0 2 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/149e9513-01fa-4fb0-aad4-566afd725d1b/2d206a39-8ed7-437e-a3be-862e0f06eea3/a-4-a/c.js",
+      "destination": "https://api.vercel.com/bot-protection/v1/challenge"
+    },
+    {
+      "source": "/149e9513-01fa-4fb0-aad4-566afd725d1b/2d206a39-8ed7-437e-a3be-862e0f06eea3/:path*",
+      "destination": "https://api.vercel.com/bot-protection/v1/proxy/:path*"
     }
   ]
 }

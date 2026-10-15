@@ -8,7 +8,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v288-account-settings-1';
+const BUILD_CACHE = 'atm-town-shell-v289-browser-verification-1';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = 'atm-town-world-v2';
 const WORLD_SNAPSHOT='/__atm_world__/manifest.json';
@@ -56,6 +56,7 @@ const SHELL = [
   '/js/arcade-rewards.js',
   '/js/runtime/game-core.js',
   '/js/account-settings.js',
+  '/js/human-verification.js',
   '/js/nft-issuer-setup.js',
   '/js/runtime/sky-run.js',
   '/js/runtime/platform-panic.js',
@@ -144,7 +145,7 @@ self.addEventListener('fetch', (event) => {
     if(request.destination==='image')event.respondWith(caches.open(WORLD_CACHE).then(async cache=>(await cache.match(request))||fetch(request)));
     return;
   }
-  if (url.pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/149e9513-01fa-4fb0-aad4-566afd725d1b/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));

@@ -2956,6 +2956,9 @@ async function connectMultiplayer(){
   statusEl.textContent='Loading secure multiplayer connection...';
   statusEl.style.color='#9fc3cc';
   try{
+    statusEl.textContent='Verifying your browser…';
+    if(!window.ATMTownHumanCheck)throw new Error('Browser verification did not load. Refresh ATM Town and try again.');
+    await window.ATMTownHumanCheck();
     await prepareTownMapForEntry();
     await loadSupabaseLibrary();
   }catch(err){
@@ -4347,7 +4350,7 @@ function selectCharacter(characterId,options={}){
 }
 document.querySelectorAll('.characterChoice').forEach(button=>button.addEventListener('click',()=>selectCharacter(button.dataset.character,{source:'user'})));
 selectCharacter(savedMp.character||'classic',{source:'local'});
-const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',async()=>{try{await prepareTownMapForEntry();}catch(error){document.getElementById('loginStatus').textContent=error.message;return;}playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user&&window.atmEntryMode!=='guest'){const committedCharacter=selectedCharacter;if(playerAccount)playerAccount={...playerAccount,display_name:playerName,selected_character:committedCharacter};getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:committedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
+const joinOnlineButton=document.getElementById('joinOnline');joinOnlineButton.addEventListener('click',connectMultiplayer);document.getElementById('joinOffline').addEventListener('click',async()=>{try{if(!window.ATMTownHumanCheck)throw new Error('Refresh ATM Town to load browser verification.');await window.ATMTownHumanCheck();await prepareTownMapForEntry();}catch(error){document.getElementById('loginStatus').textContent=error.message;return;}playerName=(document.getElementById('displayName').value||'Guest').trim();safeStorageSet('atm_mp',JSON.stringify({...savedMp,playerName,character:selectedCharacter}));townEntryActive=true;hideTownAccessFlow();window.atmStartFirstRunTutorial?.();if(authSession?.user&&window.atmEntryMode!=='guest'){const committedCharacter=selectedCharacter;if(playerAccount)playerAccount={...playerAccount,display_name:playerName,selected_character:committedCharacter};getSupabaseClient().then(c=>c.from('player_accounts').update({display_name:playerName,selected_character:committedCharacter}).eq('user_id',authSession.user.id));}});document.getElementById('chatSend').addEventListener('click',sendChat);document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat();}});window.addEventListener('beforeunload',()=>{saveAccountLocation();if(realtimeChannel)realtimeChannel.send({type:'broadcast',event:'leave',payload:{id:playerId}});});
 
 const keys={};
 function isTextEntryTarget(target){

@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.0",
+    "botid": "1.5.11",
     "livekit-server-sdk": "^2.17.0",
     "web-push": "^3.6.7",
     "xrpl": "5.3.0",
@@ -19,7 +20,8 @@
     "validate:world": "python3 scripts/validate-world.py",
     "security:headers": "node scripts/generate-security-headers.mjs",
     "validate:nft-metadata": "node scripts/validate-nft-metadata.mjs",
-    "build:nft-codec": "node scripts/build-nft-codec.mjs"
+    "build:nft-codec": "node scripts/build-nft-codec.mjs",
+    "build:human-verification": "esbuild js/human-verification-entry.js --bundle --format=iife --target=es2022 --outfile=js/human-verification.js"
   },
   "devDependencies": {
     "esbuild": "0.27.4"

@@ -1,3 +1,4 @@
+import {requireTownHuman,needsHumanVerification} from '../lib/human-verification.js';
 import {handleVehicles,vehicleArt} from '../lib/vehicles.js';
 import { handleEconomy } from '../lib/town-economy.js';
 import { randomUUID } from 'node:crypto';
@@ -213,6 +214,8 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const economyAction = String(req.body?.action || req.query?.action || '');
+    if(needsHumanVerification(req))await requireTownHuman(req);
+    if(economyAction==='rewards-human-check'&&req.method==='POST')return res.json({verified:true});
     if(economyAction.startsWith('billboard-')){const {default:handler}=await import('../server/billboards.js');return await handler(req,res);}
     if(economyAction==='vehicle-art'&&req.method==='GET'){const image=await vehicleArt(req.query);res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control','public,max-age=86400,s-maxage=86400');return res.send(Buffer.from(image));}
     if(economyAction.startsWith('vehicle-')){res.setHeader('Cache-Control','no-store');return res.json(await handleVehicles(adminClient(),req));}
