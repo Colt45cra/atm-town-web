@@ -322,7 +322,7 @@
     const nextRemote=()=>{
       if(settled)return;
       clearAttempt();
-      if(index===2){index++;tryProxy();return;}
+      if(index===Math.min(2,candidates.length)){index=3;tryProxy();return;}
       if(index>=candidates.length+1){finish();return;}
       const candidate=candidates[index>2?index-1:index];index++;
       if(candidate)show(candidate);else finish();
