@@ -7,7 +7,7 @@ const root=new URL('../',import.meta.url);
 const core=fs.readFileSync(new URL('js/runtime/game-core.js',root),'utf8');
 const recovery=fs.readFileSync(new URL('js/nft-performance.js',root),'utf8');
 const metadata=fs.readFileSync(new URL('api/xrpl-nft-metadata.js',root),'utf8');
-const relay=fs.readFileSync(new URL('api/xrpl-nft-art.js',root),'utf8');
+const relay=metadata;
 const page=fs.readFileSync(new URL('index.html',root),'utf8');
 
 test('mobile NFT recovery is loaded after core and scripts remain valid',()=>{
