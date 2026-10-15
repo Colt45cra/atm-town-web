@@ -12,7 +12,7 @@
   function normalizePerson(value){
     if(!value||typeof value!=='object')return null;
     const pay=value.atmPay||value;
-    const userId=String(pay?.user_id||'');const handle=String(pay?.handle||'').toLowerCase();
+    const userId=String(pay?.user_id||value.account_id||'');const handle=String(pay?.handle||'').toLowerCase();
     return {afk:!!value.afk,session_id:String(value.session_id||''),user_id:userId,handle:/^[a-z0-9_]{3,20}$/.test(handle)?handle:'',display_name:String(pay?.display_name||value.name||'ATM Player').slice(0,30),character_id:String(pay?.character_id||value.character_id||'classic').slice(0,40),map:String(value.map||''),nearby:!!value.nearby,distance:Number.isFinite(value.distance)?Number(value.distance):null,is_self:!!value.is_self,atm_pay_ready:!!userId&&/^[a-z0-9_]{3,20}$/.test(handle)};
   }
   function thumb(person){return CHARACTER_THUMBS[String(person?.character_id||'classic')]||CHARACTER_THUMBS.classic;}
@@ -79,7 +79,7 @@
   function mapLabel(map){return ({town:'ATM Town',hq:'ATM HQ',gallery:'NFT Gallery',arcade:'Arcade',lounge:'Lounge'})[String(map||'')]||String(map||'Online');}
   function statusText(person){if(person.is_self)return 'This is you';if(person.nearby)return 'Right near you';if(person.map)return `In ${mapLabel(person.map)}`;return 'Online';}
   function resolvePersonById(id){
-    const all=[...(state.game.online||[]),...(state.game.encounters||[]),...(state.pay.recentPeople||[]),...(state.searchResults||[])].map(normalizePerson).filter(Boolean);
+    const all=[...(state.game.online||[]),...(state.game.encounters||[]),...(state.pay.recentPeople||[]),...(state.searchResults||[]),...(window.ATMSocial?.getState().relationships||[])].map(normalizePerson).filter(Boolean);
     return all.find(p=>p.user_id===id)||null;
   }
   function ensurePingComposer(){
@@ -125,10 +125,10 @@
   function personRow(person,{showStatus=true,pay=true,ping=true}={}){
     const p=normalizePerson(person);if(!p)return '';
     const payReady=pay&&p.atm_pay_ready&&!p.is_self,pingReady=ping&&!!p.user_id&&!p.is_self;
-    const actions=(pingReady||payReady)?`<span class="peopleHubPersonActions">${pingReady?`<button class="peopleHubPingBtn" type="button" data-people-ping="${esc(p.user_id)}">Ping</button>`:''}${payReady?`<button class="peopleHubPayBtn" type="button" data-people-pay="${esc(p.user_id)}">Pay</button>`:''}</span>`:'';
+    const actions=(pingReady||payReady)?`<span class="peopleHubPersonActions">${p.user_id&&!p.is_self?(window.ATMSocial?.button(p.user_id)||''):''}${pingReady?`<button class="peopleHubPingBtn" type="button" data-people-ping="${esc(p.user_id)}">Ping</button>`:''}${payReady?`<button class="peopleHubPayBtn" type="button" data-people-pay="${esc(p.user_id)}">Pay</button>`:''}</span>`:'';
     return `<div class="peopleHubPerson">${avatar(p)}<span class="peopleHubPersonMain"><b>${esc(p.display_name)}${p.is_self?' · You':''}</b>${p.handle?`<span class="peopleHubHandle">@${esc(p.handle)}</span>`:''}${showStatus?`<span>${esc((p.afk?'AFK · ':'')+statusText(p))}</span>`:''}<span class="peopleHubBadges">${p.nearby&&!p.is_self?'<span class="peopleHubPill near">Nearby</span>':''}${p.atm_pay_ready?'<span class="peopleHubPill">ATM Pay</span>':''}</span></span>${actions}</div>`;
   }
-  function bindPersonButtons(host){host?.querySelectorAll('[data-people-pay]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePay||''));if(person)payPerson(person);}));host?.querySelectorAll('[data-people-ping]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePing||''));if(person)openPingComposer(person);}));}
+  function bindPersonButtons(host){window.ATMSocial?.bind(host);host?.querySelectorAll('[data-people-pay]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePay||''));if(person)payPerson(person);}));host?.querySelectorAll('[data-people-ping]').forEach(button=>button.addEventListener('click',()=>{const person=resolvePersonById(String(button.dataset.peoplePing||''));if(person)openPingComposer(person);}));}
   function renderOnline(){
     const host=document.getElementById('atmPeopleHubOnline');if(!host)return;const previousScroll=host.scrollTop;
     const online=(state.game.online||[]).map(normalizePerson).filter(Boolean);
@@ -141,7 +141,7 @@
     const host=document.getElementById('atmPeopleHubPeople');if(!host)return;const previousScroll=host.scrollTop;
     const paymentPeople=dedupePeople(state.pay.recentPeople||[]);
     const encounters=dedupePeople(state.game.encounters||[]).filter(p=>!paymentPeople.some(x=>x.user_id&&x.user_id===p.user_id));
-    host.innerHTML=`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Recent payments</b><span>${paymentPeople.length}</span></div><p class="peopleHubCopy">People you’ve paid or requested stay easy to find, even when they’re offline.</p>${paymentPeople.length?paymentPeople.map(p=>personRow(p,{showStatus:false})).join(''):'<div class="peopleHubEmpty">Your payment contacts will appear here.</div>'}</div><div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Met this session</b><span>${encounters.length}</span></div><p class="peopleHubCopy">Only ATM Pay-enabled players you got close to are remembered for this browser session. This is not a permanent location history.</p>${encounters.length?encounters.map(p=>personRow(p,{showStatus:false})).join(''):'<div class="peopleHubEmpty">Walk near another ATM Pay player and they’ll appear here for this session.</div>'}</div>`;
+    host.innerHTML=`${window.ATMSocial?.section()||''}<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Recent payments</b><span>${paymentPeople.length}</span></div><p class="peopleHubCopy">People you’ve paid or requested stay easy to find, even when they’re offline.</p>${paymentPeople.length?paymentPeople.map(p=>personRow(p,{showStatus:false})).join(''):'<div class="peopleHubEmpty">Your payment contacts will appear here.</div>'}</div><div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Met this session</b><span>${encounters.length}</span></div><p class="peopleHubCopy">Only ATM Pay-enabled players you got close to are remembered for this browser session. This is not a permanent location history.</p>${encounters.length?encounters.map(p=>personRow(p,{showStatus:false})).join(''):'<div class="peopleHubEmpty">Walk near another ATM Pay player and they’ll appear here for this session.</div>'}</div>`;
     bindPersonButtons(host);restorePageScroll(host,previousScroll);
   }
   function requestRow(item){
@@ -172,7 +172,7 @@
   async function refresh({network=true}={}){
     state.game=window.ATMGamePeople?.snapshot?.()||state.game||{online:[],encounters:[]};
     state.onlineCount=Math.max(1,Number(state.game.onlineCount||state.onlineCount||1));
-    if(network)try{await window.ATMMainnetWallet?.refresh();}catch{}
+    if(network){await Promise.allSettled([window.ATMMainnetWallet?.refresh(),window.ATMSocial?.refresh()]);}
     state.pay={ready:!!window.ATMMainnetWallet?.linkedAddress?.(),pendingRequestCount:0,balanceXrp:null,balanceFunded:false,balanceAvailable:false,recentPeople:[],incomingRequests:[],recentActivity:[]};
     render();
   }
@@ -191,6 +191,7 @@
 
   window.ATMPeopleHub={open,close,setOnlineCount,refresh:()=>refresh({network:true})};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();refresh({network:false});});else{ensureUi();refresh({network:false});}
+  window.addEventListener('atm:social-changed',()=>{if(state.open){renderOnline();renderPeople();}});
   window.addEventListener('atm:online-players-changed',()=>{state.game=window.ATMGamePeople?.snapshot?.()||state.game;if(state.open)render();else refreshTrigger();});
   window.addEventListener('atm:pay-state-changed',()=>{if(state.open)refresh({network:false});});
   window.addEventListener('atm:pwa-state-changed',()=>{if(state.open&&state.page===0)renderOnline();});

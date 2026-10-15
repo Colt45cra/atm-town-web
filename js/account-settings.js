@@ -28,6 +28,7 @@
   if(xaman||pay)$('townSettingsStatus').textContent='';
  }
  async function open(reason=''){
+  window.ATMSocial?.refreshSettings();
   joy.x=joy.y=0;knob.style.transform='translate(0,0)';refresh();$('townAccountReason').textContent=reason||'Manage your account and wallet connections without leaving town.';if(!dialog.open)dialog.showModal();const id=++refreshId;
   if(authSession?.user)try{const data=await window.ATMMainnetWallet?.refresh();if(id===refreshId){const address=data?.link?.wallet_address;walletConnection('townAccountPay',address);$('townSettingsPay').hidden=!!address;}}
   catch(e){if(id===refreshId&&!window.ATMMainnetWallet?.linkedAddress?.())walletConnection('townAccountPay',null,'Connection status unavailable');}

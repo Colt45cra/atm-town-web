@@ -52,7 +52,7 @@
     toast.style.top=Math.round(top)+'px';
   }
   function receivePing(payload){
-    if(!payload||payload.type!=='player_ping')return false;
+    if(!payload||payload.type!=='player_ping'||global.ATMSocial?.getState()?.preferences?.player_pings===false)return false;
     const id=String(payload.ping_id||'');
     if(id&&seenPingIds.has(id))return false;
     if(id){seenPingIds.add(id);if(seenPingIds.size>80)seenPingIds.delete(seenPingIds.values().next().value);}
@@ -122,6 +122,7 @@
   }
 
   async function onAuthChanged(signedIn){
+    global.ATMSocial?.refresh().catch(()=>{});
     if(!signedIn){
       if(!state.supported)return;
       try{const reg=await readyRegistration();const subscription=await reg.pushManager?.getSubscription?.();if(subscription)await subscription.unsubscribe();}catch(_error){}

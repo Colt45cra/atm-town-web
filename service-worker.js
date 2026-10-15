@@ -258,21 +258,21 @@ self.addEventListener('push', (event) => {
     try { payload = event.data ? event.data.json() : {}; } catch (_) {
       payload = { message: event.data?.text?.() || 'You have a new ATM Town notification.' };
     }
-    if (payload.type !== 'player_ping') return;
+    if (!['player_ping','world_event'].includes(payload.type)) return;
 
     const visibleClient = await visibleWindowClient();
-    if (visibleClient) {
+    if (visibleClient && payload.type === 'player_ping') {
       visibleClient.postMessage({ type: 'ATM_PLAYER_PING', payload });
       return;
     }
 
     const sender = payload.sender_handle ? `@${payload.sender_handle}` : (payload.sender_name || 'An ATM Town player');
     const body = String(payload.message || `${sender} pinged you in ATM Town.`).slice(0, 180);
-    await self.registration.showNotification('ATM Town · Player Ping', {
+    await self.registration.showNotification(payload.type==='world_event'?'ATM Town · World Event':'ATM Town · Player Ping', {
       body,
       icon: '/assets/pwa/icon-192.png',
       badge: '/assets/pwa/icon-192.png',
-      tag: payload.ping_id ? `atm-ping-${payload.ping_id}` : 'atm-player-ping',
+      tag: payload.event_id ? `atm-event-${payload.event_id}` : payload.ping_id ? `atm-ping-${payload.ping_id}` : 'atm-player-ping',
       renotify: true,
       data: {
         url: '/?source=push',
