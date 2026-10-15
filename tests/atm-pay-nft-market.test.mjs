@@ -40,3 +40,11 @@ test('a sale is open only after validated success and an actual created offer; e
   response={error:'txnNotFound',status:'error'};assert.equal((await reconcileMarket(admin,row)).status,'expired');
  }finally{global.fetch=previous;}
 });
+test('Xaman status records its signed hash then verifies the exact validated purchase',async()=>{
+ const previous=global.fetch,env={XAMAN_API_KEY:process.env.XAMAN_API_KEY,XAMAN_API_SECRET:process.env.XAMAN_API_SECRET};process.env.XAMAN_API_KEY='test';process.env.XAMAN_API_SECRET='test';
+ const tx={...base,TransactionType:'NFTokenAcceptOffer',NFTokenSellOffer:offer};
+ const row={id:'request',status:'signing',operation:'accept_sell',transaction_json:tx,sign_request:{provider:'xaman',uuid:'00000000-0000-0000-0000-000000000001'}};let patches=[];
+ const admin={from(){return{update(p){patches.push(p);return{eq(){return this;},then(resolve){resolve({error:null});}};}};}};
+ global.fetch=async(url,options)=>String(url).includes('/payload/')?Response.json({meta:{resolved:true,signed:true},response:{txid:'D'.repeat(64)}}):Response.json({result:{validated:true,tx_json:tx,meta:{TransactionResult:'tesSUCCESS'}}});
+ try{const r=await reconcileMarket(admin,row);assert.equal(r.status,'accepted');assert.equal(patches[0].tx_hash,'D'.repeat(64));assert.equal(patches[1].status,'accepted');}finally{global.fetch=previous;for(const [k,v]of Object.entries(env))if(v===undefined)delete process.env[k];else process.env[k]=v;}
+});
