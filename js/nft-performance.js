@@ -234,6 +234,117 @@
     return ()=>{cancelled=true;clearTimer();};
   };
 
+  // Loaded after game-core: restore artwork on mobile when remote gateways
+  // reject hotlinks, fail mid-load, or stall. Only cards in/near view fetch.
+  const proxyArtTasks=new Map();
+  const proxyArtQueue=[];
+  let proxyArtActive=0;
+  function queueProxyArt(task){
+    return new Promise((resolve,reject)=>{
+      proxyArtQueue.push({task,resolve,reject});
+      const pump=()=>{
+        while(proxyArtActive<3&&proxyArtQueue.length){
+          const next=proxyArtQueue.shift();proxyArtActive++;
+          Promise.resolve().then(next.task).then(next.resolve,next.reject).finally(()=>{proxyArtActive--;pump();});
+        }
+      };
+      pump();
+    });
+  }
+  async function proxiedArtUrl(nft,candidates){
+    const tokenId=lockerNftTokenId(nft),uri=String(nft?.URI||''),auth=authSession?.access_token;
+    if(!tokenId||!uri||!auth)return '';
+    const key=artKey(tokenId,candidates[0]||uri);
+    if(memoryArtUrls.has(key))return memoryArtUrls.get(key);
+    const cached=await blobUrlFromCachedArt(tokenId,candidates[0]||uri);
+    if(cached)return cached;
+    if(proxyArtTasks.has(key))return proxyArtTasks.get(key);
+    const task=queueProxyArt(async()=>{
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),17500);
+      try{
+        const response=await fetch('/api/xrpl-nft-metadata?action=art',{
+          method:'POST',cache:'no-store',credentials:'same-origin',signal:controller.signal,
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+auth},
+          body:JSON.stringify({nftoken_id:tokenId,uri})
+        });
+        if(!response.ok)return '';
+        const type=String(response.headers.get('content-type')||'').toLowerCase();
+        if(!type.startsWith('image/'))return '';
+        const blob=await response.blob();
+        if(!blob.size||blob.size>3000000)return '';
+        const cache=await getArtCache();
+        if(cache){
+          try{await cache.put(key,new Response(blob,{headers:{'Content-Type':type}}));trimArtCache(cache);}catch(_e){}
+        }
+        const url=URL.createObjectURL(blob);memoryArtUrls.set(key,url);return url;
+      }catch(_e){return '';}finally{clearTimeout(timer);}
+    });
+    proxyArtTasks.set(key,task);
+    try{return await task;}finally{if(proxyArtTasks.get(key)===task)proxyArtTasks.delete(key);}
+  }
+
+  lockerNftImageNode=function lockerNftImageNodeResilient(nft,detail=false){
+    const host=document.createElement('div');host.className=detail?'lockerNftDetailArt':'lockerNftArt';
+    const meta=lockerNftMetadata(nft),tokenId=lockerNftTokenId(nft);
+    const candidates=prioritizedCandidates([meta?.image_url,...(Array.isArray(meta?.image_candidates)?meta.image_candidates:[])]);
+    const fallback=document.createElement('div');fallback.className='lockerNftFallback';fallback.textContent='◈';host.appendChild(fallback);
+    if(!candidates.length)return host;
+    let settled=false,started=false,attempt=0,attemptTimer=0,index=0,observer=null;
+    const clearAttempt=()=>{if(attemptTimer){clearTimeout(attemptTimer);attemptTimer=0;}};
+    const show=(src)=>{
+      if(settled)return;
+      const img=document.createElement('img');img.alt=lockerNftDisplayName(nft);
+      img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';
+      const sequence=++attempt;
+      img.addEventListener('load',()=>{
+        if(settled||sequence!==attempt)return;
+        settled=true;clearAttempt();fallback.remove();host.insertBefore(img,host.firstChild);
+        host.dataset.artworkState='loaded';
+        // Success should not depend on cross-origin CORS permission.
+        if(!src.startsWith('blob:')&&!src.startsWith('data:'))fetchAndCacheArt(tokenId,[src]).catch(()=>{});
+      },{once:true});
+      img.addEventListener('error',()=>{
+        if(settled||sequence!==attempt)return;clearAttempt();nextRemote();
+      },{once:true});
+      img.src=src;
+      // Mobile clients may stall indefinitely at gateways which never answer.
+      // This timeout applies only after the card enters the viewport.
+      attemptTimer=setTimeout(()=>{if(!settled&&sequence===attempt){attempt++;nextRemote();}},3100);
+    };
+    const finish=()=>{clearAttempt();host.dataset.artworkState='unavailable';};
+    const tryProxy=async()=>{
+      const url=await proxiedArtUrl(nft,candidates);
+      if(settled)return;
+      if(url){show(url);return;}
+      nextRemote();
+    };
+    const nextRemote=()=>{
+      if(settled)return;
+      clearAttempt();
+      if(index===Math.min(2,candidates.length)){index=3;tryProxy();return;}
+      if(index>=candidates.length+1){finish();return;}
+      const candidate=candidates[index>2?index-1:index];index++;
+      if(candidate)show(candidate);else finish();
+    };
+    const start=async()=>{
+      if(started)return;started=true;
+      for(const src of candidates){
+        const cached=await blobUrlFromCachedArt(tokenId,src);
+        if(settled)return;
+        if(cached){show(cached);return;}
+      }
+      nextRemote();
+    };
+    if(typeof IntersectionObserver==='function'){
+      observer=new IntersectionObserver(entries=>{
+        if(entries.some(entry=>entry.isIntersecting)){observer.disconnect();observer=null;start();}
+      },{root:detail?null:document.getElementById('lockerNftGrid'),rootMargin:'220px'});
+      observer.observe(host);
+    }else start();
+    return host;
+  };
+
   // Locker artwork: never swap the src of an image that has already rendered.
   // That source swapping caused the visible flash/glitch while scrolling. Use a
   // cached blob only when it is available immediately; otherwise leave the normal
@@ -266,7 +377,7 @@
   try{observer.observe(document.documentElement,{childList:true,subtree:true});}catch(_e){}
 
   global.ATMNftPerformance=Object.freeze({
-    version:'1.1.1',
+    version:'1.2.0',
     clearMetadataCache(){try{global.localStorage.removeItem(CACHE_KEY);}catch(_error){}},
     async clearArtworkCache(){
       for(const url of memoryArtUrls.values()){try{URL.revokeObjectURL(url);}catch(_e){}}
