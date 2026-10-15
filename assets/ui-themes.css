@@ -51,3 +51,99 @@
 .atmThemeSwatch em{position:absolute;bottom:8px;right:8px;width:27%;height:8px;background:var(--swatch-secondary);border-radius:2px}
 :root[data-atm-theme] :is(#townAccountSettings,.lockerHeader,.attributeStoreHeader) :focus-visible{outline:2px solid var(--atm-accent)!important;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){#townThemePicker *{transition:none!important}}
+/* Match the approved style lab's composition, not only its palette. */
+:root[data-atm-theme] #attributeStoreCard{display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin;scrollbar-color:var(--atm-accent) var(--atm-bg);padding:0!important;min-height:0!important}
+:root[data-atm-theme] #attributeStoreCard>*{flex-shrink:0!important}
+:root[data-atm-theme] .atmBrandStrip{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#030b10;border-bottom:3px solid #6a634a;gap:12px}
+.atmBrandStrip img{width:145px;height:70px;object-fit:contain}.atmBrandStrip>span{color:var(--atm-muted);font:8px/1.8 system-ui;letter-spacing:.15em;text-align:right}.atmBrandStrip b{color:var(--atm-accent);font-size:10px}
+:root[data-atm-theme] .attributeStoreHeader{padding:18px 16px!important;gap:10px!important;position:relative!important;min-height:88px}
+:root[data-atm-theme] .attributeStoreBrand{gap:12px!important;flex:1;min-width:0}
+:root[data-atm-theme] .attributeStoreLogo{background:none!important;box-shadow:none!important;width:44px!important;height:44px!important;min-width:44px;border-radius:50%!important}
+.attributeStoreLogo img{width:100%;height:100%;object-fit:contain;border-radius:50%;border:1px solid var(--atm-secondary)}
+:root[data-atm-theme] .attributeStoreBrand h2{font-size:23px!important;letter-spacing:-1px!important;font-weight:850!important;line-height:1.12!important;margin:7px 0 0!important}
+:root[data-atm-theme] .attributeStoreBrand span{font-size:7px!important;letter-spacing:.2em!important}
+:root[data-atm-theme] .attributeStoreBrand p{display:none!important}
+:root[data-atm-theme] .attributeStoreHeaderActions{gap:10px!important}
+:root[data-atm-theme] .attributeStoreHeaderActions button{position:static!important;width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;font-size:20px!important;flex:none!important}
+:root[data-atm-theme] #attributeStoreRefreshButton{font-size:0!important}:root[data-atm-theme] #attributeStoreRefreshButton:after{content:'↻';font-size:20px}
+:root[data-atm-theme] :is(.attributeStoreCharacters,.attributeStoreToolbar){padding:13px 16px!important;border-bottom:1px solid color-mix(in srgb,var(--atm-text) 9%,transparent)!important;background:none!important;overflow-x:auto!important;scrollbar-width:none}
+:root[data-atm-theme] .attributeStoreCharacter{display:flex!important;align-items:center!important;gap:9px!important;min-width:94px!important;padding:11px!important;background:transparent!important;border:1px solid transparent!important;box-shadow:none!important;font-size:11px!important;text-transform:none!important;color:var(--atm-text)!important}
+:root[data-atm-theme] .attributeStoreCharacter img{width:20px!important;height:28px!important;object-fit:contain!important}.attributeStoreCharacter small{display:none!important}
+:root[data-atm-theme] .attributeStoreCharacter.active{background:color-mix(in srgb,var(--atm-accent) 12%,transparent)!important;border-color:color-mix(in srgb,var(--atm-accent) 50%,transparent)!important;box-shadow:none!important;color:var(--atm-accent)!important}
+:root[data-atm-theme] .attributeStoreFilters{gap:8px!important}
+:root[data-atm-theme] .attributeStoreFilter{background:none!important;border:1px solid transparent!important;box-shadow:none!important;min-width:58px!important;min-height:37px!important;padding:8px 12px!important;font-size:10px!important;text-transform:capitalize!important;letter-spacing:0!important}
+:root[data-atm-theme] .attributeStoreFilter.active{background:color-mix(in srgb,var(--atm-accent) 12%,transparent)!important;border-color:color-mix(in srgb,var(--atm-accent) 50%,transparent)!important;color:var(--atm-accent)!important;box-shadow:none!important}
+:root[data-atm-theme] .attributeStoreBody{display:block!important;overflow:visible!important;min-height:0!important;flex:0 0 auto!important}
+:root[data-atm-theme] .attributeStoreCatalog{display:block!important;overflow:visible!important;padding:26px 16px 20px!important}
+:root[data-atm-theme] .attributeStoreCatalogHeader{display:flex!important;flex-direction:column!important;align-items:stretch!important;position:relative;gap:0!important;margin:0 0 24px!important;padding:0!important}
+:root[data-atm-theme] #attributeStoreCatalogTitle{font-size:8px!important;letter-spacing:.17em!important;color:var(--atm-signal)!important}
+:root[data-atm-theme] #attributeStoreCatalogCount{position:absolute;right:0;top:0;font-size:10px!important;color:var(--atm-muted)!important}
+.atmCollectionHeading{font:850 19px/1.3 system-ui;letter-spacing:-.7px;margin:8px 0 0;color:var(--atm-text)}
+:root[data-atm-theme] #attributeStoreGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;overflow:visible!important;width:100%!important;max-width:100%!important;padding:0!important;margin:0!important}
+:root[data-atm-theme] .attributeStoreItem{position:relative!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:0!important;min-width:0!important;min-height:0!important;width:100%!important;padding:12px!important;overflow:hidden!important;border-radius:12px!important}
+:root[data-atm-theme] .attributeStoreItemArt{position:relative!important;width:100%!important;min-width:0!important;max-width:none!important;height:135px!important;min-height:135px!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;align-self:stretch!important;background:none!important;border-radius:0!important;margin:0!important;padding:20px 0 0!important}
+:root[data-atm-theme] .attributeStoreItemArt img{display:block!important;width:auto!important;height:112px!important;max-width:100%!important;max-height:112px!important;object-fit:contain!important;image-rendering:pixelated}
+:root[data-atm-theme] .attributeStoreItemName{font-size:12px!important;line-height:1.35!important;font-weight:850!important;margin:14px 0 0!important;padding:0!important;min-height:32px!important;white-space:normal!important}
+:root[data-atm-theme] .attributeStoreItemMeta{font-size:7px!important;letter-spacing:.09em!important;margin:10px 0 0!important;padding:0!important}
+:root[data-atm-theme] .attributeStoreItemPrice{font-size:11px!important;line-height:1.4!important;margin:15px 0!important;padding:0!important;color:var(--atm-secondary)!important;text-transform:none!important}
+:root[data-atm-theme] .attributeStoreItemBadge{position:absolute!important;top:10px!important;right:10px!important;max-width:80%!important;border-radius:5px!important;font-size:7px!important;padding:5px!important;color:var(--atm-accent)!important;border:1px solid color-mix(in srgb,var(--atm-accent) 30%,transparent)!important;background:color-mix(in srgb,var(--atm-accent) 10%,var(--atm-bg))!important}
+:root[data-atm-theme] .attributeStoreItemAction{width:100%!important;min-width:0!important;max-width:100%!important;min-height:35px!important;font-size:10px!important;line-height:1.3!important;white-space:normal!important;margin:auto 0 0!important;padding:9px 5px!important;text-transform:none!important}
+:root[data-atm-theme] .attributeStoreCart{border-radius:0!important;box-shadow:none!important;padding:16px!important;border-left:0!important;border-top:1px solid var(--atm-accent)!important}
+:root[data-atm-theme] .attributeStoreReviewButton{width:100%!important;margin-top:12px!important}
+:root[data-atm-theme="console"] .attributeStoreHeader{background:linear-gradient(110deg,#8c6238,#ccb77b 50%,#8d7547)!important;border-bottom:3px solid #191d17!important}
+:root[data-atm-theme="console"] .attributeStoreItem{background:linear-gradient(145deg,#071f26,#0b3539)!important;border:2px solid #736d4e!important;box-shadow:inset 0 4px 12px #0009!important}
+:root[data-atm-theme="console"] .attributeStoreHeaderActions button{background:#28352c!important;color:#fff4ce!important;border:2px solid #eedba5!important;box-shadow:0 3px 0 #3a2919!important}
+:root[data-atm-theme="console"] .attributeStoreItemAction{box-shadow:inset 0 1px 0 #fff3,0 3px 0 #0007!important;border:1px solid #647368!important;background:#203638!important}
+@media(min-width:761px){:root[data-atm-theme] #attributeStoreGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important}:root[data-atm-theme] .attributeStoreCatalog{padding:30px!important}}
+@media(max-width:360px){:root[data-atm-theme] .attributeStoreBrand h2{font-size:19px!important}:root[data-atm-theme] .attributeStoreItem{padding:9px!important}}
+
+/* Preserve the individual finishes from the approved eight-style reference. */
+:root[data-atm-theme="signature"] .attributeStoreHeader{background:linear-gradient(145deg,var(--atm-surface),var(--atm-bg))!important}
+:root[data-atm-theme="signature"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{background:linear-gradient(130deg,color-mix(in srgb,var(--atm-accent) 80%,white),var(--atm-accent))!important;box-shadow:0 4px 0 color-mix(in srgb,var(--atm-accent) 40%,var(--atm-bg)),0 7px 20px #0003!important}
+:root[data-atm-theme="signature"] .attributeStoreFilter.active{border-radius:8px!important;border-color:transparent!important;box-shadow:inset 0 -2px var(--atm-accent)!important;background:color-mix(in srgb,var(--atm-accent) 9%,transparent)!important}
+:root[data-atm-theme="console"] .attributeStoreHeader{background:linear-gradient(110deg,#8c6238,#ccb77b 50%,#8d7547)!important;color:#111d1e!important;border-bottom:3px solid #191d17!important}
+:root[data-atm-theme="console"] .attributeStoreBrand span{color:#193f43!important}
+:root[data-atm-theme="console"] .attributeStoreItem{background:linear-gradient(145deg,#071f26,#0b3539)!important;border:2px solid #736d4e!important;box-shadow:inset 0 4px 12px #0009!important}
+:root[data-atm-theme="console"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{background:linear-gradient(#f3dc9c,#b79554)!important;color:#152a29!important;border:1px solid #ffe8af!important;box-shadow:0 4px 0 #6e4d25!important}
+:root[data-atm-theme="console"] .attributeStoreItem.owned .attributeStoreItemAction{box-shadow:inset 0 1px 0 #fff3,0 3px 0 #0007!important}
+:root[data-atm-theme="console"] .atmBrandStrip{border-bottom:3px solid #6a634a!important}
+:root[data-atm-theme="sunset"] .attributeStoreHeader{background:linear-gradient(125deg,color-mix(in srgb,var(--atm-secondary) 24%,var(--atm-surface)),var(--atm-surface) 50%,color-mix(in srgb,var(--atm-accent) 16%,var(--atm-surface)))!important}
+:root[data-atm-theme="sunset"] .attributeStoreItemArt{background:radial-gradient(ellipse at center bottom,color-mix(in srgb,var(--atm-secondary) 23%,transparent),transparent 70%)!important}
+:root[data-atm-theme="sunset"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{background:linear-gradient(115deg,var(--atm-accent),var(--atm-secondary))!important;color:var(--atm-bg)!important}
+:root[data-atm-theme="sunset"] .attributeStoreItem{border-radius:22px 22px 10px 10px!important}
+:root[data-atm-theme="sunset"] .attributeStoreFilter.active{background:var(--atm-accent)!important;color:var(--atm-bg)!important;border-radius:999px!important}
+:root[data-atm-theme="blueprint"] .atmBrandStrip{border-bottom:1px dashed var(--atm-accent)!important}
+:root[data-atm-theme="blueprint"] .attributeStoreBrand h2{font-size:22px!important;text-transform:uppercase!important;letter-spacing:-1px!important}
+:root[data-atm-theme="blueprint"] .attributeStoreItem{border:1px solid color-mix(in srgb,var(--atm-accent) 50%,transparent)!important;background:linear-gradient(135deg,color-mix(in srgb,var(--atm-surface) 90%,transparent),var(--atm-bg))!important;border-radius:2px!important}
+:root[data-atm-theme="blueprint"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{border:1px solid var(--atm-accent)!important;background:var(--atm-accent)!important;border-radius:2px!important;box-shadow:3px 3px 0 color-mix(in srgb,var(--atm-accent) 35%,transparent)!important}
+:root[data-atm-theme="blueprint"] .attributeStoreItemArt{background-image:linear-gradient(color-mix(in srgb,var(--atm-accent) 10%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--atm-accent) 10%,transparent) 1px,transparent 1px)!important;background-size:18px 18px!important}
+:root[data-atm-theme="blueprint"] .attributeStoreItemName{text-transform:uppercase!important;font-size:10px!important}
+:root[data-atm-theme="blueprint"] .attributeStoreFilter.active{border-style:dashed!important;border-radius:2px!important}
+:root[data-atm-theme="afterdark"] .attributeStoreBrand h2{text-shadow:0 0 20px color-mix(in srgb,var(--atm-accent) 40%,transparent)!important}
+:root[data-atm-theme="afterdark"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{background:linear-gradient(110deg,var(--atm-accent),color-mix(in srgb,var(--atm-accent) 60%,var(--atm-secondary)))!important;color:var(--atm-bg)!important}
+:root[data-atm-theme="afterdark"] .attributeStoreItemArt{background:radial-gradient(ellipse at 30% 50%,color-mix(in srgb,var(--atm-accent) 16%,transparent),transparent 65%),radial-gradient(ellipse at 85% 70%,color-mix(in srgb,var(--atm-secondary) 12%,transparent),transparent 60%)!important}
+:root[data-atm-theme="reserve"] .attributeStoreBrand h2{font-family:Georgia,serif!important;font-weight:500!important;letter-spacing:-.6px!important}
+:root[data-atm-theme="reserve"] .atmBrandStrip{padding:22px 20px!important}
+:root[data-atm-theme="reserve"] .attributeStoreItem{border-radius:5px!important;background:linear-gradient(145deg,var(--atm-surface),var(--atm-bg))!important;border-color:color-mix(in srgb,var(--atm-accent) 25%,transparent)!important}
+:root[data-atm-theme="reserve"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{background:linear-gradient(125deg,#f5e2af,var(--atm-accent) 50%,#bd9857)!important;border-radius:4px!important;color:#222b22!important}
+:root[data-atm-theme="reserve"] .attributeStoreFilter{font-size:9px!important;letter-spacing:.09em!important}
+:root[data-atm-theme="reserve"] .attributeStoreFilter.active{background:none!important;border:0!important;border-bottom:1px solid var(--atm-accent)!important;border-radius:0!important}
+:root[data-atm-theme="reserve"] .attributeStoreItemBadge{background:none!important;border-radius:0!important}
+:root[data-atm-theme="reserve"] .attributeStoreItemName{font-size:12px!important}
+:root[data-atm-theme="reserve"] .attributeStoreHeader{background:var(--atm-bg)!important}
+:root[data-atm-theme="daylight"] .atmBrandStrip{background:#06333c!important}
+:root[data-atm-theme="daylight"] .attributeStoreHeader{background:linear-gradient(110deg,#fdf9ec,var(--atm-surface))!important}
+:root[data-atm-theme="daylight"] .attributeStoreItem{background:var(--atm-surface)!important;box-shadow:0 6px 16px #17383b09!important;border-color:#17383b1d!important}
+:root[data-atm-theme="daylight"] .attributeStoreItemArt{background:radial-gradient(ellipse at center,#d6e8df,transparent 70%)!important}
+:root[data-atm-theme="daylight"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{background:var(--atm-accent)!important;color:#fffdf2!important}
+:root[data-atm-theme="daylight"] .attributeStoreItem.owned .attributeStoreItemAction{background:#e5e9df!important;color:var(--atm-text)!important}
+:root[data-atm-theme="daylight"] .attributeStoreBrand span{color:var(--atm-secondary)!important}
+:root[data-atm-theme="studio"] .attributeStoreBrand h2{text-transform:uppercase!important;font-size:24px!important;font-weight:1000!important;letter-spacing:-1.2px!important}
+:root[data-atm-theme="studio"] .attributeStoreHeader{background:var(--atm-accent)!important;color:var(--atm-bg)!important}
+:root[data-atm-theme="studio"] .attributeStoreBrand span{color:var(--atm-bg)!important}
+:root[data-atm-theme="studio"] .attributeStoreItem:not(.owned) .attributeStoreItemAction{background:var(--atm-accent)!important;box-shadow:3px 3px 0 var(--atm-bg)!important;border:1px solid var(--atm-text)!important;border-radius:4px!important}
+:root[data-atm-theme="studio"] .attributeStoreItem{background:var(--atm-surface)!important;border:1px solid var(--atm-accent)!important;box-shadow:3px 3px 0 var(--atm-accent)!important;border-radius:4px!important}
+:root[data-atm-theme="studio"] .attributeStoreItemName{font-size:12px!important;font-weight:900!important}
+:root[data-atm-theme="studio"] .attributeStoreItemArt{background:repeating-linear-gradient(0deg,transparent 0 12px,color-mix(in srgb,var(--atm-secondary) 9%,transparent) 12px 15px)!important}
+:root[data-atm-theme="studio"] .attributeStoreFilter.active{background:var(--atm-secondary)!important;color:var(--atm-bg)!important;border-color:var(--atm-secondary)!important;border-radius:3px!important}
+:root[data-atm-theme="console"] #attributeStoreCard{border:3px solid #b09261!important;box-shadow:inset 0 0 0 3px #f4dfaa55,0 0 0 2px #332e22,0 18px 50px #0008!important}
