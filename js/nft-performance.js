@@ -263,7 +263,7 @@
       const controller=new AbortController();
       const timer=setTimeout(()=>controller.abort(),17500);
       try{
-        const response=await fetch('/api/xrpl-nft-art',{
+        const response=await fetch('/api/xrpl-nft-metadata?action=art',{
           method:'POST',cache:'no-store',credentials:'same-origin',signal:controller.signal,
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+auth},
           body:JSON.stringify({nftoken_id:tokenId,uri})
