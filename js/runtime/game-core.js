@@ -2869,10 +2869,8 @@ function resumePendingXamanLink(){
   const returnedUuid=xamanReturnPayloadFromUrl();
   if(returnedUuid)savePendingXamanLink({payload_uuid:returnedUuid,returned_at:new Date().toISOString()});
   const pending=readPendingXamanLink();if(!pending)return;
-  try{localStorage.setItem('atm_signup_pending','1');}catch(_error){}
-  // Resume the wallet check in the background during gameplay. A stale or
-  // slow Xaman return must not reopen the landing/signup flow over the town.
-  if(!townEntryActive&&window.atmShowFlowScreen)window.atmShowFlowScreen('signup');
+  // Account restoration, focus and Xaman returns must never navigate the
+  // access flow. Wallet verification resumes in the background on every screen.
   setXamanLinkBar('Checking whether the Xaman request was signed…','waiting');
   if(!authSession?.access_token){
     if(walletResumeAttempts++<20)setTimeout(resumePendingXamanLink,400);
@@ -6045,31 +6043,9 @@ requestAnimationFrame(loop);
     if(selectCharacter(button.dataset.profileCharacter,{source:'user'})!==false)updateCharacterSummary();
   });
   window.atmFlowAuthUpdated(!!authSession?.user);
-  let signupPending=false,loginPending=false;
-  try{
-    signupPending=localStorage.getItem('atm_signup_pending')==='1';
-    loginPending=localStorage.getItem('atm_login_pending')==='1';
-  }catch(_error){}
-  const xamanPending=!!readPendingXamanLink()||new URLSearchParams(location.search).get('xaman_return')==='1';
-  if(xamanPending){show('signup');setTimeout(resumePendingXamanLink,250);}
-  else{
-    show(loginPending?'login':'welcome');
-    // Email-link returns keep their intent separate: signup resumes setup,
-    // while returning-player login goes straight to the saved profile. Retry
-    // briefly because mobile browsers may finish restoring the auth session
-    // after the access-flow UI has already mounted.
-    let returnAttempts=0;
-    const resumeEmailReturn=async()=>{
-      if(loginPending&&authSession?.user){
-        try{localStorage.removeItem('atm_login_pending');}catch(_e){}
-        await window.atmOpenKnownAccountProfile?.();
-        return;
-      }
-      if(signupPending&&authSession?.user){show('signup');return;}
-      if((loginPending||signupPending)&&returnAttempts++<80)setTimeout(resumeEmailReturn,100);
-    };
-    setTimeout(resumeEmailReturn,120);
-  }
+  // A fresh launch always waits for a deliberate landing-page choice. Saved
+  // signup/login flags and wallet/email returns restore data, not navigation.
+  show('welcome');
 })();
 
 (function installFirstRunCoach(){
