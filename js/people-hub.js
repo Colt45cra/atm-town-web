@@ -53,7 +53,7 @@
     const modal=document.createElement('div');modal.id='atmPeopleHubModal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','atmPeopleHubTitle');
     modal.innerHTML=`<div class="peopleHubCard"><div class="peopleHubHead"><div class="peopleHubHeadText"><h3 id="atmPeopleHubTitle">People</h3><small>See who’s online, find people you know, and pay without wallet addresses.</small></div><button class="peopleHubBalance unavailable" id="atmPeopleHubBalance" type="button" aria-label="Open ATM Pay balance">◇ ATM PAY</button><button class="peopleHubClose" id="atmPeopleHubClose" type="button" aria-label="Close">×</button></div><div class="peopleHubTabs"><button class="peopleHubTab active" data-people-page="0" type="button">Online</button><button class="peopleHubTab" data-people-page="1" type="button">People</button><button class="peopleHubTab" data-people-page="2" type="button">Pay <span class="peopleHubTabBadge" id="atmPeopleHubPayBadge" hidden></span></button></div><div class="peopleHubViewport" id="atmPeopleHubViewport"><div class="peopleHubTrack" id="atmPeopleHubTrack"><section class="peopleHubPage" id="atmPeopleHubOnline"></section><section class="peopleHubPage" id="atmPeopleHubPeople"></section><section class="peopleHubPage" id="atmPeopleHubPay"></section></div></div><div class="peopleHubDots">${PAGES.map((_,i)=>`<span class="peopleHubDot${i===0?' active':''}" data-people-dot="${i}"></span>`).join('')}</div></div>`;
     document.body.appendChild(modal);
-    document.getElementById('atmPeopleHubClose')?.addEventListener('click',close);document.getElementById('atmPeopleHubBalance')?.addEventListener('click',()=>{close();window.ATMPay?.open?.();});
+    document.getElementById('atmPeopleHubClose')?.addEventListener('click',close);document.getElementById('atmPeopleHubBalance')?.addEventListener('click',()=>{close();window.ATMMainnetWallet?.openApp?.();});
     modal.addEventListener('click',event=>{if(event.target===modal)close();});
     modal.querySelectorAll('[data-people-page]').forEach(button=>button.addEventListener('click',()=>setPage(Number(button.dataset.peoplePage||0))));
     const viewport=document.getElementById('atmPeopleHubViewport');
@@ -121,7 +121,7 @@
     document.getElementById('atmPeopleHubNotify')?.addEventListener('click',async()=>{try{setPwaStatus('Requesting notification permission…');await window.ATMPWA?.enableNotifications?.();renderOnline();}catch(error){setPwaStatus(error?.message||'Notifications could not be enabled.','warn');}});
     document.getElementById('atmPeopleHubCache')?.addEventListener('click',async()=>{try{setPwaStatus('Starting game-data cache…');await window.ATMPWA?.downloadWorld?.();}catch(error){setPwaStatus(error?.message||'Game data could not be cached.','warn');}});
   }
-  function payPerson(person){if(!person?.atm_pay_ready)return;close();window.ATMPay?.openToRecipient?.({user_id:person.user_id,handle:person.handle,display_name:person.display_name,character_id:person.character_id,atm_pay_ready:true});}
+  function payPerson(person){if(!person?.atm_pay_ready)return;close();window.ATMMainnetWallet?.openApp?.();}
   function personRow(person,{showStatus=true,pay=true,ping=true}={}){
     const p=normalizePerson(person);if(!p)return '';
     const payReady=pay&&p.atm_pay_ready&&!p.is_self,pingReady=ping&&!!p.user_id&&!p.is_self;
@@ -154,13 +154,10 @@
     return `<div class="peopleHubActivityLine">${avatar(p)}<span class="peopleHubPersonMain"><b>${esc(text)}</b><span class="peopleHubHandle">@${esc(p.handle)}</span></span><span class="peopleHubAmount">${esc(item.amount_xrp)} XRP</span></div>`;
   }
   function renderPay(){
-    const host=document.getElementById('atmPeopleHubPay');if(!host)return;const previousScroll=host.scrollTop;
-    const requests=state.pay.incomingRequests||[],activity=state.pay.recentActivity||[];
-    host.innerHTML=`${requests.length?`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Requests for you</b><span>${requests.length}</span></div></div>${requests.map(requestRow).join('')}`:''}<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Find someone to pay</b><span>ATM PAY</span></div><p class="peopleHubCopy">Search by player name or @handle. Wallet addresses stay out of the flow.</p><input class="peopleHubSearch" id="atmPeopleHubSearch" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="@handle or player name" value="${esc(state.searchQuery)}"><div id="atmPeopleHubSearchResults">${state.searchResults.length?state.searchResults.map(p=>personRow(p,{showStatus:false})).join(''):''}</div></div><div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>Recent activity</b><span>${activity.length}</span></div>${activity.length?activity.slice(0,6).map(activityLine).join(''):'<div class="peopleHubEmpty">No ATM Pay activity yet.</div>'}<button class="peopleHubSecondary" id="atmPeopleHubOpenPay" type="button">Open full ATM Pay</button></div>`;
-    bindPersonButtons(host);
-    host.querySelectorAll('[data-people-request-pay]').forEach(button=>button.addEventListener('click',()=>{const id=String(button.dataset.peopleRequestPay||'');close();window.ATMPay?.openRequest?.(id);}));
-    document.getElementById('atmPeopleHubOpenPay')?.addEventListener('click',()=>{close();window.ATMPay?.open?.();});
-    const input=document.getElementById('atmPeopleHubSearch');input?.addEventListener('input',()=>{state.searchQuery=input.value;clearTimeout(searchTimer);searchTimer=setTimeout(()=>runSearch(state.searchQuery),250);});restorePageScroll(host,previousScroll);
+    const host=document.getElementById('atmPeopleHubPay');if(!host)return;
+    const address=window.ATMMainnetWallet?.linkedAddress?.();
+    host.innerHTML=`<div class="peopleHubSection"><div class="peopleHubSectionTitle"><b>ATM Pay</b><span>XRPL MAINNET</span></div>${address?`<p class="peopleHubCopy" style="color:#86efac">● Connected</p><p class="peopleHubCopy" style="overflow-wrap:anywhere">${esc(address)}</p><p class="peopleHubCopy">Open your connected mainnet ATM Pay wallet to send payments, choose recipients, and view your balance and activity.</p>`:'<p class="peopleHubCopy">Link your existing mainnet ATM Pay wallet to this Town account.</p>'}<button class="peopleHubPrimary" id="atmPeopleHubOpenPay" type="button">${address?'Open ATM Pay':'Connect ATM Pay'}</button></div>`;
+    document.getElementById('atmPeopleHubOpenPay')?.addEventListener('click',()=>{close();address?window.ATMMainnetWallet?.openApp?.():window.ATMMainnetWallet?.open?.();});
   }
   async function runSearch(query){
     const q=String(query||'').trim();if(q.length<2){state.searchResults=[];renderPay();return;}
@@ -169,14 +166,14 @@
   function render(){
     ensureUi();renderOnline();renderPeople();renderPay();refreshTrigger();
     const badge=document.getElementById('atmPeopleHubPayBadge');if(badge){const count=requestCount();badge.hidden=!count;badge.textContent=count?String(Math.min(99,count)):'';}
-    const balance=document.getElementById('atmPeopleHubBalance');if(balance){const available=!!state.pay?.balanceAvailable;balance.classList.toggle('unavailable',!available);balance.textContent=available?`◇ ${state.pay.balanceXrp} XRP`:(state.pay?.ready?'◇ — XRP':'◇ ATM PAY');}
+    const balance=document.getElementById('atmPeopleHubBalance');if(balance){const available=!!state.pay?.balanceAvailable;balance.classList.toggle('unavailable',!state.pay?.ready);balance.textContent=available?`◇ ${state.pay.balanceXrp} XRP`:(state.pay?.ready?'● ATM PAY':'◇ ATM PAY');}
     setPage(state.page);
   }
   async function refresh({network=true}={}){
     state.game=window.ATMGamePeople?.snapshot?.()||state.game||{online:[],encounters:[]};
     state.onlineCount=Math.max(1,Number(state.game.onlineCount||state.onlineCount||1));
-    if(network&&window.ATMPay?.refreshConsumerSnapshot){try{state.pay=await window.ATMPay.refreshConsumerSnapshot();}catch(_error){state.pay=window.ATMPay?.getConsumerSnapshot?.()||state.pay;}}
-    else state.pay=window.ATMPay?.getConsumerSnapshot?.()||state.pay;
+    if(network)try{await window.ATMMainnetWallet?.refresh();}catch{}
+    state.pay={ready:!!window.ATMMainnetWallet?.linkedAddress?.(),pendingRequestCount:0,balanceXrp:null,balanceFunded:false,balanceAvailable:false,recentPeople:[],incomingRequests:[],recentActivity:[]};
     render();
   }
   function open(page='online'){
@@ -195,6 +192,6 @@
   window.ATMPeopleHub={open,close,setOnlineCount,refresh:()=>refresh({network:true})};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{ensureUi();refresh({network:false});});else{ensureUi();refresh({network:false});}
   window.addEventListener('atm:online-players-changed',()=>{state.game=window.ATMGamePeople?.snapshot?.()||state.game;if(state.open)render();else refreshTrigger();});
-  window.addEventListener('atm:pay-state-changed',event=>{state.pay=event.detail||window.ATMPay?.getConsumerSnapshot?.()||state.pay;if(state.open)render();else refreshTrigger();});
+  window.addEventListener('atm:pay-state-changed',()=>{if(state.open)refresh({network:false});});
   window.addEventListener('atm:pwa-state-changed',()=>{if(state.open&&state.page===0)renderOnline();});
 })();

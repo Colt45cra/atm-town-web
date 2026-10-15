@@ -44,7 +44,7 @@
   document.getElementById('atmPayMainnetBtn')?.addEventListener('click',show);
   const lockerHost=document.getElementById('lockerNftSort')?.parentElement;
   if(lockerHost){const b=button('ATM PAY MAINNET',show);b.className='flowSecondary cyan';b.style.gridColumn='1 / -1';lockerHost.appendChild(b);}
-  window.ATMMainnetWallet={refresh,check:async()=>{await refresh();await inspect();},linkedAddress:()=>userId===authSession?.user?.id?state?.link?.wallet_address:null,address:fallback=>userId===authSession?.user?.id&&state?.wallet?String(state.wallet.wallet_address||''):fallback,provider:()=>userId===authSession?.user?.id?state?.wallet?.provider:'xaman',open:show};
+  window.ATMMainnetWallet={openApp:()=>{if(userId!==authSession?.user?.id||!state?.link?.wallet_address){show();return;}window.open('https://atm-pay-two.vercel.app/','_blank','noopener,noreferrer');},refresh,check:async()=>{await refresh();await inspect();},linkedAddress:()=>userId===authSession?.user?.id?state?.link?.wallet_address:null,address:fallback=>userId===authSession?.user?.id&&state?.wallet?String(state.wallet.wallet_address||''):fallback,provider:()=>userId===authSession?.user?.id?state?.wallet?.provider:'xaman',open:show};
   const check=()=>{if(authSession?.user&&!document.hidden)refresh().then(inspect).catch(()=>{});};
   window.addEventListener('focus',check);window.addEventListener('pageshow',check);document.addEventListener('visibilitychange',check);setTimeout(check,500);
 })();
