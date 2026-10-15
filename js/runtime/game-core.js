@@ -2682,7 +2682,7 @@ async function loadPlayerAccount(){
 }
 
 function applyKnownAccountPresentation(){
-  if(!authSession?.user||!playerAccount)return false;
+  if(window.atmEntryMode==='guest'||!authSession?.user||!playerAccount)return false;
   const currentUserId=String(authSession.user.id||'');
   if(characterSelectionDirty&&characterSelectionOwnerUserId&&characterSelectionOwnerUserId!==currentUserId)clearCharacterSelectionIntent();
   const savedCharacter=ALLOWED_CHARACTERS.includes(playerAccount.selected_character)?playerAccount.selected_character:'classic';
@@ -4339,6 +4339,7 @@ if(characterPickerEl){
 }
 
 function selectCharacter(characterId,options={}){
+  if(window.atmEntryMode==='guest'&&characterId!=='classic')return false;
   const requested=ALLOWED_CHARACTERS.includes(characterId)?characterId:'classic';
   if(window.atmLockerCanSelectCharacter&&!window.atmLockerCanSelectCharacter(requested)){window.atmLockerOpenForLockedCharacter?.(requested);return false;}
   selectedCharacter=(CHARACTER_SPRITES[requested]||CHARACTER_SHEETS[requested])?requested:'classic';
@@ -5989,8 +5990,10 @@ requestAnimationFrame(loop);
   }
   function applyEntryMode(mode){
     entryMode=mode;shell.dataset.entryMode=mode;window.atmEntryMode=mode;
+    window.atmLockerSetEntryMode?.(mode);
     const online=document.getElementById('joinOnline'),offline=document.getElementById('joinOffline'),note=document.getElementById('entryModeNote'),eyebrow=document.getElementById('profileEyebrow');
     if(mode==='guest'){
+      clearCharacterSelectionIntent();
       selectCharacter('classic');updateCharacterSummary();
       if(online)online.textContent='Enter Town as Guest';if(offline)offline.style.display='none';if(note)note.textContent='Guest mode uses ATM. Progress is not saved to an account.';if(eyebrow)eyebrow.textContent='Guest Entry';
     }else{
@@ -6012,11 +6015,12 @@ requestAnimationFrame(loop);
     else if(currentScreen==='signup'){setStatus('signupStatus','Verify your email to continue.');}
   };
   document.getElementById('landingLoginBtn')?.addEventListener('click',async()=>{
+    applyEntryMode('signed');
     if(authSession?.user){setStatus('welcomeStatus','Welcome back.','ok');await window.atmOpenKnownAccountProfile?.();return;}
     setIdentityStatus('');
     show('login');
   });
-  document.getElementById('landingSignupBtn')?.addEventListener('click',()=>{try{localStorage.setItem('atm_signup_pending','1');}catch(_e){}show('signup');});
+  document.getElementById('landingSignupBtn')?.addEventListener('click',()=>{applyEntryMode('signed');try{localStorage.setItem('atm_signup_pending','1');}catch(_e){}show('signup');});
   document.getElementById('landingGuestBtn')?.addEventListener('click',()=>{
     applyEntryMode('guest');
     let guestName='';try{guestName=localStorage.getItem('atm_guest_name')||'';}catch(_e){}
@@ -6592,7 +6596,17 @@ function lockerEquippedItem(slot){
   const id=lockerLoadout[slot];return id?ATM_ITEM_CATALOG.find(item=>item.id===id)||null:null;
 }
 function lockerIsEquipped(item){if(item?.type==='saved-character')return lockerActiveSavedCharacterId===item.id;return lockerEquippedItem(item.slot)?.id===item.id;}
-function lockerSaveLoadout(){window.atmActiveLoadout={...lockerLoadout};safeStorageSet(ATM_LOCKER_LOADOUT_KEY,JSON.stringify(lockerLoadout));}
+let lockerSignedEntryLoadout=null;
+window.atmLockerSetEntryMode=(mode)=>{
+  if(mode==='guest'){
+    if(lockerSignedEntryLoadout===null)lockerSignedEntryLoadout={...lockerLoadout};
+    lockerLoadout={base:'character:classic'};lockerActiveSavedCharacterId=null;
+  }else if(lockerSignedEntryLoadout!==null){
+    lockerLoadout={...lockerSignedEntryLoadout};lockerSignedEntryLoadout=null;
+  }
+  window.atmActiveLoadout={...lockerLoadout};
+};
+function lockerSaveLoadout(){window.atmActiveLoadout={...lockerLoadout};const key=window.atmEntryMode==='guest'?ATM_LOCKER_LOADOUT_KEY+':guest':ATM_LOCKER_LOADOUT_KEY;safeStorageSet(key,JSON.stringify(lockerLoadout));}
 function lockerEquipItem(item){
   const ownership=lockerOwnershipInfo(item);
   if(!ownership.owned){lockerSetStatus(item.name+' is locked. Link and refresh the owning XRPL wallet, or find the item in game.','error');return;}
