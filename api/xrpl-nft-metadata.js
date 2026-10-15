@@ -300,7 +300,13 @@ function metadataFromJson(json, decodedUri, metadataUrl) {
     source.content?.image, source.media?.image, source.media?.thumbnail,
     firstMediaUri(source)
   ].map(metadataUriValue).filter(Boolean);
-  const imageCandidates = uniqueStrings(imageValues.flatMap(uri => contentUriCandidates(uri, metadataUrl))).slice(0, 35);
+  // Mix original art, previews and alternate gateway paths early. Otherwise
+  // dozens of dead gateway variants for a broken primary image can hide a
+  // perfectly working thumbnail beyond the server's fetch-candidate cap.
+  const pools = imageValues.map(uri=>contentUriCandidates(uri, metadataUrl)).filter(a=>a.length);
+  const ordered=[];
+  for(let i=0;i<12;i++)for(const pool of pools)if(pool[i])ordered.push(pool[i]);
+  const imageCandidates = uniqueStrings(ordered).slice(0, 40);
   return {
     status: 'resolved',
     uri: decodedUri,
