@@ -7,7 +7,7 @@
  const key=id=>'atm-town-ui-theme:'+ (id||'guest');
  function read(id){try{return localStorage.getItem(key(id));}catch{return null;}}
  function remember(id,value){try{localStorage.setItem(key(id),value);}catch{}}
- function apply(id){const t=themes.find(t=>t.id===id)||themes.find(t=>t.id==='console');current=t.id;document.documentElement.dataset.atmTheme=t.id;for(const k of ['bg','surface','accent','secondary','signal','text','muted','font'])document.documentElement.style.setProperty('--atm-'+k,t[k]);document.documentElement.style.setProperty('--atm-radius',t.radius+'px');paint();}
+ function apply(id){const t=themes.find(t=>t.id===id)||themes.find(t=>t.id==='console');current=t.id;document.documentElement.dataset.atmTheme=t.id;for(const k of ['bg','surface','accent','secondary','signal','text','muted','font'])document.documentElement.style.setProperty('--atm-'+k,t[k]);document.documentElement.style.setProperty('--atm-radius',t.radius+'px');document.documentElement.style.setProperty('--atm-blur',t.blur+'px');paint();}
  function status(message){const el=host?.querySelector('[role="status"]');if(el)el.textContent=message;}
  function paint(){if(!host)return;for(const button of host.querySelectorAll('[data-theme-choice]')){const selected=button.dataset.themeChoice===current;button.setAttribute('aria-pressed',String(selected));button.querySelector('.atmThemeSelected').textContent=selected?'Selected ✓':button.dataset.themeChoice==='console'?'Default':'';}}
  function choose(id){if(!valid(id))return;const owner=account,version=++revision;apply(id);remember(owner,id);status(owner?'Saving appearance…':'Saved on this device.');if(!owner)return;
@@ -15,5 +15,20 @@
  }
  function syncAccount(user){const next=user?.id||null;if(next===account)return;account=next;++revision;const saved=user?.user_metadata?.atm_ui_theme,local=read(next);apply(valid(saved)?saved:valid(local)?local:'console');status('');}
  function mount(element){if(!element)return;host=element;host.innerHTML='<h3>Appearance</h3><p class="atmThemeHint">Choose your ATM Town style. Retro Console is the default.</p><div class="atmThemeGrid"></div><p class="atmThemeStatus" role="status" aria-live="polite"></p>';const grid=host.querySelector('.atmThemeGrid');for(const theme of themes){const button=document.createElement('button');button.type='button';button.className='atmThemeChoice';button.dataset.themeChoice=theme.id;button.setAttribute('aria-pressed','false');button.style.setProperty('--swatch-bg',theme.bg);button.style.setProperty('--swatch-surface',theme.surface);button.style.setProperty('--swatch-accent',theme.accent);button.style.setProperty('--swatch-secondary',theme.secondary);button.innerHTML='<span class="atmThemeSwatch" aria-hidden="true"><i></i><b></b><em></em></span><strong>'+theme.name+'</strong><small>'+theme.desc+'</small><span class="atmThemeSelected"></span>';button.addEventListener('click',()=>choose(theme.id));grid.append(button);}paint();}
- window.ATMThemes={syncAccount,mount,choose,get current(){return current;},themes:themes.map(({id,name})=>({id,name}))};apply(read(null));
+ window.ATMThemes={enhance,syncAccount,mount,choose,get current(){return current;},themes:themes.map(({id,name})=>({id,name}))};apply(read(null));
+
+ const surfaces='dialog,#atmFishingPanel,#atmBillboardRental,#nftSwapPanel,#atmGuideCard,.atmRewardsShell,#luci666Card,#fuzzyXrpCard,#triskXrpCard,#miracle111Card,#liveChatPanel,#lockerCard,#attributeStoreCard,#attributeStoreCheckoutCard,#townAccountSettings,#atmPayMainnetLink,#nftDropPanel,.peopleHubCard,.atmPingComposerCard,#tradeNftCard,#arcadeLeaderboardCard,#directoryCard,#vendingCard,#magnetCheckoutPanel,#dialog,#identityCard,#skyRunCard,#platformPanicCard,#ringRumbleCard,#flappyJetpackCard,#neonRacerCard,#atmDartsCard,.flowCard';
+ const headers='.nftSwapHeader,.bb-heading,.atmGuideHeader,.atmRewardsHeader,.luci666Header,.fuzzyXrpHeader,.triskXrpHeader,.miracle111Header,.liveChatHeader,.lockerHeader,.attributeStoreHeader,.attributeStoreCheckoutHeader,.peopleHubHead,.tradeNftHeader,.arcadeLeaderboardHeader,.directoryHeader,.skyRunHeader,.platformPanicHeader,.ringRumbleHeader,.flappyJetpackHeader,.neonRacerHeader,.atmDartsHeader';
+ function enhance(root){
+  const find=selector=>[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];
+  for(const el of find(surfaces)){
+   el.classList.add('atmThemeSurface');
+   if(el.matches('#lockerCard,#townAccountSettings,#atmPayMainnetLink,#nftDropPanel,#atmFishingPanel')&&!el.querySelector(':scope > .atmBrandStrip')){const original=document.querySelector('#attributeStoreCard > .atmBrandStrip');if(original)el.prepend(original.cloneNode(true));}
+  }
+  for(const el of find(headers))el.classList.add('atmThemeHeader');
+  const brand=document.querySelector('.attributeStoreLogo img');
+  if(brand)for(const logo of find('.lockerLogo,.atmPanelLogo')){if(!logo.querySelector('img'))logo.replaceChildren(brand.cloneNode(true));}
+ }
+ function boot(){enhance(document);const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes){if(node.nodeType===1&&!node.matches('.atmBrandStrip,.atmBrandStrip *'))enhance(node);}});observer.observe(document.body,{childList:true,subtree:true});}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

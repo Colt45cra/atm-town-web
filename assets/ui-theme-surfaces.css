@@ -1,0 +1,161 @@
+
+/* Shared player-facing composition: the style lab is the design source. */
+:root[data-atm-theme] .atmThemeSurface{--bg:var(--atm-bg);--surface:var(--atm-surface);--accent:var(--atm-accent);--secondary:var(--atm-secondary);--signal:var(--atm-signal);--text:var(--atm-text);--muted:var(--atm-muted);color:var(--atm-text)!important;background:var(--atm-bg)!important;border:1px solid color-mix(in srgb,var(--atm-accent) 40%,transparent)!important;border-radius:var(--atm-radius)!important;font-family:var(--atm-font)!important;box-shadow:0 20px 60px #0005;isolation:isolate}
+:root[data-atm-theme] .atmThemeHeader{background:linear-gradient(125deg,var(--atm-surface),var(--atm-bg))!important;color:var(--atm-text)!important;border-bottom:1px solid color-mix(in srgb,var(--atm-text) 9%,transparent)!important}
+:root[data-atm-theme] .atmThemeSurface :is(h2,h3,h4){color:var(--atm-text);letter-spacing:-.025em}
+:root[data-atm-theme] .atmThemeSurface :is(input,select,textarea){color:var(--atm-text)!important;background:var(--atm-surface)!important;border-color:color-mix(in srgb,var(--atm-accent) 40%,transparent)!important;border-radius:calc(var(--atm-radius)*.5)!important}
+:root[data-atm-theme] .atmThemeSurface :is(button,.atmWalletBtn,.nftDropSign){font-family:var(--atm-font)!important;color:var(--atm-text)!important;background:var(--atm-surface)!important;border:1px solid color-mix(in srgb,var(--atm-text) 16%,transparent)!important;border-radius:calc(var(--atm-radius)*.65)!important;touch-action:manipulation}
+:root[data-atm-theme] :is(.atmThemeCard,.attributeStoreItem,.nftDropCard,.nftDropTile,.peopleHubPlayer,.peopleHubPerson,.peopleHubPayCard,.vendingProduct,.lockerNftCard,.lockerNftWalletCard,.lockerNftDetail,.lockerStat,.lockerSlot,.lockerPreviewMeta){background:linear-gradient(145deg,var(--atm-surface),color-mix(in srgb,var(--atm-surface) 45%,var(--atm-bg)))!important;color:var(--atm-text)!important;border:1px solid color-mix(in srgb,var(--atm-accent) 18%,transparent)!important;border-radius:calc(var(--atm-radius)*.8)!important}
+:root[data-atm-theme] .atmThemeSurface :is(.atmPrimaryButton,.flowPrimary,.primary,.nftDropSign){background:var(--atm-accent)!important;color:var(--atm-bg)!important;border-color:var(--atm-accent)!important;font-weight:850}
+:root[data-atm-theme] :is(.atmEyebrow,.lockerEyebrow,.atmAccountSectionLabel){color:var(--atm-signal)!important;font-size:8px;letter-spacing:.17em;font-weight:850;text-transform:uppercase}
+:root[data-atm-theme] :is(.atmThemeTag,.lockerItemBadge){color:var(--atm-accent)!important;background:color-mix(in srgb,var(--atm-accent) 10%,var(--atm-bg))!important;border:1px solid color-mix(in srgb,var(--atm-accent) 25%,transparent)!important;border-radius:5px!important;font-size:8px;font-weight:850;letter-spacing:.06em;padding:4px 7px;display:inline-block}
+:root[data-atm-theme] .atmThemeFooter{padding:12px 16px;color:var(--atm-muted);font-size:10px;border-top:1px solid color-mix(in srgb,var(--atm-text) 8%,transparent)}
+:root[data-atm-theme] .atmThemeSurface :focus-visible{outline:2px solid var(--atm-accent)!important;outline-offset:3px}
+:root[data-atm-theme] .atmThemeSurface :is(button,a)[disabled]{opacity:.45;cursor:default}
+/* Settings use the approved profile, account cards and wallet sections. */
+:root[data-atm-theme] #townAccountSettings{padding:0!important;width:min(560px,94vw)!important;max-height:88dvh!important;overflow-x:hidden!important;overflow-y:auto!important;scroll-padding-top:95px;font-size:13px!important;line-height:1.5!important}
+:root[data-atm-theme] .townSettingsHeader{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px!important;box-shadow:0 4px 15px #0002}
+.atmPanelIdentity{display:flex;align-items:center;gap:12px;min-width:0}.atmPanelLogo{width:44px;height:44px;flex-shrink:0}.atmPanelLogo img{width:100%;height:100%;object-fit:contain;border-radius:50%;border:1px solid var(--atm-secondary)}
+:root[data-atm-theme] #townSettingsTitle{margin:5px 0 0;font-size:23px;font-weight:850;letter-spacing:-1px;line-height:1.2}
+:root[data-atm-theme] #townAccountSettings .atmIconButton{flex:0 0 34px;width:34px!important;height:34px;min-height:34px;padding:0!important;margin:0!important;font-size:24px!important;line-height:1!important;display:grid;place-items:center}
+.townSettingsBody{padding:16px}#townAccountReason{font-size:11px;color:var(--atm-muted);margin:0 0 16px}.atmProfileHero{display:flex;align-items:center;gap:12px;padding:8px 0;margin-bottom:18px}.atmProfileAvatar{width:54px;height:54px;display:grid;place-items:center;background:color-mix(in srgb,var(--atm-accent) 16%,var(--atm-surface));border:1px solid color-mix(in srgb,var(--atm-accent) 40%,transparent);border-radius:calc(var(--atm-radius)*.7)}.atmProfileAvatar img{width:44px;height:50px;object-fit:contain;image-rendering:pixelated}.atmProfileHero h3{font-size:21px;margin:0 0 5px;letter-spacing:-.5px}.atmAccountSectionLabel{margin:20px 0 7px}
+:root[data-atm-theme] #townAccountSettings .atmThemeCard{padding:13px;margin:10px 0}.atmAccountDetails>div{padding:0 0 12px;margin-bottom:12px;border-bottom:1px solid color-mix(in srgb,var(--atm-text) 8%,transparent)}.atmAccountDetails>div:last-child{border:0;padding:0;margin:0}
+:root[data-atm-theme] #townAccountSettings dt{font-size:10px;margin:0 0 3px}:root[data-atm-theme] #townAccountSettings dd{font-size:12px;font-weight:600;margin:0;overflow-wrap:anywhere}
+.atmWalletHeading{display:flex;justify-content:space-between;align-items:center;gap:8px}.atmWalletHeading h3{font-size:13px;margin:0}.atmWalletCard p{font-size:11px;overflow-wrap:anywhere;color:var(--atm-muted);margin:9px 0 12px}
+:root[data-atm-theme] #townAccountSettings :is(button,a,input){font-size:11px!important;min-height:38px;padding:10px 12px;margin:9px 0 0;line-height:1.4;text-align:center;text-decoration:none}
+:root[data-atm-theme] #townAccountSettings input{text-align:left}
+.atmAppearanceDetails{margin:20px 0;border-top:1px solid color-mix(in srgb,var(--atm-accent) 25%,transparent);border-bottom:1px solid color-mix(in srgb,var(--atm-accent) 25%,transparent)}.atmAppearanceDetails summary{padding:15px 0;cursor:pointer;font-size:13px;font-weight:800;color:var(--atm-text)}.atmAppearanceDetails summary span{float:right;font-size:10px;font-weight:400;color:var(--atm-muted)}
+:root[data-atm-theme] #townThemePicker{border:0;margin:0;padding:0 2px 12px}:root[data-atm-theme] #townThemePicker h3{display:none}:root[data-atm-theme] #townThemePicker .atmThemeHint{margin-top:0;font-size:10px}:root[data-atm-theme] #townThemePicker .atmThemeChoice{min-height:0;padding:9px;margin:0;box-shadow:none!important;line-height:1.3;text-align:left}:root[data-atm-theme] #townThemePicker .atmThemeChoice strong{font-size:11px}:root[data-atm-theme] #townThemePicker .atmThemeChoice small{font-size:9px}
+#townSettingsStatus{font-size:11px;color:var(--atm-muted);overflow-wrap:anywhere}
+/* Locker is one flowing composition, with two-column collection cards on phones. */
+:root[data-atm-theme] #lockerCard{display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;min-height:0!important;padding:0!important}
+:root[data-atm-theme] #lockerCard>*{flex-shrink:0}
+:root[data-atm-theme] .lockerHeader{display:flex!important;justify-content:space-between;align-items:center;padding:18px 16px!important;gap:12px!important}
+:root[data-atm-theme] .lockerLogo{background:none!important;box-shadow:none!important;width:44px!important;height:44px!important;flex:none}
+.lockerLogo img{width:100%;height:100%;object-fit:contain;border-radius:50%;border:1px solid var(--atm-secondary)}
+:root[data-atm-theme] .lockerTitleCopy h2{font-size:23px!important;font-weight:850!important;letter-spacing:-1px!important}.lockerTitleCopy p{display:none!important}
+:root[data-atm-theme] .lockerHeaderActions{gap:10px}:root[data-atm-theme] .lockerHeaderActions .lockerIconButton{width:34px!important;height:34px!important;padding:0!important;min-height:34px;font-size:20px!important}
+:root[data-atm-theme] #lockerRefreshButton{font-size:0!important}:root[data-atm-theme] #lockerRefreshButton:after{content:'↻';font-size:20px}
+:root[data-atm-theme] .lockerWalletBadge{display:none!important}
+:root[data-atm-theme] :is(.lockerTabs,.lockerFilters){padding:12px 16px!important;background:transparent!important;border-bottom:1px solid color-mix(in srgb,var(--atm-text) 9%,transparent);gap:6px;scrollbar-width:none;overflow-x:auto}
+:root[data-atm-theme] :is(.lockerTab,.lockerFilter){background:transparent!important;border:1px solid transparent!important;box-shadow:none!important;color:var(--atm-muted)!important;font-size:10px!important;padding:9px 12px!important;text-transform:capitalize;letter-spacing:0!important;white-space:nowrap}
+:root[data-atm-theme] :is(.lockerTab.active,.lockerFilter.active){background:color-mix(in srgb,var(--atm-accent) 13%,transparent)!important;border-color:color-mix(in srgb,var(--atm-accent) 45%,transparent)!important;color:var(--atm-accent)!important}
+:root[data-atm-theme] :is(.lockerBody,.lockerView){height:auto!important;overflow:visible!important;min-height:0!important}
+:root[data-atm-theme] .lockerCharacterLayout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;grid-template-rows:auto!important;height:auto!important;align-items:start}
+:root[data-atm-theme] .lockerPreviewPanel{display:block!important;padding:16px!important;border:0!important;background:none!important;min-width:0}
+.atmLockerIntro{font-size:19px;margin:0 0 12px;letter-spacing:-.7px}
+:root[data-atm-theme] .lockerSectionTitle{font-size:8px!important;color:var(--atm-signal)!important;margin-bottom:10px}
+:root[data-atm-theme] #lockerPreviewCanvas{width:100%!important;height:225px!important;min-height:0!important;object-fit:contain;border-radius:calc(var(--atm-radius)*.8)!important;background-color:var(--atm-surface)!important;background-image:linear-gradient(color-mix(in srgb,var(--atm-accent) 7%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--atm-accent) 7%,transparent) 1px,transparent 1px)!important;background-size:26px 26px!important;border-color:color-mix(in srgb,var(--atm-accent) 20%,transparent)!important}
+:root[data-atm-theme] .lockerDirectionRow{display:flex!important;justify-content:flex-end;gap:5px;margin:8px 0}
+:root[data-atm-theme] .lockerDirection{width:30px;height:30px;background:var(--atm-surface)!important;color:var(--atm-text)!important;border-color:color-mix(in srgb,var(--atm-accent) 30%,transparent)!important}
+:root[data-atm-theme] .lockerPreviewMeta{display:flex!important;flex-wrap:wrap;justify-content:space-between;padding:10px!important;gap:8px}
+:root[data-atm-theme] .lockerPreviewMeta strong{font-size:11px;color:var(--atm-text)!important}.lockerPreviewMeta span{color:var(--atm-muted)!important}
+:root[data-atm-theme] .lockerBuilderPanel{display:block!important;padding:16px!important;min-height:0!important}
+:root[data-atm-theme] .lockerSlots{padding:0 0 10px!important;margin-bottom:5px;scrollbar-width:none}
+:root[data-atm-theme] .lockerSlot{min-height:58px!important;flex:1 0 90px!important;padding:9px!important}.lockerSlotLabel{color:var(--atm-muted)!important}.lockerSlotValue{color:var(--atm-text)!important}
+:root[data-atm-theme] :is(.lockerItemGrid,.lockerInventoryGrid){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;overflow:visible!important;padding:16px 0!important;min-height:0!important}
+:root[data-atm-theme] .lockerItemCard{display:block!important;min-height:175px!important;padding:11px!important;border-radius:calc(var(--atm-radius)*.8)!important;background:linear-gradient(145deg,var(--atm-surface),var(--atm-bg))!important;border:1px solid color-mix(in srgb,var(--atm-accent) 20%,transparent)!important}
+:root[data-atm-theme] .lockerItemArt{height:100px!important;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--atm-accent) 12%,transparent),transparent 70%)!important}
+:root[data-atm-theme] .lockerItemArt img{height:95px!important;max-width:100%;object-fit:contain}
+:root[data-atm-theme] .lockerItemName{font-size:12px!important;line-height:1.4!important;display:block;margin:12px 0 6px!important;color:var(--atm-text)!important}
+:root[data-atm-theme] .lockerItemMeta{font-size:7px!important;color:var(--atm-muted)!important}
+:root[data-atm-theme] .lockerItemCard.equipped{border-color:var(--atm-accent)!important;box-shadow:inset 0 0 0 1px var(--atm-accent)!important}
+:root[data-atm-theme] .lockerInventoryView{display:block!important;height:auto!important;padding:16px!important}
+:root[data-atm-theme] .lockerNftView{height:auto!important;padding:16px}.lockerNftWalletCard strong{color:var(--atm-text)!important}
+:root[data-atm-theme] .lockerFooter{color:var(--atm-muted)!important;font-size:9px!important;padding:12px 16px!important}
+/* HUD keeps its functional positions and canvas art, with the reference finish. */
+:root[data-atm-theme] :is(#hud .chip,#quest,#hint,#onlineBadge,#mapLabel,.powerTimer,#chatBar,#voiceMeetingPanel){background:color-mix(in srgb,var(--atm-bg) 85%,transparent)!important;color:var(--atm-text)!important;border-color:color-mix(in srgb,var(--atm-accent) 35%,transparent)!important;border-radius:calc(var(--atm-radius)*.65)!important;backdrop-filter:blur(var(--atm-blur))!important;box-shadow:0 5px 18px #0003}
+:root[data-atm-theme] :is(#townSettingsButton,#lockerButton,#attributeStoreButton,#musicToggle,#chatToggle,#nftDropButton,#nftDropCarry){background:color-mix(in srgb,var(--atm-bg) 88%,transparent)!important;color:var(--atm-text)!important;border-color:color-mix(in srgb,var(--atm-accent) 45%,transparent)!important;border-radius:calc(var(--atm-radius)*.65)!important}
+:root[data-atm-theme] :is(#chatInput,#chatInput::placeholder){background:transparent!important;color:var(--atm-muted)!important}
+:root[data-atm-theme] #chatSend{background:var(--atm-accent)!important;color:var(--atm-bg)!important;border-color:var(--atm-accent)!important;font-weight:850}
+:root[data-atm-theme] #action{background:var(--atm-secondary)!important;color:var(--atm-bg)!important;border-color:var(--atm-secondary)!important;box-shadow:0 0 24px color-mix(in srgb,var(--atm-secondary) 30%,transparent)!important}
+:root[data-atm-theme] #stick{border-color:color-mix(in srgb,var(--atm-accent) 30%,transparent)!important;background:color-mix(in srgb,var(--atm-bg) 40%,transparent)!important}
+:root[data-atm-theme] #knob{background:var(--atm-accent)!important}
+:root[data-atm-theme] :is(#quest b,.powerName){color:var(--atm-secondary)!important}
+@media(max-width:760px){:root[data-atm-theme] .lockerCharacterLayout{display:block!important}:root[data-atm-theme] #lockerCard{height:96dvh!important}:root[data-atm-theme] .lockerBuilderPanel{padding-top:0!important}}
+@media(max-width:360px){:root[data-atm-theme] #townSettingsTitle{font-size:19px!important}.atmPanelIdentity{gap:8px}.atmPanelLogo{width:36px;height:36px}}
+:root[data-atm-theme="signature"] .atmThemeHeader{background:linear-gradient(145deg,var(--atm-surface),var(--atm-bg))!important}
+:root[data-atm-theme="signature"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){background:linear-gradient(130deg,color-mix(in srgb,var(--atm-accent) 80%,white),var(--atm-accent))!important;box-shadow:0 4px 0 color-mix(in srgb,var(--atm-accent) 40%,var(--atm-bg)),0 7px 20px #0003!important}
+:root[data-atm-theme="signature"] .lockerItemCard.equipped{box-shadow:0 0 0 1px var(--atm-accent),0 0 22px color-mix(in srgb,var(--atm-accent) 13%,transparent)!important}
+:root[data-atm-theme="signature"] :is(.lockerTab.active,.lockerFilter.active,.peopleHubTab.active){border-radius:8px!important;border-color:transparent!important;box-shadow:inset 0 -2px var(--atm-accent)!important;background:color-mix(in srgb,var(--atm-accent) 9%,transparent)!important}
+:root[data-atm-theme="console"] .atmThemeSurface{border:3px solid #b09261!important;box-shadow:inset 0 0 0 3px #f4dfaa55,0 0 0 2px #332e22,0 18px 50px #0008!important;background:var(--atm-bg)!important}
+:root[data-atm-theme="console"] .atmThemeHeader{background:linear-gradient(110deg,#8c6238,#ccb77b 50%,#8d7547)!important;color:#111d1e!important;border-bottom:3px solid #191d17!important}
+:root[data-atm-theme="console"] :is(.atmEyebrow,.lockerEyebrow){color:#193f43!important}
+:root[data-atm-theme="console"] :is(.atmIconButton,.lockerIconButton,.lockerDirection){background:#28352c!important;color:#fff4ce!important;border:2px solid #eedba5!important;box-shadow:0 3px 0 #3a2919!important}
+:root[data-atm-theme="console"] :is(.lockerItemCard,.atmThemeCard,.nftDropCard,.nftDropTile,.lockerStat,.lockerNftCard,.lockerNftDetail),:root[data-atm-theme="console"] .atmThemeCard,:root[data-atm-theme="console"] #lockerPreviewCanvas{background:linear-gradient(145deg,#071f26,#0b3539)!important;border:2px solid #736d4e!important;box-shadow:inset 0 4px 12px #0009!important}
+:root[data-atm-theme="console"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){background:linear-gradient(#f3dc9c,#b79554)!important;color:#152a29!important;border:1px solid #ffe8af!important;box-shadow:0 4px 0 #6e4d25!important}
+:root[data-atm-theme="console"] .atmSecondaryButton{box-shadow:inset 0 1px 0 #fff3,0 3px 0 #0007!important}
+:root[data-atm-theme="console"] .atmBrandStrip{border-bottom:3px solid #6a634a!important}
+:root[data-atm-theme="sunset"] .atmThemeHeader{background:linear-gradient(125deg,color-mix(in srgb,var(--atm-secondary) 24%,var(--atm-surface)),var(--atm-surface) 50%,color-mix(in srgb,var(--atm-accent) 16%,var(--atm-surface)))!important}
+:root[data-atm-theme="sunset"] .lockerItemArt{background:radial-gradient(ellipse at center bottom,color-mix(in srgb,var(--atm-secondary) 23%,transparent),transparent 70%)!important}
+:root[data-atm-theme="sunset"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){background:linear-gradient(115deg,var(--atm-accent),var(--atm-secondary))!important;color:var(--atm-bg)!important}
+:root[data-atm-theme="sunset"] :is(.lockerItemCard,.atmThemeCard,.nftDropCard,.nftDropTile,.lockerStat,.lockerNftCard,.lockerNftDetail){border-radius:22px 22px 10px 10px!important}
+:root[data-atm-theme="sunset"] :is(.lockerTab.active,.lockerFilter.active,.peopleHubTab.active){background:var(--atm-accent)!important;color:var(--atm-bg)!important;border-radius:999px!important}
+:root[data-atm-theme="sunset"] #lockerPreviewCanvas{background-image:linear-gradient(0deg,color-mix(in srgb,var(--atm-secondary) 15%,transparent),transparent 70%),repeating-linear-gradient(0deg,transparent,transparent 22px,color-mix(in srgb,var(--atm-accent) 7%,transparent) 23px)!important}
+:root[data-atm-theme="blueprint"] .atmBrandStrip{border-bottom:1px dashed var(--atm-accent)!important}
+:root[data-atm-theme="blueprint"] .atmThemeSurface{border:1px solid var(--atm-accent)!important;border-radius:4px!important}
+:root[data-atm-theme="blueprint"] :is(.atmThemeHeader h2,.atmThemeHeader h3){font-size:22px!important;text-transform:uppercase!important;letter-spacing:-1px!important}
+:root[data-atm-theme="blueprint"] :is(.lockerItemCard,.atmThemeCard,.nftDropCard,.nftDropTile,.lockerStat,.lockerNftCard,.lockerNftDetail),:root[data-atm-theme="blueprint"] .atmThemeCard{border:1px solid color-mix(in srgb,var(--atm-accent) 50%,transparent)!important;background:linear-gradient(135deg,color-mix(in srgb,var(--atm-surface) 90%,transparent),var(--atm-bg))!important;border-radius:2px!important}
+:root[data-atm-theme="blueprint"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){border:1px solid var(--atm-accent)!important;background:var(--atm-accent)!important;border-radius:2px!important;box-shadow:3px 3px 0 color-mix(in srgb,var(--atm-accent) 35%,transparent)!important}
+:root[data-atm-theme="blueprint"] .lockerItemArt{background-image:linear-gradient(color-mix(in srgb,var(--atm-accent) 10%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--atm-accent) 10%,transparent) 1px,transparent 1px)!important;background-size:18px 18px!important}
+:root[data-atm-theme="blueprint"] .lockerItemName{text-transform:uppercase!important;font-size:10px!important}
+:root[data-atm-theme="blueprint"] :is(.lockerTab.active,.lockerFilter.active,.peopleHubTab.active){border-style:dashed!important;border-radius:2px!important}
+:root[data-atm-theme="afterdark"] .atmThemeSurface{border-color:var(--atm-accent)!important;box-shadow:0 0 0 1px #000,0 0 25px color-mix(in srgb,var(--atm-accent) 20%,transparent),0 25px 50px #0008!important}
+:root[data-atm-theme="afterdark"] :is(.atmThemeHeader h2,.atmThemeHeader h3){text-shadow:0 0 20px color-mix(in srgb,var(--atm-accent) 40%,transparent)!important}
+:root[data-atm-theme="afterdark"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){background:linear-gradient(110deg,var(--atm-accent),color-mix(in srgb,var(--atm-accent) 60%,var(--atm-secondary)))!important;color:var(--atm-bg)!important}
+:root[data-atm-theme="afterdark"] .lockerItemCard:before{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit!important;pointer-events:none!important;border-top:1px solid color-mix(in srgb,var(--atm-secondary) 55%,transparent)!important;border-left:1px solid color-mix(in srgb,var(--atm-accent) 40%,transparent)!important}
+:root[data-atm-theme="afterdark"] .lockerItemArt{background:radial-gradient(ellipse at 30% 50%,color-mix(in srgb,var(--atm-accent) 16%,transparent),transparent 65%),radial-gradient(ellipse at 85% 70%,color-mix(in srgb,var(--atm-secondary) 12%,transparent),transparent 60%)!important}
+:root[data-atm-theme="afterdark"] .lockerItemBadge{color:var(--atm-secondary)!important;border-color:color-mix(in srgb,var(--atm-secondary) 35%,transparent)!important}
+:root[data-atm-theme="reserve"] :is(.atmThemeHeader h2,.atmThemeHeader h3),:root[data-atm-theme="reserve"] .atmLockerIntro,:root[data-atm-theme="reserve"] .atmProfileHero h3{font-family:Georgia,serif!important;font-weight:500!important;letter-spacing:-.6px!important}
+:root[data-atm-theme="reserve"] .atmBrandStrip{padding:22px 20px!important}
+:root[data-atm-theme="reserve"] :is(.lockerItemCard,.atmThemeCard,.nftDropCard,.nftDropTile,.lockerStat,.lockerNftCard,.lockerNftDetail){border-radius:5px!important;background:linear-gradient(145deg,var(--atm-surface),var(--atm-bg))!important;border-color:color-mix(in srgb,var(--atm-accent) 25%,transparent)!important}
+:root[data-atm-theme="reserve"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){background:linear-gradient(125deg,#f5e2af,var(--atm-accent) 50%,#bd9857)!important;border-radius:4px!important;color:#222b22!important}
+:root[data-atm-theme="reserve"] :is(.lockerTab,.lockerFilter,.peopleHubTab){font-size:9px!important;letter-spacing:.09em!important}
+:root[data-atm-theme="reserve"] :is(.lockerTab.active,.lockerFilter.active,.peopleHubTab.active){background:none!important;border:0!important;border-bottom:1px solid var(--atm-accent)!important;border-radius:0!important}
+:root[data-atm-theme="reserve"] :is(.atmThemeTag,.lockerItemBadge){background:none!important;border-radius:0!important}
+:root[data-atm-theme="reserve"] .lockerItemName{font-size:12px!important}
+:root[data-atm-theme="reserve"] .atmThemeHeader{background:var(--atm-bg)!important}
+:root[data-atm-theme="reserve"] :is(.lockerLogo,.atmPanelLogo){filter:saturate(.65)!important}
+:root[data-atm-theme="daylight"] .atmBrandStrip{background:#06333c!important}
+:root[data-atm-theme="daylight"] .atmBrandStrip>span{color:#b8c4b9!important}
+:root[data-atm-theme="daylight"] .atmBrandStrip b{color:#ffdf92!important}
+:root[data-atm-theme="daylight"] .atmThemeHeader{background:linear-gradient(110deg,#fdf9ec,var(--atm-surface))!important}
+:root[data-atm-theme="daylight"] :is(.lockerItemCard,.atmThemeCard,.nftDropCard,.nftDropTile,.lockerStat,.lockerNftCard,.lockerNftDetail){background:var(--atm-surface)!important;box-shadow:0 6px 16px #17383b09!important;border-color:#17383b1d!important}
+:root[data-atm-theme="daylight"] .lockerItemArt{background:radial-gradient(ellipse at center,#d6e8df,transparent 70%)!important}
+:root[data-atm-theme="daylight"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){background:var(--atm-accent)!important;color:#fffdf2!important}
+:root[data-atm-theme="daylight"] .atmSecondaryButton{background:#e5e9df!important;color:var(--atm-text)!important}
+:root[data-atm-theme="daylight"] :is(.atmEyebrow,.lockerEyebrow){color:var(--atm-secondary)!important}
+:root[data-atm-theme="daylight"] #lockerPreviewCanvas{box-shadow:none!important}
+:root[data-atm-theme="daylight"] :is(.atmThemeFooter,.lockerFooter){background:#e4e8df!important}
+:root[data-atm-theme="studio"] :is(.atmThemeHeader h2,.atmThemeHeader h3){text-transform:uppercase!important;font-size:24px!important;font-weight:1000!important;letter-spacing:-1.2px!important}
+:root[data-atm-theme="studio"] .atmThemeSurface{border:2px solid var(--atm-accent)!important;box-shadow:6px 6px 0 #0008!important}
+:root[data-atm-theme="studio"] .atmThemeHeader{background:var(--atm-accent)!important;color:var(--atm-bg)!important}
+:root[data-atm-theme="studio"] :is(.atmEyebrow,.lockerEyebrow){color:var(--atm-bg)!important}
+:root[data-atm-theme="studio"] :is(.atmPrimaryButton,.lockerSaveBuild,.flowPrimary){background:var(--atm-accent)!important;box-shadow:3px 3px 0 var(--atm-bg)!important;border:1px solid var(--atm-text)!important;border-radius:4px!important}
+:root[data-atm-theme="studio"] :is(.lockerItemCard,.atmThemeCard,.nftDropCard,.nftDropTile,.lockerStat,.lockerNftCard,.lockerNftDetail){background:var(--atm-surface)!important;border:1px solid var(--atm-accent)!important;box-shadow:3px 3px 0 var(--atm-accent)!important;border-radius:4px!important}
+:root[data-atm-theme="studio"] .lockerItemName{font-size:12px!important;font-weight:900!important}
+:root[data-atm-theme="studio"] .lockerItemArt{background:repeating-linear-gradient(0deg,transparent 0 12px,color-mix(in srgb,var(--atm-secondary) 9%,transparent) 12px 15px)!important}
+:root[data-atm-theme="studio"] :is(.lockerTab.active,.lockerFilter.active,.peopleHubTab.active){background:var(--atm-secondary)!important;color:var(--atm-bg)!important;border-color:var(--atm-secondary)!important;border-radius:3px!important}
+
+:root:is([data-atm-theme="console"],[data-atm-theme="studio"]) .atmThemeHeader :is(h2,h3,.atmEyebrow,.lockerEyebrow){color:#172c2b!important}
+:root[data-atm-theme="daylight"] .atmBrandStrip{background:#06333c!important}
+:root[data-atm-theme] .atmThemeSurface :is(.lockerSourceNote,.lockerNftDetailPlaceholder,.lockerNftEmpty,.peopleHubEmpty,.peopleHubNotice,.vendingMessage){color:var(--atm-muted)!important;background:var(--atm-surface)!important;border-color:color-mix(in srgb,var(--atm-accent) 25%,transparent)!important}
+
+:root[data-atm-theme] :is(.attributeStoreItemName,.attributeStoreBrand h2,.attributeStoreCatalogHeader strong,.attributeStoreCartHeader strong,.lockerTitleCopy h2,.lockerItemName,.lockerStat strong){color:var(--atm-text)!important}
+:root[data-atm-theme] :is(.attributeStoreItemMeta,.attributeStoreCatalogHeader span,.attributeStoreCartHeader span,.lockerItemMeta,.lockerFooterVersion,.lockerStat span,#townAccountSettings dt){color:var(--atm-muted)!important}
+:root[data-atm-theme] :is(.attributeStoreItemArt,.lockerItemArt){background:radial-gradient(ellipse at center,color-mix(in srgb,var(--atm-accent) 12%,transparent),transparent 70%)!important}
+:root[data-atm-theme] :is(.attributeStoreReviewButton,.attributeStoreItem:not(.owned) .attributeStoreItemAction){background:var(--atm-accent)!important;color:var(--atm-bg)!important;border-color:var(--atm-accent)!important}
+:root:is([data-atm-theme="console"],[data-atm-theme="studio"]) .attributeStoreHeader :is(h2,span){color:#172c2b!important}
+:root[data-atm-theme] .atmThemeSurface :is(.peopleHubHeadText small,.peopleHubSub,.tradeNftSubtitle,.arcadeLeaderboardSubtitle){color:var(--atm-muted)!important}
+/* Extra gameplay panels share the same readable skin without changing their stage layouts. */
+:root[data-atm-theme] :is(.atmThemeSurface h2,.atmThemeSurface h3){font-family:var(--atm-font)!important}
+:root[data-atm-theme] .atmThemeSurface :is(.luci666Question,.luci666Answer,.fuzzyXrpQuestion,.triskXrpQuestion,.miracle111Question,.atmGuideQuestion,.peopleHubSection){color:var(--atm-text)!important;background:var(--atm-surface)!important;border-color:color-mix(in srgb,var(--atm-accent) 25%,transparent)!important;border-radius:calc(var(--atm-radius)*.6)!important}
+:root[data-atm-theme] #atmMapPreparation{background:var(--atm-bg)!important;color:var(--atm-text)!important}
+:root[data-atm-theme] .atmThemeSurface :is(.flowEyebrow,.flowLabel,.lockerNftGridHeader span,.nftSwapHint){color:var(--atm-muted)!important}
+:root[data-atm-theme] .atmThemeSurface :is(.flowSecondary,.nftSwapRow){background:var(--atm-surface)!important;color:var(--atm-text)!important;border-color:color-mix(in srgb,var(--atm-accent) 30%,transparent)!important}
+:root[data-atm-theme] #townAccountSettings .atmThemeHint{color:var(--atm-muted)!important}
+:root[data-atm-theme] .atmThemeSurface :is(h2,h3,h4){color:var(--atm-text)!important}
+:root[data-atm-theme] .atmThemeSurface :is(small,dt,label){color:var(--atm-muted)!important}
+:root:is([data-atm-theme="console"],[data-atm-theme="studio"]) .atmThemeHeader :is(h2,h3,h4,.atmEyebrow,.lockerEyebrow){color:#172c2b!important}
+:root[data-atm-theme] #quest .title{color:var(--atm-secondary)!important}:root[data-atm-theme] #quest .sub{color:var(--atm-muted)!important}
+:root[data-atm-theme] #hud .chip span{color:var(--atm-accent)!important}

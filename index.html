@@ -5,8 +5,9 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" name="viewport"/>
 <title>ATM Town</title>
-<link rel="stylesheet" href="/assets/ui-themes.css?v=2">
-<script src="/js/ui-themes.js?v=1"></script>
+<link rel="stylesheet" href="/assets/ui-themes.css?v=3">
+<link rel="stylesheet" href="/assets/ui-theme-surfaces.css?v=1">
+<script src="/js/ui-themes.js?v=2"></script>
 <meta name="theme-color" content="#061018"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -1268,14 +1269,14 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
 <div aria-hidden="true" aria-label="ATM Town Locker" id="lockerPanel">
   <div id="lockerCard" role="dialog" aria-modal="true" aria-labelledby="lockerTitle">
     <header class="lockerHeader">
-      <div class="lockerTitleRow"><div class="lockerLogo">ATM</div><div class="lockerTitleCopy"><div class="lockerEyebrow">PLAYER OWNERSHIP</div><h2 id="lockerTitle">Locker</h2><p>Your Locker contains only attributes you currently own.</p></div></div>
+      <div class="lockerTitleRow"><div class="lockerLogo">ATM</div><div class="lockerTitleCopy"><div class="lockerEyebrow">PLAYER OWNERSHIP</div><h2 id="lockerTitle">Your Locker</h2><p>Your Locker contains only attributes you currently own.</p></div></div>
       <div class="lockerHeaderActions"><div class="lockerWalletBadge" id="lockerWalletBadge">Wallet: <strong>Not linked</strong></div><button class="lockerIconButton primary" id="lockerRefreshButton" type="button">REFRESH XRPL</button><button aria-label="Close Locker" class="lockerIconButton lockerClose" id="lockerCloseButton" type="button">×</button></div>
     </header>
     <nav class="lockerTabs" aria-label="Locker sections"><button class="lockerTab active" data-locker-tab="character" type="button">CHARACTER</button><button class="lockerTab" data-locker-tab="inventory" type="button">INVENTORY</button><button class="lockerTab" data-locker-tab="nfts" type="button">XRPL NFTS</button></nav>
     <main class="lockerBody">
       <section class="lockerView active" data-locker-view="character">
         <div class="lockerCharacterLayout">
-          <div class="lockerPreviewPanel"><div class="lockerSectionTitle">LIVE PREVIEW <small id="lockerPreviewDirectionLabel">FRONT</small></div><canvas id="lockerPreviewCanvas" width="360" height="390"></canvas><div class="lockerDirectionRow"><button class="lockerDirection active" data-locker-direction="down" aria-label="Face down" type="button">↓</button><button class="lockerDirection" data-locker-direction="left" aria-label="Face left" type="button">←</button><button class="lockerDirection" data-locker-direction="up" aria-label="Face up" type="button">↑</button><button class="lockerDirection" data-locker-direction="right" aria-label="Face right" type="button">→</button></div><div class="lockerPreviewMeta"><div><strong id="lockerPreviewName">Current ATM Build</strong><span id="lockerPreviewSlotText">Unsaved character build</span></div><div class="lockerPreviewActions"><span class="lockerOwnershipPill" id="lockerPreviewOwnership">UNSAVED</span><button class="lockerSaveBuild" id="lockerSaveCharacterButton" type="button">SAVE BUILD</button></div></div></div>
+          <div class="lockerPreviewPanel"><h3 class="atmLockerIntro">Make it yours.</h3><div class="lockerSectionTitle">LIVE PREVIEW <small id="lockerPreviewDirectionLabel">FRONT</small></div><canvas id="lockerPreviewCanvas" width="360" height="390"></canvas><div class="lockerDirectionRow"><button class="lockerDirection active" data-locker-direction="down" aria-label="Face down" type="button">↓</button><button class="lockerDirection" data-locker-direction="left" aria-label="Face left" type="button">←</button><button class="lockerDirection" data-locker-direction="up" aria-label="Face up" type="button">↑</button><button class="lockerDirection" data-locker-direction="right" aria-label="Face right" type="button">→</button></div><div class="lockerPreviewMeta"><div><strong id="lockerPreviewName">Current ATM Build</strong><span id="lockerPreviewSlotText">Unsaved character build</span></div><div class="lockerPreviewActions"><span class="lockerOwnershipPill" id="lockerPreviewOwnership">UNSAVED</span><button class="lockerSaveBuild" id="lockerSaveCharacterButton" type="button">SAVE BUILD</button></div></div></div>
           <div class="lockerBuilderPanel"><div class="lockerSlots" id="lockerSlots"></div><div class="lockerFilters" id="lockerFilters"></div><div class="lockerItemGrid" id="lockerItemGrid"></div></div>
         </div>
       </section>
@@ -1609,7 +1610,7 @@ body.neon-racer-open #controls,body.neon-racer-open #hud,body.neon-racer-open #q
 <script src="js/human-verification.js?v=1"></script>
 <script src="js/email-policy.js?v=1"></script>
 <script src="js/runtime/game-core.js?v=ui-themes-2"></script>
-<script src="js/account-settings.js?v=3"></script>
+<script src="js/account-settings.js?v=4"></script>
 <script src="js/atm-pay-mainnet.js?v=mainnet-link-2"></script>
 <script src="js/atm-pay-nft-market.js?v=mainnet-sales-1"></script>
 <script src="js/nft-swaps.js?v=mainnet-nft-1"></script>
