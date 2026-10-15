@@ -2639,6 +2639,7 @@ function updateEntryProgress(activeStep=1,completed=[]){
   });
 }
 function renderIdentity(){
+  window.ATMThemes?.syncAccount(authSession?.user);
   window.ATMAccountSettings?.refresh();
   const loading=document.getElementById('identityLoading'),guest=document.getElementById('identityGuest'),signed=document.getElementById('identitySignedIn'),badge=document.getElementById('identityBadge');
   if(loading)loading.style.display='none';

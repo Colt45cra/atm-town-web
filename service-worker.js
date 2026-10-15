@@ -8,7 +8,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v291-email-policy-1';
+const BUILD_CACHE = 'atm-town-shell-v292-ui-themes-1';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = 'atm-town-world-v2';
 const WORLD_SNAPSHOT='/__atm_world__/manifest.json';
@@ -16,6 +16,8 @@ const WORLD_INDEX='/__atm_world__/index.json';
 const CACHE_PREFIX = 'atm-town-';
 
 const SHELL = [
+  '/js/ui-themes.js',
+  '/assets/ui-themes.css',
   '/',
   '/index.html',
   '/manifest.webmanifest',
