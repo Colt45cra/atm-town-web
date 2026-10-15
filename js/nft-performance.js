@@ -305,7 +305,7 @@
     const grid=document.getElementById('lockerNftGrid'),node=document.getElementById('lockerNftMetadataStatus');
     if(!grid||!node)return;
     const count=grid.querySelectorAll('.lockerNftArt[data-artwork-state="loaded"]').length;
-    node.textContent=node.textContent.replace(/\\s*·\\s*\\d+ artwork displayed/g,'')+' · '+count+' artwork displayed';
+    node.textContent=node.textContent.replace(/\s*·\s*\d+ artwork displayed/g,'')+' · '+count+' artwork displayed';
   }
 
   lockerNftImageNode=function lockerNftImageNodeResilient(nft,detail=false){
