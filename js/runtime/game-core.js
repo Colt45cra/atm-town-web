@@ -5336,6 +5336,22 @@ function restoreAccountLocation(){
   broadcastState(true);return true;
 }
 window.atmRestoreAccountLocation=restoreAccountLocation;
+window.ATMTownWalletSession={
+ capture(){saveAccountLocation();return {user:authSession?.user?.id,active:townEntryActive,online:onlineMode,character:selectedCharacter,name:playerName,room:roomName,location:JSON.parse(localStorage.getItem(accountLocationKey())||'null')};},
+ async resume(saved){
+  if(!authSession?.user||authSession.user.id!==saved.user)return false;
+  if(!saved.active)return true;
+  if(saved.location){localStorage.setItem(accountLocationKey(),JSON.stringify(saved.location));restoredAccountLocationUserId='';restoreAccountLocation();}
+  if(saved.character)selectCharacter(saved.character);
+  window.atmEntryMode='signed';
+  if(saved.name)document.getElementById('displayName').value=saved.name;
+  if(saved.room)document.getElementById('roomName').value=saved.room;
+  if(saved.online&&!townEntryActive){await connectMultiplayer();if(!townEntryActive)return false;}
+  else {townEntryActive=true;hideTownAccessFlow();}
+  return true;
+ }
+};
+
 setInterval(saveAccountLocation,5000);
 window.addEventListener('pagehide',saveAccountLocation);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAccountLocation();});

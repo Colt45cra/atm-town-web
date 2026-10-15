@@ -34,15 +34,16 @@
  function persist(value){pending=value;try{if(value)localStorage.setItem(storageKey,JSON.stringify(value));else localStorage.removeItem(storageKey);}catch{}}
  function user(){return game?.userId?.()||null;}
  function signing(data,claim=false){
+   if(data.provider==='atm_pay'&&data.deeplink)data={...data,deeplink:window.ATMTownWalletReturn?.decorate(data.deeplink,data.id)||data.deeplink};
    persist({id:data.id,claim,donation:Boolean(data.donation_request),user:user(),deeplink:data.deeplink});
    if(data.donation_request){
      list.replaceChildren();status(data.status==='signing'?'Review your selected NFTs in '+(data.provider==='atm_pay'?'ATM Pay':'Xaman')+'.':'Donation approved. Received '+data.received+' of '+data.total+' NFTs.');
-     if(data.deeplink){const link=el('a','Open '+(data.provider==='atm_pay'?'ATM Pay':'Xaman')+' to approve');link.href=data.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.append(link);}
+     if(data.deeplink){const link=el('a','Open '+(data.provider==='atm_pay'?'ATM Pay':'Xaman')+' to approve');link.href=data.deeplink;link.target=data.provider==='atm_pay'?'_self':'_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.append(link);}
      startPoll();return;
    }
    status(claim?'Sign in Xaman to claim your NFT.':data.kind==='drop'?'Approve the transfer to the game’s holding wallet in Xaman. Your drop appears after receipt is confirmed. Return here to check progress.':'Open Xaman below to approve. Return here and wait for confirmation.');
    if(!data.deeplink){status('The holding wallet is preparing your personal NFT offer…');startPoll();return;}
-   const link=el('a','Open Xaman to sign');link.href=data.deeplink;link.target='_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.append(link);
+   const link=el('a','Open Xaman to sign');link.href=data.deeplink;link.target=data.provider==='atm_pay'?'_self':'_blank';link.rel='noopener noreferrer';link.className='nftDropSign';list.append(link);
    if(data.qr_png){const qr=el('img');qr.src=data.qr_png;qr.alt='Scan in Xaman';qr.width=180;qr.height=180;list.append(qr);}
    startPoll();
  }

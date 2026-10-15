@@ -43,11 +43,14 @@ export default async function handler(req,res) {
       return res.json({kind:'link',id:row.id,town_user_id:row.user_id,town_name:player?.display_name || 'ATM Town player',expires_at:row.expires_at});
     }
     if (action === 'proof') {
+      if(row.status==='linked')return res.json({status:'linked',wallet_address:row.wallet_address});
+      if(row.status==='proved'){check(await admin.rpc('atm_pay_confirm_town_link',{request_id:id,town_user_id:row.user_id}));return res.json({status:'linked',wallet_address:row.wallet_address});}
       if (row.status !== 'pending') throw fail('This link request was already used.');
       const wallet = verifyWalletLink(req.body?.blob,row,req.body?.pay_user_id);
       const data = check(await admin.from('atm_pay_link_requests').update({status:'proved',wallet_address:wallet,pay_user_id:req.body.pay_user_id}).eq('id',id).eq('status','pending').select('id').maybeSingle());
       if (!data) throw fail('This link request changed.');
-      return res.json({status:'proved',wallet_address:wallet});
+      check(await admin.rpc('atm_pay_confirm_town_link',{request_id:id,town_user_id:row.user_id}));
+      return res.json({status:'linked',wallet_address:wallet});
     }
     if (action === 'inspect') return res.json({status:row.status,wallet_address:row.wallet_address});
     if (action === 'confirm') {

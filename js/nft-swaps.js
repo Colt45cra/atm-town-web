@@ -72,11 +72,11 @@
   }
   function signLink(s) {
     const sign = s.sign_request; if (!sign?.deeplink) return;
-    const url = new URL(sign.deeplink); if (url.protocol !== 'https:' || !['xumm.app', 'xaman.app', 'atm-pay-two.vercel.app'].includes(url.hostname)) throw new Error('Invalid Xaman signing link.');
+    const url = new URL(sign.provider==='atm_pay'?(window.ATMTownWalletReturn?.decorate(sign.deeplink,s.id)||sign.deeplink):sign.deeplink); if (url.protocol !== 'https:' || !['xumm.app', 'xaman.app', 'atm-pay-two.vercel.app'].includes(url.hostname)) throw new Error('Invalid Xaman signing link.');
     message('Review BOTH NFTs in your wallet. Approve, then return to ATM Town.');
     if (sign.qr_png && /^https:\/\//.test(sign.qr_png)) { const qr = document.createElement('img'); qr.src = sign.qr_png; qr.alt = 'Scan with Xaman to review this trade'; qr.className = 'nftSwapQR'; content.appendChild(qr); }
-    const link = node('a', sign.provider === 'atm_pay' ? 'OPEN ATM PAY' : 'OPEN XAMAN', 'nftSwapSignLink'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener'; content.appendChild(link);
-    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) window.location.assign(url.href);
+    const link = node('a', sign.provider === 'atm_pay' ? 'OPEN ATM PAY' : 'OPEN XAMAN', 'nftSwapSignLink'); link.href = url.href; link.target = sign.provider==='atm_pay'?'_self':'_blank'; link.rel = 'noopener'; content.appendChild(link);
+    if (sign.provider==='atm_pay'||/Android|iPhone|iPad/i.test(navigator.userAgent)) window.location.assign(url.href);
   }
   function renderList() {
     content.textContent = ''; selectedId = '';
@@ -116,7 +116,7 @@
     if (s.role === 'proposer' && s.status === 'ready') content.appendChild(button('SIGN & EXCHANGE BOTH NFTS', async () => { const next = await request('finalize', { id: s.id }); renderTrade(next); signLink(next); }));
     if (s.sign_request) content.appendChild(button(s.wallet_provider === 'atm_pay' ? 'OPEN ATM PAY REQUEST' : 'OPEN XAMAN REQUEST', () => signLink(s)));
     if (['offered', 'signing', 'ready'].includes(s.status)) content.appendChild(button(s.role === 'recipient' ? 'DECLINE / CANCEL' : 'CANCEL PROPOSAL', async () => renderTrade(await request('cancel', { id: s.id }))));
-    if (s.tx_hash) { const link = node('a', 'VIEW XRPL TRANSACTION'); link.href = 'https://livenet.xrpl.org/transactions/' + s.tx_hash; link.target = '_blank'; link.rel = 'noopener'; content.appendChild(link); }
+    if (s.tx_hash) { const link = node('a', 'VIEW XRPL TRANSACTION'); link.href = 'https://livenet.xrpl.org/transactions/' + s.tx_hash; link.target = sign.provider==='atm_pay'?'_self':'_blank'; link.rel = 'noopener'; content.appendChild(link); }
     content.appendChild(button('ALL TRADES', () => openInbox()));
   }
   async function showTrade(id) {

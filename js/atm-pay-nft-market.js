@@ -19,10 +19,11 @@
  }
  async function start(operation,offer,amount){
   const r=await api('start',{operation,token_id:view.token,token_name:view.name,offer_index:offer?.offer_index,amount_xrp:amount});
+  r.deeplink=window.ATMTownWalletReturn?.decorate(r.deeplink,r.id)||r.deeplink;
   localStorage.setItem(pendingKey(),r.id);clearInterval(timer);timer=setInterval(poll,3000);
-  const link=node('a','Open ATM Pay to review and approve');link.href=r.deeplink;link.target='_blank';link.rel='noopener noreferrer';modal.appendChild(link);
+  const link=node('a','Open ATM Pay to review and approve');link.href=r.deeplink;link.target='_self';link.rel='noopener noreferrer';modal.appendChild(link);
   modal.appendChild(node('p','Approve with your passkey, then return to this Town tab.'));
-  if(/Android|iPhone|iPad/i.test(navigator.userAgent))window.location.assign(r.deeplink);else window.open(r.deeplink,'_blank','noopener');
+  window.location.assign(r.deeplink);
  }
  async function render(){
   const current=view;modal.textContent='';modal.append(node('h2',current.own?'Sell your NFT':'Buy this NFT'),node('p',current.name));
