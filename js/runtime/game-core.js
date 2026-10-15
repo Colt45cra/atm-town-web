@@ -2746,10 +2746,11 @@ async function sendEmailLogin(inputId='identityEmail',buttonId='emailLoginBtn'){
   if(!/^\S+@\S+\.\S+$/.test(email)){setIdentityStatus('Enter a valid email address.','error');return;}
   if(btn){btn.disabled=true;btn.textContent='SENDING…';}
   try{
+    if(inputId==='identityEmail'&&await window.ATMEmailPolicy?.isDisposable(email))throw new Error(window.ATMEmailPolicy.message);
     const client=await getSupabaseClient();
     const returnUrl=inputId==='loginEmail'?'https://www.atmtown.fun/?login_return=1':'https://www.atmtown.fun/?signup_return=1';
-    const {error}=await client.auth.signInWithOtp({email,options:{emailRedirectTo:returnUrl}});
-    if(error)throw error;
+    const {error}=await client.auth.signInWithOtp({email,options:{emailRedirectTo:returnUrl,shouldCreateUser:inputId!=='loginEmail'}});
+    if(error){if(await window.ATMEmailPolicy?.isDisposable(email).catch(()=>false))throw new Error(window.ATMEmailPolicy.message);throw error;}
     setIdentityStatus('Check your email and open the ATM Town sign-in link.','ok');
   }catch(error){setIdentityStatus(error.message||'Email sign-in failed.','error');}
   finally{
