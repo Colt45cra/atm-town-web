@@ -61,3 +61,19 @@ test('matched vehicle preview anchors survive import validation and map merge',(
  for(const offset of [-1,NaN,9000]){v.objects[0].collision.vehicle.anchor_offset=offset;assert.throws(()=>validateMapPlan(v),/placement anchor/);}
 });
 
+
+import sharp from 'sharp';
+import {inspectMapImage} from '../lib/map-import-validation.js';
+test('WebP terrain is fully decoded and checked; lossy collision masks and invalid bytes are rejected',async()=>{
+ const bytes=await sharp({create:{width:16,height:16,channels:3,background:'#337755'}}).webp({quality:90}).toBuffer();const spec={kind:'terrain',format:'webp',width:16,height:16,size:bytes.length,sha256:sha256(bytes)};
+ assert.deepEqual(await inspectMapImage(bytes,spec),{width:16,height:16});
+ await assert.rejects(inspectMapImage(bytes,{...spec,width:32}));await assert.rejects(inspectMapImage(bytes,{...spec,kind:'collision'}));
+ const bad=Buffer.from(bytes);bad.fill(0,20);await assert.rejects(inspectMapImage(bad,{...spec,sha256:sha256(bad)}));
+ const v=input();v.manifest.layers.terrain.format='webp';v.files[0].path='assets/world/terrain/4_0.webp';assert.equal(validateMapPlan(v).files[0].format,'webp');v.manifest.layers.collision.format='webp';assert.throws(()=>validateMapPlan(v));
+});
+test('WebP publish preserves PNG masks, serves real .webp URLs, and identical updates reuse all files',async()=>{
+ const admin=memoryAdmin(),user={id},webp=await sharp({create:{width:1,height:1,channels:3,background:'#337755'}}).webp().toBuffer(),image=png();
+ const body={base_revision:0,label:'WebP',manifest:{schemaVersion:1,worldId:'atm-town',chunkSize:1024,bounds:{minX:4096,minY:0,maxX:4097,maxY:1},cells:{'4_0':{x:4096,y:0,width:1,height:1,chunkX:4,chunkY:0}},layers:{terrain:{path:'assets/world/terrain',format:'webp',chunks:['4_0']},collision:{path:'assets/world/collision',format:'png',chunks:['4_0']}}},objects:[],files:[{path:'assets/world/terrain/4_0.webp',size:webp.length,sha256:sha256(webp)},...['assets/world/collision/4_0.png','overview.png'].map(path=>({path,size:image.length,sha256:sha256(image)}))],overview:{width:1,height:1}};
+ const draft=await handleMapAdmin(admin,user,'admin-map-init',body);for(const f of admin.rows.town_map_versions[0].assets)admin.uploads.set(f.storage_path,f.format==='webp'?webp:image);
+ await handleMapAdmin(admin,user,'admin-map-validate',{id:draft.id});await handleMapAdmin(admin,user,'admin-map-publish',{id:draft.id,expected_revision:0});const state=await handleMapAdmin(admin,user,'admin-map-state');assert.match(state.manifest.layers.terrain.sources['4_0'],/\.webp$/);assert.match(state.manifest.layers.collision.sources['4_0'],/\.png$/);assert.equal(state.manifest.layers.terrain.fileMeta['4_0'].format,'webp');body.base_revision=1;assert.equal((await handleMapAdmin(admin,user,'admin-map-init',body)).no_changes,true);
+});
