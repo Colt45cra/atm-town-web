@@ -11,15 +11,7 @@ import {
   tagPropHuntPlayer,
   WORLD_EVENT_ACTIONS,
 } from '../lib/world-events.js';
-import {
-  createMoneyRainPayloadDraft,
-  getMoneyRainFundingStatus,
-  payloadDraftFromToken,
-  prepareMoneyRainFunding,
-  recheckMoneyRainFunding,
-  relayMoneyRainFunding,
-  verifyMoneyRainFundingTransaction,
-} from '../lib/payload-money-rain.js';
+import { payloadDraftFromToken } from '../lib/payload-money-rain.js';
 import { createMainnetMoneyRainDraft, mainnetMoneyRainStatus, startMainnetMoneyRainFunding, checkMainnetMoneyRainXaman } from '../lib/payload-money-rain-mainnet.js';
 
 const PAYLOAD_MONEY_RAIN_ACTIONS = new Set([
@@ -75,6 +67,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && PAYLOAD_MONEY_RAIN_ACTIONS.has(action)) {
       const { admin, user } = await requireUser(req);
       const body = req.body || {};
+      if(!action.startsWith('payload-mainnet-')&&action!=='start-funded-money-rain')return res.status(410).json({error:'This funding flow has been retired. Reopen Money Rain for mainnet funding.'});
 
       if (action === 'payload-mainnet-create') {
         await assertMoneyRainLaunchContext(admin, body);
@@ -89,44 +82,11 @@ export default async function handler(req, res) {
         return res.status(200).json({ funded: status.funded, state: status.state });
       }
 
-      if (action === 'payload-create-money-rain') {
-        await assertMoneyRainLaunchContext(admin, body);
-        const { sponsor } = await resolveMoneyRainSponsor(admin, user, body);
-        return res.status(201).json(await createMoneyRainPayloadDraft(admin, user, {
-          poolXrp: body.pool_xrp,
-          sponsorMode: sponsor.mode,
-          sponsorLabel: sponsor.label,
-        }));
-      }
-
-      if (action === 'payload-funding-prepare') {
-        return res.status(200).json(await prepareMoneyRainFunding(admin, user, body.draft_token));
-      }
-
-      if (action === 'payload-funding-recheck') {
-        return res.status(200).json(await recheckMoneyRainFunding(admin, user, body.draft_token, body.prepared || {}));
-      }
-
-      if (action === 'payload-funding-relay') {
-        return res.status(200).json(await relayMoneyRainFunding(admin, user, body.draft_token, body));
-      }
-
-      if (action === 'payload-funding-verify') {
-        return res.status(200).json(await verifyMoneyRainFundingTransaction(admin, user, body.draft_token, body.tx_hash));
-      }
-
-      if (action === 'payload-funding-status') {
-        const status = await getMoneyRainFundingStatus(admin, user, body.draft_token);
-        return res.status(200).json({ funded: status.funded, state: status.state });
-      }
-
       if (action === 'start-funded-money-rain') {
         const draft = payloadDraftFromToken(body.draft_token, user.id);
         await assertMoneyRainLaunchContext(admin, body);
-        const mainnet = draft.purpose === 'money_rain_mainnet';
-        const status = mainnet
-          ? await mainnetMoneyRainStatus(admin, user, body.draft_token)
-          : await getMoneyRainFundingStatus(admin, user, body.draft_token);
+        if(draft.purpose !== 'money_rain_mainnet') return res.status(410).json({error:'This funding flow has been retired. Reopen Money Rain for mainnet funding.'});
+        const status = await mainnetMoneyRainStatus(admin, user, body.draft_token);
         if (!status.funded) throw conflict('Payload has not confirmed the full Money Rain funding amount yet.');
         return res.status(200).json(await startFundedMoneyRain(admin, user, {
           map: body.map,

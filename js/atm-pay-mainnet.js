@@ -1,4 +1,4 @@
-/* Mainnet ATM Pay links are independent of Town login and its testnet vault. */
+/* Mainnet ATM Pay links are independent of Town login. */
 (function(){
   'use strict';
   let state=null,userId='',opened=false,timer=null;
@@ -6,7 +6,7 @@
   const dialog=document.createElement('dialog');dialog.id='atmPayMainnetLink';dialog.setAttribute('aria-label','ATM Pay mainnet wallet');dialog.style.cssText='max-width:520px;width:90%;max-height:85dvh;overflow:auto;background:#092330;color:#eafcff;border:1px solid #58ddd0;border-radius:20px;padding:22px';
   const body=document.createElement('div');dialog.appendChild(body);document.body.appendChild(dialog);
   const text=(tag,value)=>{const n=document.createElement(tag);n.textContent=value;return n;};
-  function button(label,fn){const b=text('button',label);b.type='button';b.className='atmWalletBtn';b.style.margin='6px';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){body.appendChild(text('p',e.message));}finally{b.disabled=false;}};return b;}
+  function button(label,fn){const b=text('button',label);b.type='button';b.className='atmWalletBtn';b.style.cssText='display:block;width:100%;padding:12px;margin:6px 0;border:1px solid #58ddd0;border-radius:12px;background:#123540;color:#eaffff;font:inherit';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){body.appendChild(text('p',e.message));}finally{b.disabled=false;}};return b;}
   const api=(action,body)=>apiWithAuth('/api/xrpl-nft-trade?action=pay-link-'+action,body?{method:'POST',body:JSON.stringify(body)}:{});
   async function refresh(){
     const id=authSession?.user?.id||'';
@@ -26,7 +26,7 @@
     }catch(e){if(opened)body.appendChild(text('p',e.message));clearInterval(timer);timer=null;}
   }
   function render(){
-    body.textContent='';body.append(text('h2','ATM Pay · Mainnet'),text('p','Choose the wallet used by your NFT locker and trade beacon. Your Xaman link and testnet wallet stay available.'));
+    body.textContent='';body.append(text('h2','ATM Pay · Mainnet'),text('p','Choose the wallet used by your NFT locker and trade beacon. Your Xaman wallet stays linked separately.'));
     if(state?.link){body.append(text('p','ATM Pay: '+state.link.wallet_address),text('p',state.link.active?'Active NFT wallet':'Connected'));
       if(!state.link.active)body.appendChild(button('Use ATM Pay for NFTs',async()=>{await api('select',{provider:'atm_pay'});await changed();}));
       if(state.link.active&&playerAccount?.wallet_address)body.appendChild(button('Use Xaman for NFTs',async()=>{await api('select',{provider:'xaman'});await changed();}));

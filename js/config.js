@@ -153,18 +153,10 @@
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0'
   ]);
 
-  const EMBEDDED_WALLET = Object.freeze({
-    network: 'testnet',
-    explorerBase: 'https://testnet.xrpl.org/accounts/',
-    explorerTxBase: 'https://testnet.xrpl.org/transactions/',
-    xrplBrowserSources: Object.freeze([
-      'https://cdn.jsdelivr.net/npm/xrpl@5.0.0/build/xrpl-latest-min.js'
-    ])
-  });
+  const EMBEDDED_WALLET = Object.freeze({network:'mainnet',external:true});
 
   // v235.12 Attribute Store commerce policy.
-  // Store purchases are real-value MAINNET commerce. World-event rewards remain
-  // isolated on XRPL Testnet and are not changed by this configuration.
+  // Store purchases and world-event funding use XRPL Mainnet.
   // The merchant destination intentionally matches the existing Magnet Can
   // vending receiver. Future XRPL assets can be added behind the CRYPTO rail and
   // routed/swapped server-side without changing the player-facing CASH/CRYPTO UI.

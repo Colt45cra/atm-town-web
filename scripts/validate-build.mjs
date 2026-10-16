@@ -266,9 +266,8 @@ for (const runtimeMarker of [
   '/api/xrpl-nft-trade?action=offers&token_id=',
   '/api/xaman-link?action=start',
   '/api/xaman-link?action=status&payload_uuid=',
-  'id="embeddedWalletBtn"',
   'js/wallet/embedded-wallet.js',
-  'ATM Pay · Testnet',
+  'Connect ATM Pay · Mainnet',
   'window.atmApiWithAuth=apiWithAuth'
 ]) {
   if (!runtimeSource.includes(runtimeMarker)) errors.push(`Missing current gameplay marker: ${runtimeMarker}`);
@@ -339,9 +338,6 @@ vm.runInNewContext(mapsSource, registrySandbox, { filename: 'js/maps.js' });
 const registry = registrySandbox.window.ATMMaps;
 const config = registrySandbox.window.ATM_TOWN_CONFIG;
 
-if (config.embeddedWallet?.network !== 'testnet') errors.push('Embedded wallet must remain Testnet-only in v234.');
-if ('rpcHttp' in (config.embeddedWallet || {}) || 'rpcHttpSources' in (config.embeddedWallet || {}) || 'rpcWs' in (config.embeddedWallet || {})) errors.push('v234.2.5 browser wallet config must not expose direct XRPL transport endpoints.');
-if (!String(config.embeddedWallet?.explorerTxBase || '').startsWith('https://testnet.xrpl.org/transactions/')) errors.push('Embedded wallet transaction explorer must remain on XRPL Testnet.');
 if (config.claimPortals?.genesisHolderRewards?.portalUrl !== 'https://payload-omega-gules.vercel.app/claim/genesis-holder-rewards-1-2') errors.push('Genesis Holder Rewards claim portal URL is missing or incorrect.');
 if (!String(config.claimPortals?.genesisHolderRewards?.portalUrl || '').startsWith('https://payload-omega-gules.vercel.app/claim/')) errors.push('Genesis Holder Rewards must use the trusted Payload claim origin.');
 if (!atmGuideSource.includes('LEARN ABOUT ATM') || !atmGuideSource.includes('CLAIM REWARD TOKENS')) errors.push('ATM Bot is missing its two first-choice actions.');
@@ -364,28 +360,6 @@ const payloadIntegrationSource = await readFile(path.join(root, 'lib', 'payload-
 const payloadMoneyRainSource = await readFile(path.join(root, 'lib', 'payload-money-rain.js'), 'utf8');
 const embeddedWalletSql = await readFile(path.join(root, 'supabase', 'ATM-Town-v234.sql'), 'utf8');
 const atmPaySql = await readFile(path.join(root, 'supabase', 'ATM-Town-v234.2.sql'), 'utf8');
-if (!embeddedWalletSource.includes("const NETWORK = 'testnet'")) errors.push('Embedded wallet client is not hard-gated to Testnet.');
-if (!embeddedWalletSource.includes('Wallet.generate()')) errors.push('Embedded wallet is not generating the XRPL keypair in the browser.');
-if (!embeddedWalletSource.includes("crypto.subtle.encrypt")) errors.push('Embedded wallet client is missing local Web Crypto encryption.');
-if (!embeddedWalletSource.includes("extensions:{prf:")) errors.push('Embedded wallet client is missing WebAuthn PRF authorization support.');
-if (!embeddedWalletSource.includes("userVerification:'required'")) errors.push('Wallet passkey operations must require WebAuthn user verification.');
-if (/localStorage|sessionStorage/.test(embeddedWalletSource) && /seed/i.test(embeddedWalletSource)) errors.push('Embedded wallet source may persist seed material in web storage.');
-if (/state\.(?:wallet|seed)\b/.test(embeddedWalletSource)) errors.push('v234.1 must not keep a wallet or seed in persistent module state.');
-if (/AUTO_LOCK_MS/.test(embeddedWalletSource)) errors.push('v234.1 should use operation-scoped key decryption rather than a timed unlocked-wallet session.');
-if (!embeddedWalletSource.includes('withDecryptedWallet(state.record,vault,async(wallet)=>wallet.sign(tx))')) errors.push('v234.1 must decrypt and sign inside the operation-scoped wallet callback.');
-if (!embeddedWalletSource.includes('FRESH AUTH PER PAYMENT')) errors.push('v234.2 fresh-authorization payment marker is missing.');
-if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-prepare')) errors.push('v234.2.5 wallet must prepare XRPL ledger fields through the authenticated ATM Pay API.');
-if (!embeddedWalletSource.includes('Number(preparedLedger.ledger_index)')) errors.push('v234.2.6 client must read the server payment-preparation ledger_index field.');
-if (embeddedWalletSource.includes('Number(preparedLedger.ledgerIndex)')) errors.push('v234.2.6 client must not use the obsolete ledgerIndex response field.');
-if (!embeddedWalletSource.includes('ATM_PAY_CHARACTER_THUMBNAILS') || !embeddedWalletSource.includes('function avatarHtml')) errors.push('v234.3 ATM Pay character-avatar UX is missing.');
-if (!embeddedWalletSource.includes('function recentRecipients()') || !embeddedWalletSource.includes('QUICK PAY')) errors.push('v234.3 ATM Pay recent-recipient quick pay is missing.');
-if (!embeddedWalletSource.includes('function pendingIncomingRequests()') || !embeddedWalletSource.includes('Requests for you')) errors.push('v234.3 incoming request surface is missing.');
-if (!embeddedWalletSource.includes("new CustomEvent('atm:pay-notification'") || !embeddedWalletSource.includes('ATM_PAY_ACTIVITY_POLL_MS')) errors.push('v234.3 ATM Pay background activity notifications are missing.');
-if (!embeddedWalletSource.includes('async function openToRecipient') || !embeddedWalletSource.includes('function getPublicIdentity(){if(!state.record)return null;')) errors.push('v234.3 nearby-player ATM Pay entry point must broadcast only wallet-ready public identities.');
-if (!embeddedWalletSource.includes('async function payRequestedItem') || !embeddedWalletSource.includes('await prepareAtmPayPayment();')) errors.push('v234.3 one-tap payment-request preparation is missing.');
-if (!embeddedWalletSource.includes('atmPaySuccessCelebration') || !embeddedWalletSource.includes('atmPaySuccessMark')) errors.push('v234.3 ATM Pay success animation is missing.');
-if (!embeddedWalletSource.includes('function getConsumerSnapshot()') || !embeddedWalletSource.includes('searchPeople:searchPeopleForConsumer')) errors.push('v234.4 ATM Pay consumer snapshot/search API is missing.');
-if (!embeddedWalletSource.includes("new CustomEvent('atm:pay-state-changed'")) errors.push('v234.4 ATM Pay state-change bridge for People Hub is missing.');
 if (!peopleHubSource.includes("const PAGES=['online','people','pay']")) errors.push('v234.4 People Hub sliding Online/People/Pay pages are missing.');
 if (!peopleHubSource.includes("document.getElementById('onlineBadge')")) errors.push('v234.4 People Hub is not bound to the existing online-player count icon.');
 if (!peopleHubSource.includes("window.ATMPay?.openToRecipient")) errors.push('v234.4 People Hub cannot open address-free payments to selected people.');
@@ -494,7 +468,7 @@ if (!gameRuntimeParts[0].includes('function lockerAttributeRuleMatches') || !gam
 if (!gameRuntimeParts[0].includes('window.atmLockerPermanentJetpackEquipped') || !gameRuntimeParts[0].includes("permanent?'NFT OWNED · PERMANENT'")) errors.push('v235.10 permanent NFT Jetpack entitlement is missing.');
 if (!html.includes('id="lockerYouAreAtmCount"') || !html.includes('id="lockerNftUnlockCount"') || !html.includes('LOCKER v7 · OWNED ASSETS ONLY · v235.12.5')) errors.push('v235.12.5 Locker ownership UI markers are missing.');
 if (!html.includes('id="attributeStoreButton"') || !html.includes('id="attributeStorePanel"') || !html.includes('id="attributeStoreCharacters"') || !html.includes('ATTRIBUTE STORE v2 · v235.12.5')) errors.push('v235.12.5 Attribute Store UI markers are missing.');
-if (!html.includes('id="attributeStorePaymentCategories"') || !html.includes('id="attributeStoreCryptoAssets"') || !html.includes('XRPL MAINNET') || !html.includes('World-event funding and rewards remain on Testnet')) errors.push('v235.12 CASH/CRYPTO payment UI markers are missing.');
+if (!html.includes('id="attributeStorePaymentCategories"') || !html.includes('id="attributeStoreCryptoAssets"') || !html.includes('XRPL MAINNET') || !html.includes('World-event funding and rewards use XRPL Mainnet')) errors.push('v235.12 CASH/CRYPTO payment UI markers are missing.');
 if (!html.includes('id="attributeStoreCheckoutSheet"') || !html.includes('id="attributeStoreCheckoutReviewButton"') || !html.includes('id="attributeStoreCheckoutBackButton"')) errors.push('v235.12 dedicated checkout sheet controls are missing.');
 if (!html.includes('.attributeStoreCheckoutSheet{position:absolute;inset:0') || !html.includes('contain:inline-size') || !html.includes('.attributeStoreCryptoAssets[hidden],.attributeStoreCashInfo[hidden]{display:none!important}') || !html.includes('.attributeStorePaymentCategories,.attributeStoreCryptoAssets{display:flex!important;flex-direction:column')) errors.push('v235.12 checkout width containment/mobile stacking is missing.');
 if (!html.includes('mobile Attribute Store layout rebuild') || !html.includes('.attributeStoreBody{\n    position:relative!important;\n    flex:1 1 auto!important;\n    display:flex!important;\n    flex-direction:column!important;') || !html.includes('.attributeStoreGrid{\n    flex:1 1 auto!important;\n    display:flex!important;\n    flex-direction:column!important;') || !html.includes('.attributeStoreCart{\n    position:static!important;') || !html.includes('grid-template-columns:86px minmax(0,1fr)!important;')) errors.push('v235.12 mobile Store flex layout rebuild is missing.');
@@ -550,7 +524,6 @@ if (!gameRuntimeParts[0].includes("'kaj','daniel','army','anunnaki']")) errors.p
 if (!gameRuntimeParts[0].includes("id:'character:daniel'") || !gameRuntimeParts[0].includes("id:'character:army'") || !gameRuntimeParts[0].includes("id:'character:anunnaki'")) errors.push('v235.10 Anunnaki Locker starter item is missing.');
 if (!html.includes('data-character="daniel"') || !html.includes('data-character="army"') || !html.includes('data-profile-character="daniel"') || !html.includes('data-profile-character="army"')) errors.push('v235.9.1 Daniel/ARMY entry/profile selectors are missing.');
 if (!peopleHubSource.includes("daniel:'assets/characters/thumbnails/character-daniel.webp'") || !peopleHubSource.includes("army:'assets/characters/thumbnails/character-army.webp'") || !peopleHubSource.includes("anunnaki:'assets/characters/thumbnails/character-anunnaki.webp'")) errors.push('v235.10 People Hub character avatars are incomplete.');
-if (!embeddedWalletSource.includes("daniel:'assets/characters/thumbnails/character-daniel.webp'") || !embeddedWalletSource.includes("army:'assets/characters/thumbnails/character-army.webp'") || !embeddedWalletSource.includes("anunnaki:'assets/characters/thumbnails/character-anunnaki.webp'")) errors.push('v235.10 ATM Pay character avatars are incomplete.');
 
 // v235.9 shared zombie authority/snapshots/fire effects.
 if (!gameRuntimeParts[0].includes("event:'zombie_combat'") || !gameRuntimeParts[0].includes("atm:zombie-network-send") || !gameRuntimeParts[0].includes('networkOnline:onlineMode')) errors.push('v235.9 realtime Zombie Outbreak transport is incomplete.');
@@ -577,8 +550,6 @@ if (!payloadIntegrationSource.includes('crypto.sign(null') || !payloadIntegratio
 if (!payloadMoneyRainSource.includes("asset: { type: 'xrp' }") || !payloadMoneyRainSource.includes('DEFAULT_MAX_RECIPIENTS = 100') || !payloadMoneyRainSource.includes('MAX_FUNDING_DROPS = 25_000_000n')) errors.push('v235.3.1 Testnet XRP Payload campaign safety limits are incomplete.');
 if (!payloadMoneyRainSource.includes('Money Rain prize pool must be in 0.001 XRP increments') || !payloadMoneyRainSource.includes('const POINT_POOL = 1000n')) errors.push('v235.3.1 exact 1,000-point-to-XRP reward mapping is missing.');
 if (!payloadMoneyRainSource.includes("MemoType: memoHex('PAYLOAD-MONEY-RAIN')") || !payloadMoneyRainSource.includes("xrplTestnetRpc('submit'") || !payloadMoneyRainSource.includes("xrplTestnetRpc('tx'")) errors.push('v235.3.1 exact Money Rain funding memo/relay/verification flow is incomplete.');
-if (!embeddedWalletSource.includes('async function signPayloadMoneyRainFunding') || !embeddedWalletSource.includes('authorizePayloadFundingVault') || !embeddedWalletSource.includes('payload-funding-recheck')) errors.push('v235.3.1 browser wallet is missing fresh local authorization/recheck for Payload funding.');
-if (!embeddedWalletSource.includes('wallet.sign(prepared.tx)') || !embeddedWalletSource.includes('vault.fill(0);vault=null')) errors.push('v235.3.1 Payload funding must sign locally and immediately discard decrypted key material.');
 if (/PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64/.test(embeddedWalletSource) || /PAYLOAD_INTEGRATION_PRIVATE_KEY_PKCS8_B64/.test(worldEventsClientSource)) errors.push('v235.3.1 server integration private key marker must never appear in browser modules.');
 if (!worldTimeApiSource.includes("'payload-create-money-rain'") || !worldTimeApiSource.includes("'payload-funding-prepare'") || !worldTimeApiSource.includes("'payload-funding-recheck'") || !worldTimeApiSource.includes("'payload-funding-relay'") || !worldTimeApiSource.includes("'payload-funding-status'") || !worldTimeApiSource.includes("'start-funded-money-rain'")) errors.push('v235.3.1 Payload Money Rain actions are not routed through the existing world-time serverless function.');
 if (!worldEventsClientSource.includes('PREPARE PAYLOAD MONEY RAIN') || !worldEventsClientSource.includes('CHECK FUNDING & START') || !worldEventsClientSource.includes('signed_tx_blob') || !worldEventsClientSource.includes('Do NOT authorize another payment')) errors.push('v235.3.1 retry-safe sponsor funding UX is incomplete.');
@@ -593,7 +564,6 @@ if (!worldEventsClientSource.includes('function formatXrpDisplay') || !worldEven
 if (!worldEventsClientSource.includes('PANEL_LAUNCH_GUARD_MS') || !worldEventsClientSource.includes('state.panelOpenedAt = performance.now()') || !worldEventsClientSource.includes('guardPanelLaunch()')) errors.push('World Event panel must block the opening ACTION gesture from starting an event.');
 if (!worldEventsClientSource.includes('actual on-ledger funding account')) errors.push('Money Rain funding copy must state that unused funds return to the actual funding account.');
 if (!worldEventsClientSource.includes('eventNetworkLabel(event)') || !worldEventsClientSource.includes('event.reward_pool_xrp')) errors.push('Money Rain UI must distinguish Mainnet rewards and derive live XRP value from the authoritative pool.');
-if (!embeddedWalletSource.includes('balanceXrp:state.balanceXrp') || !embeddedWalletSource.includes('window.ATMEmbeddedWallet={open,close,refreshBalance')) errors.push('v235.3.2 embedded wallet consumer state must expose and refresh the validated XRP balance.');
 if (!peopleHubSource.includes('atmPeopleHubBalance') || !peopleHubSource.includes('state.pay.balanceXrp')) errors.push('v235.3.2 People Hub is missing the quick XRP balance surface.');
 if (!worldEventsClientSource.includes('SPONSOR SETTLEMENT') || !worldEventsServerSource.includes('immediate_refund_xrp') || !worldEventsServerSource.includes('reserve_recovery_xrp')) errors.push('v235.3.2 sponsor settlement UI must distinguish immediate refunds from delayed campaign reserve recovery.');
 
@@ -601,48 +571,12 @@ const safePointMatches = [...worldEventSafePointsSource.matchAll(/\[(\d+),(\d+)\
 if (safePointMatches.length < 2000) errors.push(`v235.1 organic Money Rain safe-point pool is too small: ${safePointMatches.length}.`);
 if (new Set(safePointMatches.map(([x]) => x % 24)).size < 18 || new Set(safePointMatches.map(([, y]) => y % 24)).size < 18) errors.push('v235.1 Money Rain safe-point pool appears quantized to a visible grid.');
 
-if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-ledger-recheck')) errors.push('v234.2.5 wallet must recheck live XRPL sequence/ledger through the authenticated ATM Pay API before signing.');
-if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-relay-submit')) errors.push('v234.2.5 wallet must relay only the locally signed transaction blob through the authenticated ATM Pay API.');
-if (/testnetRpc\(|prepareTestnetPaymentTx|submitSignedBlobAndWait|new xrpl\.Client|submitAndWait\(|client\.autofill\(/.test(embeddedWalletSource)) errors.push('v234.2.5 browser wallet must not depend on direct XRPL network transport.');
-if (!embeddedWalletSource.includes('MAX_TEST_PAYMENT_DROPS = 10_000_000n')) errors.push('Small-payment hard cap is missing.');
-if (!embeddedWalletSource.includes('MAX_TEST_FEE_DROPS = 10_000n')) errors.push('Fee safety ceiling is missing.');
-if (!embeddedWalletSource.includes('PAYMENT_PREVIEW_TTL_MS = 60 * 1000')) errors.push('Prepared-payment expiry guard is missing.');
-if (!embeddedWalletSource.includes('PAYMENT_TX_FIELDS')) errors.push('v234.1 transaction-field allowlist is missing.');
-if (!embeddedWalletSource.includes('intentDigest')) errors.push('v234.1 canonical transaction-intent digest is missing.');
-if (!embeddedWalletSource.includes('recheckLiveLedgerBeforeSigning')) errors.push('v234.1 live ledger/sequence recheck is missing.');
-if (/atmWalletConfirmSuffix|atmWalletPaymentDestination|verifyDestinationSuffix|Full destination|Type the last 6/i.test(embeddedWalletSource)) errors.push('v234.2 normal ATM Pay flow must not ask users to type or verify XRPL wallet addresses.');
-if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-prepare')) errors.push('v234.2 client is missing server-bound ATM Pay intent preparation.');
-if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-verify')) errors.push('v234.2 client is missing pre-sign ATM Pay recipient re-verification.');
-if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-submitted')) errors.push('v234.2 client must durably mark the locally signed transaction hash before XRPL broadcast.');
-if (!embeddedWalletSource.includes('/api/embedded-wallet?action=pay-complete')) errors.push('v234.2 client is missing post-ledger ATM Pay verification/activity recording.');
-if (!embeddedWalletSource.includes('atmPayIntentId') || !embeddedWalletSource.includes('recipientUserId') || !embeddedWalletSource.includes('recipientHandle')) errors.push('v234.2 canonical signing digest must bind ATM Pay identity to the XRPL transaction.');
-if (!embeddedWalletSource.includes("ATM_PAY_MEMO_TYPE = 'ATM-PAY-INTENT'") || !embeddedWalletSource.includes('expectedIntentMemos(intentId)') || !atmPaySource.includes('intentMemos(intent.id)')) errors.push('v234.2 must bind the unique ATM Pay intent ID into the signed XRPL Payment memo.');
-if (/escapeHtml\(prepared\.destination\)|\$\{prepared\.destination\}/.test(embeddedWalletSource)) errors.push('v234.2 must not render the settlement address in the normal payment review.');
-if (!embeddedWalletSource.includes('copyEmergencySeed')) errors.push('v234.1 emergency seed export path is missing.');
-if (!embeddedWalletSource.includes("TESTNET_RESET_CONFIRMATION = 'RESET TESTNET WALLET'")) errors.push('v235.5 Testnet wallet reset confirmation phrase is missing.');
-if (!embeddedWalletSource.includes("action=reset-testnet-wallet") || !embeddedWalletSource.includes('async function resetTestnetWallet()')) errors.push('v235.5 client Testnet wallet replacement flow is missing.');
-if (!embeddedWalletSource.includes('The old address remains on XRPL') || !embeddedWalletSource.includes('Your ATM Town account and @handle stay the same')) errors.push('v235.5 reset UI is missing destructive-action warnings.');
-if (/\$\{\s*(?:escapeHtml\(\s*)?seed\b|textContent\s*=\s*seed/i.test(embeddedWalletSource)) errors.push('Emergency seed material must never be rendered into page HTML.');
-if (!/pay-relay-submit[^\n]*tx_blob/i.test(embeddedWalletSource)) errors.push('v234.2.5 signed XRPL blob relay is missing from the local-signing flow.');
-if (/walletApi\([^\n]*(?:seed|private[_-]?key)/i.test(embeddedWalletSource)) errors.push('Plaintext wallet secrets must never be sent through the ATM Town API.');
-if (!embeddedWalletApiSource.includes("const NETWORK = 'testnet'")) errors.push('Embedded wallet API is not hard-gated to Testnet.');
-if (!embeddedWalletApiSource.includes('xrplTestnetRpc')) errors.push('Embedded wallet API must use the resilient shared Testnet RPC helper.');
 if (!testnetRpcSource.includes('XRPL_TESTNET_RPC_URL')) errors.push('Shared Testnet RPC helper must honor XRPL_TESTNET_RPC_URL override.');
 if (!testnetRpcSource.includes('AbortSignal.timeout')) errors.push('Shared Testnet RPC helper is missing a bounded request timeout.');
 for (const host of ['testnet.xrpl-labs.com','testnet.honeycluster.io','s.altnet.rippletest.net:51234']) { if (!testnetRpcSource.includes(host)) errors.push(`Shared Testnet RPC helper missing endpoint: ${host}`); }
-if (!embeddedWalletApiSource.includes('assertExactKeys')) errors.push('v234.1 encrypted-backup exact-schema validation is missing.');
-if (!embeddedWalletApiSource.includes('existing.address !== address')) errors.push('v234.1 must block silent replacement of an account embedded-wallet address.');
-if (!embeddedWalletApiSource.includes("action === 'reset-testnet-wallet'") || !embeddedWalletApiSource.includes('replaceTestnetWallet')) errors.push('v235.5 dedicated Testnet wallet replacement API is missing.');
-if (!embeddedWalletApiSource.includes("TESTNET_RESET_CONFIRMATION = 'RESET TESTNET WALLET'")) errors.push('v235.5 server reset confirmation phrase is missing.');
-if (!embeddedWalletApiSource.includes(".eq('address', currentAddress)")) errors.push('v235.5 wallet reset must compare the currently attached address before replacement.');
-if (!embeddedWalletApiSource.includes('cancelPendingIntentsForReset')) errors.push('v235.5 wallet reset must invalidate pending ATM Pay routes tied to the old wallet.');
-if (/s1\.ripple\.com|xrplcluster\.com|force_network[^\n]*MAINNET/i.test(embeddedWalletApiSource)) errors.push('Embedded wallet API contains a Mainnet endpoint/marker.');
-if (!embeddedWalletApiSource.includes("from('embedded_wallets')")) errors.push('Embedded wallet API is not isolated to embedded_wallets.');
-if (/from\('player_accounts'\)/.test(embeddedWalletApiSource)) errors.push('Embedded wallet API must not overwrite player_accounts.wallet_address.');
 if (!embeddedWalletSql.includes('alter table public.embedded_wallets enable row level security')) errors.push('Embedded wallet table must have RLS enabled.');
 if (/create policy/i.test(embeddedWalletSql)) errors.push('v234 embedded_wallets should expose no direct browser RLS policies.');
 
-if (!embeddedWalletApiSource.includes('isAtmPayAction(action)')) errors.push('v234.2 ATM Pay must route through the existing embedded-wallet serverless function.');
 if (!atmPaySource.includes("new Set(['pay-status','pay-search','pay-activity'")) errors.push('v234.2 ATM Pay action router is missing.');
 if (!atmPaySource.includes("from('atm_pay_profiles')") || !atmPaySource.includes("from('atm_pay_intents')") || !atmPaySource.includes("from('atm_pay_requests')")) errors.push('v234.2 ATM Pay server persistence is incomplete.');
 if (!atmPaySource.includes("route_type: 'embedded'") || !atmPaySource.includes("network: NETWORK") || !atmPaySource.includes("asset: ASSET")) errors.push('v234.2 ATM Pay intent route/network/asset binding is missing.');
@@ -886,6 +820,11 @@ try {
   await rm(tempDirectory, { recursive: true, force: true });
 }
 
+// ATM Pay signing is owned by its mainnet app; Town keeps only a compatibility bridge.
+if(config.embeddedWallet?.network!=='mainnet'||!config.embeddedWallet?.external)errors.push('ATM Pay must use its external mainnet wallet.');
+if(!embeddedWalletSource.includes('ATMMainnetWallet')||/Wallet.generate|TESTNET PREVIEW|Set up ATM Pay|RESET TESTNET WALLET|pay-relay-submit/.test(embeddedWalletSource))errors.push('Retired wallet UI or signing flow is still reachable.');
+if(!embeddedWalletApiSource.includes('WALLET_FLOW_RETIRED')||embeddedWalletApiSource.includes('handleAtmPayAction'))errors.push('Retired wallet API must refuse wallet operations.');
+
 if (errors.length) {
   console.error(`ATM Town v235.12.10 build validation failed with ${errors.length} issue(s):`);
   for (const error of errors) console.error(`- ${error}`);
@@ -894,3 +833,4 @@ if (errors.length) {
 
 console.log('ATM Town v235.12.10 build validation passed.');
 console.log(`Checked ${requiredFiles.length} required files, ${assetRefs.size} direct asset references, ${dayFiles.length} day/night foreground pairs, map masks, duplicate IDs, zero executable inline scripts, and all external classic runtime scripts.`);
+

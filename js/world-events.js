@@ -103,7 +103,7 @@
     return fraction ? `${whole}.${fraction}` : `${whole}`;
   }
   function eventNetworkLabel(event = state.event) {
-    return String(event?.reward_network || '').toLowerCase() === 'mainnet' ? 'Mainnet' : 'Testnet';
+    return String(event?.reward_network || '').toLowerCase() === 'mainnet' ? 'Mainnet' : 'XRPL';
   }
   function sponsorLabel(event) {
     const configured = String(event?.sponsor?.label || '').trim();
@@ -844,8 +844,8 @@
       for (const id of accepted) state.claimed.add(id);
       const awarded = Number(data.points || 0);
       if (accepted.size && awarded > 0) {
-        const reward = state.event?.reward_settlement ? rewardForPoints(awarded, state.event) : '';
-        toast(reward ? `+${reward} Testnet XRP` : `+${awarded} Money Rain point${awarded === 1 ? '' : 's'}`, 1250);
+        const reward = state.event?.reward_settlement && state.event?.reward_network === 'mainnet' ? rewardForPoints(awarded, state.event) : '';
+        toast(reward ? `+${reward} XRP` : `+${awarded} Money Rain point${awarded === 1 ? '' : 's'}`, 1250);
       }
     } catch (error) {
       const message = String(error?.message || '');
