@@ -8,7 +8,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v298-mainnet-only-1';
+const BUILD_CACHE = 'atm-town-shell-v299-shared-artwork-1';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = 'atm-town-world-v2';
 const WORLD_SNAPSHOT='/__atm_world__/manifest.json';
@@ -172,12 +172,13 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
+ function worldObjectImageKey(o){const f=o.image_file;if(f&&/^[a-f0-9]{64}$/.test(f.sha256||'')&&Number.isSafeInteger(f.size)&&f.size>0&&f.size<=6291456&&Number.isSafeInteger(f.width)&&f.width>0&&f.width<=2048&&Number.isSafeInteger(f.height)&&f.height>0&&f.height<=2048&&f.width===o.image_width&&f.height===o.image_height)return['image',f.sha256,f.size,f.width,f.height].join(':');return o.sprite_url;}
 function worldAssets(manifest,objects=[]){
   const files=new Map();
   const add=(raw,hash='')=>{if(!raw)return;const url=new URL(raw,self.location.origin);if(!['https:','http:'].includes(url.protocol)||url.pathname.startsWith('/api/'))return;files.set(url.href,{url:url.href,hash:hash||''});};
   add(manifest.overview?.day,manifest.overview?.fileMeta?.sha256);add(manifest.overview?.night);
   for(const layer of Object.values(manifest.layers||{}))for(const key of layer.chunks||[])add(layer.sources?.[key]||`${layer.path}/${key}.${layer.format}`,layer.fileMeta?.[key]?.sha256);
-  for(const object of objects)if(object.active!==false)add(object.sprite_url,object.image_file?.sha256);
+  const artwork=new Set();for(const object of objects)if(object.active!==false){const key=worldObjectImageKey(object);if(!artwork.has(key)){artwork.add(key);add(object.sprite_url,object.image_file?.sha256);}}
   return [...files.values()];
 }
 async function postToClient(client,payload){try{client?.postMessage?.(payload);}catch{}}
@@ -276,7 +277,7 @@ async function downloadWorld(client,suppliedManifest){
   // Publish a complete snapshot only after all of its assets are stored.
   await cache.put(objectKey,new Response(JSON.stringify({objects}),{headers:{'Content-Type':'application/json'}}));
   await cache.put(WORLD_SNAPSHOT,new Response(JSON.stringify(manifest),{headers:{'Content-Type':'application/json'}}));
-  const keep=new Set([...files.map(file=>file.url),... [WORLD_INDEX,WORLD_SNAPSHOT,objectKey].map(key=>new URL(key,self.location.origin).href)]);
+  const keep=new Set([...files.map(file=>file.url),...objects.filter(o=>o.active!==false&&o.sprite_url).map(o=>new URL(o.sprite_url,self.location.origin).href),... [WORLD_INDEX,WORLD_SNAPSHOT,objectKey].map(key=>new URL(key,self.location.origin).href)]);
   for(const request of await cache.keys())if(!keep.has(request.url))await cache.delete(request);
   await postToClient(client,{type:'ATM_PWA_DOWNLOAD_COMPLETE',completed,total,mapVersion:version});
 }
@@ -347,5 +348,6 @@ self.addEventListener('notificationclick', (event) => {
     if (self.clients.openWindow) await self.clients.openWindow(url);
   })());
 });
+
 
 
