@@ -12,9 +12,11 @@ function validateShape(c){
  if(c===null||c===undefined)return null;
  const coordinate=v=>Number.isFinite(v)&&Math.abs(v)<=16384;
  if(c.type==='raster'){
-  if(!Array.isArray(c.rects)||!c.rects.length||c.rects.length>50000)throw Error('Silhouette mask is too complex.');
+  if(!Array.isArray(c.rects)||c.rects.length>50000)throw Error('Silhouette mask is too complex.');
   const rects=c.rects.map(r=>{if(!Array.isArray(r)||r.length!==4||!r.every(Number.isFinite)||!r.every(v=>Math.abs(v)<=32768)||r[2]<=0||r[3]<=0)throw Error('Invalid silhouette mask.');return [...r];});
-  const left=Math.min(...rects.map(r=>r[0])),top=Math.min(...rects.map(r=>r[1])),right=Math.max(...rects.map(r=>r[0]+r[2])),bottom=Math.max(...rects.map(r=>r[1]+r[3]));
+  if(!rects.length)return {type:'raster',rects,width:0,depth:0,offsetX:0,offsetY:0};
+  let left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
+  for(const r of rects){left=Math.min(left,r[0]);top=Math.min(top,r[1]);right=Math.max(right,r[0]+r[2]);bottom=Math.max(bottom,r[1]+r[3]);}
   return {type:'raster',rects,width:right-left,depth:bottom-top,offsetX:(left+right)/2,offsetY:(top+bottom)/2};
  }
  if(c.type==='rectangle'){
@@ -47,4 +49,5 @@ export function validateFootprint(c){
  if(masks.action){const a=c.action;if(!a||!['message','enter','vending','events'].includes(a.type))throw Error('Choose an action.');if(a.type==='enter'&&!['hq','gallery','arcade','lounge'].includes(a.destination))throw Error('Choose an interior.');result.action={type:a.type,destination:a.destination||'hq',text:String(a.text||'').slice(0,500)};}
  return result;
 }
+
 
