@@ -77,3 +77,40 @@ test('WebP publish preserves PNG masks, serves real .webp URLs, and identical up
  const draft=await handleMapAdmin(admin,user,'admin-map-init',body);for(const f of admin.rows.town_map_versions[0].assets)admin.uploads.set(f.storage_path,f.format==='webp'?webp:image);
  await handleMapAdmin(admin,user,'admin-map-validate',{id:draft.id});await handleMapAdmin(admin,user,'admin-map-publish',{id:draft.id,expected_revision:0});const state=await handleMapAdmin(admin,user,'admin-map-state');assert.match(state.manifest.layers.terrain.sources['4_0'],/\.webp$/);assert.match(state.manifest.layers.collision.sources['4_0'],/\.png$/);assert.equal(state.manifest.layers.terrain.fileMeta['4_0'].format,'webp');body.base_revision=1;assert.equal((await handleMapAdmin(admin,user,'admin-map-init',body)).no_changes,true);
 });
+
+import {shareMapFiles,uniqueMapUploads,mapImageKey} from '../lib/map-delta.js';
+test('500 repeated objects share one upload and URL while preserving individual placement and masks',async()=>{
+ const admin=memoryAdmin(),user={id},v=input(),image=png();
+ v.objects=Array.from({length:500},(_,i)=>{const key=`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`;return{...v.objects[0],id:key,x:4200+i,y:700,width:10+i%20,sprite_url:`assets/objects/${key}.png`,image_width:1,image_height:1,collision:{depthMode:'silhouette',depthLine:-1-i%5}}});
+ v.files=v.files.filter(f=>!f.path.startsWith('assets/objects/')).concat(v.objects.map(o=>({path:o.sprite_url})));
+ const terrain=await sharp({create:{width:1024,height:1024,channels:4,background:'#334455'}}).png().toBuffer(),overview=await sharp({create:{width:1024,height:864,channels:4,background:'#334455'}}).png().toBuffer();
+ for(const f of v.files){const pixels=f.path.startsWith('assets/objects/')?image:f.path==='overview.png'?overview:terrain;Object.assign(f,{size:pixels.length,sha256:sha256(pixels)});}
+ const draft=await handleMapAdmin(admin,user,'admin-map-init',{...v,base_revision:0});
+ assert.equal(draft.file_count,4);assert.equal(draft.summary.shared_files,499);assert.equal(draft.upload_paths.filter(p=>p.startsWith('assets/objects/')).length,1);
+ const row=admin.rows.town_map_versions[0];assert.equal(new Set(row.assets.filter(f=>f.kind==='object').map(f=>f.storage_path)).size,1);
+ for(const f of row.assets)admin.uploads.set(f.storage_path,f.kind==='object'?image:f.kind==='overview'?overview:terrain);
+ let reads=0;const storage=admin.storage.from();const download=storage.download;admin.storage.from=()=>({...storage,download:async p=>{reads++;return download(p)}});
+ await handleMapAdmin(admin,user,'admin-map-validate',{id:draft.id});assert.equal(reads,4);
+ assert.equal(new Set(row.objects.map(o=>o.sprite_url)).size,1);assert.equal(row.objects.length,500);
+ for(let i=0;i<500;i++){assert.equal(row.objects[i].x,v.objects[i].x);assert.equal(row.objects[i].width,v.objects[i].width);assert.equal(row.objects[i].collision.depthLine,v.objects[i].collision.depthLine);}
+ await handleMapAdmin(admin,user,'admin-map-publish',{id:draft.id,expected_revision:0});
+ // New object IDs reuse the same artwork from live objects.
+ const next=input(),newId='00000000-0000-4000-8000-000000000999';next.objects=[{...v.objects[0],id:newId,sprite_url:`assets/objects/${newId}.png`}];next.files=next.files.filter(f=>!f.path.startsWith('assets/objects/')).concat([{path:next.objects[0].sprite_url,size:image.length,sha256:sha256(image)}]);for(const f of next.files)if(!f.path.startsWith('assets/objects/')){const pixels=f.path==='overview.png'?overview:terrain;Object.assign(f,{size:pixels.length,sha256:sha256(pixels)});}
+ const added=await handleMapAdmin(admin,user,'admin-map-init',{...next,base_revision:1});assert.equal(added.file_count,0);assert.equal(added.summary.new_objects,1);
+});
+test('legacy draft sharing preserves an already uploaded later copy and ownership',async()=>{
+ const admin=memoryAdmin(),v=input(),other='00000000-0000-4000-8000-000000000002';v.objects.push({...v.objects[0],id:other,sprite_url:`assets/objects/${other}.png`});v.files.push({...v.files.find(f=>f.path.startsWith('assets/objects/')),path:v.objects[1].sprite_url});
+ const body={...v,base_revision:0},draft=await handleMapAdmin(admin,{id},'admin-map-init',body),row=admin.rows.town_map_versions[0],objects=row.assets.filter(f=>f.kind==='object');
+ objects[1].storage_path=`${id}/${draft.id}/legacy-copy.png`;admin.uploads.set(objects[1].storage_path,new Uint8Array());
+ const resumed=await handleMapAdmin(admin,{id},'admin-map-init',body);assert.equal(resumed.id,draft.id);assert.equal(resumed.resumed,true);assert(objects[0].storage_path!==objects[1].storage_path);
+ const shared=row.assets.filter(f=>f.kind==='object');assert.equal(shared[0].storage_path,objects[1].storage_path);assert.equal(shared[1].storage_path,objects[1].storage_path);
+ const inventory=await handleMapAdmin(admin,{id},'admin-map-upload',{id:draft.id,check_only:true});assert(inventory.uploaded.includes(v.objects[0].sprite_url));assert.equal(resumed.summary.upload_files,3);
+ await assert.rejects(()=>handleMapAdmin(admin,{id:other},'admin-map-upload',{id:draft.id,paths:[v.objects[0].sprite_url]}));
+});
+test('sharing checks format, kind, dimensions and checksum and deduplicates repeated masks',()=>{
+ const original={path:'assets/world/collision/0_0.png',kind:'collision',format:'png',size:100,sha256:'a'.repeat(64),width:1024,height:1024};
+ const files=[original,{...original,path:'assets/world/collision/1_0.png'},...Object.entries({format:'webp',kind:'terrain',width:512,sha256:'b'.repeat(64),size:101}).map(([k,val],i)=>({...original,path:`different-${i}`, [k]:val}))];
+ const shared=shareMapFiles(files,(_,i)=>`stored/${i}`);assert.equal(shared[0].storage_path,shared[1].storage_path);assert.equal(uniqueMapUploads(shared).length,6);assert.notEqual(mapImageKey(original),mapImageKey(files[2]));
+});
+
+test('game renderer uses one Image for 500 placements sharing a URL',()=>{let images=0;const window={},context=vm.createContext({window,Image:class{constructor(){images++}},Map,Set,WeakMap,URLSearchParams,Date,console,createRenderSpriteCache:()=>({}),createWorldObjectIndex:()=>({}),footprintContains:()=>false,splitObjectPixels:()=>({})});vm.runInContext(readFileSync(new URL('../js/world-objects.js',import.meta.url),'utf8').replace(/^(?:import[^\n]*\n)+/,''),context);const objects=Array.from({length:500},(_,i)=>({id:String(i),x:i,y:i,width:20+i%5,sprite_url:'shared-tree.png'})),sprites=objects.map(o=>window.ATMWorldObjects.image(o));assert.equal(new Set(sprites).size,1);assert.equal(images,1);});

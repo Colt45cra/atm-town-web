@@ -1,12 +1,14 @@
 // Shared browser-only import preparation. The server rechecks every descriptor and PNG.
 export async function pngImage(blob){const bitmap=await createImageBitmap(blob);try{if(bitmap.width>2048||bitmap.height>2048)throw Error('An image exceeds 2048 pixels. Resize the asset before importing.');const c=document.createElement('canvas');c.width=bitmap.width;c.height=bitmap.height;c.getContext('2d').drawImage(bitmap,0,0);const png=await new Promise((resolve,reject)=>c.toBlob(b=>b?resolve(b):reject(Error('Cannot prepare image.')),'image/png'));return{blob:png,width:c.width,height:c.height};}finally{bitmap.close();}}
-const hash=async blob=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const digest=async blob=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const imageHashes=new WeakMap();
+const hash=blob=>{let promise=imageHashes.get(blob);if(!promise){promise=digest(blob);imageHashes.set(blob,promise);}return promise;};
 export async function prepareMapUpload(files,{api,status,signal,label,baseRevision}){
  const source=new Map(files.map(f=>[f.name,f.blob]));const read=async path=>{const f=source.get(path);if(!f)throw Error('Missing '+path);return JSON.parse(await f.text());};
  const manifest=await read('assets/world/manifest.json'),objects=(await read('world-objects.json')).objects,metadata=await read('map-update.json');const current=await api('admin-map-state');
  if((metadata.sourceManifest?.mapRevision??0)!==current.revision)throw Error('The live map changed since this selection was prepared. Refresh Map Studio and export again.');
  const upload=[],descriptors=[];for(const [key]of Object.entries(manifest.cells))for(const layer of manifest.updateMode==='objects-only'?[]:['terrain','collision']){const path=`assets/world/${layer}/${key}.${manifest.layers[layer].format}`,file=files.find(f=>f.name===path);if(file?.descriptor)descriptors.push(file.descriptor);else{const blob=source.get(path);if(!blob)throw Error('Missing '+path);upload.push({path,blob});}}
- const normalized=[];for(let i=0;i<objects.length;i++){signal?.throwIfAborted();status(`Checking object ${i+1} of ${objects.length}…`);const o=objects[i],original=source.get(o.sprite_url);if(!original)throw Error('Missing object image.');const image=await pngImage(original),path=`assets/objects/${o.id}.png`;upload.push({path,blob:image.blob});normalized.push({...o,sprite_url:path,image_width:image.width,image_height:image.height});}
+ const normalized=[],normalizedImages=new Map();for(let i=0;i<objects.length;i++){signal?.throwIfAborted();status(`Checking object ${i+1} of ${objects.length}…`);const o=objects[i],original=source.get(o.sprite_url);if(!original)throw Error('Missing object image.');const key=await hash(original);let image=normalizedImages.get(key);if(!image){image=await pngImage(original);normalizedImages.set(key,image);}const path=`assets/objects/${o.id}.png`;upload.push({path,blob:image.blob});normalized.push({...o,sprite_url:path,image_width:image.width,image_height:image.height});}
  const old=current.manifest.bounds,s=manifest.updateMode==='objects-only'?old:manifest.bounds,b={minX:Math.min(old.minX,s.minX),minY:Math.min(old.minY,s.minY),maxX:Math.max(old.maxX,s.maxX),maxY:Math.max(old.maxY,s.maxY)};
  const changesTerrain=upload.some(f=>f.path.startsWith('assets/world/terrain/'))||b.minX!==old.minX||b.minY!==old.minY||b.maxX!==old.maxX||b.maxY!==old.maxY;
  let overview=null,overviewSize,preview_url;
@@ -28,13 +30,27 @@ export async function prepareMapUpload(files,{api,status,signal,label,baseRevisi
 
 // Two workers limit pressure on mobile networks. Completed immutable files are resumed.
 export async function uploadMapFiles(files,{api,status,signal,id,resumed=false,fetchFile=fetch,wait=retryWait}){
- signal?.throwIfAborted();status('Checking saved uploads in one batch…');const saved=await api('admin-map-upload',{id,check_only:true});signal?.throwIfAborted();const uploaded=new Set(saved.uploaded||[]),pending=files.map((file,index)=>({file,index})).filter(({file})=>!uploaded.has(file.path)),skipped=files.length-pending.length;
+ async function uploadRequest(body){
+  for(let attempt=0;attempt<5;attempt++){
+   signal?.throwIfAborted();
+   try{return await api('admin-map-upload',body);}
+   catch(error){
+    signal?.throwIfAborted();const code=Number(error.status);
+    const transient=error instanceof TypeError||error.network===true||[408,429,502,503,504].includes(code)||code>=500;
+    if(!transient)throw error;
+    if(attempt===4)throw Error('Connection to ATM Town was interrupted while checking uploads. Completed files are saved. Prepare the same area again to resume.');
+    status(`Connection interrupted while ${body.check_only?'checking saved files':'getting an upload link'} · retry ${attempt+1}/4…`);
+    await wait(Math.min(8000,750*2**attempt),signal);
+   }
+  }
+ }
+ signal?.throwIfAborted();status('Checking saved uploads in one batch…');const saved=await uploadRequest({id,check_only:true});signal?.throwIfAborted();const uploaded=new Set(saved.uploaded||[]),pending=files.map((file,index)=>({file,index})).filter(({file})=>!uploaded.has(file.path)),skipped=files.length-pending.length;
  let next=0,completed=0,failure;const progress=()=>status(`Skipped ${skipped} saved files · Uploaded ${completed} of ${pending.length} remaining…`);progress();
  async function worker(){while(!failure&&next<pending.length){const {index,file}=pending[next++];try{
   for(let attempt=0;attempt<5;attempt++){
-   signal?.throwIfAborted();const {links}=await api('admin-map-upload',{id,paths:[file.path]});const link=links.find(l=>l.path===file.path);if(!link)throw Error('Missing upload link.');if(link.uploaded)break;
+   signal?.throwIfAborted();const {links}=await uploadRequest({id,paths:[file.path]});const link=links.find(l=>l.path===file.path);if(!link)throw Error('Missing upload link.');if(link.uploaded)break;
    const url=new URL(link.url);if(url.origin!=='https://xnyjurertwohlqczaeux.supabase.co'||!url.pathname.startsWith('/storage/v1/object/upload/sign/world-maps/'))throw Error('Invalid upload destination.');
-   const controller=new AbortController(),abort=()=>controller.abort(signal.reason);signal?.addEventListener('abort',abort,{once:true});const timer=setTimeout(()=>controller.abort(),45000);let problem;
+   const controller=new AbortController(),abort=()=>controller.abort(signal.reason);signal?.addEventListener('abort',abort,{once:true});const timer=setTimeout(()=>controller.abort(),Math.min(240000,Math.max(90000,Math.ceil(file.blob.size/8192)*1000)));let problem;
    try{const response=await fetchFile(url.href,{method:'PUT',headers:{'Content-Type':file.path.endsWith('.webp')?'image/webp':'image/png','x-upsert':'false'},body:file.blob,signal:controller.signal});if(response.ok)break;problem=Error(`Map file ${index+1} of ${files.length} failed to upload (HTTP ${response.status}). Prepare the same area again to resume.`);if(![408,409,429,401,403].includes(response.status)&&response.status<500)throw Object.assign(problem,{permanent:true});}
    catch(error){signal?.throwIfAborted();if(error.permanent)throw error;problem=problem||Error(`Map file ${index+1} of ${files.length} could not upload: network interruption or timeout. Prepare the same area again to resume.`);}
    finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
