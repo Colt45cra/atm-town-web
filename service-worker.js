@@ -8,7 +8,7 @@
  * - Web Push shows OS notifications when ATM Town is not visible and hands the
  *   ping directly to an open game window when it is visible.
  */
-const BUILD_CACHE = 'atm-town-shell-v296-guest-appearance-1';
+const BUILD_CACHE = 'atm-town-shell-v297-map-download-recovery-1';
 const ASSET_CACHE = 'atm-town-assets-v1';
 const WORLD_CACHE = 'atm-town-world-v2';
 const WORLD_SNAPSHOT='/__atm_world__/manifest.json';
@@ -182,15 +182,64 @@ function worldAssets(manifest,objects=[]){
 }
 async function postToClient(client,payload){try{client?.postMessage?.(payload);}catch{}}
 async function readSaved(cache,key,fallback=null){try{return await(await cache.match(key))?.json()||fallback;}catch{return fallback;}}
+
+const WORLD_RETRY_STATUSES=new Set([408,429,500,502,503,504]);
+const worldDelay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function worldRetryDelay(response,attempt){
+  const raw=response?.headers?.get('retry-after');
+  const seconds=raw&&/^\d+(\.\d+)?$/.test(raw)?Number(raw):NaN;
+  const date=raw?Date.parse(raw):NaN;
+  const suggested=Number.isFinite(seconds)?seconds*1000:Number.isFinite(date)?date-Date.now():0;
+  return Math.max(3000,Math.min(60000,3000*2**attempt),suggested);
+}
+async function fetchWorldResource(url,options={},onRetry=async()=>{}){
+  for(let attempt=0;;attempt++){
+    let response,error;
+    try{response=await fetch(url,{...options,signal:AbortSignal.timeout(120000)});}catch(e){error=e;}
+    const retry=error||WORLD_RETRY_STATUSES.has(response.status);
+    if(!retry)return response;
+    if(attempt>=7){
+      const host=new URL(url,self.location.origin).hostname;
+      throw Error('Map server '+host+' is still busy or unavailable'+(response?' ('+response.status+')':'')+'. Saved progress is safe. Please try again shortly.');
+    }
+    let remaining=worldRetryDelay(response,attempt);
+    try{await response?.body?.cancel();}catch{}
+    while(remaining>0){
+      await onRetry(Math.ceil(remaining/1000),new URL(url,self.location.origin).hostname);
+      const step=Math.min(1000,remaining);await worldDelay(step);remaining-=step;
+    }
+  }
+}
+let worldDownloadJob=null;
+function requestWorldDownload(client,manifest){
+  const version=manifest?.mapVersion||'';
+  if(worldDownloadJob){
+    if(version&&worldDownloadJob.version&&version!==worldDownloadJob.version){
+      return postToClient(client,{type:'ATM_PWA_DOWNLOAD_ERROR',message:'Another map version is downloading. Wait for it to finish, then retry.'});
+    }
+    worldDownloadJob.clients.add(client);
+    if(worldDownloadJob.last)postToClient(client,worldDownloadJob.last);
+    return worldDownloadJob.promise;
+  }
+  const job={version,clients:new Set([client]),last:null,promise:null};
+  worldDownloadJob=job;
+  const broadcaster={postMessage(payload){job.last=payload;for(const target of job.clients)postToClient(target,payload);}};
+  job.promise=downloadWorld(broadcaster,manifest).catch(error=>broadcaster.postMessage({
+    type:'ATM_PWA_DOWNLOAD_ERROR',message:String(error?.message||'Game data download failed.')
+  })).finally(()=>{if(worldDownloadJob===job)worldDownloadJob=null;});
+  return job.promise;
+}
+
 async function downloadWorld(client,suppliedManifest){
   const cache=await caches.open(WORLD_CACHE),oldAssets=await caches.open(ASSET_CACHE);
   await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'checking',completed:0,total:0});
+  const checkingRetry=(retry_seconds,host)=>postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'waiting',completed:0,total:0,retry_seconds,host});
   let manifest=suppliedManifest;
-  if(!manifest){const r=await fetch('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('The live map could not be checked. Retry when connected.');manifest=await r.json();}
+  if(!manifest){const r=await fetchWorldResource('/api/leaderboards?action=rewards-map-manifest',{cache:'no-store'},checkingRetry);if(!r.ok)throw Error('The live map could not be checked. Retry when connected.');manifest=await r.json();}
   if(!manifest?.layers||!manifest.cells||!manifest.bounds)throw Error('The live map is incomplete. Please retry.');
   const version=manifest.mapVersion||'original',objectKey='/__atm_world__/objects-'+encodeURIComponent(version);
   let objects;
-  try{const r=await fetch('/api/leaderboards?action=rewards-world-objects&map_version='+encodeURIComponent(version),{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('Map objects unavailable');objects=(await r.json()).objects;}
+  try{const r=await fetchWorldResource('/api/leaderboards?action=rewards-world-objects&map_version='+encodeURIComponent(version),{cache:'no-store'},checkingRetry);if(!r.ok)throw Error('Map objects unavailable');objects=(await r.json()).objects;}
   catch(e){const saved=await readSaved(cache,objectKey);if(!saved)throw Error('The map buildings could not be checked. Retry when connected.');objects=saved.objects;}
   if(!Array.isArray(objects))throw Error('Map buildings are incomplete. Please retry.');
   const files=worldAssets(manifest,objects),index=await readSaved(cache,WORLD_INDEX,{assets:{}});index.assets??={};
@@ -205,19 +254,20 @@ async function downloadWorld(client,suppliedManifest){
   let completed=0,cursor=0,stopped=false;const total=pending.length;
   const saveIndex=()=>cache.put(WORLD_INDEX,new Response(JSON.stringify(index),{headers:{'Content-Type':'application/json'}}));
   if(total)await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'world',completed,total});
-  const results=await Promise.allSettled(Array.from({length:Math.min(4,total)},async()=>{
+  const results=await Promise.allSettled(Array.from({length:Math.min(1,total)},async()=>{
     while(cursor<total&&!stopped){
       const file=pending[cursor++];
       try{
         const headers={};if(!file.hash&&file.etag)headers['If-None-Match']=file.etag;
-          const response=await fetch(file.url,{cache:'no-cache',credentials:new URL(file.url).origin===self.location.origin?'same-origin':'omit',headers,signal:AbortSignal.timeout(120000)});
+          const response=await fetchWorldResource(file.url,{cache:'default',credentials:new URL(file.url).origin===self.location.origin?'same-origin':'omit',headers},(retry_seconds,host)=>postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'waiting',completed,total,retry_seconds,host}));
           if(response.status!==304){
-            if(!response.ok||response.type==='opaque')throw Error('Could not save a map asset ('+response.status+').');
+            if(!response.ok||response.type==='opaque')throw Error('Could not save a map asset from '+new URL(file.url).hostname+' ('+response.status+').');
             if(file.hash){const bytes=await response.clone().arrayBuffer(),digest=await crypto.subtle.digest('SHA-256',bytes);const hash=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');if(hash!==file.hash.toLowerCase())throw Error('A map asset changed during download. Retry to get the current map.');}
             await cache.put(file.url,response);
           }else if(!await cache.match(file.url))throw Error('The map asset is not saved yet.');
         index.assets[file.url]={hash:file.hash,mapVersion:version};completed++;
-        if(completed%5===0||completed===total){await saveIndex();await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'world',completed,total});}
+        await saveIndex();await postToClient(client,{type:'ATM_PWA_DOWNLOAD_PROGRESS',phase:'world',completed,total});
+        if(cursor<total)await worldDelay(150);
       }catch(error){stopped=true;throw error;}
     }
   }));
@@ -238,10 +288,7 @@ self.addEventListener('message', (event) => {
     return;
   }
   if (data.type === 'ATM_PWA_DOWNLOAD_WORLD') {
-    event.waitUntil(downloadWorld(event.ports?.[0]||event.source,data.manifest).catch((error) => postToClient(event.ports?.[0]||event.source, {
-      type: 'ATM_PWA_DOWNLOAD_ERROR',
-      message: String(error?.message || 'Game data download failed.')
-    })));
+    event.waitUntil(requestWorldDownload(event.ports?.[0]||event.source,data.manifest));
   }
 });
 

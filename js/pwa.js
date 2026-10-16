@@ -160,7 +160,7 @@
       const watchdog=()=>{clearTimeout(timer);timer=setTimeout(()=>{close();reject(Error('Map download stopped responding. Retry to resume saved progress.'));},180000);};
       channel.port1.onmessage=({data})=>{
         watchdog();
-        if(data.type==='ATM_PWA_DOWNLOAD_PROGRESS'){state.download={active:true,completed:data.completed||0,total:data.total||0,status:data.phase||'world',error:''};emit();}
+        if(data.type==='ATM_PWA_DOWNLOAD_PROGRESS'){state.download={active:true,completed:data.completed||0,total:data.total||0,status:data.phase||'world',retry_seconds:Number(data.retry_seconds||0),error:''};emit();}
         else if(data.type==='ATM_PWA_DOWNLOAD_COMPLETE'){state.download={active:false,completed:data.completed,total:data.total,status:'complete',error:''};emit();close();resolve(data);}
         else if(data.type==='ATM_PWA_DOWNLOAD_ERROR'){state.download={...state.download,active:false,status:'error',error:cleanMessage(data.message)};emit();close();reject(Error(state.download.error));}
       };
@@ -179,7 +179,7 @@
       const progress=document.createElement('progress');progress.style.cssText='width:100%;height:20px';
       const hint=document.createElement('p');hint.textContent='Saving the map on this device. Later visits reuse saved files.';
       const controls=document.createElement('div');card.append(title,text,progress,hint,controls);overlay.appendChild(card);
-      const paint=()=>{const d=state.download;if(d.status==='world'&&d.total>0&&!overlay.isConnected)document.body.appendChild(overlay);progress.max=Math.max(1,d.total);progress.value=d.completed;text.textContent=d.total?`${d.completed} / ${d.total} map files ready`:'Checking the live map and buildings…';};
+      const paint=()=>{const d=state.download;if((d.status==='world'&&d.total>0||d.status==='waiting')&&!overlay.isConnected)document.body.appendChild(overlay);progress.max=Math.max(1,d.total);progress.value=d.completed;text.textContent=d.status==='waiting'?`Map server is busy. Continuing automatically in ${d.retry_seconds||1}s…${d.total?' ('+d.completed+' / '+d.total+' files ready)':''}`:d.total?`${d.completed} / ${d.total} map files ready`:'Checking the live map and buildings…';};
       global.addEventListener('atm:pwa-state-changed',paint);
       try{
         while(true){
@@ -227,7 +227,7 @@
       const data=event.data||{};
       if(data.type==='ATM_PLAYER_PING'){receivePing(data.payload);return;}
       if(data.type==='ATM_PWA_DOWNLOAD_PROGRESS'){
-        state.download={active:true,completed:Number(data.completed||0),total:Number(data.total||0),status:String(data.phase||'world'),error:''};emit();return;
+        state.download={active:true,completed:Number(data.completed||0),total:Number(data.total||0),status:String(data.phase||'world'),retry_seconds:Number(data.retry_seconds||0),error:''};emit();return;
       }
       if(data.type==='ATM_PWA_DOWNLOAD_COMPLETE'){
         state.download={active:false,completed:Number(data.completed||0),total:Number(data.total||0),status:'complete',error:''};emit();return;
