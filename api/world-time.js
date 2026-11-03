@@ -3,6 +3,7 @@ import {
   assertMoneyRainLaunchContext,
   claimMoneyPickup,
   getWorldEventState,
+  normalizeMoneyRainSponsorImage,
   resolveMoneyRainSponsor,
   startFundedMoneyRain,
   startMoneyRain,
@@ -72,7 +73,10 @@ export default async function handler(req, res) {
       if (action === 'payload-mainnet-create') {
         await assertMoneyRainLaunchContext(admin, body);
         const { sponsor } = await resolveMoneyRainSponsor(admin, user, body);
-        return res.status(201).json(await createMainnetMoneyRainDraft(admin, user, { poolAmount: body.pool_amount, asset: body.asset, sponsorMode: sponsor.mode, sponsorLabel: sponsor.label }));
+        const sponsorImage = await normalizeMoneyRainSponsorImage(body.sponsor_image);
+        return res.status(201).json(await createMainnetMoneyRainDraft(admin, user, {
+          poolAmount: body.pool_amount, asset: body.asset, sponsorMode: sponsor.mode, sponsorLabel: sponsor.label, sponsorImage,
+        }));
       }
 
       if (action === 'payload-mainnet-fund') return res.status(200).json(await startMainnetMoneyRainFunding(admin, user, body.draft_token));
@@ -95,6 +99,7 @@ export default async function handler(req, res) {
           sponsor_mode: draft.sponsor_mode,
           sponsor_label: draft.sponsor_label,
         }, {
+          sponsor_image: draft.sponsor_image,
           integration_campaign_id: draft.integration_campaign_id,
           external_campaign_id: draft.external_campaign_id,
           external_event_id: draft.external_event_id,
